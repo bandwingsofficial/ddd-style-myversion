@@ -1,0 +1,584 @@
+//////////////////////////////////////////////////////
+// GENERATOR & DATASOURCE
+//////////////////////////////////////////////////////
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+//////////////////////////////////////////////////////
+// ENUMS (DOMAIN-ALIGNED)
+//////////////////////////////////////////////////////
+
+enum ActorType {
+  CUSTOMER
+  DELIVERY
+  OUTLET_USER
+  SUPER_ADMIN
+}
+enum OutletUserRole {
+  ADMIN
+  MANAGER
+  STAFF
+}
+
+enum OtpPurpose {
+  LOGIN
+  VERIFY_PHONE
+  SENSITIVE_ACTION
+}
+
+enum DeliveryStatus {
+  CREATED
+  KYC_SUBMITTED
+  APPROVED
+  REJECTED
+  SUSPENDED
+  BLOCKED
+}
+
+enum AuditAction {
+
+  OTP_REQUESTED
+  OTP_VERIFICATION_FAILED
+  OTP_VERIFIED
+
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  MFA_FAILED
+
+  TOKEN_ISSUED
+  TOKEN_REFRESHED
+  TOKEN_REUSE_DETECTED
+
+
+  LOGOUT
+  LOGOUT_ALL
+  SESSION_REVOKED
+
+
+  DELIVERY_APPROVED
+  DELIVERY_REJECTED
+  DELIVERY_SUSPENDED
+  DELIVERY_BLOCKED
+
+
+  OUTLET_USER_CREATED
+  OUTLET_USER_DISABLED
+  OUTLET_USER_DELETED
+  OUTLET_USER_ENABLED
+  OUTLET_USER_PASSWORD_RESET
+
+
+  OUTLET_CREATED
+  OUTLET_UPDATED
+  OUTLET_ENABLED
+  OUTLET_DISABLED
+
+  OUTLET_OPENED
+  OUTLET_CLOSED
+  OUTLET_TEMPORARILY_CLOSED
+
+  OUTLET_CAMERA_ON
+  OUTLET_CAMERA_OFF
+  OUTLET_CAMERA_MAINTENANCE
+
+
+  SUPER_ADMIN_LOGIN
+  SUPER_ADMIN_ACTION
+}
+
+enum OutletStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum OutletWorkingStatus {
+  OPEN
+  CLOSED
+  TEMPORARILY_CLOSED
+}
+
+enum CameraStatus {
+  OFF
+  ON
+  MAINTENANCE
+}
+
+enum OrderStatus {
+  CREATED
+  CONFIRMED
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+//////////////////////////////////////////////////////
+// CORE AUTH (SESSION = SOURCE OF TRUTH)
+//////////////////////////////////////////////////////
+
+model AuthSession {
+  id         String    @id @default(cuid())
+  actorType ActorType
+  actorId   String
+  deviceId  String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime  @default(now())
+  lastUsedAt DateTime
+  revokedAt  DateTime?
+
+  refreshTokens RefreshToken[]
+  audits        AuditLog[]
+
+  @@index([actorType, actorId])
+  @@index([revokedAt])
+}
+
+model RefreshToken {
+  id            String   @id @default(cuid())
+  sessionId     String
+  tokenHash     String   @unique
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime
+  rotatedAt     DateTime?
+  replacedById  String?
+
+  session AuthSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([tokenHash])
+  @@index([expiresAt])
+}
+
+//////////////////////////////////////////////////////
+// OTP TRACKING
+//////////////////////////////////////////////////////
+
+model OtpRequest {
+  id         String @id @default(cuid())
+  actorType ActorType
+  actorId   String?
+  phone     String
+  purpose   OtpPurpose
+  otpHash   String
+  attempts  Int    @default(0)
+  expiresAt DateTime
+  verifiedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([phone, purpose])
+  @@index([expiresAt])
+}
+
+//////////////////////////////////////////////////////
+// MFA
+//////////////////////////////////////////////////////
+
+model MfaChallenge {
+  id         String @id @default(cuid())
+  actorType ActorType
+  actorId   String
+  expiresAt DateTime
+  verifiedAt DateTime?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([actorType, actorId])
+  @@index([expiresAt])
+}
+
+//////////////////////////////////////////////////////
+// AUDIT LOG
+//////////////////////////////////////////////////////
+
+model AuditLog {
+  id         String @id @default(cuid())
+  actorType ActorType
+  actorId   String?
+  sessionId String?
+  action    AuditAction
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  session AuthSession? @relation(fields: [sessionId], references: [id])
+
+  @@index([actorType, actorId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+//////////////////////////////////////////////////////
+// IDENTITY TABLES (NO AUTH LOGIC)
+//////////////////////////////////////////////////////
+
+model Customer {
+  id           String @id @default(cuid())
+  phone        String @unique
+  isBlocked    Boolean @default(false)
+  blockedAt    DateTime?
+  tokenVersion Int @default(0)
+  createdAt    DateTime @default(now())
+
+  orders Order[]
+}
+
+model DeliveryPartner {
+  id           String @id @default(cuid())
+  phone        String @unique
+  status       DeliveryStatus @default(CREATED)
+  kycRefId     String?
+  approvedAt   DateTime?
+  approvedBy   String?
+  tokenVersion Int @default(0)
+  createdAt    DateTime @default(now())
+}
+
+//////////////////////////////////////////////////////
+// OUTLET DOMAIN
+//////////////////////////////////////////////////////
+
+model Outlet {
+  id        String @id @default(cuid())
+
+  // Identity
+  name      String
+  branch    String?
+  address   String?
+  location  String?
+  pincode   String?
+
+  // Geo
+  latitude  Float?
+  longitude Float?
+
+  // Admin control
+  status OutletStatus @default(ACTIVE)
+  isActive     Boolean @default(true)
+
+  // Customer-facing availability
+  workingStatus OutletWorkingStatus @default(CLOSED)
+
+  // Camera
+  isCameraEnabled Boolean @default(false)
+  cameraStatus    CameraStatus @default(OFF)
+  cameraStreamUrl String?
+
+  // Config
+  deliveryRadiusKm Float?
+  isCentral         Boolean @default(false)
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+
+  users  OutletUser[]
+  outletStocks OutletStock[]
+  orders Order[]
+}
+
+model OutletUser {
+  id       String @id @default(cuid())
+  outletId String
+
+  // Auth
+  email        String @unique
+  passwordHash String
+  isActive     Boolean @default(true)
+
+  // Security
+  failedAttempts Int @default(0)
+  lockedUntil    DateTime?
+  tokenVersion   Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  outlet Outlet @relation(fields: [outletId], references: [id])
+
+  @@index([outletId])
+}
+
+//////////////////////////////////////////////////////
+// ORDER DOMAIN (CAMERA VISIBILITY CONTROL)
+//////////////////////////////////////////////////////
+
+model Order {
+  id         String @id @default(cuid())
+  outletId  String
+  customerId String
+
+  status OrderStatus @default(CREATED)
+
+  // Live camera experience
+  showLiveCamera Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  outlet   Outlet   @relation(fields: [outletId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@index([outletId])
+  @@index([customerId])
+}
+
+//////////////////////////////////////////////////////
+// SUPER ADMIN
+//////////////////////////////////////////////////////
+
+model SuperAdmin {
+  id           String @id @default(cuid())
+  email        String @unique
+  passwordHash String
+  totpSecret   String?
+  mfaEnabled   Boolean @default(true)
+  isActive     Boolean @default(true)
+  tokenVersion Int @default(0)
+  createdAt    DateTime @default(now())
+}
+
+//////////////////////////////////////////////////////
+// Product /catagory
+//////////////////////////////////////////////////////
+
+
+model Category {
+  id        String         @id @default(uuid())
+  name      String
+  status    CategoryStatus
+  sortOrder Int            @default(0)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+enum CategoryStatus {
+  ACTIVE
+  INACTIVE
+}
+
+//////////////////////////////////////////////////////
+// Product /stockitems
+//////////////////////////////////////////////////////
+
+
+model StockItem {
+  id        String           @id @default(cuid())
+  name      String           @unique @db.VarChar(100)
+  unit      Unit
+  status    StockItemStatus  @default(ACTIVE)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  // 🔁 RELATIONS (REQUIRED)
+  centralInventory CentralInventory?
+  transactions     StockTransaction[]
+  outletStocks     OutletStock[]
+  products         Product[]
+}
+
+enum StockItemStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum Unit {
+  KG
+  GRAM
+  LITER
+  ML
+  PIECE
+  PACKET
+}
+
+//////////////////////////////////////////////////////
+// INVENTORY ENUMS
+//////////////////////////////////////////////////////
+
+enum InventoryStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum StockTransactionType {
+  INITIALIZE
+  ADD
+  ADJUST
+  TRANSFER
+}
+
+enum StockSource {
+  CENTRAL
+  ADJUSTMENT
+}
+
+enum StockDestination {
+  CENTRAL
+  OUTLET
+}
+
+//////////////////////////////////////////////////////
+// CENTRAL INVENTORY (SOURCE OF TRUTH)
+//////////////////////////////////////////////////////
+
+model CentralInventory {
+  id           String @id @default(uuid())
+
+  stockItemId  String @unique
+  stockItem    StockItem @relation(fields: [stockItemId], references: [id])
+
+  unit         Unit
+
+  availableQty Decimal @db.Decimal(12, 3) @default(0)
+  totalQty     Decimal @db.Decimal(12, 3) @default(0)
+
+  status       InventoryStatus @default(ACTIVE)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  transactions StockTransaction[]
+
+  @@index([stockItemId])
+  @@index([status])
+}
+
+
+//////////////////////////////////////////////////////
+// STOCK TRANSACTIONS (AUDIT LOG)
+//////////////////////////////////////////////////////
+
+model StockTransaction {
+  id              String @id @default(uuid())
+
+  stockItemId     String
+  stockItem       StockItem @relation(fields: [stockItemId], references: [id])
+
+  inventoryId     String
+  inventory       CentralInventory @relation(fields: [inventoryId], references: [id])
+
+  type            StockTransactionType
+  quantity        Decimal @db.Decimal(12, 3)
+
+  source          StockSource
+  destination     StockDestination
+
+  outletId        String?
+  performedBy     String?   // superAdminId
+  remarks         String?
+
+  createdAt       DateTime @default(now())
+
+  @@index([stockItemId])
+  @@index([inventoryId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+
+//////////////////////////////////////////////////////
+// OUTLET STOCK (PER OUTLET)
+//////////////////////////////////////////////////////
+
+model OutletStock {
+  id          String @id @default(uuid())
+
+  outletId    String
+  outlet      Outlet @relation(fields: [outletId], references: [id])
+
+  stockItemId String
+  stockItem   StockItem @relation(fields: [stockItemId], references: [id])
+
+  unit        Unit
+  quantity    Decimal @db.Decimal(12, 3) @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([outletId, stockItemId])
+  @@index([outletId])
+  @@index([stockItemId])
+}
+
+
+//////////////////////////////////////////////////////
+// PRODUCT ENUMS
+//////////////////////////////////////////////////////
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+}
+
+
+//////////////////////////////////////////////////////
+// PRODUCT
+//////////////////////////////////////////////////////
+
+model Product {
+  id                String        @id @default(uuid())
+
+  // 🔗 LINK TO INVENTORY
+  stockItemId       String
+  stockItem         StockItem     @relation(fields: [stockItemId], references: [id])
+
+  // 📦 PRODUCT INFO
+  productName       String        @unique @db.VarChar(150)
+  slug              String        @unique @db.VarChar(180)
+
+  shortDescription  String?       @db.VarChar(300)
+  longDescription   String?
+
+  // 💰 PRICING
+  originalPrice     Decimal       @db.Decimal(12, 2)
+  discountPrice     Decimal?      @db.Decimal(12, 2)
+
+  // 🖼 IMAGES
+  mainImage         String        // URL or storage key
+  galleryImages     ProductImage[]
+
+  // 🔥 FLAGS
+  isTrending        Boolean       @default(false)
+
+  // ⚙️ STATUS
+  status            ProductStatus @default(ACTIVE)
+   createdBy       String  
+
+  // 🕒 TIMESTAMPS
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([stockItemId])
+  @@index([status])
+  @@index([isTrending])
+}
+
+
+//////////////////////////////////////////////////////
+// PRODUCT IMAGES
+//////////////////////////////////////////////////////
+
+model ProductImage {
+  id        String   @id @default(uuid())
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  imageUrl  String
+
+  sortOrder Int      @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+}

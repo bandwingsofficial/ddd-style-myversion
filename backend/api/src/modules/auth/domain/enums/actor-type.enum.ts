@@ -1,0 +1,6 @@
+export enum ActorType {
+  CUSTOMER = 'CUSTOMER',
+  DELIVERY = 'DELIVERY',
+  OUTLET_USER = 'OUTLET_USER',
+  SUPER_ADMIN = 'SUPER_ADMIN',
+}

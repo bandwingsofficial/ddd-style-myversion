@@ -1,0 +1,52 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+
+    "lib": ["ES2020", "DOM"],
+    "jsx": "preserve",
+
+    "strict": true,
+    "skipLibCheck": true,
+    "allowJs": false,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "baseUrl": ".",
+
+    "types": ["node"],
+
+    "incremental": true,
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "useDefineForClassFields": false,
+
+    "paths": {
+      "@types/*": ["packages/types/src/*"],
+      "@ui/*": ["packages/ui/src/*"],
+      "@utils/*": ["packages/utils/src/*"],
+      "@config/*": ["packages/config/src/*"],
+      "@api-client/*": ["packages/api-client/src/*"]
+    }
+  },
+
+  "include": [
+    "apps/**/*",
+    "backend/**/*",
+    "services/**/*",
+    "packages/**/*"
+  ],
+
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".next",
+    "build",
+    "coverage",
+    "scripts",
+    "infra"
+  ]
+}

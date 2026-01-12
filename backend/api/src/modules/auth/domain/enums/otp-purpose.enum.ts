@@ -1,0 +1,5 @@
+export enum OtpPurpose {
+  LOGIN = 'LOGIN',
+  VERIFY_PHONE = 'VERIFY_PHONE',
+  SENSITIVE_ACTION = 'SENSITIVE_ACTION',
+}
