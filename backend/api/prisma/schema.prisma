@@ -230,6 +230,7 @@ model Customer {
   createdAt    DateTime @default(now())
 
   orders Order[]
+  savedAddresses CustomerSavedAddress[]
 }
 
 model DeliveryPartner {
@@ -581,4 +582,43 @@ model ProductImage {
   createdAt DateTime @default(now())
 
   @@index([productId])
+}
+
+//////////////////////////////////////////////////////
+// PRODUCT IMAGES
+//////////////////////////////////////////////////////
+
+enum SavedAddressType {
+  HOME
+  WORK
+  OTHER
+}
+
+model CustomerSavedAddress {
+  id          String            @id @default(cuid())
+
+  // 🔗 OWNERSHIP
+  customerId  String
+  customer    Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  // 🏷️ ADDRESS META
+  type        SavedAddressType
+  label       String            @db.VarChar(50)
+  addressText String            @db.Text
+
+  // 🌍 OPTIONAL GEO (FUTURE)
+  latitude    Float?
+  longitude   Float?
+
+  // 🗑️ SOFT DELETE
+  isDeleted   Boolean           @default(false)
+
+  // 🕒 TIMESTAMPS
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([customerId])
+  @@index([type])
+  @@index([isDeleted])
+  @@unique([customerId, type])
 }
