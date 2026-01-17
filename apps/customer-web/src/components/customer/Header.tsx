@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
 import { useLogout } from "@/features/customer-auth/hooks/useLogout";
+import LocationSelector from "./LocationSelector";
+
 
 export default function Header() {
   const { isAuthenticated } = useCustomerAuthStore();
@@ -82,15 +84,12 @@ export default function Header() {
               <span style={styles.brandName}>Cane & Tender</span>
             </Link>
 
-            <div style={styles.locationPicker}>
-              <div style={styles.locationIcon}>
-                <MapPin size={14} />
-              </div>
-              <div style={styles.locationText}>
-                <span style={styles.locationLabel}>Deliver to</span>
-                <span style={styles.locationValue}>Downtown Deli <ChevronDown size={12} /></span>
-              </div>
-            </div>
+            <div style={styles.navGroup}>
+  <Link href="/home" style={styles.brand}>
+  </Link>
+  <LocationSelector />
+</div>
+
           </div>
 
           {/* Centered Search */}
