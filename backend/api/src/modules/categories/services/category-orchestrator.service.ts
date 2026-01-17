@@ -15,18 +15,20 @@ export class CategoryOrchestratorService {
   /* CATEGORY – READS                                 */
   /* ================================================= */
 
-  async getCategoryById(categoryId: string) {
+  async getCategoryById(
+    categoryId: string,
+  ): Promise<Category> {
     return this.categoryService.getById(categoryId);
   }
 
   /**
-   * ✅ GET ALL
+   * GET ALL
    * - admin → includeInactive = true
    * - customer → includeInactive = false
    */
   async getAllCategories(params?: {
     includeInactive?: boolean;
-  }) {
+  }): Promise<Category[]> {
     return this.categoryService.getAll(params);
   }
 
@@ -36,7 +38,7 @@ export class CategoryOrchestratorService {
 
   async createCategory(params: {
     category: Category;
-  }) {
+  }): Promise<Category> {
     return this.categoryService.createCategory(
       params.category,
     );
@@ -45,13 +47,15 @@ export class CategoryOrchestratorService {
   async renameCategory(params: {
     categoryId: string;
     name: string;
-  }) {
-    return this.categoryService.renameCategory(params);
+  }): Promise<Category> {
+    return this.categoryService.renameCategory(
+      params,
+    );
   }
 
   async disableCategory(params: {
     categoryId: string;
-  }) {
+  }): Promise<{ id: string; status: 'INACTIVE' }> {
     return this.categoryService.disableCategory(
       params.categoryId,
     );
@@ -59,7 +63,7 @@ export class CategoryOrchestratorService {
 
   async enableCategory(params: {
     categoryId: string;
-  }) {
+  }): Promise<{ id: string; status: 'ACTIVE' }> {
     return this.categoryService.enableCategory(
       params.categoryId,
     );
@@ -72,7 +76,7 @@ export class CategoryOrchestratorService {
   async changeCategorySortOrder(params: {
     categoryId: string;
     sortOrder: number;
-  }) {
+  }): Promise<Category> {
     return this.categoryService.changeSortOrder(
       params,
     );

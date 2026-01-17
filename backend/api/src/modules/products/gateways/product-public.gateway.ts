@@ -1,64 +1,51 @@
 import {
   WebSocketGateway,
   WebSocketServer,
+  OnGatewayConnection,
 } from '@nestjs/websockets';
-import { Server } from 'socket.io';
+import { Server, Socket } from 'socket.io';
+
+import { ProductRepository } from '../repositories/product.repository';
+import { PublicProductListDto } from '../dtos/public-product-list.dto';
 
 @WebSocketGateway({
   namespace: '/public/products',
   cors: {
-    origin: '*', // tighten later if needed
+    origin: '*',
   },
 })
-export class ProductPublicGateway {
+export class ProductPublicGateway
+  implements OnGatewayConnection
+{
   @WebSocketServer()
   private readonly server: Server;
 
+  constructor(
+    private readonly productRepo: ProductRepository,
+  ) {}
+
   /* ================================================= */
-  /* LIFECYCLE                                         */
+  /* 🔥 SEND INITIAL DATA ON CLIENT CONNECT            */
   /* ================================================= */
 
-  emitProductCreated(payload: {
-    productId: string;
-  }): void {
-    this.server.emit('product.created', payload);
-  }
+  async handleConnection(client: Socket): Promise<void> {
+    const products =
+      await this.productRepo.findAll(); // ACTIVE only
 
-  emitProductEnabled(payload: {
-    productId: string;
-  }): void {
-    this.server.emit('product.enabled', payload);
-  }
-
-  emitProductDisabled(payload: {
-    productId: string;
-  }): void {
-    this.server.emit('product.disabled', payload);
+    client.emit('products.updated', {
+      products: products.map((p) =>
+        PublicProductListDto.fromDomain(p),
+      ),
+    });
   }
 
   /* ================================================= */
-  /* UPDATE                                            */
+  /* 🟢 FULL PRODUCT STATE (BROADCAST)                */
   /* ================================================= */
 
-  emitProductUpdated(payload: {
-    productId: string;
-    name: string;
-    slug: string;
+  emitProductsUpdated(payload: {
+    products: any[];
   }): void {
-    this.server.emit('product.updated', payload);
-  }
-
-  /* ================================================= */
-  /* TRENDING                                          */
-  /* ================================================= */
-
-  emitProductTrendingChanged(payload: {
-    productId: string;
-    isTrending: boolean;
-  }): void {
-    this.server.emit(
-      'product.trending.changed',
-      payload,
-    );
+    this.server.emit('products.updated', payload);
   }
 }

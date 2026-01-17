@@ -2,64 +2,70 @@ import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { ProductEvents } from '../events/product-events.constants';
-import {
-  ProductLifecycleEvent,
-  ProductUpdatedEvent,
-  ProductTrendingChangedEvent,
-} from '../events/product-events.types';
-
+import { ProductRepository } from '../repositories/product.repository';
 import { ProductPublicGateway } from '../gateways/product-public.gateway';
+import { PublicProductListDto } from '../dtos/public-product-list.dto';
 
 @Injectable()
 export class ProductPublicListener {
   constructor(
     private readonly gateway: ProductPublicGateway,
+    private readonly productRepo: ProductRepository,
   ) {}
 
   /* ================================================= */
-  /* LIFECYCLE                                         */
+  /* SINGLE SOURCE OF TRUTH (PUBLIC STATE)              */
+  /* ================================================= */
+
+  private async emitFullProductList(): Promise<void> {
+    const products =
+      await this.productRepo.findAll(); // ACTIVE only
+
+    const payload = products.map((product) =>
+      PublicProductListDto.fromDomain(product),
+    );
+
+    this.gateway.emitProductsUpdated({
+      products: payload,
+    });
+  }
+
+  /* ================================================= */
+  /* LIFECYCLE EVENTS                                  */
   /* ================================================= */
 
   @OnEvent(ProductEvents.PRODUCT_CREATED)
-  handleProductCreated(
-    event: ProductLifecycleEvent,
-  ): void {
-    this.gateway.emitProductCreated({
-      productId: event.productId,
-    });
+  async handleProductCreated(): Promise<void> {
+    await this.emitFullProductList();
   }
 
   @OnEvent(ProductEvents.PRODUCT_ENABLED)
-  handleProductEnabled(
-    event: ProductLifecycleEvent,
-  ): void {
-    this.gateway.emitProductEnabled({
-      productId: event.productId,
-    });
+  async handleProductEnabled(): Promise<void> {
+    await this.emitFullProductList();
   }
 
   @OnEvent(ProductEvents.PRODUCT_DISABLED)
-  handleProductDisabled(
-    event: ProductLifecycleEvent,
-  ): void {
-    this.gateway.emitProductDisabled({
-      productId: event.productId,
-    });
+  async handleProductDisabled(): Promise<void> {
+    await this.emitFullProductList();
   }
 
   /* ================================================= */
-  /* UPDATE                                            */
+  /* UPDATE EVENTS                                     */
   /* ================================================= */
 
   @OnEvent(ProductEvents.PRODUCT_UPDATED)
-  handleProductUpdated(
-    event: ProductUpdatedEvent,
-  ): void {
-    this.gateway.emitProductUpdated({
-      productId: event.productId,
-      name: event.name,
-      slug: event.slug,
-    });
+  async handleProductUpdated(): Promise<void> {
+    await this.emitFullProductList();
+  }
+
+  @OnEvent(ProductEvents.PRODUCT_PRICE_CHANGED)
+  async handleProductPriceChanged(): Promise<void> {
+    await this.emitFullProductList();
+  }
+
+  @OnEvent(ProductEvents.PRODUCT_IMAGES_CHANGED)
+  async handleProductImagesChanged(): Promise<void> {
+    await this.emitFullProductList();
   }
 
   /* ================================================= */
@@ -67,12 +73,7 @@ export class ProductPublicListener {
   /* ================================================= */
 
   @OnEvent(ProductEvents.PRODUCT_TRENDING_CHANGED)
-  handleProductTrendingChanged(
-    event: ProductTrendingChangedEvent,
-  ): void {
-    this.gateway.emitProductTrendingChanged({
-      productId: event.productId,
-      isTrending: event.isTrending,
-    });
+  async handleProductTrendingChanged(): Promise<void> {
+    await this.emitFullProductList();
   }
 }

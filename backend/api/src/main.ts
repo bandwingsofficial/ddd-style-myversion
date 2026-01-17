@@ -1,5 +1,51 @@
 // src/main.ts
 
+/**
+ * ============================================================
+ * 🔐 LOCAL HTTPS SETUP (DO NOT REMOVE)
+ * ============================================================
+ *
+ * REQUIRED COMMANDS (RUN ON HOST MACHINE):
+ *
+ * 1️⃣ Install mkcert (one time)
+ *    https://github.com/FiloSottile/mkcert
+ *
+ * 2️⃣ Install local CA
+ *    $ mkcert -install
+ *
+ * 3️⃣ Generate certificate (run from repo root)
+ *    $ mkcert admin.dev.local
+ *
+ *    This will generate:
+ *    - admin.dev.local+1.pem
+ *    - admin.dev.local+1-key.pem
+ *
+ * 4️⃣ Move certs into:
+ *    /certs
+ *
+ * 5️⃣ Add host mapping (HOST MACHINE):
+ *    192.168.1.5 admin.dev.local
+ *
+ * 6️⃣ Android Emulator ONLY:
+ *    $ adb root
+ *    $ adb remount
+ *    $ adb shell
+ *    # echo "192.168.1.5 admin.dev.local" >> /system/etc/hosts
+ *
+ * 7️⃣ Install mkcert root CA on Android:
+ *    $ adb push ~/.local/share/mkcert/rootCA.pem /sdcard/
+ *
+ *    Android Settings →
+ *    Security → Install CA Certificate → VPN & apps
+ *
+ * API URL (Flutter):
+ *    https://admin.dev.local:4000
+ *
+ * ⚠️ DO NOT USE IP WITH HTTPS
+ * ❌ https://192.168.1.5:4000 (WILL FAIL TLS)
+ * ============================================================
+ */
+
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -75,7 +121,7 @@ async function bootstrap() {
   /* CORS                                              */
   /* -------------------------------------------------- */
   app.enableCors({
-    origin: ['https://admin.dev.local:3001','https://outlets.dev.local:3000', 'https://customer.dev.local:3002'],
+    origin: true,
     credentials: true,
   });
 
@@ -94,7 +140,9 @@ async function bootstrap() {
   /* START SERVER                                       */
   /* -------------------------------------------------- */
   const port = Number(process.env.APP_PORT) || 4000;
-  await app.listen(port);
+
+  // MUST be 0.0.0.0 for LAN / Android access
+  await app.listen(port, '0.0.0.0');
 
   console.log(
     `🚀 API running on https://api.dev.local:${port}`,

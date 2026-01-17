@@ -6,6 +6,8 @@ import {
   ProductLifecycleEvent,
   ProductUpdatedEvent,
   ProductTrendingChangedEvent,
+  ProductPriceChangedEvent,
+  ProductImagesChangedEvent,
 } from './product-events.types';
 
 @Injectable()
@@ -54,6 +56,32 @@ export class ProductEventsService {
   ): void {
     this.eventEmitter.emit(
       ProductEvents.PRODUCT_UPDATED,
+      payload,
+    );
+  }
+
+  /* ================================================= */
+  /* PRICE                                             */
+  /* ================================================= */
+
+  emitProductPriceChanged(
+    payload: ProductPriceChangedEvent,
+  ): void {
+    this.eventEmitter.emit(
+      ProductEvents.PRODUCT_PRICE_CHANGED,
+      payload,
+    );
+  }
+
+  /* ================================================= */
+  /* IMAGES                                            */
+  /* ================================================= */
+
+  emitProductImagesChanged(
+    payload: ProductImagesChangedEvent,
+  ): void {
+    this.eventEmitter.emit(
+      ProductEvents.PRODUCT_IMAGES_CHANGED,
       payload,
     );
   }

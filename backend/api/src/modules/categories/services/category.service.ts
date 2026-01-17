@@ -1,5 +1,3 @@
-// src/modules/categories/services/category.service.ts
-
 import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
@@ -37,11 +35,6 @@ export class CategoryService {
     return category;
   }
 
-  /**
-   * ✅ GET ALL
-   * - admin → includeInactive = true
-   * - customer → includeInactive = false
-   */
   async getAll(params?: {
     includeInactive?: boolean;
   }): Promise<Category[]> {
@@ -51,40 +44,82 @@ export class CategoryService {
   }
 
   /* ================================================= */
-  /* CREATE CATEGORY                                  */
+  /* CREATE CATEGORY                                   */
   /* ================================================= */
 
   async createCategory(category: Category): Promise<Category> {
-    let created!: Category;
+    let result!: Category;
 
     await this.prisma.$transaction(async (tx) => {
-      created = await this.categoryRepo.create(category, tx);
+      await this.categoryRepo.normalizeActiveSortOrders(tx);
+
+      const existing = await this.categoryRepo.findByName(
+        category.name,
+        tx,
+      );
+
+      /* ACTIVE duplicate → reject */
+      if (existing && existing.isActive()) {
+        throw new ValidationError(
+          'CATEGORY_ALREADY_EXISTS',
+          'Category with this name already exists',
+        );
+      }
+
+      /* INACTIVE duplicate → restore */
+      if (existing && existing.isInactive()) {
+        await this.categoryRepo.shiftActiveSortOrdersFrom(
+          category.sortOrder,
+          tx,
+        );
+
+        const restored = existing
+          .enable() // ✅ becomes ACTIVE
+          .changeSortOrder(category.sortOrder); // ✅ allowed now
+
+        result = await this.categoryRepo.update(
+          restored,
+          tx,
+        );
+        return;
+      }
+
+      /* New category */
+      await this.categoryRepo.shiftActiveSortOrdersFrom(
+        category.sortOrder,
+        tx,
+      );
+
+      result = await this.categoryRepo.create(
+        category,
+        tx,
+      );
     });
 
-    /* 🔥 EVENTS AFTER DB SUCCESS */
     this.categoryEvents.emitCategoryCreated({
-      categoryId: created.id,
+      categoryId: result.id,
     });
 
-    return created;
+    return result;
   }
 
   /* ================================================= */
-  /* UPDATE (RENAME)                                  */
+  /* RENAME                                           */
   /* ================================================= */
 
   async renameCategory(params: {
     categoryId: string;
     name: string;
   }): Promise<Category> {
-    const category = await this.categoryRepo.findById(
+    const category = await this.getById(
       params.categoryId,
     );
 
-    if (!category) {
+    /* 🔒 HARD BLOCK */
+    if (category.isInactive()) {
       throw new ValidationError(
-        'CATEGORY_NOT_FOUND',
-        'Category not found',
+        'CATEGORY_INACTIVE_RENAME',
+        'Cannot rename an inactive category',
       );
     }
 
@@ -94,7 +129,6 @@ export class CategoryService {
       await this.categoryRepo.update(updated, tx);
     });
 
-    /* 🔥 EVENTS */
     this.categoryEvents.emitCategoryUpdated({
       categoryId: updated.id,
       name: updated.name,
@@ -111,18 +145,9 @@ export class CategoryService {
     id: string;
     status: 'INACTIVE';
   }> {
-    const category = await this.categoryRepo.findById(
-      categoryId,
-    );
+    const category = await this.getById(categoryId);
 
-    if (!category) {
-      throw new ValidationError(
-        'CATEGORY_NOT_FOUND',
-        'Category not found',
-      );
-    }
-
-    if (!category.isActive()) {
+    if (category.isInactive()) {
       return { id: category.id, status: 'INACTIVE' };
     }
 
@@ -130,9 +155,9 @@ export class CategoryService {
 
     await this.prisma.$transaction(async (tx) => {
       await this.categoryRepo.updateStatus(disabled, tx);
+      await this.categoryRepo.normalizeActiveSortOrders(tx);
     });
 
-    /* 🔥 EVENTS */
     this.categoryEvents.emitCategoryDisabled({
       categoryId: category.id,
     });
@@ -144,16 +169,7 @@ export class CategoryService {
     id: string;
     status: 'ACTIVE';
   }> {
-    const category = await this.categoryRepo.findById(
-      categoryId,
-    );
-
-    if (!category) {
-      throw new ValidationError(
-        'CATEGORY_NOT_FOUND',
-        'Category not found',
-      );
-    }
+    const category = await this.getById(categoryId);
 
     if (category.isActive()) {
       return { id: category.id, status: 'ACTIVE' };
@@ -163,9 +179,9 @@ export class CategoryService {
 
     await this.prisma.$transaction(async (tx) => {
       await this.categoryRepo.updateStatus(enabled, tx);
+      await this.categoryRepo.normalizeActiveSortOrders(tx);
     });
 
-    /* 🔥 EVENTS */
     this.categoryEvents.emitCategoryEnabled({
       categoryId: category.id,
     });
@@ -174,35 +190,46 @@ export class CategoryService {
   }
 
   /* ================================================= */
-  /* SORT ORDER                                       */
+  /* SORT ORDER (MANUAL REORDER)                       */
   /* ================================================= */
 
   async changeSortOrder(params: {
     categoryId: string;
     sortOrder: number;
   }): Promise<Category> {
-    const category = await this.categoryRepo.findById(
+    const category = await this.getById(
       params.categoryId,
     );
 
-    if (!category) {
+    /* 🔒 HARD BLOCK */
+    if (category.isInactive()) {
       throw new ValidationError(
-        'CATEGORY_NOT_FOUND',
-        'Category not found',
+        'CATEGORY_INACTIVE_SORT_ORDER_CHANGE',
+        'Cannot change sort order of an inactive category',
       );
     }
 
-    const updated = category.changeSortOrder(
-      params.sortOrder,
-    );
+    let updated!: Category;
 
     await this.prisma.$transaction(async (tx) => {
-      await this.categoryRepo.updateSortOrder(updated, tx);
+      await this.categoryRepo.normalizeActiveSortOrders(
+        tx,
+      );
+
+      await this.categoryRepo.shiftActiveSortOrdersFrom(
+        params.sortOrder,
+        tx,
+      );
+
+      updated = category.changeSortOrder(
+        params.sortOrder,
+      );
+
+      await this.categoryRepo.update(updated, tx);
     });
 
-    /* 🔥 EVENTS */
     this.categoryEvents.emitCategorySortOrderChanged({
-      categoryId: category.id,
+      categoryId: updated.id,
       sortOrder: params.sortOrder,
     });
 

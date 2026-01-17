@@ -3,10 +3,6 @@
 import { ValidationError } from '../../../../common/errors';
 import { CategoryStatus } from '../enums/category-status.enum';
 
-/* ---------------------------------------------- */
-/* PROPS                                          */
-/* ---------------------------------------------- */
-
 export interface CategoryProps {
   id: string;
   name: string;
@@ -15,10 +11,6 @@ export interface CategoryProps {
   createdAt: Date;
   updatedAt: Date;
 }
-
-/* ---------------------------------------------- */
-/* ENTITY                                         */
-/* ---------------------------------------------- */
 
 export class Category {
   readonly id: string;
@@ -48,7 +40,7 @@ export class Category {
 
     return new Category({
       id: params.id,
-      name: params.name,
+      name: Category.normalizeName(params.name),
       status: CategoryStatus.ACTIVE,
       sortOrder: params.sortOrder ?? 0,
       createdAt: now,
@@ -57,7 +49,10 @@ export class Category {
   }
 
   static rehydrate(props: CategoryProps): Category {
-    return new Category(props);
+    return new Category({
+      ...props,
+      name: Category.normalizeName(props.name),
+    });
   }
 
   /* ---------------------------------------------- */
@@ -68,19 +63,51 @@ export class Category {
     return this.status === CategoryStatus.ACTIVE;
   }
 
+  isInactive(): boolean {
+    return this.status === CategoryStatus.INACTIVE;
+  }
+
+  canParticipateInOrdering(): boolean {
+    return this.isActive();
+  }
+
   /* ---------------------------------------------- */
   /* DOMAIN TRANSITIONS                             */
   /* ---------------------------------------------- */
 
   rename(name: string, now = new Date()): Category {
+    if (this.isInactive()) {
+      throw new ValidationError(
+        'CATEGORY_INACTIVE_RENAME',
+        'Cannot rename an inactive category',
+      );
+    }
+
+    const normalized = Category.normalizeName(name);
+
+    if (normalized === this.name) {
+      return this;
+    }
+
     return new Category({
       ...this,
-      name,
+      name: normalized,
       updatedAt: now,
     });
   }
 
   changeSortOrder(sortOrder: number, now = new Date()): Category {
+    if (this.isInactive()) {
+      throw new ValidationError(
+        'CATEGORY_INACTIVE_SORT_ORDER_CHANGE',
+        'Cannot change sort order of an inactive category',
+      );
+    }
+
+    if (sortOrder === this.sortOrder) {
+      return this;
+    }
+
     return new Category({
       ...this,
       sortOrder,
@@ -89,7 +116,7 @@ export class Category {
   }
 
   disable(now = new Date()): Category {
-    if (this.status === CategoryStatus.INACTIVE) {
+    if (this.isInactive()) {
       return this;
     }
 
@@ -101,7 +128,7 @@ export class Category {
   }
 
   enable(now = new Date()): Category {
-    if (this.status === CategoryStatus.ACTIVE) {
+    if (this.isActive()) {
       return this;
     }
 
@@ -117,7 +144,7 @@ export class Category {
   /* ---------------------------------------------- */
 
   private assertValidState(): void {
-    if (!this.name || this.name.trim().length < 3) {
+    if (!this.name || this.name.length < 3) {
       throw new ValidationError(
         'CATEGORY_INVALID_NAME',
         'Category name must be at least 3 characters',
@@ -130,5 +157,9 @@ export class Category {
         'Sort order cannot be negative',
       );
     }
+  }
+
+  private static normalizeName(name: string): string {
+    return name.trim();
   }
 }

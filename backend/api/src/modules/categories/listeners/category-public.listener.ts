@@ -2,76 +2,74 @@ import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { CategoryEvents } from '../events/category-events.constants';
-import {
-  CategoryLifecycleEvent,
-  CategoryUpdatedEvent,
-  CategorySortOrderChangedEvent,
-} from '../events/category-events.types';
-
+import { CategoryRepository } from '../repositories/category.repository';
 import { CategoryPublicGateway } from '../gateways/category-public.gateway';
 
 @Injectable()
 export class CategoryPublicListener {
   constructor(
     private readonly gateway: CategoryPublicGateway,
+    private readonly categoryRepo: CategoryRepository,
   ) {}
 
   /* ================================================= */
-  /* LIFECYCLE                                         */
+  /* SINGLE SOURCE OF TRUTH (PUBLIC STATE)              */
+  /* ================================================= */
+
+  private async emitFullCategoryList(): Promise<void> {
+    const categories =
+      await this.categoryRepo.findAll(false); // ACTIVE only
+
+    const payload = categories.map((c) => {
+      return {
+        id: c.id,
+        name: c.name,
+        status: c.status,
+        sortOrder: c.sortOrder,
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt,
+      };
+    });
+
+    this.gateway.emitCategoriesUpdated({
+      categories: payload,
+    });
+  }
+
+  /* ================================================= */
+  /* LIFECYCLE EVENTS                                  */
   /* ================================================= */
 
   @OnEvent(CategoryEvents.CATEGORY_CREATED)
-  handleCategoryCreated(
-    event: CategoryLifecycleEvent,
-  ): void {
-    this.gateway.emitCategoryCreated({
-      categoryId: event.categoryId,
-    });
+  async handleCategoryCreated(): Promise<void> {
+    await this.emitFullCategoryList();
   }
 
   @OnEvent(CategoryEvents.CATEGORY_ENABLED)
-  handleCategoryEnabled(
-    event: CategoryLifecycleEvent,
-  ): void {
-    this.gateway.emitCategoryEnabled({
-      categoryId: event.categoryId,
-    });
+  async handleCategoryEnabled(): Promise<void> {
+    await this.emitFullCategoryList();
   }
 
   @OnEvent(CategoryEvents.CATEGORY_DISABLED)
-  handleCategoryDisabled(
-    event: CategoryLifecycleEvent,
-  ): void {
-    this.gateway.emitCategoryDisabled({
-      categoryId: event.categoryId,
-    });
+  async handleCategoryDisabled(): Promise<void> {
+    await this.emitFullCategoryList();
   }
 
   /* ================================================= */
-  /* UPDATE                                            */
+  /* UPDATE EVENTS                                     */
   /* ================================================= */
 
   @OnEvent(CategoryEvents.CATEGORY_UPDATED)
-  handleCategoryUpdated(
-    event: CategoryUpdatedEvent,
-  ): void {
-    this.gateway.emitCategoryUpdated({
-      categoryId: event.categoryId,
-      name: event.name,
-    });
+  async handleCategoryUpdated(): Promise<void> {
+    await this.emitFullCategoryList();
   }
 
   /* ================================================= */
-  /* SORT ORDER                                        */
+  /* SORT ORDER EVENTS                                 */
   /* ================================================= */
 
   @OnEvent(CategoryEvents.CATEGORY_SORT_ORDER_CHANGED)
-  handleCategorySortOrderChanged(
-    event: CategorySortOrderChangedEvent,
-  ): void {
-    this.gateway.emitCategorySortOrderChanged({
-      categoryId: event.categoryId,
-      sortOrder: event.sortOrder,
-    });
+  async handleCategorySortOrderChanged(): Promise<void> {
+    await this.emitFullCategoryList();
   }
 }

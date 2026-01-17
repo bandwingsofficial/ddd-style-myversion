@@ -1,5 +1,3 @@
-// src/modules/categories/repositories/category.repository.ts
-
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
@@ -64,32 +62,68 @@ export class CategoryRepository {
   }
 
   /* ================================================= */
-  /* READ (LIST – ADMIN & CUSTOMER)                   */
+  /* READ (BY NAME – CASE INSENSITIVE)                 */
   /* ================================================= */
 
-  /**
-   * includeInactive:
-   *  - false → customer / public
-   *  - true  → admin
-   */
+  async findByName(
+    name: string,
+    tx?: PrismaTransaction,
+  ): Promise<Category | null> {
+    const row = await (tx ?? this.prisma).category.findFirst({
+      where: {
+        name: {
+          equals: name.trim(),
+          mode: 'insensitive',
+        },
+      },
+    });
+
+    return row ? this.toDomain(row) : null;
+  }
+
+  /* ================================================= */
+  /* READ (LIST – ADMIN & CUSTOMER) ✅ CORRECT         */
+  /* ================================================= */
+
   async findAll(
     includeInactive = false,
     tx?: PrismaTransaction,
   ): Promise<Category[]> {
-    const rows = await (tx ?? this.prisma).category.findMany({
-      where: includeInactive
-        ? undefined
-        : {
-            status: CategoryStatusMapper.toPrisma(
-              CategoryStatus.ACTIVE,
-            ),
-          },
-      orderBy: {
-        sortOrder: 'asc',
+    const client = tx ?? this.prisma;
+
+    // ACTIVE categories → ordered, untouched
+    const activeRows = await client.category.findMany({
+      where: {
+        status: CategoryStatusMapper.toPrisma(
+          CategoryStatus.ACTIVE,
+        ),
       },
+      orderBy: { sortOrder: 'asc' },
     });
 
-    return rows.map((row) => this.toDomain(row));
+    const active = activeRows.map((row) =>
+      this.toDomain(row),
+    );
+
+    if (!includeInactive) {
+      return active;
+    }
+
+    // INACTIVE categories → read-only, no ordering meaning
+    const inactiveRows = await client.category.findMany({
+      where: {
+        status: CategoryStatusMapper.toPrisma(
+          CategoryStatus.INACTIVE,
+        ),
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    const inactive = inactiveRows.map((row) =>
+      this.toDomain(row),
+    );
+
+    return [...active, ...inactive];
   }
 
   /* ================================================= */
@@ -123,21 +157,102 @@ export class CategoryRepository {
     category: Category,
     tx?: PrismaTransaction,
   ): Promise<Category> {
-    const client = tx ?? this.prisma;
+    if (tx) {
+      return this.updateStatusInternal(category, tx);
+    }
 
-    const row = await client.category.update({
+    return this.prisma.$transaction((trx) =>
+      this.updateStatusInternal(category, trx),
+    );
+  }
+
+  private async updateStatusInternal(
+    category: Category,
+    trx: PrismaTransaction,
+  ): Promise<Category> {
+    const existing = await trx.category.findUnique({
       where: { id: category.id },
-      data: {
-        status: CategoryStatusMapper.toPrisma(category.status),
-        updatedAt: category.updatedAt,
-      },
     });
 
-    return this.toDomain(row);
+    if (!existing) {
+      throw new Error('Category not found');
+    }
+
+    const existingStatus =
+      CategoryStatusMapper.toDomain(existing.status);
+
+    // No change → no-op
+    if (existingStatus === category.status) {
+      return this.toDomain(existing);
+    }
+
+    /* ACTIVE → INACTIVE */
+    if (
+      existingStatus === CategoryStatus.ACTIVE &&
+      category.status === CategoryStatus.INACTIVE
+    ) {
+      await trx.category.updateMany({
+        where: {
+          status: CategoryStatusMapper.toPrisma(
+            CategoryStatus.ACTIVE,
+          ),
+          sortOrder: { gt: existing.sortOrder },
+        },
+        data: {
+          sortOrder: { decrement: 1 },
+        },
+      });
+
+      const row = await trx.category.update({
+        where: { id: category.id },
+        data: {
+          status: CategoryStatusMapper.toPrisma(
+            CategoryStatus.INACTIVE,
+          ),
+          updatedAt: category.updatedAt,
+        },
+      });
+
+      return this.toDomain(row);
+    }
+
+    /* INACTIVE → ACTIVE */
+    if (
+      existingStatus === CategoryStatus.INACTIVE &&
+      category.status === CategoryStatus.ACTIVE
+    ) {
+      const lastActive = await trx.category.findFirst({
+        where: {
+          status: CategoryStatusMapper.toPrisma(
+            CategoryStatus.ACTIVE,
+          ),
+        },
+        orderBy: { sortOrder: 'desc' },
+      });
+
+      const nextSortOrder = lastActive
+        ? lastActive.sortOrder + 1
+        : 0;
+
+      const row = await trx.category.update({
+        where: { id: category.id },
+        data: {
+          status: CategoryStatusMapper.toPrisma(
+            CategoryStatus.ACTIVE,
+          ),
+          sortOrder: nextSortOrder,
+          updatedAt: category.updatedAt,
+        },
+      });
+
+      return this.toDomain(row);
+    }
+
+    return this.toDomain(existing);
   }
 
   /* ================================================= */
-  /* SORT ORDER                                       */
+  /* SORT ORDER (ACTIVE ONLY – DOMAIN GUARDED)         */
   /* ================================================= */
 
   async updateSortOrder(
@@ -155,6 +270,57 @@ export class CategoryRepository {
     });
 
     return this.toDomain(row);
+  }
+
+  /* ================================================= */
+  /* SORT ORDER – NORMALIZE (ACTIVE ONLY)              */
+  /* ================================================= */
+
+  async normalizeActiveSortOrders(
+    tx?: PrismaTransaction,
+  ): Promise<void> {
+    const client = tx ?? this.prisma;
+
+    const active = await client.category.findMany({
+      where: {
+        status: CategoryStatusMapper.toPrisma(
+          CategoryStatus.ACTIVE,
+        ),
+      },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    for (let i = 0; i < active.length; i++) {
+      if (active[i].sortOrder !== i) {
+        await client.category.update({
+          where: { id: active[i].id },
+          data: { sortOrder: i },
+        });
+      }
+    }
+  }
+
+  /* ================================================= */
+  /* SORT ORDER – SHIFT (ACTIVE ONLY)                  */
+  /* ================================================= */
+
+  async shiftActiveSortOrdersFrom(
+    sortOrder: number,
+    tx?: PrismaTransaction,
+  ): Promise<void> {
+    const client = tx ?? this.prisma;
+
+    await client.category.updateMany({
+      where: {
+        status: CategoryStatusMapper.toPrisma(
+          CategoryStatus.ACTIVE,
+        ),
+        sortOrder: { gte: sortOrder },
+      },
+      data: {
+        sortOrder: { increment: 1 },
+      },
+    });
   }
 
   /* ================================================= */

@@ -13,6 +13,7 @@ import { CategoriesModule } from './modules/categories/modules/categories.module
 import { StockItemsModule } from './modules/stock-items/modules/stock-items.module';
 import { InventoryModule } from './modules/inventory/modules/inventory.module';
 import { ProductsModule } from './modules/products/modules/products.module';
+import { SavedAddressModule } from './modules/saved-address/modules/saved-address.module';
 
 
 import { OtpWorker } from './workers/otp.worker';
@@ -32,6 +33,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
     StockItemsModule,
     InventoryModule,
     ProductsModule,
+    SavedAddressModule,
   ],
   providers: [
     OtpWorker,

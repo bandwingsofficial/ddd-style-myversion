@@ -8,14 +8,28 @@ import { AuthPayload } from '../../modules/auth/types/auth-payload.type';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private readonly sessionService: SessionService) {
+  constructor(
+    private readonly sessionService: SessionService,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
+        /* ================================================= */
+        /* MOBILE: Authorization: Bearer <token>            */
+        /* ================================================= */
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+
+        /* ================================================= */
+        /* WEB: accessToken cookie                          */
+        /* ================================================= */
         (req) => {
           const token = req?.cookies?.accessToken;
 
           console.log('🔑 [JWT STRATEGY] extracting token');
-          console.log('🔑 token present:', Boolean(token));
+          console.log(
+            '🔑 token present:',
+            Boolean(token),
+            '(from cookies)',
+          );
 
           return token;
         },
@@ -25,7 +39,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: AuthPayload): Promise<{
+  async validate(
+    payload: AuthPayload,
+  ): Promise<{
     actorId: string;
     actorType: ActorType;
     sessionId: string;
@@ -34,12 +50,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     console.log('🔐 [JWT STRATEGY] validate called');
     console.log('🔐 payload:', payload);
 
-    const session = await this.sessionService.findActiveSession({
-      sessionId: payload.sid,
-      actorId: payload.sub,
-      actorType: payload.at,
-      tokenVersion: payload.tv,
-    });
+    const session =
+      await this.sessionService.findActiveSession({
+        sessionId: payload.sid,
+        actorId: payload.sub,
+        actorType: payload.at,
+        tokenVersion: payload.tv,
+      });
 
     if (!session) {
       console.log('❌ [JWT STRATEGY] session INVALID');
