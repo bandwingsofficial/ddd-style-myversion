@@ -2,110 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ==================================================
-   CUSTOM UTILITIES (v4 → v3 compatibility)
-================================================== */
-@layer utilities {
-  .bg-background {
-    background-color: var(--background);
-  }
-
-  .text-foreground {
-    color: var(--foreground);
-  }
-
-  .border-border {
-    border-color: var(--border);
-  }
-
-  .outline-ring\/40 {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-    opacity: 0.4;
-  }
+html,
+body {
+  height: 100%;
 }
 
-/* ==================================================
-   LIGHT MODE — SUGARCANE / TENDER THEME
-================================================== */
-:root {
-  --radius: 0.75rem;
-
-  --background: #ffffff;
-  --foreground: oklch(0.25 0.05 145);
-
-  --card: oklch(1 0 0 / 70%);
-  --card-foreground: oklch(0.22 0.04 145);
-
-  --popover: oklch(1 0 0 / 75%);
-  --popover-foreground: oklch(0.22 0.04 145);
-
-  --primary: oklch(0.72 0.18 145);
-  --primary-foreground: oklch(0.98 0 0);
-
-  --secondary: oklch(0.92 0.05 145);
-  --secondary-foreground: oklch(0.28 0.05 145);
-
-  --muted: oklch(0.94 0.04 145);
-  --muted-foreground: oklch(0.45 0.05 145);
-
-  --accent: oklch(0.9 0.08 145);
-  --accent-foreground: oklch(0.22 0.04 145);
-
-  --destructive: oklch(0.62 0.22 25);
-
-  --border: oklch(0.88 0.04 145);
-  --input: oklch(1 0 0 / 65%);
-  --ring: oklch(0.72 0.18 145);
+body {
+  margin: 0;
+  padding: 0;
 }
 
-/* ==================================================
-   DARK MODE — TENDER COCONUT NIGHT
-================================================== */
-.dark {
-  --background: oklch(0.18 0.03 145);
-  --foreground: oklch(0.96 0.01 145);
 
-  --card: oklch(0.22 0.03 145 / 80%);
-  --card-foreground: oklch(0.96 0.01 145);
-
-  --popover: oklch(0.22 0.03 145 / 85%);
-  --popover-foreground: oklch(0.96 0.01 145);
-
-  --primary: oklch(0.75 0.17 145);
-  --primary-foreground: oklch(0.18 0.03 145);
-
-  --secondary: oklch(0.3 0.04 145);
-  --secondary-foreground: oklch(0.96 0.01 145);
-
-  --muted: oklch(0.28 0.03 145);
-  --muted-foreground: oklch(0.7 0.04 145);
-
-  --accent: oklch(0.32 0.05 145);
-  --accent-foreground: oklch(0.96 0.01 145);
-
-  --destructive: oklch(0.7 0.22 25);
-
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 18%);
-  --ring: oklch(0.75 0.17 145);
-}
-
-/* ==================================================
-   BASE STYLES
-================================================== */
-@layer base {
-  html {
-    font-size: 17px;
-  }
-
-  * {
-    @apply border-border outline-ring/40;
-  }
-
-  body {
-    @apply bg-background text-foreground;
-    font-size: 1rem;
-    line-height: 1.6;
-  }
-}

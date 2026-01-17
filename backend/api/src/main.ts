@@ -75,7 +75,7 @@ async function bootstrap() {
   /* CORS                                              */
   /* -------------------------------------------------- */
   app.enableCors({
-    origin: ['https://admin.dev.local:3001','https://outlets.dev.local:3000'],
+    origin: ['https://admin.dev.local:3001','https://outlets.dev.local:3000', 'https://customer.dev.local:3002'],
     credentials: true,
   });
 

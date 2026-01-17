@@ -413,7 +413,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' 
   },
   input: {
-    width: '100%', padding: '12px 16px', borderRadius: '12px', 
+    width: '90%', padding: '12px 16px', borderRadius: '12px', 
     border: '1px solid #e2e8f0', outline: 'none', fontSize: '14px'
   },
   greenPopButtonLarge: {
