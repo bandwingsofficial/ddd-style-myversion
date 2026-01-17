@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import ShinyText from '../styles/ShinyText'; 
 import {
-  ShoppingBag,
+  ShoppingCart, // Changed from ShoppingBag to ShoppingCart
   User,
   LogOut,
   Settings,
@@ -45,15 +45,15 @@ export default function Header() {
           overflow: hidden;
           white-space: nowrap;
           position: relative;
-          flex: 1; /* Takes up remaining space next to button */
-          mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent); /* Fades edges */
+          flex: 1; 
+          mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
           margin-right: 20px;
         }
 
         .marquee-content {
           display: inline-block;
-          animation: marquee 20s linear infinite; /* Adjust '20s' to make it faster/slower */
-          padding-left: 100%; /* Starts off-screen */
+          animation: marquee 20s linear infinite;
+          padding-left: 100%; 
         }
 
         @keyframes marquee {
@@ -89,7 +89,54 @@ export default function Header() {
           text-shadow: 0 0 1px rgba(21, 128, 61, 0.5);
         }
 
-        /* --- 3. UTILITIES --- */
+        /* --- 3. ENHANCED SIGN IN BUTTON HOVER --- */
+        .enhanced-login-btn {
+          background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+          color: #fff;
+          padding: 8px 28px;
+          border-radius: 50px;
+          font-size: 0.9rem;
+          font-weight: 700;
+          text-decoration: none;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+          letter-spacing: 0.02em;
+          border: 1px solid rgba(255,255,255,0.1);
+          position: relative;
+          overflow: hidden;
+        }
+
+        .enhanced-login-btn:hover {
+          transform: translateY(-2px) scale(1.02);
+          box-shadow: 0 8px 20px rgba(34, 197, 94, 0.5);
+          background: linear-gradient(135deg, #4ade80 0%, #15803d 100%); /* Brighter gradient on hover */
+        }
+
+        .enhanced-login-btn:active {
+          transform: translateY(0) scale(0.98);
+        }
+
+        /* --- 4. SEARCH BAR HOVER & FOCUS EFFECTS --- */
+        .search-container {
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        
+        /* Hover State */
+        .search-container:hover {
+          background-color: #ffffff !important;
+          border-color: #cbd5e1 !important; /* Darker Gray */
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Focus State (When typing) */
+        .search-container:focus-within {
+          background: #ffffff !important;
+          border-color: #22c55e !important; /* Brand Green Border */
+          box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15) !important; /* Green Glow Ring */
+          transform: translateY(-1px);
+        }
+
+        /* --- 5. UTILITIES --- */
         .user-dropdown-container:hover .dropdown-panel {
           opacity: 1 !important;
           visibility: visible !important;
@@ -109,6 +156,7 @@ export default function Header() {
         .nav-icon-btn:hover {
           background-color: #f1f5f9;
           color: #16a34a;
+          transform: scale(1.1); /* Subtle zoom */
         }
         .dropdown-item {
           display: flex;
@@ -124,11 +172,6 @@ export default function Header() {
         .dropdown-item:hover {
           background: #f0fdf4;
           color: #16a34a;
-        }
-        .search-container:focus-within {
-          background: #ffffff !important;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-          border: 1px solid #e2e8f0;
         }
         .location-constraint {
           display: block;
@@ -155,10 +198,10 @@ export default function Header() {
           boxShadow: scrolled ? "0 4px 20px rgba(0,0,0,0.03)" : "none",
         }}
       >
-        {/* --- 1. TOP DARK BAR --- */}
+        {/* --- 1. TOP DARK BAR (Height 36px) --- */}
         <div style={{
             ...styles.topBar,
-            height: scrolled ? "0px" : "40px",
+            height: scrolled ? "0px" : "36px", 
             opacity: scrolled ? 0 : 1,
             overflow: 'hidden'
         }}>
@@ -168,7 +211,7 @@ export default function Header() {
              <div className="marquee-container">
                <div className="marquee-content">
                   <ShinyText
-                    text="Fresh, Hygienic, Live Preparation. Experience Purity.  —  Order Fresh Now!"
+                    text="Fresh, Hygienic, Live Preparation. Experience Purity.   —   Order Fresh Now!"
                     color="#ffffff"      
                     shineColor="#4ade80"  
                     speed={3}            
@@ -251,7 +294,8 @@ export default function Header() {
 
                 <Link href="/cart" style={styles.cartLink} className="nav-icon-btn" title="Cart">
                   <div style={styles.cartWrapper}>
-                    <ShoppingBag size={22} />
+                    {/* UPDATED: Standard Shopping Cart Icon */}
+                    <ShoppingCart size={22} />
                     <span style={styles.cartBadge}>3</span>
                   </div>
                 </Link>
@@ -293,7 +337,8 @@ export default function Header() {
                     </div>
                   </div>
                 ) : (
-                  <Link href="/login" style={styles.loginBtn}>
+                  // Enhanced Login Button
+                  <Link href="/login" className="enhanced-login-btn">
                     Sign In
                   </Link>
                 )}
@@ -313,14 +358,17 @@ const styles: { [key: string]: React.CSSProperties } = {
     left: 0,
     right: 0,
     zIndex: 1000,
-    backgroundColor: "#ffffff",
+    // UPDATED: Frosted Glass Effect (Premium)
+    backgroundColor: "rgba(255, 255, 255, 0.85)", 
+    backdropFilter: "blur(12px)",
+    WebkitBackdropFilter: "blur(12px)",
     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-    borderBottom: "1px solid #f1f5f9",
+    borderBottom: "1px solid rgba(241, 245, 249, 0.5)",
     display: 'flex',
     flexDirection: 'column',
   },
   topBar: {
-    backgroundColor: "#0f172a", 
+    backgroundColor: "#214527", 
     width: "100%",
     display: "flex",
     justifyContent: "center",
@@ -337,22 +385,10 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: "0.85rem",
     fontWeight: 500,
   },
-  topBarBtn: {
-    backgroundColor: "#22c55e",
-    color: "white",
-    border: "none",
-    padding: "4px 1 6px",
-    borderRadius: "20px",
-    fontSize: "0.75rem",
-    fontWeight: 700,
-    cursor: "pointer",
-    textTransform: "uppercase",
-    flexShrink: 0, /* Ensures button doesn't get squished by marquee */
-    marginLeft: "20px"
-  },
   mainHeader: {
     width: "100%",
-    backgroundColor: "#ffffff",
+    // Background is handled by headerWrapper now for the glass effect
+    backgroundColor: "transparent", 
     transition: "height 0.3s ease",
   },
   container: {
@@ -414,14 +450,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     marginRight: '10px',
     maxWidth: '200px', 
   },
-  locationLabel: {
-    fontSize: '0.65rem',
-    color: '#64748b',
-    fontWeight: 700,
-    letterSpacing: '0.05em',
-    marginBottom: '2px',
-    textTransform: 'uppercase'
-  },
   locationValueRow: {
     display: 'flex',
     alignItems: 'center',
@@ -429,9 +457,9 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   locationTextWrapper: {
     overflow: 'hidden',
-    fontSize: '0.85rem',
+    fontSize: "0.85rem",
     fontWeight: 600,
-    color: '#334155',
+    color: "#334155",
   },
   actionRow: { display: "flex", alignItems: "center", gap: "12px" },
   cartLink: { textDecoration: "none", color: "inherit" },
@@ -472,15 +500,4 @@ const styles: { [key: string]: React.CSSProperties } = {
   userName: { margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "#1e293b" },
   userEmail: { margin: 0, fontSize: "0.75rem", color: "#64748b" },
   divider: { border: 0, borderTop: "1px solid #f1f5f9", margin: "6px 0" },
-  loginBtn: {
-    background: "#22c55e",
-    color: "#fff",
-    padding: "8px 24px",
-    borderRadius: "50px",
-    fontSize: "0.9rem",
-    fontWeight: 600,
-    textDecoration: "none",
-    transition: "background 0.2s",
-    boxShadow: "0 4px 10px rgba(34, 197, 94, 0.2)"
-  },
 };
