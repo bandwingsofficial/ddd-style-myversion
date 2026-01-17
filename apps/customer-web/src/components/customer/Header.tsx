@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import ShinyText from '../styles/ShinyText'; 
 import {
   ShoppingBag,
   User,
@@ -11,7 +12,8 @@ import {
   Heart,
   Search,
   Package,
-  MapPin 
+  MapPin,
+  ChevronDown
 } from "lucide-react";
 import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
 import { useLogout } from "@/features/customer-auth/hooks/useLogout";
@@ -28,61 +30,106 @@ export default function Header() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const navLinks = [
+    { name: "Home", href: "/home" },
+    { name: "Shop", href: "/shop" },
+    { name: "Categories", href: "/categories" },
+    { name: "Offers", href: "/offers" },
+  ];
+
   return (
     <>
       <style jsx global>{`
-        /* Smooth Dropdown Animation */
+        /* --- 1. MARQUEE ANIMATION (SCROLLING TEXT) --- */
+        .marquee-container {
+          overflow: hidden;
+          white-space: nowrap;
+          position: relative;
+          flex: 1; /* Takes up remaining space next to button */
+          mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent); /* Fades edges */
+          margin-right: 20px;
+        }
+
+        .marquee-content {
+          display: inline-block;
+          animation: marquee 20s linear infinite; /* Adjust '20s' to make it faster/slower */
+          padding-left: 100%; /* Starts off-screen */
+        }
+
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-100%); }
+        }
+
+        /* --- 2. NAVIGATION GLOW EFFECT --- */
+        .main-nav-link {
+          text-decoration: none;
+          color: #334155; 
+          font-weight: 600;
+          font-size: 0.95rem;
+          padding: 8px 16px; 
+          border-radius: 30px; 
+          transition: all 0.3s ease;
+          display: flex;
+          align-items: center;
+        }
+
+        .main-nav-link:hover {
+          background-color: rgba(34, 197, 94, 0.15); 
+          box-shadow: 0 0 15px rgba(34, 197, 94, 0.5), 0 0 30px rgba(34, 197, 94, 0.3); 
+          transform: translateY(-1px); 
+        }
+
+        .main-nav-link:hover .shiny-text {
+          animation: none !important;
+          background: none !important;
+          -webkit-background-clip: border-box !important;
+          background-clip: border-box !important;
+          color: #15803d !important; 
+          text-shadow: 0 0 1px rgba(21, 128, 61, 0.5);
+        }
+
+        /* --- 3. UTILITIES --- */
         .user-dropdown-container:hover .dropdown-panel {
           opacity: 1 !important;
           visibility: visible !important;
           transform: translateY(0) !important;
         }
-        
-        /* Icon Button Styles */
         .nav-icon-btn {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 44px; /* Slightly larger for better touch target */
-          height: 44px;
+          width: 40px;
+          height: 40px;
           border-radius: 50%;
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: all 0.2s ease;
           cursor: pointer;
           color: #334155;
-          background: transparent;
         }
         .nav-icon-btn:hover {
           background-color: #f1f5f9;
           color: #16a34a;
-          transform: translateY(-1px);
         }
-
-        /* Dropdown Item Styles */
         .dropdown-item {
           display: flex;
           align-items: center;
-          gap: 12px;
-          padding: 10px 16px;
+          gap: 10px;
+          padding: 10px 12px;
           border-radius: 8px;
           color: #475569;
           text-decoration: none;
           font-size: 0.875rem;
-          font-weight: 500;
           transition: background 0.2s ease;
         }
         .dropdown-item:hover {
           background: #f0fdf4;
-          color: #15803d;
+          color: #16a34a;
         }
-
-        /* Search Focus Effect */
         .search-container:focus-within {
           background: #ffffff !important;
-          box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.1), 0 4px 12px rgba(0, 0, 0, 0.05);
-          border: 1px solid #22c55e !important;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+          border: 1px solid #e2e8f0;
         }
-        
-        /* Location Text Constraints */
         .location-constraint {
           display: block;
           white-space: nowrap;
@@ -93,11 +140,10 @@ export default function Header() {
         .location-constraint > div, 
         .location-constraint > span,
         .location-constraint p {
-           white-space: nowrap;
-           overflow: hidden;
-           text-overflow: ellipsis;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
-        /* Hide duplicate icon inside LocationSelector */
         .location-constraint svg {
           display: none !important; 
         }
@@ -106,111 +152,152 @@ export default function Header() {
       <header
         style={{
           ...styles.headerWrapper,
-          height: scrolled ? "72px" : "90px", // Smooth height transition
-          boxShadow: scrolled ? "0 4px 20px rgba(0,0,0,0.04)" : "none",
-          backgroundColor: scrolled ? "rgba(255, 255, 255, 0.95)" : "#ffffff",
-          backdropFilter: scrolled ? "blur(12px)" : "none",
+          boxShadow: scrolled ? "0 4px 20px rgba(0,0,0,0.03)" : "none",
         }}
       >
-        <div style={styles.container}>
-          
-          {/* 1. Left: Brand Logo */}
-          <Link href="/home" style={styles.brand}>
-             <Image 
-               src="/images/4.png" 
-               alt="Cane & Tender" 
-               width={160} // Adjusted for balance
-               height={60} 
-               style={{ objectFit: 'contain', maxHeight: '60px' }} 
-               priority
-               unoptimized={true} 
-             />
-          </Link>
-
-          {/* 2. Middle: Search Bar */}
-          <div style={styles.searchSection}>
-            <div style={styles.searchBar} className="search-container">
-              <input
-                type="text"
-                placeholder="Search for fresh items..."
-                style={styles.searchInput}
-              />
-              <button style={styles.searchButton}>
-                <Search size={20} color="#ffffff" strokeWidth={2.5} />
-              </button>
-            </div>
+        {/* --- 1. TOP DARK BAR --- */}
+        <div style={{
+            ...styles.topBar,
+            height: scrolled ? "0px" : "40px",
+            opacity: scrolled ? 0 : 1,
+            overflow: 'hidden'
+        }}>
+          <div style={styles.topBarContainer}>
+             
+             {/* WRAPPED SHINY TEXT IN MARQUEE CONTAINER */}
+             <div className="marquee-container">
+               <div className="marquee-content">
+                  <ShinyText
+                    text="Fresh, Hygienic, Live Preparation. Experience Purity.  —  Order Fresh Now!"
+                    color="#ffffff"      
+                    shineColor="#4ade80"  
+                    speed={3}            
+                    direction="right"    
+                    spread={50}          
+                    yoyo={false}         
+                    className="top-bar-shiny" 
+                  />
+               </div>
+             </div>
           </div>
+        </div>
 
-          {/* 3. Right Group: Location + Actions */}
-          <div style={styles.rightGroup}>
+        {/* --- 2. MAIN NAVIGATION --- */}
+        <div style={{
+            ...styles.mainHeader,
+            height: scrolled ? "70px" : "90px",
+        }}>
+          <div style={styles.container}>
             
-            {/* Location Group */}
-            <div style={styles.locationContainer}>
-               <div style={styles.locationIconWrapper}>
-                 <MapPin size={18} color="#64748b" fill="#f1f5f9" />
-               </div>
-               
-               <div style={styles.locationTextWrapper} className="location-constraint">
-                 <LocationSelector />
-               </div>
+            <div style={styles.leftGroup}>
+                <Link href="/home" style={styles.brand}>
+                  <Image 
+                    src="/images/4.png" 
+                    alt="Cane & Tender" 
+                    width={180} 
+                    height={65} 
+                    style={{ objectFit: 'contain', maxHeight: scrolled ? '55px' : '65px', transition: 'max-height 0.3s' }} 
+                    priority
+                    unoptimized={true}
+                  />
+                </Link>
+
+                <nav style={styles.navLinks}>
+                  {navLinks.map((link) => (
+                    <Link key={link.name} href={link.href} className="main-nav-link">
+                      <ShinyText
+                        text={link.name}
+                        speed={3} 
+                        delay={0}
+                        color="#334155" 
+                        shineColor="#94a3b8" 
+                        spread={120}
+                        direction="left"
+                        yoyo={false}
+                        pauseOnHover={false}
+                        className="shiny-text"
+                      />
+                    </Link>
+                  ))}
+                </nav>
             </div>
 
-            <div style={styles.separator}></div>
+            <div style={styles.searchSection}>
+              <div style={styles.searchBar} className="search-container">
+                <Search size={18} color="#94a3b8" style={{ marginLeft: '12px' }} />
+                <input
+                  type="text"
+                  placeholder="Search for fresh items..."
+                  style={styles.searchInput}
+                />
+              </div>
+            </div>
 
-            {/* Actions */}
-            <div style={styles.actionRow}>
-              <Link href="/favorites" className="nav-icon-btn" title="Favorites">
-                <Heart size={22} />
-              </Link>
-
-              <Link href="/cart" style={styles.cartLink} className="nav-icon-btn" title="Cart">
-                <div style={styles.cartWrapper}>
-                  <ShoppingBag size={22} />
-                  <span style={styles.cartBadge}>3</span>
-                </div>
-              </Link>
-
-              {isAuthenticated ? (
-                <div className="user-dropdown-container" style={{ position: "relative" }}>
-                  <div className="nav-icon-btn">
-                    <User size={22} />
-                  </div>
-                  <div style={styles.dropdownPanel} className="dropdown-panel">
-                    <div style={styles.dropdownHeader}>
-                      <p style={styles.userName}>Alex Johnson</p>
-                      <p style={styles.userEmail}>alex@example.com</p>
+            <div style={styles.rightGroup}>
+              <div style={styles.locationContainer}>
+                <div style={styles.locationValueRow}>
+                    <MapPin size={16} color="#16a34a" style={{marginRight: '4px'}} />
+                    <div style={styles.locationTextWrapper} className="location-constraint">
+                      <LocationSelector />
                     </div>
-                    <hr style={styles.divider} />
-                    <Link href="/profile" className="dropdown-item">
-                      <User size={18} /> Profile
-                    </Link>
-                    <Link href="/orders" className="dropdown-item">
-                      <Package size={18} /> My Orders
-                    </Link>
-                    <Link href="/settings" className="dropdown-item">
-                      <Settings size={18} /> Settings
-                    </Link>
-                    <hr style={styles.divider} />
-                    <button
-                      onClick={() => logout()}
-                      className="dropdown-item"
-                      style={{
-                        width: "100%",
-                        border: "none",
-                        background: "none",
-                        cursor: "pointer",
-                        color: "#ef4444",
-                      }}
-                    >
-                      <LogOut size={18} /> Logout
-                    </button>
-                  </div>
+                    <ChevronDown size={14} color="#64748b" style={{marginLeft: '4px'}} />
                 </div>
-              ) : (
-                <Link href="/login" style={styles.loginBtn}>
-                  Sign In
+              </div>
+
+              <div style={styles.actionRow}>
+                <Link href="/favorites" className="nav-icon-btn" title="Favorites">
+                  <Heart size={22} />
                 </Link>
-              )}
+
+                <Link href="/cart" style={styles.cartLink} className="nav-icon-btn" title="Cart">
+                  <div style={styles.cartWrapper}>
+                    <ShoppingBag size={22} />
+                    <span style={styles.cartBadge}>3</span>
+                  </div>
+                </Link>
+
+                {isAuthenticated ? (
+                  <div className="user-dropdown-container" style={{ position: "relative" }}>
+                    <div className="nav-icon-btn">
+                      <User size={22} />
+                    </div>
+                    <div style={styles.dropdownPanel} className="dropdown-panel">
+                      <div style={styles.dropdownHeader}>
+                        <p style={styles.userName}>Alex Johnson</p>
+                        <p style={styles.userEmail}>alex@example.com</p>
+                      </div>
+                      <hr style={styles.divider} />
+                      <Link href="/profile" className="dropdown-item">
+                        <User size={16} /> Profile
+                      </Link>
+                      <Link href="/orders" className="dropdown-item">
+                        <Package size={16} /> My Orders
+                      </Link>
+                      <Link href="/settings" className="dropdown-item">
+                        <Settings size={16} /> Settings
+                      </Link>
+                      <hr style={styles.divider} />
+                      <button
+                        onClick={() => logout()}
+                        className="dropdown-item"
+                        style={{
+                          width: "100%",
+                          border: "none",
+                          background: "none",
+                          cursor: "pointer",
+                          color: "#ef4444",
+                        }}
+                      >
+                        <LogOut size={16} /> Logout
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <Link href="/login" style={styles.loginBtn}>
+                    Sign In
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -219,7 +306,6 @@ export default function Header() {
   );
 }
 
-// Enhanced Styles
 const styles: { [key: string]: React.CSSProperties } = {
   headerWrapper: {
     position: "fixed",
@@ -227,129 +313,153 @@ const styles: { [key: string]: React.CSSProperties } = {
     left: 0,
     right: 0,
     zIndex: 1000,
+    backgroundColor: "#ffffff",
     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
     borderBottom: "1px solid #f1f5f9",
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  topBar: {
+    backgroundColor: "#0f172a", 
+    width: "100%",
+    display: "flex",
+    justifyContent: "center",
+    transition: "height 0.3s ease, opacity 0.3s ease",
+  },
+  topBarContainer: {
+    maxWidth: "1440px",
+    width: "100%",
+    padding: "0 24px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    color: "#fff",
+    fontSize: "0.85rem",
+    fontWeight: 500,
+  },
+  topBarBtn: {
+    backgroundColor: "#22c55e",
+    color: "white",
+    border: "none",
+    padding: "4px 1 6px",
+    borderRadius: "20px",
+    fontSize: "0.75rem",
+    fontWeight: 700,
+    cursor: "pointer",
+    textTransform: "uppercase",
+    flexShrink: 0, /* Ensures button doesn't get squished by marquee */
+    marginLeft: "20px"
+  },
+  mainHeader: {
+    width: "100%",
+    backgroundColor: "#ffffff",
+    transition: "height 0.3s ease",
   },
   container: {
     maxWidth: "1440px",
     margin: "0 auto",
     height: "100%",
-    padding: "0 32px", // Increased padding for breathability
+    padding: "0 24px",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: "24px",
+    gap: "20px",
+  },
+  leftGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '30px'
   },
   brand: { textDecoration: "none", flexShrink: 0, display: "flex", alignItems: "center" },
+  navLinks: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px', 
+  },
   searchSection: {
     flex: 1,
     display: 'flex',
-    justifyContent: 'center',
-    maxWidth: '560px', // Slightly wider search bar
+    justifyContent: 'center', 
+    maxWidth: '600px', 
   },
   searchBar: {
-    background: "#f3f4f6",
+    background: "#f8fafc",
     borderRadius: "50px",
-    padding: "5px 5px 5px 24px",
+    padding: "8px 16px 8px 4px",
     display: "flex",
     alignItems: "center",
     width: "100%",
     transition: "all 0.2s ease",
-    border: "1px solid transparent",
+    border: "1px solid #e2e8f0",
   },
   searchInput: {
     background: "transparent",
     border: "none",
     outline: "none",
-    fontSize: "0.95rem",
+    fontSize: "0.9rem",
     width: "100%",
-    color: "#1e293b",
-    fontWeight: 500,
-    fontFamily: "inherit",
-  },
-  searchButton: {
-    background: "#22c55e",
-    border: "none",
-    width: "40px", // Larger button
-    height: "40px",
-    borderRadius: "50%",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-    flexShrink: 0,
-    marginLeft: "12px",
-    boxShadow: "0 2px 8px rgba(34, 197, 94, 0.3)", // Subtle green glow
-    transition: "transform 0.1s ease",
+    color: "#334155",
+    fontWeight: 400,
+    paddingLeft: "10px"
   },
   rightGroup: {
     display: 'flex',
     alignItems: 'center',
     gap: '20px'
   },
-  // --- LOCATION STYLES ---
   locationContainer: {
     display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    marginRight: '8px',
-    maxWidth: '240px',
-    cursor: 'pointer', // Suggests clickable
+    flexDirection: 'column',
+    justifyContent: 'center',
+    marginRight: '10px',
+    maxWidth: '200px', 
   },
-  locationIconWrapper: {
-    background: '#f8fafc',
-    width: '40px',
-    height: '40px',
-    borderRadius: '50%',
+  locationLabel: {
+    fontSize: '0.65rem',
+    color: '#64748b',
+    fontWeight: 700,
+    letterSpacing: '0.05em',
+    marginBottom: '2px',
+    textTransform: 'uppercase'
+  },
+  locationValueRow: {
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    color: '#64748b',
-    border: '1px solid #e2e8f0'
+    cursor: 'pointer'
   },
   locationTextWrapper: {
-    flex: 1,
     overflow: 'hidden',
-    fontSize: '0.9rem',
+    fontSize: '0.85rem',
     fontWeight: 600,
     color: '#334155',
-    lineHeight: 1.2
-  },
-  separator: {
-    width: '1px',
-    height: '32px',
-    backgroundColor: '#e2e8f0',
-    margin: '0 4px'
   },
   actionRow: { display: "flex", alignItems: "center", gap: "12px" },
   cartLink: { textDecoration: "none", color: "inherit" },
   cartWrapper: { position: "relative", display: "flex", alignItems: "center" },
   cartBadge: {
     position: "absolute",
-    top: "-6px",
-    right: "-6px",
-    background: "#ef4444", // Changed to red for better visibility
+    top: "-5px",
+    right: "-5px",
+    background: "#f97316",
     color: "white",
-    fontSize: "11px",
+    fontSize: "10px",
     fontWeight: 700,
-    width: "18px",
-    height: "18px",
+    width: "16px",
+    height: "16px",
     borderRadius: "50%",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     border: "2px solid #fff",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
   },
   dropdownPanel: {
     position: "absolute",
-    top: "55px",
+    top: "50px",
     right: 0,
-    width: "260px",
+    width: "240px",
     background: "white",
-    borderRadius: "16px",
-    boxShadow: "0 20px 40px -5px rgba(0,0,0,0.1), 0 0 1px rgba(0,0,0,0.1)", // Cleaner shadow
+    borderRadius: "12px",
+    boxShadow: "0 10px 40px -10px rgba(0,0,0,0.1)",
     border: "1px solid #f1f5f9",
     padding: "8px",
     opacity: 0,
@@ -358,19 +468,19 @@ const styles: { [key: string]: React.CSSProperties } = {
     transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
     zIndex: 1100,
   },
-  dropdownHeader: { padding: "16px 16px 12px 16px" },
+  dropdownHeader: { padding: "12px 12px 8px 12px" },
   userName: { margin: 0, fontSize: "0.95rem", fontWeight: 700, color: "#1e293b" },
-  userEmail: { margin: 0, fontSize: "0.8rem", color: "#64748b", marginTop: "2px" },
-  divider: { border: 0, borderTop: "1px solid #f1f5f9", margin: "8px 0" },
+  userEmail: { margin: 0, fontSize: "0.75rem", color: "#64748b" },
+  divider: { border: 0, borderTop: "1px solid #f1f5f9", margin: "6px 0" },
   loginBtn: {
-    background: "#16a34a",
+    background: "#22c55e",
     color: "#fff",
-    padding: "10px 28px",
+    padding: "8px 24px",
     borderRadius: "50px",
-    fontSize: "0.95rem",
+    fontSize: "0.9rem",
     fontWeight: 600,
     textDecoration: "none",
-    transition: "all 0.2s",
-    boxShadow: "0 4px 12px rgba(22, 163, 74, 0.25)"
+    transition: "background 0.2s",
+    boxShadow: "0 4px 10px rgba(34, 197, 94, 0.2)"
   },
 };
