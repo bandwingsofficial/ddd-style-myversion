@@ -12,6 +12,7 @@ import {
   LogOut,
    Warehouse,
    Package,
+   Layers,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -24,6 +25,7 @@ const menuItems = [
   { label: 'Users', path: '/users', icon: Users }, // alias route
   { label: 'Stock Items', path: '/stock-items', icon: Boxes },
   { label: 'Products', path: '/products', icon: Package },
+  { label: 'Categories', path: '/categories', icon: Layers },
   { label: 'Central Inventory', path: '/inventory', icon: Warehouse },
   { label: 'Settings', path: '/settings', icon: Settings },
 ];
