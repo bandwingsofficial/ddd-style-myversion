@@ -13,6 +13,7 @@ export const UsersService = {
   createUser(payload: CreateOutletUserPayload) {
     return axiosInstance.post("/outlets/users", payload);
   },
+  
 
   resetPassword(email: string, newPassword: string) {
     return axiosInstance.post("/outlets/users/reset-password", {
@@ -28,4 +29,9 @@ export const UsersService = {
   disableUser(userId: string) {
     return axiosInstance.post(`/outlets/users/${userId}/disable`);
   },
+
+  ///New one added
+  getOutletStock(outletId: string) {
+    return axiosInstance.get(`/inventory/outlet/${outletId}`);
+  }
 };

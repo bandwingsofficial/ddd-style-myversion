@@ -27,7 +27,7 @@ export default function CategoryTable({ categories, loading, onRefresh }: Props)
     letterSpacing: '0.05em'
   };
 
-  const cellStyle = { padding: '20px 24px', fontSize: '14px', color: '#334155', verticalAlign: 'middle' as const };
+  const cellStyle = { padding: '8px 8px', fontSize: '14px', color: '#334155', verticalAlign: 'middle' as const };
 
   return (
     <>
