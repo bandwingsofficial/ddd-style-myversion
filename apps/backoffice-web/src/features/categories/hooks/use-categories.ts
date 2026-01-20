@@ -10,9 +10,14 @@ export function useCategories() {
 
   const fetchCategories = async () => {
     setLoading(true);
-    const data = await CategoriesApi.getAll();
-    setCategories(data);
-    setLoading(false);
+    try {
+      const data = await CategoriesApi.getAll();
+      setCategories(data);
+    } catch (error) {
+      console.error("Failed to fetch categories", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

@@ -39,7 +39,7 @@ export default function Footer() {
           <div style={styles.column}>
             <h4 style={styles.columnTitle}>Quick Links</h4>
             <ul style={styles.linkList}>
-              <li style={styles.listItem}><Link href="/" style={styles.link}>Home</Link></li>
+              <li style={styles.listItem}><Link href="/home" style={styles.link}>Home</Link></li>
               <li style={styles.listItem}><Link href="/menu" style={styles.link}>Shop</Link></li>
               <li style={styles.listItem}><Link href="/about" style={styles.link}>About Us</Link></li>
               <li style={styles.listItem}><Link href="/contact" style={styles.link}>Contact</Link></li>
@@ -68,9 +68,9 @@ export default function Footer() {
           <div style={styles.column}>
             <h4 style={styles.columnTitle}>Legal</h4>
             <ul style={styles.linkList}>
-              <li style={styles.listItem}><Link href="/privacy" style={styles.link}>Privacy Policy</Link></li>
-              <li style={styles.listItem}><Link href="/terms" style={styles.link}>Terms of Service</Link></li>
-              <li style={styles.listItem}><Link href="/refunds" style={styles.link}>Refund Policy</Link></li>
+              <li style={styles.listItem}><Link href="/privacy-policy" style={styles.link}>Privacy Policy</Link></li>
+              <li style={styles.listItem}><Link href="/terms-of-service" style={styles.link}>Terms of Service</Link></li>
+              <li style={styles.listItem}><Link href="/refund-policy" style={styles.link}>Refund Policy</Link></li>
             </ul>
           </div>
 

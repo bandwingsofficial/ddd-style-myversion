@@ -7,8 +7,13 @@ export const CategoriesApi = {
     return res.data.data;
   },
 
-  create: async (name: string): Promise<Category> => {
-    const res = await axiosInstance.post('/categories', { name });
+  // Updated: Accepts FormData to handle text + image upload
+  create: async (formData: FormData): Promise<Category> => {
+    const res = await axiosInstance.post('/categories', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return res.data.data;
   },
 

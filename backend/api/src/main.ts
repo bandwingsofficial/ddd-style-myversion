@@ -5,6 +5,7 @@ import * as path from 'path';
 
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import cookieParser from 'cookie-parser';
 import * as express from 'express';
 
@@ -18,27 +19,24 @@ async function bootstrap() {
   /* HTTPS (mkcert)                                     */
   /* -------------------------------------------------- */
 
-  const repoRoot = path.resolve(
-    __dirname,
-    '..',
-    '..',
-    '..',
+const repoRoot =
+  process.env.APP_ROOT ??
+  path.resolve(__dirname, '..', '..', '..');
+
+if (!process.env.APP_ROOT) {
+  console.warn(
+    '⚠️ APP_ROOT not set, using fallback:',
+    repoRoot,
   );
+}
+
 
   const httpsOptions = {
     key: fs.readFileSync(
-      path.join(
-        repoRoot,
-        'certs',
-        'admin.dev.local+1-key.pem',
-      ),
+      path.join(repoRoot, 'certs', 'admin.dev.local+1-key.pem'),
     ),
     cert: fs.readFileSync(
-      path.join(
-        repoRoot,
-        'certs',
-        'admin.dev.local+1.pem',
-      ),
+      path.join(repoRoot, 'certs', 'admin.dev.local+1.pem'),
     ),
   };
 
@@ -46,13 +44,16 @@ async function bootstrap() {
     httpsOptions,
   });
 
+  /* 🔥 THIS LINE FIXES REAL-TIME */
+  app.useWebSocketAdapter(new IoAdapter(app));
+
   /* -------------------------------------------------- */
-  /* 🔥 GLOBAL REQUEST LOGGER (DEBUG)                   */
+  /* GLOBAL REQUEST LOGGER                              */
   /* -------------------------------------------------- */
   app.use(new RequestLoggerMiddleware().use);
 
   /* -------------------------------------------------- */
-  /* 🌄 STATIC FILES (IMAGES)                           */
+  /* STATIC FILES                                       */
   /* -------------------------------------------------- */
   app.use(
     '/images',
@@ -60,13 +61,9 @@ async function bootstrap() {
   );
 
   /* -------------------------------------------------- */
-  /* GLOBAL DOMAIN ERRORS                               */
+  /* GLOBAL FILTERS / INTERCEPTORS                      */
   /* -------------------------------------------------- */
   app.useGlobalFilters(new DomainExceptionFilter());
-
-  /* -------------------------------------------------- */
-  /* GLOBAL RESPONSE WRAPPER                            */
-  /* -------------------------------------------------- */
   app.useGlobalInterceptors(new ResponseInterceptor());
 
   /* -------------------------------------------------- */
@@ -89,7 +86,7 @@ async function bootstrap() {
   });
 
   /* -------------------------------------------------- */
-  /* GLOBAL VALIDATION                                  */
+  /* VALIDATION                                        */
   /* -------------------------------------------------- */
   app.useGlobalPipes(
     new ValidationPipe({
@@ -100,15 +97,12 @@ async function bootstrap() {
   );
 
   /* -------------------------------------------------- */
-  /* START SERVER                                       */
+  /* START                                             */
   /* -------------------------------------------------- */
   const port = Number(process.env.APP_PORT) || 4000;
-
   await app.listen(port, '0.0.0.0');
 
-  console.log(
-    `🚀 API running on https://admin.dev.local:${port}`,
-  );
+  console.log(`🚀 API running on https://admin.dev.local:${port}`);
 }
 
 bootstrap();

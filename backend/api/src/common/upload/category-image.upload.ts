@@ -5,13 +5,26 @@ import { Options as MulterOptions } from 'multer';
 import * as path from 'path';
 import * as fs from 'fs';
 
+const appRoot =
+  process.env.APP_ROOT ??
+  path.resolve(process.cwd(), '..', '..'); // sugar-cane root
+
+if (!process.env.APP_ROOT) {
+  console.warn(
+    '⚠️ APP_ROOT not set, using fallback:',
+    appRoot,
+  );
+}
+
 const uploadDir = path.join(
-  process.cwd(),
-  'images/categories',
+  appRoot,
+  'images',
+  'categories',
 );
 
-// Ensure directory exists
-fs.mkdirSync(uploadDir, { recursive: true });
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 export const categoryImageUploadOptions: MulterOptions = {
   storage: multer.diskStorage({
@@ -26,21 +39,11 @@ export const categoryImageUploadOptions: MulterOptions = {
     },
   }),
 
-  /**
-   * IMPORTANT:
-   * ❌ DO NOT pass Error here (TS typing bug)
-   * ✅ Just accept or reject file
-   */
   fileFilter: (_req, file, cb) => {
-    if (!file.mimetype.startsWith('image/')) {
-      cb(null, false); // ← THIS IS THE KEY FIX
-      return;
-    }
-
-    cb(null, true);
+    cb(null, file.mimetype.startsWith('image/'));
   },
 
   limits: {
-    fileSize: 2 * 1024 * 1024, // 2MB
+    fileSize: 5 * 1024 * 1024,
   },
 };

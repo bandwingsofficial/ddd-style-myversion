@@ -14,7 +14,7 @@ export default function EntryPage() {
     if (isAuthenticated) {
       router.replace("/home");
     } else {
-      router.replace("/login");
+      router.replace("/home");
     }
   }, [isAuthenticated]);
 
