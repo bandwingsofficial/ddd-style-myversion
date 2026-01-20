@@ -3,13 +3,13 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Package, Loader2, Scale, Tag } from 'lucide-react';
+import { ArrowLeft, Package, Loader2, Scale, Tag, Store } from 'lucide-react';
 import { UsersService } from '@/features/users/users.service';
-import { axiosInstance } from '@/http/axios'; // Import axios directly for the master list fetch
+import { axiosInstance } from '@/http/axios';
 
 interface StockItem {
   id: string;
-  stockItemId: string; // This is the ID we need to replace
+  stockItemId: string;
   unit: string;
   quantity: {
     value: number;
@@ -17,7 +17,6 @@ interface StockItem {
   updatedAt: string;
 }
 
-// Interface for the master list of items (to get names)
 interface MasterStockItem {
   id: string;
   name: string;
@@ -29,8 +28,8 @@ export default function OutletStockPage() {
   const outletId = params?.outletId as string;
 
   const [stock, setStock] = useState<StockItem[]>([]);
-  // New state to hold the mapping of ID -> Name
   const [itemNames, setItemNames] = useState<Record<string, string>>({});
+  const [outletName, setOutletName] = useState(''); // NEW: Store outlet name
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -49,25 +48,34 @@ export default function OutletStockPage() {
       // 1. Fetch Outlet Stock
       const stockPromise = UsersService.getOutletStock(outletId);
       
-      // 2. Fetch Master Stock Items (to get names)
-      // Assuming you have an endpoint like /stock-items or /inventory/items
-      // If not, replace this URL with your actual endpoint for "Stock Items" page
+      // 2. Fetch Master Stock Items (for mapping IDs to Names)
       const masterListPromise = axiosInstance.get('/stock-items'); 
 
-      const [stockRes, masterRes] = await Promise.all([stockPromise, masterListPromise]);
+      // 3. NEW: Fetch Outlet Details (to get the name for the header)
+      // Assuming standard REST pattern: /outlets/:id
+      const outletPromise = axiosInstance.get(`/outlets/${outletId}`);
 
-      // Process Stock Data
+      const [stockRes, masterRes, outletRes] = await Promise.all([
+        stockPromise, 
+        masterListPromise,
+        outletPromise
+      ]);
+
+      // --- Process Stock Data ---
       const stockData = stockRes.data.data || [];
-      
-      // Process Master List Data & Create Map
+      setStock(stockData);
+
+      // --- Process Master List & Create Map ---
       const masterItems: MasterStockItem[] = masterRes.data.data || [];
       const nameMap: Record<string, string> = {};
       masterItems.forEach(item => {
         nameMap[item.id] = item.name;
       });
-
       setItemNames(nameMap);
-      setStock(stockData);
+
+      // --- Process Outlet Name ---
+      const outletData = outletRes.data.data || outletRes.data;
+      setOutletName(outletData.name || 'Unknown Outlet');
 
     } catch (err: any) {
       console.error("Data fetch error:", err);
@@ -80,7 +88,7 @@ export default function OutletStockPage() {
 
   // Helper to get name from ID
   const getItemName = (id: string) => {
-    return itemNames[id] || 'Unknown Item'; // Fallback if name not found
+    return itemNames[id] || id; // Show ID if name not found, acts as fallback
   };
 
   return (
@@ -96,11 +104,16 @@ export default function OutletStockPage() {
         </button>
         <div style={styles.headerContent}>
           <div style={styles.iconCircle}>
-            <Package size={24} color="#3b82f6" />
+            <Store size={24} color="#3b82f6" />
           </div>
           <div>
-            <h1 style={styles.title}>Outlet Inventory</h1>
-            <p style={styles.subtitle}>Stock levels for Outlet ID: <span style={{fontFamily: 'monospace'}}>{outletId?.slice(0, 8)}...</span></p>
+            {/* UPDATED: Shows Real Outlet Name */}
+            <h1 style={styles.title}>
+              {loading ? 'Loading...' : outletName}
+            </h1>
+            <p style={styles.subtitle}>
+              Stock Inventory Management
+            </p>
           </div>
         </div>
       </div>
@@ -124,7 +137,7 @@ export default function OutletStockPage() {
         {!loading && !error && stock.length === 0 && (
           <div style={styles.centerState}>
             <Package size={48} color="#cbd5e1" />
-            <p style={{ marginTop: 16, color: '#64748b' }}>No stock items found for this outlet.</p>
+            <p style={{ marginTop: 16, color: '#64748b' }}>No stock items found for {outletName}.</p>
           </div>
         )}
 
@@ -147,10 +160,9 @@ export default function OutletStockPage() {
                     transition={{ delay: index * 0.05 }}
                     style={styles.tableRow}
                   >
-                    {/* 1. NAME MAPPED HERE */}
+                    {/* 1. Mapped Name */}
                     <td style={styles.td}>
                       <div style={styles.itemName}>
-                        {/* Use the helper function to show Name instead of ID */}
                         {getItemName(item.stockItemId)}
                       </div>
                     </td>
@@ -163,7 +175,7 @@ export default function OutletStockPage() {
                        </div>
                     </td>
 
-                    {/* 3. Available */}
+                    {/* 3. Available Quantity */}
                     <td style={styles.td}>
                       <div style={styles.qtyBadge}>
                         <Scale size={14} />

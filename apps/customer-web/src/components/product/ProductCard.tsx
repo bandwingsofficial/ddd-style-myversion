@@ -5,41 +5,95 @@ import Link from "next/link";
 import { ProductListItem } from "@/features/products/types/product.types";
 import { Plus, Minus, ImageOff } from "lucide-react";
 
+// --- ROBUST HELPER FUNCTIONS ---
+
+// 1. Safe String Resolver: Handles String, Object, or Null
+const resolveString = (data: any): string => {
+  if (!data) return "Unknown Product";
+  if (typeof data === "string") return data;
+  if (typeof data === "object" && data.value) return String(data.value);
+  return String(data);
+};
+
+// 2. Safe Price Resolver: Handles Number, Price Object, or Null
+const resolvePrice = (product: ProductListItem) => {
+  let current = 0;
+  let original = 0;
+
+  const p = product.price;
+
+  if (typeof p === "number") {
+    // Case 1: Simple Number (Menu API)
+    current = p;
+    original = product.originalPrice || p;
+  } else if (typeof p === "object" && p !== null) {
+    // Case 2: DDD Object (Home API)
+    // Check for 'discountPrice' or 'originalPrice' keys
+    if ("discountPrice" in p) {
+      current = (p as any).discountPrice;
+      original = (p as any).originalPrice;
+    } else if ("originalPrice" in p) {
+       current = (p as any).originalPrice;
+       original = (p as any).originalPrice;
+    } else if ("value" in p) {
+       // Case 3: Value Object { value: 50 }
+       current = (p as any).value;
+       original = (p as any).value;
+    }
+  }
+
+  // Final fallback to prevent NaN
+  return { 
+    current: Number(current) || 0, 
+    original: Number(original) || 0 
+  };
+};
+
 export default function ProductCard({ product }: { product: ProductListItem }) {
   const [quantity, setQuantity] = useState(0);
   const [imageError, setImageError] = useState(false);
 
-  const hasDiscount = product.originalPrice !== product.price;
+  // --- DATA RESOLUTION (Before Rendering) ---
+  const name = resolveString(product.name);
+  const slug = resolveString(product.slug);
+  const { current: price, original: originalPrice } = resolvePrice(product);
+  
+  const hasDiscount = originalPrice > price;
 
   // FIX: Update this URL to match your backend server address
   const BACKEND_URL = "http://localhost:5000";
 
-  const getImageUrl = (path: string) => {
-    if (!path) return "";
+  const getImageUrl = (path?: string) => {
+    if (!path || path.trim() === "") return null;
     return path.startsWith("http")
       ? path
       : `${BACKEND_URL}${path.startsWith("/") ? "" : "/"}${path}`;
   };
 
+  const imageUrl = getImageUrl(product.mainImage);
+
+  // --- HANDLERS ---
   const handleAdd = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation(); // Stop event bubbling
     setQuantity(1);
   };
 
   const updateQuantity = (e: React.MouseEvent, delta: number) => {
     e.preventDefault();
+    e.stopPropagation(); // Stop event bubbling
     setQuantity((prev) => Math.max(0, prev + delta));
   };
 
   return (
     <div style={styles.cardWrapper}>
-      <Link href={`/products/${product.slug}`} style={styles.productCard} className="product-card">
+      <Link href={`/products/${slug}`} style={styles.productCard} className="product-card">
         {/* Image Container */}
         <div style={styles.imageContainer}>
-          {!imageError ? (
+          {imageUrl && !imageError ? (
             <img
-              src={getImageUrl(product.mainImage)}
-              alt={product.name}
+              src={imageUrl}
+              alt={name}
               style={styles.productImage}
               onError={() => setImageError(true)}
             />
@@ -52,7 +106,7 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
 
           {hasDiscount && (
             <div style={styles.discountBadge}>
-              SAVE ₹{product.originalPrice - product.price}
+              SAVE ₹{originalPrice - price}
             </div>
           )}
         </div>
@@ -60,11 +114,11 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
         {/* Content Area */}
         <div style={styles.content}>
           <div style={styles.infoGroup}>
-            <h3 style={styles.productTitle}>{product.name}</h3>
+            <h3 style={styles.productTitle}>{name}</h3>
             <div style={styles.priceRow}>
-              <span style={styles.currentPrice}>₹{product.price}</span>
+              <span style={styles.currentPrice}>₹{price}</span>
               {hasDiscount && (
-                <span style={styles.oldPrice}>₹{product.originalPrice}</span>
+                <span style={styles.oldPrice}>₹{originalPrice}</span>
               )}
             </div>
           </div>
@@ -243,4 +297,4 @@ const styles: { [key: string]: React.CSSProperties } = {
     minWidth: "12px",
     textAlign: "center",
   },
-};
+};  
