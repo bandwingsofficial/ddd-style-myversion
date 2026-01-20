@@ -9,9 +9,15 @@ export class RequestLoggerMiddleware implements NestMiddleware {
     console.log('────────────────────────────────');
     console.log(`➡️  ${req.method} ${req.originalUrl}`);
     console.log('🍪 cookies:', req.headers.cookie || 'NONE');
-    console.log('📦 body:', req.body || {});
-    console.log('🧭 origin:', req.headers.origin);
-    console.log('🧾 client:', req.headers['x-client-type']);
+    console.log('🧭 origin:', req.headers.origin || 'NONE');
+    console.log(
+      '🧾 client:',
+      req.headers['x-client-type'] || 'UNKNOWN',
+    );
+    console.log(
+      '📄 content-type:',
+      req.headers['content-type'] || 'UNKNOWN',
+    );
 
     res.on('finish', () => {
       console.log(

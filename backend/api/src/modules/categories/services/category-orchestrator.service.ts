@@ -53,6 +53,21 @@ export class CategoryOrchestratorService {
     );
   }
 
+  /**
+   * UPDATE DETAILS
+   * - subtitle
+   * - image (replace / remove)
+   */
+  async updateCategoryDetails(params: {
+    categoryId: string;
+    subtitle?: string;
+    imagePath?: string | null;
+  }): Promise<Category> {
+    return this.categoryService.updateCategoryDetails(
+      params,
+    );
+  }
+
   async disableCategory(params: {
     categoryId: string;
   }): Promise<{ id: string; status: 'INACTIVE' }> {

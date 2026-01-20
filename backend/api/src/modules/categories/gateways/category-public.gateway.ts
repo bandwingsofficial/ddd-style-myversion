@@ -35,6 +35,10 @@ export class CategoryPublicGateway
       categories: categories.map((c) => ({
         id: c.id,
         name: c.name,
+        subtitle: c.subtitle,          // ✅ ADDED
+        imagePath: c.imagePath,        // ✅ ADDED
+
+        // kept for backward compatibility
         status: c.status,
         sortOrder: c.sortOrder,
         createdAt: c.createdAt,
@@ -67,7 +71,9 @@ export class CategoryPublicGateway
 
   emitCategoryUpdated(payload: {
     categoryId: string;
-    name: string;
+    name?: string;
+    subtitle?: string;
+    imagePath?: string | null;
   }): void {
     this.server.emit('category.updated', payload);
   }
@@ -90,6 +96,8 @@ export class CategoryPublicGateway
     categories: {
       id: string;
       name: string;
+      subtitle?: string;
+      imagePath?: string | null;
       status: string;
       sortOrder: number;
       createdAt: Date;

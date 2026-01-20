@@ -14,10 +14,17 @@ export class CategoryPublicController {
 
   @Get()
   async getCategoriesForPublic() {
-    const data =
+    const categories =
       await this.orchestrator.getAllCategories({
         includeInactive: false,
       });
+
+    const data = categories.map((category) => ({
+      id: category.id,
+      name: category.name,
+      subtitle: category.subtitle,
+      imagePath: category.imagePath,
+    }));
 
     return {
       success: true,

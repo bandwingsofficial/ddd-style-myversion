@@ -24,6 +24,8 @@ export class CategoryRepository {
       data: {
         id: category.id,
         name: category.name,
+        subtitle: category.subtitle ?? null,     // ✅ ADDED
+        imagePath: category.imagePath ?? null,   // ✅ ADDED
         status: CategoryStatusMapper.toPrisma(category.status),
         sortOrder: category.sortOrder,
         createdAt: category.createdAt,
@@ -82,7 +84,7 @@ export class CategoryRepository {
   }
 
   /* ================================================= */
-  /* READ (LIST – ADMIN & CUSTOMER) ✅ CORRECT         */
+  /* READ (LIST – ADMIN & CUSTOMER)                    */
   /* ================================================= */
 
   async findAll(
@@ -91,7 +93,6 @@ export class CategoryRepository {
   ): Promise<Category[]> {
     const client = tx ?? this.prisma;
 
-    // ACTIVE categories → ordered, untouched
     const activeRows = await client.category.findMany({
       where: {
         status: CategoryStatusMapper.toPrisma(
@@ -109,7 +110,6 @@ export class CategoryRepository {
       return active;
     }
 
-    // INACTIVE categories → read-only, no ordering meaning
     const inactiveRows = await client.category.findMany({
       where: {
         status: CategoryStatusMapper.toPrisma(
@@ -140,6 +140,8 @@ export class CategoryRepository {
       where: { id: category.id },
       data: {
         name: category.name,
+        subtitle: category.subtitle ?? null,     // ✅ ADDED
+        imagePath: category.imagePath ?? null,   // ✅ ADDED
         status: CategoryStatusMapper.toPrisma(category.status),
         sortOrder: category.sortOrder,
         updatedAt: category.updatedAt,
@@ -181,7 +183,6 @@ export class CategoryRepository {
     const existingStatus =
       CategoryStatusMapper.toDomain(existing.status);
 
-    // No change → no-op
     if (existingStatus === category.status) {
       return this.toDomain(existing);
     }
@@ -330,6 +331,8 @@ export class CategoryRepository {
   private toDomain(row: {
     id: string;
     name: string;
+    subtitle: string | null;
+    imagePath: string | null;
     status: any;
     sortOrder: number;
     createdAt: Date;
@@ -338,6 +341,8 @@ export class CategoryRepository {
     return Category.rehydrate({
       id: row.id,
       name: row.name,
+      subtitle: row.subtitle ?? undefined,
+      imagePath: row.imagePath ?? undefined,
       status: CategoryStatusMapper.toDomain(row.status),
       sortOrder: row.sortOrder,
       createdAt: row.createdAt,

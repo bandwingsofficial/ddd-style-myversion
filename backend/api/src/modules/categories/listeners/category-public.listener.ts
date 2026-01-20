@@ -24,6 +24,10 @@ export class CategoryPublicListener {
       return {
         id: c.id,
         name: c.name,
+        subtitle: c.subtitle,       // ✅ ADDED
+        imagePath: c.imagePath,     // ✅ ADDED
+
+        // kept for backward compatibility
         status: c.status,
         sortOrder: c.sortOrder,
         createdAt: c.createdAt,
@@ -61,6 +65,16 @@ export class CategoryPublicListener {
 
   @OnEvent(CategoryEvents.CATEGORY_UPDATED)
   async handleCategoryUpdated(): Promise<void> {
+    await this.emitFullCategoryList();
+  }
+
+  @OnEvent(CategoryEvents.CATEGORY_IMAGE_UPDATED)
+  async handleCategoryImageUpdated(): Promise<void> {
+    await this.emitFullCategoryList();
+  }
+
+  @OnEvent(CategoryEvents.CATEGORY_IMAGE_REMOVED)
+  async handleCategoryImageRemoved(): Promise<void> {
     await this.emitFullCategoryList();
   }
 

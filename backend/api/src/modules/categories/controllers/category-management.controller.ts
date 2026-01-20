@@ -7,7 +7,11 @@ import {
   Param,
   Post,
   UseGuards,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { randomUUID } from 'crypto';
 
 import { CategoryOrchestratorService } from '../services/category-orchestrator.service';
 
@@ -22,14 +26,17 @@ import { ActorType } from '../../auth/domain/enums/actor-type.enum';
 import { CreateCategoryDto } from '../dtos/create-category.dto';
 import { RenameCategoryDto } from '../dtos/rename-category.dto';
 import { ChangeCategorySortOrderDto } from '../dtos/change-category-sort-order.dto';
+import { UpdateCategoryDetailsDto } from '../dtos/update-category-details.dto';
 
 /* Domain */
 import { Category } from '../domain/models/category.model';
-import { randomUUID } from 'crypto';
+
+/* Upload */
+import { categoryImageUploadOptions } from '../../../common/upload/category-image.upload';
 
 @Controller('categories')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(ActorType.SUPER_ADMIN) // 🔐 ALL routes are admin-only
+@Roles(ActorType.SUPER_ADMIN)
 export class CategoryManagementController {
   constructor(
     private readonly orchestrator: CategoryOrchestratorService,
@@ -70,17 +77,25 @@ export class CategoryManagementController {
   }
 
   /* ================================================= */
-  /* CATEGORY – CREATE                                 */
+  /* CATEGORY – CREATE (WITH IMAGE)                    */
   /* ================================================= */
 
   @Post()
+  @UseInterceptors(
+    FileInterceptor('image', categoryImageUploadOptions),
+  )
   async createCategory(
+    @UploadedFile() file: Express.Multer.File,
     @Body() dto: CreateCategoryDto,
     @CurrentUser() user,
   ) {
     const category = Category.createNew({
       id: randomUUID(),
       name: dto.name,
+      subtitle: dto.subtitle,
+      imagePath: file
+        ? `images/categories/${file.filename}`
+        : undefined,
       sortOrder: dto.sortOrder,
     });
 
@@ -98,7 +113,42 @@ export class CategoryManagementController {
   }
 
   /* ================================================= */
-  /* CATEGORY – UPDATE                                 */
+  /* CATEGORY – UPDATE DETAILS                         */
+  /* ================================================= */
+
+  @Post(':categoryId/details')
+  @UseInterceptors(
+    FileInterceptor('image', categoryImageUploadOptions),
+  )
+  async updateCategoryDetails(
+    @Param('categoryId') categoryId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() dto: UpdateCategoryDetailsDto,
+  ) {
+    const imagePath =
+      dto.removeImage === 'true'
+        ? null
+        : file
+        ? `images/categories/${file.filename}`
+        : undefined;
+
+    const data =
+      await this.orchestrator.updateCategoryDetails({
+        categoryId,
+        subtitle: dto.subtitle,
+        imagePath,
+      });
+
+    return {
+      success: true,
+      code: 'CATEGORY_UPDATED',
+      message: 'Category updated successfully',
+      data,
+    };
+  }
+
+  /* ================================================= */
+  /* CATEGORY – UPDATE (EXISTING ROUTES)               */
   /* ================================================= */
 
   @Post(':categoryId/rename')

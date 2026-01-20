@@ -60,6 +60,31 @@ export class CategoryEventsService {
     );
   }
 
+  /**
+   * 🔥 Image replaced or added
+   */
+  emitCategoryImageUpdated(payload: {
+    categoryId: string;
+    imagePath: string;
+  }): void {
+    this.eventEmitter.emit(
+      CategoryEvents.CATEGORY_IMAGE_UPDATED,
+      payload,
+    );
+  }
+
+  /**
+   * 🗑️ Image removed
+   */
+  emitCategoryImageRemoved(payload: {
+    categoryId: string;
+  }): void {
+    this.eventEmitter.emit(
+      CategoryEvents.CATEGORY_IMAGE_REMOVED,
+      payload,
+    );
+  }
+
   /* ================================================= */
   /* SORT ORDER                                        */
   /* ================================================= */

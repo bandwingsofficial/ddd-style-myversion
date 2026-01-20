@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 
@@ -58,7 +60,6 @@ export class CategoryService {
         tx,
       );
 
-      /* ACTIVE duplicate → reject */
       if (existing && existing.isActive()) {
         throw new ValidationError(
           'CATEGORY_ALREADY_EXISTS',
@@ -66,7 +67,6 @@ export class CategoryService {
         );
       }
 
-      /* INACTIVE duplicate → restore */
       if (existing && existing.isInactive()) {
         await this.categoryRepo.shiftActiveSortOrdersFrom(
           category.sortOrder,
@@ -74,26 +74,23 @@ export class CategoryService {
         );
 
         const restored = existing
-          .enable() // ✅ becomes ACTIVE
-          .changeSortOrder(category.sortOrder); // ✅ allowed now
+          .enable()
+          .changeSortOrder(category.sortOrder)
+          .updateDetails({
+            subtitle: category.subtitle,
+            imagePath: category.imagePath,
+          });
 
-        result = await this.categoryRepo.update(
-          restored,
-          tx,
-        );
+        result = await this.categoryRepo.update(restored, tx);
         return;
       }
 
-      /* New category */
       await this.categoryRepo.shiftActiveSortOrdersFrom(
         category.sortOrder,
         tx,
       );
 
-      result = await this.categoryRepo.create(
-        category,
-        tx,
-      );
+      result = await this.categoryRepo.create(category, tx);
     });
 
     this.categoryEvents.emitCategoryCreated({
@@ -104,6 +101,59 @@ export class CategoryService {
   }
 
   /* ================================================= */
+  /* UPDATE DETAILS (SUBTITLE / IMAGE)                 */
+  /* ================================================= */
+
+  async updateCategoryDetails(params: {
+    categoryId: string;
+    subtitle?: string;
+    imagePath?: string | null; // null = remove image
+  }): Promise<Category> {
+    const category = await this.getById(params.categoryId);
+
+    if (category.isInactive()) {
+      throw new ValidationError(
+        'CATEGORY_INACTIVE_UPDATE',
+        'Cannot update an inactive category',
+      );
+    }
+
+    const oldImage = category.imagePath;
+
+    const updated = category.updateDetails({
+      subtitle: params.subtitle,
+      imagePath: params.imagePath,
+    });
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.categoryRepo.update(updated, tx);
+    });
+
+    /* 🔥 DELETE OLD IMAGE IF REPLACED OR REMOVED */
+    if (oldImage && oldImage !== updated.imagePath) {
+      this.deleteImageSafe(oldImage);
+
+      // 🔔 IMAGE EVENTS (NEW)
+      if (updated.imagePath) {
+        this.categoryEvents.emitCategoryImageUpdated({
+          categoryId: updated.id,
+          imagePath: updated.imagePath,
+        });
+      } else {
+        this.categoryEvents.emitCategoryImageRemoved({
+          categoryId: updated.id,
+        });
+      }
+    }
+
+    this.categoryEvents.emitCategoryUpdated({
+      categoryId: updated.id,
+    });
+
+    return updated;
+  }
+
+  /* ================================================= */
   /* RENAME                                           */
   /* ================================================= */
 
@@ -111,11 +161,8 @@ export class CategoryService {
     categoryId: string;
     name: string;
   }): Promise<Category> {
-    const category = await this.getById(
-      params.categoryId,
-    );
+    const category = await this.getById(params.categoryId);
 
-    /* 🔒 HARD BLOCK */
     if (category.isInactive()) {
       throw new ValidationError(
         'CATEGORY_INACTIVE_RENAME',
@@ -190,18 +237,15 @@ export class CategoryService {
   }
 
   /* ================================================= */
-  /* SORT ORDER (MANUAL REORDER)                       */
+  /* SORT ORDER                                       */
   /* ================================================= */
 
   async changeSortOrder(params: {
     categoryId: string;
     sortOrder: number;
   }): Promise<Category> {
-    const category = await this.getById(
-      params.categoryId,
-    );
+    const category = await this.getById(params.categoryId);
 
-    /* 🔒 HARD BLOCK */
     if (category.isInactive()) {
       throw new ValidationError(
         'CATEGORY_INACTIVE_SORT_ORDER_CHANGE',
@@ -212,10 +256,7 @@ export class CategoryService {
     let updated!: Category;
 
     await this.prisma.$transaction(async (tx) => {
-      await this.categoryRepo.normalizeActiveSortOrders(
-        tx,
-      );
-
+      await this.categoryRepo.normalizeActiveSortOrders(tx);
       await this.categoryRepo.shiftActiveSortOrdersFrom(
         params.sortOrder,
         tx,
@@ -234,5 +275,17 @@ export class CategoryService {
     });
 
     return updated;
+  }
+
+  /* ================================================= */
+  /* FILE HELPERS                                     */
+  /* ================================================= */
+
+  private deleteImageSafe(imagePath: string): void {
+    const fullPath = path.join(process.cwd(), imagePath);
+
+    fs.promises.unlink(fullPath).catch(() => {
+      // silent fail
+    });
   }
 }

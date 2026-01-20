@@ -6,6 +6,8 @@ import { CategoryStatus } from '../enums/category-status.enum';
 export interface CategoryProps {
   id: string;
   name: string;
+  subtitle?: string;
+  imagePath?: string; // backend stored image path: images/categories/*
   status: CategoryStatus;
   sortOrder: number;
   createdAt: Date;
@@ -15,6 +17,8 @@ export interface CategoryProps {
 export class Category {
   readonly id: string;
   readonly name: string;
+  readonly subtitle?: string;
+  readonly imagePath?: string;
   readonly status: CategoryStatus;
   readonly sortOrder: number;
   readonly createdAt: Date;
@@ -27,12 +31,14 @@ export class Category {
   }
 
   /* ---------------------------------------------- */
-  /* FACTORIES                                     */
+  /* FACTORIES                                      */
   /* ---------------------------------------------- */
 
   static createNew(params: {
     id: string;
     name: string;
+    subtitle?: string;
+    imagePath?: string;
     sortOrder?: number;
     now?: Date;
   }): Category {
@@ -41,6 +47,8 @@ export class Category {
     return new Category({
       id: params.id,
       name: Category.normalizeName(params.name),
+      subtitle: params.subtitle?.trim(),
+      imagePath: params.imagePath,
       status: CategoryStatus.ACTIVE,
       sortOrder: params.sortOrder ?? 0,
       createdAt: now,
@@ -52,6 +60,7 @@ export class Category {
     return new Category({
       ...props,
       name: Category.normalizeName(props.name),
+      subtitle: props.subtitle?.trim(),
     });
   }
 
@@ -72,7 +81,7 @@ export class Category {
   }
 
   /* ---------------------------------------------- */
-  /* DOMAIN TRANSITIONS                             */
+  /* DOMAIN TRANSITIONS (CRUD SAFE)                  */
   /* ---------------------------------------------- */
 
   rename(name: string, now = new Date()): Category {
@@ -92,6 +101,34 @@ export class Category {
     return new Category({
       ...this,
       name: normalized,
+      updatedAt: now,
+    });
+  }
+
+  updateDetails(
+    params: {
+      subtitle?: string;
+      imagePath?: string | null; // null = remove image
+    },
+    now = new Date(),
+  ): Category {
+    if (this.isInactive()) {
+      throw new ValidationError(
+        'CATEGORY_INACTIVE_UPDATE',
+        'Cannot update an inactive category',
+      );
+    }
+
+    return new Category({
+      ...this,
+      subtitle:
+        params.subtitle !== undefined
+          ? params.subtitle?.trim()
+          : this.subtitle,
+      imagePath:
+        params.imagePath === null
+          ? undefined
+          : params.imagePath ?? this.imagePath,
       updatedAt: now,
     });
   }
@@ -148,6 +185,23 @@ export class Category {
       throw new ValidationError(
         'CATEGORY_INVALID_NAME',
         'Category name must be at least 3 characters',
+      );
+    }
+
+    if (this.subtitle && this.subtitle.length < 3) {
+      throw new ValidationError(
+        'CATEGORY_INVALID_SUBTITLE',
+        'Subtitle must be at least 3 characters',
+      );
+    }
+
+    if (
+      this.imagePath &&
+      !this.imagePath.startsWith('images/categories/')
+    ) {
+      throw new ValidationError(
+        'CATEGORY_INVALID_IMAGE_PATH',
+        'Image path must start with images/categories/',
       );
     }
 

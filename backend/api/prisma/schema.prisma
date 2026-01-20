@@ -357,16 +357,20 @@ model SuperAdmin {
 model Category {
   id        String         @id @default(uuid())
   name      String
+  subtitle  String?        // optional subtitle
+  imagePath String?        // local stored image path: images/categories/*
   status    CategoryStatus
   sortOrder Int            @default(0)
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 }
 
+
 enum CategoryStatus {
   ACTIVE
   INACTIVE
 }
+
 
 //////////////////////////////////////////////////////
 // Product /stockitems

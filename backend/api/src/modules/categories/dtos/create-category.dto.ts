@@ -5,6 +5,7 @@ import {
   IsString,
   Min,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateCategoryDto {
   @IsString()
@@ -12,6 +13,11 @@ export class CreateCategoryDto {
   name: string;
 
   @IsOptional()
+  @IsString()
+  subtitle?: string;
+
+  @IsOptional()
+  @Type(() => Number) // 🔥 THIS IS THE FIX
   @IsInt()
   @Min(0)
   sortOrder?: number;
