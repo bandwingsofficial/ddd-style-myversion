@@ -1,17 +1,9 @@
 "use client";
 
-import React, { 
-  createContext, 
-  useContext, 
-  useEffect, 
-  useState, 
-  useRef 
-} from "react";
-import { useSession } from "@/features/customer-auth/hooks/useSession";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { ProductListItem } from "@/features/products/types/product.types";
-import { toast } from "sonner"; 
+import { toast } from "sonner"; // Optional: For nice alerts
 
-// --- 1. DEFINITIONS ---
 type FavoritesContextType = {
   favorites: ProductListItem[];
   addToFavorites: (product: ProductListItem) => void;
@@ -21,21 +13,17 @@ type FavoritesContextType = {
 
 const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined);
 
-// --- 2. FAVORITES LOGIC ---
-function FavoritesProvider({ children }: { children: React.ReactNode }) {
+export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const [favorites, setFavorites] = useState<ProductListItem[]>([]);
-  const [userId, setUserId] = useState("guest");
+  
+  // --- USER IDENTIFICATION ---
+  // In a real app, this comes from your Auth Context.
+  // For now, we simulate a logged-in user ID.
+  // CHANGE THIS 'userId' dynamically based on who is logged in!
+  const userId = "user_123"; 
   const STORAGE_KEY = `favorites_${userId}`;
 
-  // Load User ID
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedUser = localStorage.getItem("current_user_id"); 
-      if (storedUser) setUserId(storedUser);
-    }
-  }, []);
-
-  // Load Favorites
+  // 1. Load from LocalStorage on mount
   useEffect(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem(STORAGE_KEY);
@@ -43,21 +31,24 @@ function FavoritesProvider({ children }: { children: React.ReactNode }) {
         try {
           setFavorites(JSON.parse(stored));
         } catch (e) {
-          console.error("Error parsing favorites", e);
+          console.error("Failed to parse favorites", e);
         }
       }
     }
-  }, [userId, STORAGE_KEY]);
+  }, [userId]);
 
-  // Save Favorites
+  // 2. Save to LocalStorage whenever favorites change
   useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(favorites));
     }
-  }, [favorites, STORAGE_KEY]);
+  }, [favorites, userId]);
+
+  // --- ACTIONS ---
 
   const addToFavorites = (product: ProductListItem) => {
     setFavorites((prev) => {
+      // Prevent duplicates
       if (prev.some((p) => p.id === product.id)) return prev;
       return [...prev, product];
     });
@@ -80,33 +71,11 @@ function FavoritesProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-// --- 3. EXPORT HOOK ---
+// Custom Hook for easy access
 export function useFavorites() {
   const context = useContext(FavoritesContext);
   if (!context) {
-    throw new Error("useFavorites must be used within a CustomerAuthProvider");
+    throw new Error("useFavorites must be used within a FavoritesProvider");
   }
   return context;
-}
-
-// --- 4. MAIN WRAPPER COMPONENT ---
-export default function CustomerAuthProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const fetchSession = useSession();
-  const hasInitialized = useRef(false);
-
-  useEffect(() => {
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
-    fetchSession();
-  }, [fetchSession]);
-
-  return (
-    <FavoritesProvider>
-      {children}
-    </FavoritesProvider>
-  );
 }
