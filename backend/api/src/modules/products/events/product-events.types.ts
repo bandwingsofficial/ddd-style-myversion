@@ -10,10 +10,16 @@ export interface ProductLifecycleEvent {
 /* DETAILS UPDATE                                    */
 /* ================================================= */
 
+/**
+ * 🔁 Fired when core product details change
+ * (name / slug / descriptions / category)
+ */
 export interface ProductUpdatedEvent {
   productId: string;
-  name: string;
-  slug: string;
+
+  name?: string;
+  slug?: string;
+  categoryId?: string;
 }
 
 /* ================================================= */
@@ -22,6 +28,7 @@ export interface ProductUpdatedEvent {
 
 export interface ProductPriceChangedEvent {
   productId: string;
+
   originalPrice: number;
   discountPrice: number | null;
 }
@@ -30,8 +37,12 @@ export interface ProductPriceChangedEvent {
 /* IMAGES                                            */
 /* ================================================= */
 
+/**
+ * 🖼 Fired when images are added or replaced
+ */
 export interface ProductImagesChangedEvent {
   productId: string;
+
   mainImage: string;
   galleryImages: string[];
 }
@@ -42,5 +53,6 @@ export interface ProductImagesChangedEvent {
 
 export interface ProductTrendingChangedEvent {
   productId: string;
+
   isTrending: boolean;
 }

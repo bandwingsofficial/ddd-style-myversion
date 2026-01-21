@@ -363,6 +363,8 @@ model Category {
   sortOrder Int            @default(0)
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
+
+  products Product[]
 }
 
 
@@ -520,9 +522,32 @@ model OutletStock {
 // PRODUCT ENUMS
 //////////////////////////////////////////////////////
 
+//////////////////////////////////////////////////////
+// ENUMS
+//////////////////////////////////////////////////////
+
 enum ProductStatus {
   ACTIVE
   INACTIVE
+}
+
+enum UnitType {
+  ML
+  LTR
+  G
+  KG
+  PCS
+}
+
+enum ProductTag {
+  FRESH
+  ORGANIC
+  NO_SUGAR
+  COLD_PRESSED
+  NATURAL
+  FARM_FRESH
+  PRESERVATIVE_FREE
+  VEGAN
 }
 
 
@@ -533,39 +558,41 @@ enum ProductStatus {
 model Product {
   id                String        @id @default(uuid())
 
-  // 🔗 LINK TO INVENTORY
+  categoryId        String
+  category          Category      @relation(fields: [categoryId], references: [id])
+
   stockItemId       String
   stockItem         StockItem     @relation(fields: [stockItemId], references: [id])
 
-  // 📦 PRODUCT INFO
   productName       String        @unique @db.VarChar(150)
   slug              String        @unique @db.VarChar(180)
 
   shortDescription  String?       @db.VarChar(300)
   longDescription   String?
 
-  // 💰 PRICING
   originalPrice     Decimal       @db.Decimal(12, 2)
   discountPrice     Decimal?      @db.Decimal(12, 2)
 
-  // 🖼 IMAGES
-  mainImage         String        // URL or storage key
+  mainImage         String        // images/products/*
   galleryImages     ProductImage[]
 
-  // 🔥 FLAGS
+  // 🏷 TAGS
+  tags              ProductTag[]  @default([])
+
+  // 📏 UNIT
+  unitValue         Int
+  unitType          UnitType
+
+  ratingAverage     Decimal?      @db.Decimal(3, 2)
+  ratingCount       Int           @default(0)
+
   isTrending        Boolean       @default(false)
 
-  // ⚙️ STATUS
   status            ProductStatus @default(ACTIVE)
-   createdBy       String  
+  createdBy         String
 
-  // 🕒 TIMESTAMPS
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
-
-  @@index([stockItemId])
-  @@index([status])
-  @@index([isTrending])
 }
 
 

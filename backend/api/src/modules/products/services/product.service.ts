@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 
@@ -10,36 +12,55 @@ import { ProductStatus } from '../domain/enums/product-status.enum';
 
 /* 🔥 EVENTS */
 import { ProductEventsService } from '../events/product-events.service';
+import { ProductImages } from '../domain/value-objects/product-images.vo';
 
 @Injectable()
 export class ProductService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly productRepo: ProductRepository,
-    private readonly productEvents: ProductEventsService, // ✅ ADD
+    private readonly productEvents: ProductEventsService,
   ) {}
 
   /* ================================================= */
-/* READ – ALL PRODUCTS                               */
-/* ================================================= */
-
-async getAllProducts(): Promise<Product[]> {
-  return this.productRepo.findAll();
-}
+  /* 🔒 IMAGE PATH NORMALIZATION                       */
   /* ================================================= */
-/* READ – PUBLIC PRODUCTS                            */
-/* ================================================= */
 
-async getPublicProducts(): Promise<Product[]> {
-  const products = await this.productRepo.findPublicProducts();
+  private normalizeImagePath(
+    imagePath?: string | null,
+  ): string | null | undefined {
+    if (!imagePath) return imagePath;
 
-  return products.filter(product => product.canBeShown());
-}
+    let normalized = imagePath.trim();
 
-  
+    normalized = normalized.replace(/^https?:\/\/[^/]+\//, '');
+
+    if (normalized.startsWith('/')) {
+      normalized = normalized.slice(1);
+    }
+
+    if (!normalized.startsWith('images/products/')) {
+      throw new ValidationError(
+        'PRODUCT_INVALID_IMAGE_PATH',
+        'Image path must be under images/products/',
+      );
+    }
+
+    return normalized;
+  }
+
   /* ================================================= */
-  /* READS                                             */
+  /* READS                                            */
   /* ================================================= */
+
+  async getAllProducts(): Promise<Product[]> {
+    return this.productRepo.findAll();
+  }
+
+  async getPublicProducts(): Promise<Product[]> {
+    const products = await this.productRepo.findAll();
+    return products.filter((p) => p.canBeShown());
+  }
 
   async getById(productId: string): Promise<Product> {
     const product = await this.productRepo.findById(productId);
@@ -68,28 +89,65 @@ async getPublicProducts(): Promise<Product[]> {
   }
 
   /* ================================================= */
-  /* CREATE PRODUCT                                    */
+  /* CREATE PRODUCT (✅ FIXED)                          */
   /* ================================================= */
 
-  async createProduct(params: {
-    product: Product;
-  }): Promise<Product> {
-    let created!: Product;
+  async createProduct(product: Product): Promise<Product> {
+  // ✅ Category must exist
+  const categoryExists = await this.prisma.category.findUnique({
+    where: { id: product.categoryId },
+    select: { id: true },
+  });
 
-    await this.prisma.$transaction(async (tx) => {
-      created = await this.productRepo.create(params.product, tx);
-    });
-
-    /* 🔥 EVENT */
-    this.productEvents.emitProductCreated({
-      productId: created.id,
-    });
-
-    return created;
+  if (!categoryExists) {
+    throw new ValidationError(
+      'CATEGORY_NOT_FOUND',
+      'Category does not exist',
+    );
   }
 
+  // ✅ Stock item must exist
+  const stockExists = await this.prisma.stockItem.findUnique({
+    where: { id: product.stockItemId },
+    select: { id: true },
+  });
+
+  if (!stockExists) {
+    throw new ValidationError(
+      'STOCK_ITEM_NOT_FOUND',
+      'Stock item does not exist',
+    );
+  }
+
+  // ✅ NORMALIZE IMAGE PATHS (NO updateImages CALL)
+  const normalizedProduct = Product.rehydrate({
+    ...product,
+    images: ProductImages.create(
+      this.normalizeImagePath(product.images.getMain())!,
+      product.images
+        .getGallery()
+        .map((img) => this.normalizeImagePath(img)!),
+    ),
+  });
+
+  let created!: Product;
+
+  await this.prisma.$transaction(async (tx) => {
+    created = await this.productRepo.create(
+      { product: normalizedProduct },
+      tx,
+    );
+  });
+
+  this.productEvents.emitProductCreated({
+    productId: created.id,
+  });
+
+  return created;
+}
+
   /* ================================================= */
-  /* UPDATE DETAILS                                    */
+  /* UPDATE DETAILS                                   */
   /* ================================================= */
 
   async updateDetails(params: {
@@ -100,10 +158,7 @@ async getPublicProducts(): Promise<Product[]> {
       longDescription?: string;
     };
   }): Promise<Product> {
-    const product = await this.productRepo.findById(params.productId);
-    if (!product) {
-      throw new ValidationError('PRODUCT_NOT_FOUND', 'Product not found');
-    }
+    const product = await this.getById(params.productId);
 
     if (!product.isActive()) {
       throw new ValidationError(
@@ -118,7 +173,6 @@ async getPublicProducts(): Promise<Product[]> {
       await this.productRepo.updateDetails(updated, tx);
     });
 
-    /* 🔥 EVENT */
     this.productEvents.emitProductUpdated({
       productId: updated.id,
       name: updated.name.getValue(),
@@ -129,7 +183,7 @@ async getPublicProducts(): Promise<Product[]> {
   }
 
   /* ================================================= */
-  /* UPDATE PRICE                                      */
+  /* UPDATE PRICE                                     */
   /* ================================================= */
 
   async updatePrice(params: {
@@ -137,10 +191,7 @@ async getPublicProducts(): Promise<Product[]> {
     originalPrice: number;
     discountPrice?: number;
   }): Promise<Product> {
-    const product = await this.productRepo.findById(params.productId);
-    if (!product) {
-      throw new ValidationError('PRODUCT_NOT_FOUND', 'Product not found');
-    }
+    const product = await this.getById(params.productId);
 
     if (!product.isActive()) {
       throw new ValidationError(
@@ -149,27 +200,23 @@ async getPublicProducts(): Promise<Product[]> {
       );
     }
 
-    const updated = product.updatePrice({
-      originalPrice: params.originalPrice,
-      discountPrice: params.discountPrice,
-    });
+    const updated = product.updatePrice(params);
 
     await this.prisma.$transaction(async (tx) => {
       await this.productRepo.updatePrice(updated, tx);
     });
 
-    /* 🔥 EVENT (price affects listing → treat as update) */
-    this.productEvents.emitProductUpdated({
+    this.productEvents.emitProductPriceChanged({
       productId: updated.id,
-      name: updated.name.getValue(),
-      slug: updated.slug.getValue(),
+      originalPrice: params.originalPrice,
+      discountPrice: params.discountPrice ?? null,
     });
 
     return updated;
   }
 
   /* ================================================= */
-  /* UPDATE IMAGES                                     */
+  /* UPDATE IMAGES                                    */
   /* ================================================= */
 
   async updateImages(params: {
@@ -177,10 +224,7 @@ async getPublicProducts(): Promise<Product[]> {
     mainImage: string;
     galleryImages?: string[];
   }): Promise<Product> {
-    const product = await this.productRepo.findById(params.productId);
-    if (!product) {
-      throw new ValidationError('PRODUCT_NOT_FOUND', 'Product not found');
-    }
+    const product = await this.getById(params.productId);
 
     if (!product.isActive()) {
       throw new ValidationError(
@@ -189,34 +233,39 @@ async getPublicProducts(): Promise<Product[]> {
       );
     }
 
+    const oldImages = [
+      product.images.getMain(),
+      ...product.images.getGallery(),
+    ];
+
     const updated = product.updateImages({
-      mainImage: params.mainImage,
-      galleryImages: params.galleryImages,
+      mainImage: this.normalizeImagePath(params.mainImage)!,
+      galleryImages: params.galleryImages
+        ?.map((img) => this.normalizeImagePath(img)!)
+        .filter(Boolean),
     });
 
     await this.prisma.$transaction(async (tx) => {
       await this.productRepo.updateImages(updated, tx);
     });
 
-    /* 🔥 EVENT */
-    this.productEvents.emitProductUpdated({
+    oldImages.forEach((img) => this.deleteImageSafe(img));
+
+    this.productEvents.emitProductImagesChanged({
       productId: updated.id,
-      name: updated.name.getValue(),
-      slug: updated.slug.getValue(),
+      mainImage: updated.images.getMain(),
+      galleryImages: updated.images.getGallery(),
     });
 
     return updated;
   }
 
   /* ================================================= */
-  /* TRENDING                                          */
+  /* TRENDING                                         */
   /* ================================================= */
 
   async markTrending(productId: string): Promise<void> {
-    const product = await this.productRepo.findById(productId);
-    if (!product) {
-      throw new ValidationError('PRODUCT_NOT_FOUND', 'Product not found');
-    }
+    const product = await this.getById(productId);
 
     if (!product.isActive()) {
       throw new ValidationError(
@@ -231,7 +280,6 @@ async getPublicProducts(): Promise<Product[]> {
       await this.productRepo.updateTrending(updated, tx);
     });
 
-    /* 🔥 EVENT */
     this.productEvents.emitProductTrendingChanged({
       productId: updated.id,
       isTrending: true,
@@ -239,10 +287,7 @@ async getPublicProducts(): Promise<Product[]> {
   }
 
   async unmarkTrending(productId: string): Promise<void> {
-    const product = await this.productRepo.findById(productId);
-    if (!product) {
-      throw new ValidationError('PRODUCT_NOT_FOUND', 'Product not found');
-    }
+    const product = await this.getById(productId);
 
     const updated = product.unmarkTrending();
 
@@ -250,7 +295,6 @@ async getPublicProducts(): Promise<Product[]> {
       await this.productRepo.updateTrending(updated, tx);
     });
 
-    /* 🔥 EVENT */
     this.productEvents.emitProductTrendingChanged({
       productId: updated.id,
       isTrending: false,
@@ -258,16 +302,13 @@ async getPublicProducts(): Promise<Product[]> {
   }
 
   /* ================================================= */
-  /* ENABLE / DISABLE                                  */
+  /* ENABLE / DISABLE                                 */
   /* ================================================= */
 
   async disableProduct(
     productId: string,
   ): Promise<{ id: string; status: 'INACTIVE' }> {
-    const product = await this.productRepo.findById(productId);
-    if (!product) {
-      throw new ValidationError('PRODUCT_NOT_FOUND', 'Product not found');
-    }
+    const product = await this.getById(productId);
 
     if (!product.isActive()) {
       return { id: product.id, status: 'INACTIVE' };
@@ -279,7 +320,6 @@ async getPublicProducts(): Promise<Product[]> {
       await this.productRepo.updateStatus(disabled, tx);
     });
 
-    /* 🔥 EVENT */
     this.productEvents.emitProductDisabled({
       productId: product.id,
     });
@@ -290,23 +330,29 @@ async getPublicProducts(): Promise<Product[]> {
   async enableProduct(
     productId: string,
   ): Promise<{ id: string; status: 'ACTIVE' }> {
-    const product = await this.productRepo.findById(productId);
-    if (!product) {
-      throw new ValidationError('PRODUCT_NOT_FOUND', 'Product not found');
-    }
+    const product = await this.getById(productId);
 
     if (product.isActive()) {
       return { id: product.id, status: 'ACTIVE' };
     }
 
+    // ✅ FIX: FULL REHYDRATE
     const enabled = Product.rehydrate({
       id: product.id,
+      categoryId: product.categoryId,
       stockItemId: product.stockItemId,
 
       name: product.name,
       slug: product.slug,
       price: product.price,
       images: product.images,
+
+      tags: product.tags,
+      unitValue: product.unitValue,
+      unitType: product.unitType,
+
+      ratingAverage: product.ratingAverage,
+      ratingCount: product.ratingCount,
 
       shortDescription: product.shortDescription,
       longDescription: product.longDescription,
@@ -323,11 +369,28 @@ async getPublicProducts(): Promise<Product[]> {
       await this.productRepo.updateStatus(enabled, tx);
     });
 
-    /* 🔥 EVENT */
     this.productEvents.emitProductEnabled({
       productId: product.id,
     });
 
     return { id: product.id, status: 'ACTIVE' };
   }
+
+  /* ================================================= */
+  /* FILE HELPERS                                     */
+  /* ================================================= */
+
+  private deleteImageSafe(imagePath?: string): void {
+  if (!imagePath) return;
+
+  const appRoot =
+    process.env.APP_ROOT ??
+    path.resolve(process.cwd(), '..', '..');
+
+  const fullPath = path.join(appRoot, imagePath);
+
+  fs.promises.unlink(fullPath).catch(() => {
+    // silent fail (file may not exist)
+  });
+}
 }

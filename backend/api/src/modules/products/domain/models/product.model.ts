@@ -1,6 +1,11 @@
+// src/modules/products/domain/models/product.model.ts
+
 import { ValidationError } from '../../../../common/errors';
 
 import { ProductStatus } from '../enums/product-status.enum';
+import { ProductTag } from '../enums/product-tag.enum'; // ✅ MISSING IMPORT (CRITICAL)
+import { UnitType } from '../enums/unit-type.enum';
+
 
 import { ProductName } from '../value-objects/product-name.vo';
 import { ProductSlug } from '../value-objects/product-slug.vo';
@@ -15,12 +20,22 @@ import { ProductTrendState } from '../value-objects/product-trend-state.vo';
 export interface ProductProps {
   id: string;
 
+  categoryId: string;
   stockItemId: string;
 
   name: ProductName;
   slug: ProductSlug;
   price: ProductPrice;
   images: ProductImages;
+
+  tags: ProductTag[];
+
+  unitValue: number;
+  unitType: UnitType;
+
+  // ⭐ ADD THESE
+  ratingAverage?: number;
+  ratingCount: number;
 
   shortDescription?: string;
   longDescription?: string;
@@ -30,7 +45,7 @@ export interface ProductProps {
 
   createdAt: Date;
   updatedAt: Date;
-  createdBy: string; // ✅ REQUIRED
+  createdBy: string;
 }
 
 /* ---------------------------------------------- */
@@ -40,12 +55,22 @@ export interface ProductProps {
 export class Product {
   readonly id: string;
 
+  readonly categoryId: string;
   readonly stockItemId: string;
 
   readonly name: ProductName;
   readonly slug: ProductSlug;
   readonly price: ProductPrice;
   readonly images: ProductImages;
+
+  readonly tags: ProductTag[];
+
+  readonly unitValue: number;
+  readonly unitType: UnitType;
+
+  // ⭐ ADD THESE
+  readonly ratingAverage?: number;
+  readonly ratingCount: number;
 
   readonly shortDescription?: string;
   readonly longDescription?: string;
@@ -55,7 +80,7 @@ export class Product {
 
   readonly createdAt: Date;
   readonly updatedAt: Date;
-  readonly createdBy: string; // ✅ REQUIRED
+  readonly createdBy: string;
 
   private constructor(props: ProductProps) {
     Object.assign(this, props);
@@ -69,6 +94,7 @@ export class Product {
 
   static createNew(params: {
     id: string;
+    categoryId: string;
     stockItemId: string;
 
     productName: string;
@@ -78,12 +104,19 @@ export class Product {
     mainImage: string;
     galleryImages?: string[];
 
+    tags?: ProductTag[];
+
+    unitValue: number;
+    unitType: UnitType;
+
+    ratingAverage?: number;
+    ratingCount: number;
+
     shortDescription?: string;
     longDescription?: string;
 
     isTrending?: boolean;
-
-    createdBy: string; // ✅ REQUIRED
+    createdBy: string;
     now?: Date;
   }): Product {
     const now = params.now ?? new Date();
@@ -101,12 +134,21 @@ export class Product {
 
     return new Product({
       id: params.id,
+      categoryId: params.categoryId,
       stockItemId: params.stockItemId,
 
       name,
       slug,
       price,
       images,
+
+      tags: params.tags ?? [],
+
+      unitValue: params.unitValue,
+      unitType: params.unitType,
+
+      ratingAverage: params.ratingAverage,
+      ratingCount: params.ratingCount,
 
       shortDescription: params.shortDescription,
       longDescription: params.longDescription,
@@ -241,6 +283,13 @@ export class Product {
       throw new ValidationError(
         'PRODUCT_INVALID_STOCK_ITEM',
         'Stock item is required for product',
+      );
+    }
+
+    if (!this.categoryId) {
+      throw new ValidationError(
+        'PRODUCT_INVALID_CATEGORY',
+        'Category is required for product',
       );
     }
 

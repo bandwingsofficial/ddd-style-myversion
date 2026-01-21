@@ -9,7 +9,7 @@ export class ProductSlug {
   }
 
   /* ---------------------------------------------- */
-  /* FACTORY                                        */
+  /* FACTORIES                                      */
   /* ---------------------------------------------- */
 
   static fromProductName(productName: string): ProductSlug {
@@ -30,6 +30,21 @@ export class ProductSlug {
       throw new ValidationError(
         'INVALID_PRODUCT_SLUG',
         'Generated slug is invalid',
+      );
+    }
+
+    return new ProductSlug(slug);
+  }
+
+  /**
+   * 🔁 Rehydrate from persistence (DB)
+   * No regeneration, no mutation
+   */
+  static fromString(slug: string): ProductSlug {
+    if (!slug || typeof slug !== 'string') {
+      throw new ValidationError(
+        'INVALID_PRODUCT_SLUG',
+        'Persisted slug is invalid',
       );
     }
 

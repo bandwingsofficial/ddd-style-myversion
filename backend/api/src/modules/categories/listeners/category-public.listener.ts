@@ -1,89 +1,37 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
-import { CategoryEvents } from '../events/category-events.constants';
-import { CategoryRepository } from '../repositories/category.repository';
 import { CategoryPublicGateway } from '../gateways/category-public.gateway';
 
 @Injectable()
 export class CategoryPublicListener {
+  private emitTimeout: NodeJS.Timeout | null = null;
+
   constructor(
     private readonly gateway: CategoryPublicGateway,
-    private readonly categoryRepo: CategoryRepository,
   ) {}
 
   /* ================================================= */
-  /* SINGLE SOURCE OF TRUTH (PUBLIC STATE)              */
+  /* 🔥 BATCHED REAL-TIME EMIT                          */
   /* ================================================= */
 
-  private async emitFullCategoryList(): Promise<void> {
-    const categories =
-      await this.categoryRepo.findAll(false); // ACTIVE only
+  private scheduleEmit(): void {
+    if (this.emitTimeout) {
+      clearTimeout(this.emitTimeout);
+    }
 
-    const payload = categories.map((c) => {
-      return {
-        id: c.id,
-        name: c.name,
-        subtitle: c.subtitle,       // ✅ ADDED
-        imagePath: c.imagePath,     // ✅ ADDED
-
-        // kept for backward compatibility
-        status: c.status,
-        sortOrder: c.sortOrder,
-        createdAt: c.createdAt,
-        updatedAt: c.updatedAt,
-      };
-    });
-
-    this.gateway.emitCategoriesUpdated({
-      categories: payload,
-    });
+    this.emitTimeout = setTimeout(async () => {
+      await this.gateway.emitFullCategories();
+      this.emitTimeout = null;
+    }, 50); // 🔥 batch window (50ms)
   }
 
   /* ================================================= */
-  /* LIFECYCLE EVENTS                                  */
+  /* 🔥 LISTEN TO ALL CATEGORY EVENTS                   */
   /* ================================================= */
 
-  @OnEvent(CategoryEvents.CATEGORY_CREATED)
-  async handleCategoryCreated(): Promise<void> {
-    await this.emitFullCategoryList();
-  }
-
-  @OnEvent(CategoryEvents.CATEGORY_ENABLED)
-  async handleCategoryEnabled(): Promise<void> {
-    await this.emitFullCategoryList();
-  }
-
-  @OnEvent(CategoryEvents.CATEGORY_DISABLED)
-  async handleCategoryDisabled(): Promise<void> {
-    await this.emitFullCategoryList();
-  }
-
-  /* ================================================= */
-  /* UPDATE EVENTS                                     */
-  /* ================================================= */
-
-  @OnEvent(CategoryEvents.CATEGORY_UPDATED)
-  async handleCategoryUpdated(): Promise<void> {
-    await this.emitFullCategoryList();
-  }
-
-  @OnEvent(CategoryEvents.CATEGORY_IMAGE_UPDATED)
-  async handleCategoryImageUpdated(): Promise<void> {
-    await this.emitFullCategoryList();
-  }
-
-  @OnEvent(CategoryEvents.CATEGORY_IMAGE_REMOVED)
-  async handleCategoryImageRemoved(): Promise<void> {
-    await this.emitFullCategoryList();
-  }
-
-  /* ================================================= */
-  /* SORT ORDER EVENTS                                 */
-  /* ================================================= */
-
-  @OnEvent(CategoryEvents.CATEGORY_SORT_ORDER_CHANGED)
-  async handleCategorySortOrderChanged(): Promise<void> {
-    await this.emitFullCategoryList();
+  @OnEvent('category.*')
+  async handleAllCategoryEvents(): Promise<void> {
+    this.scheduleEmit();
   }
 }

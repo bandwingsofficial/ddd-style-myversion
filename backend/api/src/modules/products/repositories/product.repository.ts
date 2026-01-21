@@ -1,11 +1,19 @@
 import { Injectable } from '@nestjs/common';
+import {
+  Prisma,
+  UnitType as PrismaUnitType,
+  ProductTag as PrismaProductTag,
+} from '@prisma/client';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
 
 import { Product } from '../domain/models/product.model';
 
+import { ProductStatus } from '../domain/enums/product-status.enum';
 import { ProductStatusMapper } from '../mappers/product-status.mapper';
+import { ProductTagMapper } from '../mappers/product-tag.mapper';
+import { UnitTypeMapper } from '../mappers/unit-type.mapper';
 
 import { ProductName } from '../domain/value-objects/product-name.vo';
 import { ProductSlug } from '../domain/value-objects/product-slug.vo';
@@ -18,95 +26,32 @@ export class ProductRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   /* ================================================= */
-/* READ – ALL PRODUCTS                               */
-/* ================================================= */
-
-async findAll(
-  tx?: PrismaTransaction,
-): Promise<Product[]> {
-  const rows = await (tx ?? this.prisma).product.findMany({
-    orderBy: {
-      createdAt: 'desc',
-    },
-    include: {
-      galleryImages: true,
-    },
-  });
-
-  return rows.map(row => this.toDomain(row));
-}
-  /* ================================================= */
-/* READ – PUBLIC CATALOG                             */
-/* ================================================= */
-
-async findPublicProducts(): Promise<Product[]> {
-  const rows = await this.prisma.product.findMany({
-    where: {
-      status: 'ACTIVE',
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-    include: {
-      galleryImages: true,
-    },
-  });
-
-  return rows.map(row => this.toDomain(row));
-}
-
-  
-  
-  /* ================================================= */
-  /* CREATE                                            */
+  /* READ – LIST                                      */
   /* ================================================= */
 
-  async create(
-    product: Product,
+  async findAll(
+    includeInactive = false,
     tx?: PrismaTransaction,
-  ): Promise<Product> {
+  ): Promise<Product[]> {
     const client = tx ?? this.prisma;
 
-    const row = await client.product.create({
-      data: {
-        id: product.id,
-        stockItemId: product.stockItemId,
-
-        productName: product.name.getValue(),
-        slug: product.slug.getValue(),
-
-        shortDescription: product.shortDescription,
-        longDescription: product.longDescription,
-
-        originalPrice: product.price.getOriginal(),
-        discountPrice: product.price.getDiscount(),
-
-        mainImage: product.images.getMain(),
-
-        isTrending: product.trendState.getRaw(),
-        status: ProductStatusMapper.toPrisma(product.status),
-
-        createdBy: product.createdBy, // ✅ FIX
-        createdAt: product.createdAt,
-        updatedAt: product.updatedAt,
-
-        galleryImages: {
-          create: product.images.getGallery().map(
-            (imageUrl, index) => ({
-              imageUrl,
-              sortOrder: index,
-            }),
-          ),
-        },
-      },
+    const rows = await client.product.findMany({
+      where: includeInactive
+        ? {}
+        : {
+            status: ProductStatusMapper.toPrisma(
+              ProductStatus.ACTIVE,
+            ),
+          },
+      orderBy: { createdAt: 'desc' },
       include: { galleryImages: true },
     });
 
-    return this.toDomain(row);
+    return rows.map((row) => this.toDomain(row));
   }
 
   /* ================================================= */
-  /* READS                                             */
+  /* READ – SINGLE                                    */
   /* ================================================= */
 
   async findById(
@@ -133,20 +78,67 @@ async findPublicProducts(): Promise<Product[]> {
     return row ? this.toDomain(row) : null;
   }
 
-  async existsById(
-    id: string,
+  /* ================================================= */
+  /* CREATE (WRITE ONCE – CATEGORY PATTERN)            */
+  /* ================================================= */
+
+  async create(
+    params: { product: Product },
     tx?: PrismaTransaction,
-  ): Promise<boolean> {
-    const product = await (tx ?? this.prisma).product.findUnique({
-      where: { id },
-      select: { id: true },
+  ): Promise<Product> {
+    const client = tx ?? this.prisma;
+    const { product } = params;
+
+    const row = await client.product.create({
+      data: {
+        id: product.id,
+
+        categoryId: product.categoryId,
+        stockItemId: product.stockItemId,
+
+        productName: product.name.getValue(),
+        slug: product.slug.getValue(),
+
+        shortDescription: product.shortDescription,
+        longDescription: product.longDescription,
+
+        originalPrice: product.price.getOriginal(),
+        discountPrice: product.price.getDiscount(),
+
+        mainImage: product.images.getMain(),
+
+        unitValue: product.unitValue,
+        unitType: UnitTypeMapper.toPrisma(product.unitType),
+
+        ratingAverage: product.ratingAverage ?? 0,
+        ratingCount: product.ratingCount ?? 0,
+
+        tags: ProductTagMapper.toPrisma(product.tags),
+
+        isTrending: product.trendState.getRaw(),
+        status: ProductStatusMapper.toPrisma(product.status),
+
+        createdBy: product.createdBy,
+        createdAt: product.createdAt,
+        updatedAt: product.updatedAt,
+
+        galleryImages: {
+          create: product.images.getGallery().map(
+            (imageUrl, index) => ({
+              imageUrl,
+              sortOrder: index,
+            }),
+          ),
+        },
+      } satisfies Prisma.ProductUncheckedCreateInput,
+      include: { galleryImages: true },
     });
 
-    return !!product;
+    return this.toDomain(row);
   }
 
   /* ================================================= */
-  /* UPDATE DETAILS                                    */
+  /* UPDATE – DETAILS                                 */
   /* ================================================= */
 
   async updateDetails(
@@ -160,10 +152,8 @@ async findPublicProducts(): Promise<Product[]> {
       data: {
         productName: product.name.getValue(),
         slug: product.slug.getValue(),
-
         shortDescription: product.shortDescription,
         longDescription: product.longDescription,
-
         updatedAt: product.updatedAt,
       },
       include: { galleryImages: true },
@@ -173,7 +163,7 @@ async findPublicProducts(): Promise<Product[]> {
   }
 
   /* ================================================= */
-  /* UPDATE PRICE                                      */
+  /* UPDATE – PRICE                                   */
   /* ================================================= */
 
   async updatePrice(
@@ -196,25 +186,22 @@ async findPublicProducts(): Promise<Product[]> {
   }
 
   /* ================================================= */
-  /* UPDATE IMAGES                                     */
+  /* UPDATE – IMAGES (UPDATE ONLY, NO AUTO TX)         */
   /* ================================================= */
 
   async updateImages(
     product: Product,
-    tx?: PrismaTransaction,
+    tx: PrismaTransaction,
   ): Promise<Product> {
-    const client = tx ?? this.prisma;
-
-    await client.productImage.deleteMany({
+    await tx.productImage.deleteMany({
       where: { productId: product.id },
     });
 
-    const row = await client.product.update({
+    const row = await tx.product.update({
       where: { id: product.id },
       data: {
         mainImage: product.images.getMain(),
         updatedAt: product.updatedAt,
-
         galleryImages: {
           create: product.images.getGallery().map(
             (imageUrl, index) => ({
@@ -231,14 +218,16 @@ async findPublicProducts(): Promise<Product[]> {
   }
 
   /* ================================================= */
-  /* STATUS / TRENDING                                 */
+  /* STATUS / TRENDING                                */
   /* ================================================= */
 
   async updateStatus(
     product: Product,
     tx?: PrismaTransaction,
   ): Promise<Product> {
-    const row = await (tx ?? this.prisma).product.update({
+    const client = tx ?? this.prisma;
+
+    const row = await client.product.update({
       where: { id: product.id },
       data: {
         status: ProductStatusMapper.toPrisma(product.status),
@@ -254,7 +243,9 @@ async findPublicProducts(): Promise<Product[]> {
     product: Product,
     tx?: PrismaTransaction,
   ): Promise<Product> {
-    const row = await (tx ?? this.prisma).product.update({
+    const client = tx ?? this.prisma;
+
+    const row = await client.product.update({
       where: { id: product.id },
       data: {
         isTrending: product.trendState.getRaw(),
@@ -272,6 +263,7 @@ async findPublicProducts(): Promise<Product[]> {
 
   private toDomain(row: {
     id: string;
+    categoryId: string;
     stockItemId: string;
 
     productName: string;
@@ -280,17 +272,25 @@ async findPublicProducts(): Promise<Product[]> {
     shortDescription: string | null;
     longDescription: string | null;
 
-    originalPrice: any;
-    discountPrice: any;
+    originalPrice: Prisma.Decimal;
+    discountPrice: Prisma.Decimal | null;
 
     mainImage: string;
+
+    unitValue: number;
+    unitType: PrismaUnitType;
+
+    ratingAverage: Prisma.Decimal | null;
+    ratingCount: number;
+
+    tags: PrismaProductTag[];
 
     isTrending: boolean;
     status: any;
 
     createdAt: Date;
     updatedAt: Date;
-    createdBy: string; // ✅ REQUIRED
+    createdBy: string;
 
     galleryImages: {
       imageUrl: string;
@@ -299,10 +299,11 @@ async findPublicProducts(): Promise<Product[]> {
   }): Product {
     return Product.rehydrate({
       id: row.id,
+      categoryId: row.categoryId,
       stockItemId: row.stockItemId,
 
       name: ProductName.create(row.productName),
-      slug: ProductSlug.fromProductName(row.productName),
+      slug: ProductSlug.fromString(row.slug),
 
       price: ProductPrice.create(
         Number(row.originalPrice),
@@ -317,6 +318,18 @@ async findPublicProducts(): Promise<Product[]> {
           .sort((a, b) => a.sortOrder - b.sortOrder)
           .map((img) => img.imageUrl),
       ),
+
+      tags: ProductTagMapper.toDomain(row.tags),
+
+      unitValue: row.unitValue,
+      unitType: UnitTypeMapper.toDomain(row.unitType),
+
+      ratingAverage:
+        row.ratingAverage !== null
+          ? Number(row.ratingAverage)
+          : 0,
+
+      ratingCount: row.ratingCount ?? 0,
 
       shortDescription: row.shortDescription ?? undefined,
       longDescription: row.longDescription ?? undefined,

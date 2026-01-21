@@ -11,6 +11,7 @@ export function useProducts() {
   useEffect(() => {
     getPublicProducts()
       .then(setProducts)
+      .catch((err) => console.error("Failed to load products", err))
       .finally(() => setLoading(false));
   }, []);
 

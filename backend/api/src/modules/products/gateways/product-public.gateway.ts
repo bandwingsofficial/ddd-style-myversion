@@ -11,7 +11,8 @@ import { PublicProductListDto } from '../dtos/public-product-list.dto';
 @WebSocketGateway({
   namespace: '/public/products',
   cors: {
-    origin: '*',
+    origin: true,
+    credentials: true,
   },
 })
 export class ProductPublicGateway
@@ -22,30 +23,40 @@ export class ProductPublicGateway
 
   constructor(
     private readonly productRepo: ProductRepository,
-  ) {}
-
-  /* ================================================= */
-  /* 🔥 SEND INITIAL DATA ON CLIENT CONNECT            */
-  /* ================================================= */
-
-  async handleConnection(client: Socket): Promise<void> {
-    const products =
-      await this.productRepo.findAll(); // ACTIVE only
-
-    client.emit('products.updated', {
-      products: products.map((p) =>
-        PublicProductListDto.fromDomain(p),
-      ),
-    });
+  ) {
+    console.log('🚀 ProductPublicGateway initialized');
   }
 
   /* ================================================= */
-  /* 🟢 FULL PRODUCT STATE (BROADCAST)                */
+  /* INITIAL CONNECT                                   */
   /* ================================================= */
 
-  emitProductsUpdated(payload: {
-    products: any[];
-  }): void {
-    this.server.emit('products.updated', payload);
+  async handleConnection(client: Socket): Promise<void> {
+    console.log('✅ product client connected:', client.id);
+    await this.emitFullProducts(client);
+  }
+
+  /* ================================================= */
+  /* SINGLE SOURCE OF TRUTH                             */
+  /* ================================================= */
+
+  async emitFullProducts(client?: Socket): Promise<void> {
+    const products =
+      await this.productRepo.findAll(); // ACTIVE only
+
+    const payload = products.map((product) =>
+      PublicProductListDto.fromDomain(product),
+    );
+
+    const data = {
+      version: Date.now(),
+      products: payload,
+    };
+
+    if (client) {
+      client.emit('products.updated', data);
+    } else {
+      this.server.emit('products.updated', data);
+    }
   }
 }

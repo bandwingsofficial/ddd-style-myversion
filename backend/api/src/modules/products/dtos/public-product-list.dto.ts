@@ -1,3 +1,5 @@
+import { Product } from '../domain/models/product.model';
+
 export class PublicProductListDto {
   id: string;
 
@@ -19,6 +21,18 @@ export class PublicProductListDto {
     galleryImages: string[];
   };
 
+  unit: {
+    value: number;
+    type: string;
+  };
+
+  tags: string[];
+
+  rating: {
+    average: number;
+    count: number;
+  };
+
   shortDescription: string | null;
   longDescription: string | null;
 
@@ -27,10 +41,10 @@ export class PublicProductListDto {
   };
 
   /* ================================================= */
-  /* FACTORY                                           */
+  /* FACTORY                                          */
   /* ================================================= */
 
-  static fromDomain(product: any): PublicProductListDto {
+  static fromDomain(product: Product): PublicProductListDto {
     return {
       id: product.id,
 
@@ -44,7 +58,7 @@ export class PublicProductListDto {
 
       price: {
         originalPrice: product.price.getOriginal(),
-        discountPrice: product.price.getDiscount(),
+        discountPrice: product.price.getDiscount() ?? null,
       },
 
       images: {
@@ -52,15 +66,20 @@ export class PublicProductListDto {
         galleryImages: product.images.getGallery(),
       },
 
-      shortDescription:
-        product.shortDescription?.getValue?.() ??
-        product.shortDescription ??
-        null,
+      unit: {
+        value: product.unitValue,
+        type: product.unitType,
+      },
 
-      longDescription:
-        product.longDescription?.getValue?.() ??
-        product.longDescription ??
-        null,
+      tags: product.tags,
+
+      rating: {
+        average: product.ratingAverage ?? 0,
+        count: product.ratingCount ?? 0,
+      },
+
+      shortDescription: product.shortDescription ?? null,
+      longDescription: product.longDescription ?? null,
 
       trendState: {
         trending: product.trendState.getRaw(),

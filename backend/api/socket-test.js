@@ -1,18 +1,27 @@
 import { io } from 'socket.io-client';
+import https from 'https';
 
-const OUTLET_ID = 'be840d38-f997-4a3d-81d8-e920681f1dd4';
+// 🔥 HTTPS agent that accepts mkcert / self-signed certs
+const httpsAgent = new https.Agent({
+  rejectUnauthorized: false,
+});
 
-const socket = io('http://localhost:4000/public/outlets', {
-  transports: ['websocket'],
+const socket = io('https://admin.dev.local:4000/public/categories', {
+  transports: ['polling', 'websocket'],
+  secure: true,
+
+  // 🔥 THIS IS THE MISSING PIECE
+  agent: httpsAgent,
 });
 
 socket.on('connect', () => {
-  console.log('✅ connected:', socket.id);
-
-  console.log('➡️ joining outlet room:', OUTLET_ID);
-  socket.emit('join_outlet', { outletId: OUTLET_ID });
+  console.log('✅ CONNECTED:', socket.id);
 });
 
-socket.onAny((event, data) => {
-  console.log('📩 received:', event, data);
+socket.on('categories.updated', (data) => {
+  console.log('🔥 categories.updated', data);
+});
+
+socket.on('connect_error', (err) => {
+  console.error('❌ connect_error:', err.message);
 });

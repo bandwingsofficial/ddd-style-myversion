@@ -1,9 +1,17 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import Image from "next/image";
 import { useProductBySlug } from "@/features/products/hooks/useProductBySlug";
 import { ShoppingBag, ShieldCheck, Truck } from "lucide-react";
+
+const BACKEND_URL = "http://localhost:5000";
+
+const getImageUrl = (path?: string) => {
+  if (!path || path.trim() === "") return "";
+  return path.startsWith("http")
+    ? path
+    : `${BACKEND_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+};
 
 export default function ProductDetailsPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -11,13 +19,20 @@ export default function ProductDetailsPage() {
 
   if (!product) return <div className="loading">Refining your juice...</div>;
 
+  const mainImageUrl = getImageUrl(product.images.mainImage);
+
+  // Determine current price vs original price
+  const currentPrice = product.price.discountPrice || product.price.originalPrice;
+  const isDiscounted = product.price.discountPrice && product.price.discountPrice < product.price.originalPrice;
+
   return (
     <div className="product-page">
       <div className="details-container">
         <div className="image-gallery">
           <div className="main-image-wrapper">
-             <img src={product.images.mainImage} alt={product.name.value} />
+             <img src={mainImageUrl} alt={product.name.value} />
           </div>
+          {/* Optional: Add gallery preview here later using product.images.galleryImages */}
         </div>
 
         <div className="info-panel">
@@ -25,13 +40,15 @@ export default function ProductDetailsPage() {
           <h1 className="display-title">{product.name.value}</h1>
           
           <div className="pricing-section">
-            <span className="price-tag">₹{product.price.originalPrice}</span>
+            <span className="price-tag">₹{currentPrice}</span>
+            {isDiscounted && (
+               <span className="old-price">₹{product.price.originalPrice}</span>
+            )}
             <span className="stock-status">In Stock</span>
           </div>
 
           <p className="product-desc">
-            Experience the natural sweetness of our freshly pressed juice. 
-            Harvested daily and served chilled for maximum nutrient retention.
+            {product.shortDescription || product.longDescription || "Experience the natural sweetness of our freshly pressed juice."}
           </p>
 
           <div className="actions">
@@ -105,6 +122,13 @@ export default function ProductDetailsPage() {
           font-size: 2rem;
           font-weight: 800;
           color: #16a34a;
+        }
+        
+        .old-price {
+          font-size: 1.2rem;
+          color: #94a3b8;
+          text-decoration: line-through;
+          font-weight: 600;
         }
 
         .stock-status {

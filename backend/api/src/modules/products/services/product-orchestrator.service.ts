@@ -19,37 +19,37 @@ export class ProductOrchestratorService {
   ) {}
 
   /* ================================================= */
-/* PRODUCT – READS                                   */
-/* ================================================= */
-
-async getAllProducts(): Promise<Product[]> {
-  return this.productService.getAllProducts();
-}
-  async getPublicProducts() {
-  return this.productService.getPublicProducts();
-}
-
-  
-  /* ================================================= */
-  /* PRODUCT – READS                                   */
+  /* PRODUCT – READS                                  */
   /* ================================================= */
 
-  async getProductById(productId: string): Promise<Product> {
+  async getAllProducts(): Promise<Product[]> {
+    return this.productService.getAllProducts();
+  }
+
+  async getPublicProducts(): Promise<Product[]> {
+    return this.productService.getPublicProducts();
+  }
+
+  async getProductById(
+    productId: string,
+  ): Promise<Product> {
     return this.productService.getById(productId);
   }
 
-  async getProductBySlug(slug: string): Promise<Product> {
+  async getProductBySlug(
+    slug: string,
+  ): Promise<Product> {
     return this.productService.getBySlug(slug);
   }
 
   /* ================================================= */
-  /* PRODUCT – CREATE / UPDATE / ENABLE / DISABLE       */
+  /* PRODUCT – CREATE / UPDATE                        */
   /* ================================================= */
 
-  async createProduct(params: {
-    product: Product;
-  }): Promise<Product> {
-    return this.productService.createProduct(params);
+  async createProduct(
+    product: Product,
+  ): Promise<Product> {
+    return this.productService.createProduct(product);
   }
 
   async updateProductDetails(params: {
@@ -79,31 +79,43 @@ async getAllProducts(): Promise<Product[]> {
     return this.productService.updateImages(params);
   }
 
+  /* ================================================= */
+  /* PRODUCT – ENABLE / DISABLE                       */
+  /* ================================================= */
+
   async disableProduct(params: {
     productId: string;
   }): Promise<{ id: string; status: 'INACTIVE' }> {
-    return this.productService.disableProduct(params.productId);
+    return this.productService.disableProduct(
+      params.productId,
+    );
   }
 
   async enableProduct(params: {
     productId: string;
   }): Promise<{ id: string; status: 'ACTIVE' }> {
-    return this.productService.enableProduct(params.productId);
+    return this.productService.enableProduct(
+      params.productId,
+    );
   }
 
   /* ================================================= */
-  /* PRODUCT – TRENDING                                 */
+  /* PRODUCT – TRENDING                               */
   /* ================================================= */
 
   async markProductTrending(params: {
     productId: string;
   }): Promise<void> {
-    return this.productService.markTrending(params.productId);
+    return this.productService.markTrending(
+      params.productId,
+    );
   }
 
   async unmarkProductTrending(params: {
     productId: string;
   }): Promise<void> {
-    return this.productService.unmarkTrending(params.productId);
+    return this.productService.unmarkTrending(
+      params.productId,
+    );
   }
 }

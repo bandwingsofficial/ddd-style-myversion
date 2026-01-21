@@ -17,7 +17,7 @@ export class ProductEventsService {
   ) {}
 
   /* ================================================= */
-  /* LIFECYCLE                                         */
+  /* LIFECYCLE                                        */
   /* ================================================= */
 
   emitProductCreated(
@@ -48,7 +48,7 @@ export class ProductEventsService {
   }
 
   /* ================================================= */
-  /* UPDATE                                            */
+  /* UPDATE                                           */
   /* ================================================= */
 
   emitProductUpdated(
@@ -61,7 +61,7 @@ export class ProductEventsService {
   }
 
   /* ================================================= */
-  /* PRICE                                             */
+  /* PRICE                                            */
   /* ================================================= */
 
   emitProductPriceChanged(
@@ -74,20 +74,20 @@ export class ProductEventsService {
   }
 
   /* ================================================= */
-  /* IMAGES                                            */
+  /* IMAGES                                           */
   /* ================================================= */
 
   emitProductImagesChanged(
     payload: ProductImagesChangedEvent,
   ): void {
     this.eventEmitter.emit(
-      ProductEvents.PRODUCT_IMAGES_CHANGED,
+      ProductEvents.PRODUCT_IMAGES_UPDATED,
       payload,
     );
   }
 
   /* ================================================= */
-  /* TRENDING                                          */
+  /* TRENDING                                         */
   /* ================================================= */
 
   emitProductTrendingChanged(

@@ -1,3 +1,5 @@
+// src/modules/products/controllers/public-product.controller.ts
+
 import {
   Controller,
   Get,
@@ -14,25 +16,23 @@ export class PublicProductController {
     private readonly orchestrator: ProductOrchestratorService,
   ) {}
 
-  
   /* ================================================= */
-/* PRODUCT – PUBLIC CATALOG                          */
-/* ================================================= */
+  /* PRODUCT – PUBLIC CATALOG                          */
+  /* ================================================= */
 
-@Get()
-async getPublicProducts() {
-  const products = await this.orchestrator.getPublicProducts();
+  @Get()
+  async getPublicProducts() {
+    const products =
+      await this.orchestrator.getPublicProducts();
 
-  return {
-    success: true,
-    code: 'PUBLIC_PRODUCTS_FETCHED',
-    message: 'Public products fetched successfully',
-    data: products.map(
-      product => PublicProductListDto.fromDomain(product),
-    ),
-  };
-}
-  
+    return {
+      success: true,
+      code: 'PUBLIC_PRODUCTS_FETCHED',
+      message: 'Public products fetched successfully',
+      data: products.map(PublicProductListDto.fromDomain),
+    };
+  }
+
   /* ================================================= */
   /* PRODUCT – FETCH BY SLUG (PUBLIC)                  */
   /* ================================================= */
@@ -46,8 +46,8 @@ async getPublicProducts() {
 
     if (!product.canBeShown()) {
       throw new ValidationError(
-        'PRODUCT_NOT_AVAILABLE',
-        'Product is not available',
+        'PRODUCT_NOT_FOUND',
+        'Product not found',
       );
     }
 
@@ -55,7 +55,7 @@ async getPublicProducts() {
       success: true,
       code: 'PRODUCT_FETCHED',
       message: 'Product fetched successfully',
-      data: product,
+      data: PublicProductListDto.fromDomain(product),
     };
   }
 
@@ -72,8 +72,8 @@ async getPublicProducts() {
 
     if (!product.canBeShown()) {
       throw new ValidationError(
-        'PRODUCT_NOT_AVAILABLE',
-        'Product is not available',
+        'PRODUCT_NOT_FOUND',
+        'Product not found',
       );
     }
 
@@ -81,7 +81,7 @@ async getPublicProducts() {
       success: true,
       code: 'PRODUCT_FETCHED',
       message: 'Product fetched successfully',
-      data: product,
+      data: PublicProductListDto.fromDomain(product),
     };
   }
 }

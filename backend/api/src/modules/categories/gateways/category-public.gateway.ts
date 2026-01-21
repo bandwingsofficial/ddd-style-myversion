@@ -10,7 +10,8 @@ import { CategoryRepository } from '../repositories/category.repository';
 @WebSocketGateway({
   namespace: '/public/categories',
   cors: {
-    origin: '*',
+    origin: true,
+    credentials: true,
   },
 })
 export class CategoryPublicGateway
@@ -21,89 +22,43 @@ export class CategoryPublicGateway
 
   constructor(
     private readonly categoryRepo: CategoryRepository,
-  ) {}
+  ) {
+    console.log('🚀 CategoryPublicGateway initialized');
+  }
 
   /* ================================================= */
-  /* 🔥 SEND INITIAL DATA ON CLIENT CONNECT            */
+  /* INITIAL CONNECT                                   */
   /* ================================================= */
 
   async handleConnection(client: Socket): Promise<void> {
+    console.log('✅ category client connected:', client.id);
+    await this.emitFullCategories(client);
+  }
+
+  /* ================================================= */
+  /* SINGLE SOURCE OF TRUTH                             */
+  /* ================================================= */
+
+  async emitFullCategories(client?: Socket): Promise<void> {
     const categories =
-      await this.categoryRepo.findAll(false); // ACTIVE only
+      await this.categoryRepo.findAll(false);
 
-    client.emit('categories.updated', {
-      categories: categories.map((c) => ({
-        id: c.id,
-        name: c.name,
-        subtitle: c.subtitle,          // ✅ ADDED
-        imagePath: c.imagePath,        // ✅ ADDED
+    const payload = categories.map((c) => ({
+      id: c.id,
+      name: c.name,
+      imagePath: c.imagePath,
+      sortOrder: c.sortOrder,
+    }));
 
-        // kept for backward compatibility
-        status: c.status,
-        sortOrder: c.sortOrder,
-        createdAt: c.createdAt,
-        updatedAt: c.updatedAt,
-      })),
-    });
-  }
+    const data = {
+      version: Date.now(),
+      categories: payload,
+    };
 
-  /* ================================================= */
-  /* EXISTING EVENTS (UNCHANGED)                       */
-  /* ================================================= */
-
-  emitCategoryCreated(payload: {
-    categoryId: string;
-  }): void {
-    this.server.emit('category.created', payload);
-  }
-
-  emitCategoryEnabled(payload: {
-    categoryId: string;
-  }): void {
-    this.server.emit('category.enabled', payload);
-  }
-
-  emitCategoryDisabled(payload: {
-    categoryId: string;
-  }): void {
-    this.server.emit('category.disabled', payload);
-  }
-
-  emitCategoryUpdated(payload: {
-    categoryId: string;
-    name?: string;
-    subtitle?: string;
-    imagePath?: string | null;
-  }): void {
-    this.server.emit('category.updated', payload);
-  }
-
-  emitCategorySortOrderChanged(payload: {
-    categoryId: string;
-    sortOrder: number;
-  }): void {
-    this.server.emit(
-      'category.sort_order.changed',
-      payload,
-    );
-  }
-
-  /* ================================================= */
-  /* 🟢 FULL CATEGORY STATE (BROADCAST)                */
-  /* ================================================= */
-
-  emitCategoriesUpdated(payload: {
-    categories: {
-      id: string;
-      name: string;
-      subtitle?: string;
-      imagePath?: string | null;
-      status: string;
-      sortOrder: number;
-      createdAt: Date;
-      updatedAt: Date;
-    }[];
-  }): void {
-    this.server.emit('categories.updated', payload);
+    if (client) {
+      client.emit('categories.updated', data);
+    } else {
+      this.server.emit('categories.updated', data);
+    }
   }
 }

@@ -9,6 +9,7 @@ import {
  */
 export const getPublicProducts = async (): Promise<ProductListItem[]> => {
   const res = await customerAxios.get("/public/products");
+  // Ensure we return the array inside 'data'
   return res.data.data;
 };
 
@@ -19,5 +20,6 @@ export const getProductBySlug = async (
   slug: string
 ): Promise<ProductDetails> => {
   const res = await customerAxios.get(`/public/products/slug/${slug}`);
+  // Ensure we return the object inside 'data'
   return res.data.data;
 };

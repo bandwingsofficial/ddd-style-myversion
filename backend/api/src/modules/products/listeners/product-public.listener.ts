@@ -1,79 +1,37 @@
 import { Injectable } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
-import { ProductEvents } from '../events/product-events.constants';
-import { ProductRepository } from '../repositories/product.repository';
 import { ProductPublicGateway } from '../gateways/product-public.gateway';
-import { PublicProductListDto } from '../dtos/public-product-list.dto';
 
 @Injectable()
 export class ProductPublicListener {
+  private emitTimeout: NodeJS.Timeout | null = null;
+
   constructor(
     private readonly gateway: ProductPublicGateway,
-    private readonly productRepo: ProductRepository,
   ) {}
 
   /* ================================================= */
-  /* SINGLE SOURCE OF TRUTH (PUBLIC STATE)              */
+  /* 🔥 BATCHED REAL-TIME EMIT                          */
   /* ================================================= */
 
-  private async emitFullProductList(): Promise<void> {
-    const products =
-      await this.productRepo.findAll(); // ACTIVE only
+  private scheduleEmit(): void {
+    if (this.emitTimeout) {
+      clearTimeout(this.emitTimeout);
+    }
 
-    const payload = products.map((product) =>
-      PublicProductListDto.fromDomain(product),
-    );
-
-    this.gateway.emitProductsUpdated({
-      products: payload,
-    });
+    this.emitTimeout = setTimeout(async () => {
+      await this.gateway.emitFullProducts();
+      this.emitTimeout = null;
+    }, 50); // 🔥 batch window (50ms)
   }
 
   /* ================================================= */
-  /* LIFECYCLE EVENTS                                  */
+  /* 🔥 LISTEN TO ALL PRODUCT EVENTS                   */
   /* ================================================= */
 
-  @OnEvent(ProductEvents.PRODUCT_CREATED)
-  async handleProductCreated(): Promise<void> {
-    await this.emitFullProductList();
-  }
-
-  @OnEvent(ProductEvents.PRODUCT_ENABLED)
-  async handleProductEnabled(): Promise<void> {
-    await this.emitFullProductList();
-  }
-
-  @OnEvent(ProductEvents.PRODUCT_DISABLED)
-  async handleProductDisabled(): Promise<void> {
-    await this.emitFullProductList();
-  }
-
-  /* ================================================= */
-  /* UPDATE EVENTS                                     */
-  /* ================================================= */
-
-  @OnEvent(ProductEvents.PRODUCT_UPDATED)
-  async handleProductUpdated(): Promise<void> {
-    await this.emitFullProductList();
-  }
-
-  @OnEvent(ProductEvents.PRODUCT_PRICE_CHANGED)
-  async handleProductPriceChanged(): Promise<void> {
-    await this.emitFullProductList();
-  }
-
-  @OnEvent(ProductEvents.PRODUCT_IMAGES_CHANGED)
-  async handleProductImagesChanged(): Promise<void> {
-    await this.emitFullProductList();
-  }
-
-  /* ================================================= */
-  /* TRENDING                                          */
-  /* ================================================= */
-
-  @OnEvent(ProductEvents.PRODUCT_TRENDING_CHANGED)
-  async handleProductTrendingChanged(): Promise<void> {
-    await this.emitFullProductList();
+  @OnEvent('product.*')
+  async handleAllProductEvents(): Promise<void> {
+    this.scheduleEmit();
   }
 }

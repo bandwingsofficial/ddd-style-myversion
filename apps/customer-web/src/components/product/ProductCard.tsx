@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { ProductListItem } from "@/features/products/types/product.types";
 import { Plus, Minus, ImageOff, Heart } from "lucide-react";
-// IMPORTANT: Import from the file we created in Step 1
 import { useFavorites } from "@/providers/CustomerAuthProvider"; 
 
 // --- HELPERS ---
@@ -15,26 +14,25 @@ const resolveString = (data: any): string => {
   return String(data);
 };
 
+// Updated to match your JSON price structure
 const resolvePrice = (product: ProductListItem) => {
+  const p = product.price;
+  
+  // Default values
   let current = 0;
   let original = 0;
-  const p = product.price;
 
-  if (typeof p === "number") {
-    current = p;
-    original = product.originalPrice || p;
-  } else if (typeof p === "object" && p !== null) {
-    if ("discountPrice" in p) {
-      current = (p as any).discountPrice;
-      original = (p as any).originalPrice;
-    } else if ("originalPrice" in p) {
-       current = (p as any).originalPrice;
-       original = (p as any).originalPrice;
-    } else if ("value" in p) {
-       current = (p as any).value;
-       original = (p as any).value;
+  if (p && typeof p === "object") {
+    // If discountPrice exists and is different from original
+    if (p.discountPrice && p.discountPrice < p.originalPrice) {
+      current = p.discountPrice;
+      original = p.originalPrice;
+    } else {
+      current = p.originalPrice;
+      original = p.originalPrice;
     }
   }
+
   return { current: Number(current) || 0, original: Number(original) || 0 };
 };
 
@@ -51,19 +49,22 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
   const slug = resolveString(product.slug);
   const { current: price, original: originalPrice } = resolvePrice(product);
   const hasDiscount = originalPrice > price;
+  
   const BACKEND_URL = "http://localhost:5000";
 
+  // Updated to access product.images.mainImage based on your JSON
   const getImageUrl = (path?: string) => {
     if (!path || path.trim() === "") return null;
     return path.startsWith("http")
       ? path
       : `${BACKEND_URL}${path.startsWith("/") ? "" : "/"}${path}`;
   };
-  const imageUrl = getImageUrl(product.mainImage);
+
+  const imageUrl = getImageUrl(product.images?.mainImage);
 
   // --- HANDLERS ---
   const handleToggleFavorite = (e: React.MouseEvent) => {
-    e.preventDefault(); // Stop Link navigation
+    e.preventDefault();
     e.stopPropagation();
     if (isFav) {
       removeFromFavorites(product.id);

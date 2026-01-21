@@ -5,7 +5,11 @@ import {
   Param,
   Post,
   UseGuards,
+  UseInterceptors,
+  UploadedFiles,
 } from '@nestjs/common';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { randomUUID } from 'crypto';
 
 import { ProductOrchestratorService } from '../services/product-orchestrator.service';
 
@@ -24,7 +28,9 @@ import { UpdateProductImagesDto } from '../dtos/update-product-images.dto';
 
 /* Domain */
 import { Product } from '../domain/models/product.model';
-import { randomUUID } from 'crypto';
+
+/* Upload */
+import { productImageUploadOptions } from '../../../common/upload/product-image.upload';
 
 @Controller('products')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -34,28 +40,30 @@ export class ProductManagementController {
   ) {}
 
   /* ================================================= */
-/* PRODUCT – LIST (SUPER ADMIN ONLY)                  */
-/* ================================================= */
-
-@Get()
-@Roles(ActorType.SUPER_ADMIN)
-async getAllProducts() {
-  const data = await this.orchestrator.getAllProducts();
-
-  return {
-    success: true,
-    code: 'PRODUCTS_FETCHED',
-    message: 'Products fetched successfully',
-    data,
-  };
-}
-  
+  /* PRODUCT – LIST (SUPER ADMIN ONLY)                 */
   /* ================================================= */
-  /* PRODUCT – READS                                   */
+
+  @Get()
+  @Roles(ActorType.SUPER_ADMIN)
+  async getAllProducts() {
+    const data = await this.orchestrator.getAllProducts();
+
+    return {
+      success: true,
+      code: 'PRODUCTS_FETCHED',
+      message: 'Products fetched successfully',
+      data,
+    };
+  }
+
+  /* ================================================= */
+  /* PRODUCT – READ                                   */
   /* ================================================= */
 
   @Get(':productId')
-  async getProductById(@Param('productId') productId: string) {
+  async getProductById(
+    @Param('productId') productId: string,
+  ) {
     const data =
       await this.orchestrator.getProductById(productId);
 
@@ -68,46 +76,76 @@ async getAllProducts() {
   }
 
   /* ================================================= */
-  /* PRODUCT – CREATE (SUPER ADMIN ONLY)                */
+  /* PRODUCT – CREATE (SUPER ADMIN ONLY)               */
   /* ================================================= */
 
   @Post()
-@Roles(ActorType.SUPER_ADMIN)
-async createProduct(
-  @Body() dto: CreateProductDto,
-  @CurrentUser() user,
-) {
-  const product = Product.createNew({
-    id: randomUUID(),
-    stockItemId: dto.stockItemId,
+  @Roles(ActorType.SUPER_ADMIN)
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'mainImage', maxCount: 1 },
+        { name: 'galleryImages', maxCount: 5 },
+      ],
+      productImageUploadOptions,
+    ),
+  )
+  async createProduct(
+    @Body() dto: CreateProductDto,
+    @UploadedFiles()
+    files: {
+      mainImage?: Express.Multer.File[];
+      galleryImages?: Express.Multer.File[];
+    },
+    @CurrentUser() user,
+  ) {
+    if (!files?.mainImage?.length) {
+      throw new Error('Main image is required');
+    }
 
-    productName: dto.productName,
-    originalPrice: dto.originalPrice,
-    discountPrice: dto.discountPrice,
+    // ✅ BUILD DOMAIN OBJECT (FULL & FINAL)
+    const product = Product.createNew({
+      id: randomUUID(),
 
-    mainImage: dto.mainImage,
-    galleryImages: dto.galleryImages,
+      categoryId: dto.categoryId,
+      stockItemId: dto.stockItemId,
 
-    shortDescription: dto.shortDescription,
-    longDescription: dto.longDescription,
+      productName: dto.productName,
+      originalPrice: dto.originalPrice,
+      discountPrice: dto.discountPrice,
 
-    isTrending: dto.isTrending,
-    createdBy: user.actorId, // ✅ FIX
-  });
+      mainImage: `images/products/${files.mainImage[0].filename}`,
+      galleryImages: files.galleryImages?.map(
+        (f) => `images/products/${f.filename}`,
+      ),
 
-  const data =
-    await this.orchestrator.createProduct({ product });
+      tags: dto.tags ?? [],
 
-  return {
-    success: true,
-    code: 'PRODUCT_CREATED',
-    message: 'Product created successfully',
-    data,
-  };
-}
+      unitValue: dto.unitValue,
+      unitType: dto.unitType,
+      ratingAverage: 0,
+      ratingCount: 0,
+
+      shortDescription: dto.shortDescription,
+      longDescription: dto.longDescription,
+
+      isTrending: dto.isTrending ?? false,
+      createdBy: user.actorId,
+    });
+
+    const data =
+      await this.orchestrator.createProduct(product);
+
+    return {
+      success: true,
+      code: 'PRODUCT_CREATED',
+      message: 'Product created successfully',
+      data,
+    };
+  }
 
   /* ================================================= */
-  /* PRODUCT – UPDATE DETAILS (SUPER ADMIN ONLY)        */
+  /* PRODUCT – UPDATE DETAILS                         */
   /* ================================================= */
 
   @Post(':productId/update')
@@ -115,7 +153,6 @@ async createProduct(
   async updateProductDetails(
     @Param('productId') productId: string,
     @Body() dto: UpdateProductDetailsDto,
-    @CurrentUser() user,
   ) {
     const data =
       await this.orchestrator.updateProductDetails({
@@ -136,7 +173,7 @@ async createProduct(
   }
 
   /* ================================================= */
-  /* PRODUCT – UPDATE PRICE (SUPER ADMIN ONLY)          */
+  /* PRODUCT – UPDATE PRICE                           */
   /* ================================================= */
 
   @Post(':productId/price')
@@ -144,7 +181,6 @@ async createProduct(
   async updateProductPrice(
     @Param('productId') productId: string,
     @Body() dto: UpdateProductPriceDto,
-    @CurrentUser() user,
   ) {
     const data =
       await this.orchestrator.updateProductPrice({
@@ -162,7 +198,7 @@ async createProduct(
   }
 
   /* ================================================= */
-  /* PRODUCT – UPDATE IMAGES (SUPER ADMIN ONLY)         */
+  /* PRODUCT – UPDATE IMAGES                          */
   /* ================================================= */
 
   @Post(':productId/images')
@@ -170,7 +206,6 @@ async createProduct(
   async updateProductImages(
     @Param('productId') productId: string,
     @Body() dto: UpdateProductImagesDto,
-    @CurrentUser() user,
   ) {
     const data =
       await this.orchestrator.updateProductImages({
@@ -188,14 +223,13 @@ async createProduct(
   }
 
   /* ================================================= */
-  /* PRODUCT – ENABLE / DISABLE (SUPER ADMIN ONLY)      */
+  /* PRODUCT – ENABLE / DISABLE                       */
   /* ================================================= */
 
   @Post(':productId/disable')
   @Roles(ActorType.SUPER_ADMIN)
   async disableProduct(
     @Param('productId') productId: string,
-    @CurrentUser() user,
   ) {
     const data =
       await this.orchestrator.disableProduct({ productId });
@@ -212,7 +246,6 @@ async createProduct(
   @Roles(ActorType.SUPER_ADMIN)
   async enableProduct(
     @Param('productId') productId: string,
-    @CurrentUser() user,
   ) {
     const data =
       await this.orchestrator.enableProduct({ productId });
@@ -226,14 +259,13 @@ async createProduct(
   }
 
   /* ================================================= */
-  /* PRODUCT – TRENDING (SUPER ADMIN ONLY)              */
+  /* PRODUCT – TRENDING                               */
   /* ================================================= */
 
   @Post(':productId/trending/on')
   @Roles(ActorType.SUPER_ADMIN)
   async markTrending(
     @Param('productId') productId: string,
-    @CurrentUser() user,
   ) {
     await this.orchestrator.markProductTrending({
       productId,
@@ -251,7 +283,6 @@ async createProduct(
   @Roles(ActorType.SUPER_ADMIN)
   async unmarkTrending(
     @Param('productId') productId: string,
-    @CurrentUser() user,
   ) {
     await this.orchestrator.unmarkProductTrending({
       productId,
