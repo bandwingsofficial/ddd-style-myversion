@@ -60,7 +60,53 @@ export class ProductService {
   async getPublicProducts(): Promise<Product[]> {
     const products = await this.productRepo.findAll();
     return products.filter((p) => p.canBeShown());
+    
   }
+
+  async getPublicProductsWithCategory(): Promise<
+  {
+    product: Product;
+    category: { id: string; name: string };
+  }[]
+> {
+  return this.productRepo.findAllWithCategory();
+}
+
+async getBySlugWithCategory(slug: string): Promise<{
+  product: Product;
+  category: { id: string; name: string };
+}> {
+  const result =
+    await this.productRepo.findBySlugWithCategory(slug);
+
+  if (!result) {
+    throw new ValidationError(
+      'PRODUCT_NOT_FOUND',
+      'Product not found',
+    );
+  }
+
+  return result;
+}
+
+
+async getByIdWithCategory(productId: string): Promise<{
+  product: Product;
+  category: { id: string; name: string };
+}> {
+  const result =
+    await this.productRepo.findByIdWithCategory(productId);
+
+  if (!result) {
+    throw new ValidationError(
+      'PRODUCT_NOT_FOUND',
+      'Product not found',
+    );
+  }
+
+  return result;
+}
+
 
   async getById(productId: string): Promise<Product> {
     const product = await this.productRepo.findById(productId);
@@ -73,6 +119,8 @@ export class ProductService {
     }
 
     return product;
+
+
   }
 
   async getBySlug(slug: string): Promise<Product> {

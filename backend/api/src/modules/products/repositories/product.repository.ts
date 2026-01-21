@@ -50,6 +50,90 @@ export class ProductRepository {
     return rows.map((row) => this.toDomain(row));
   }
 
+  async findAllWithCategory(): Promise<
+  {
+    product: Product;
+    category: { id: string; name: string };
+  }[]
+> {
+  const rows = await this.prisma.product.findMany({
+    where: {
+      status: ProductStatusMapper.toPrisma(
+        ProductStatus.ACTIVE,
+      ),
+    },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      galleryImages: true,
+      category: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  return rows.map((row) => ({
+    product: this.toDomain(row),
+    category: row.category,
+  }));
+}
+
+async findBySlugWithCategory(
+  slug: string,
+): Promise<{
+  product: Product;
+  category: { id: string; name: string };
+} | null> {
+  const row = await this.prisma.product.findUnique({
+    where: { slug },
+    include: {
+      galleryImages: true,
+      category: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  if (!row) return null;
+
+  return {
+    product: this.toDomain(row),
+    category: row.category,
+  };
+}
+
+async findByIdWithCategory(
+  id: string,
+): Promise<{
+  product: Product;
+  category: { id: string; name: string };
+} | null> {
+  const row = await this.prisma.product.findUnique({
+    where: { id },
+    include: {
+      galleryImages: true,
+      category: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  });
+
+  if (!row) return null;
+
+  return {
+    product: this.toDomain(row),
+    category: row.category,
+  };
+}
+
   /* ================================================= */
   /* READ – SINGLE                                    */
   /* ================================================= */

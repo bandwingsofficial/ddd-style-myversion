@@ -29,7 +29,9 @@ export class PublicProductController {
       success: true,
       code: 'PUBLIC_PRODUCTS_FETCHED',
       message: 'Public products fetched successfully',
-      data: products.map(PublicProductListDto.fromDomain),
+      data: products.map(({ product, category }) =>
+        PublicProductListDto.fromDomain(product, category),
+      ),
     };
   }
 
@@ -41,10 +43,10 @@ export class PublicProductController {
   async getProductBySlug(
     @Param('slug') slug: string,
   ) {
-    const product =
-      await this.orchestrator.getProductBySlug(slug);
+    const result =
+      await this.orchestrator.getPublicProductBySlug(slug);
 
-    if (!product.canBeShown()) {
+    if (!result.product.canBeShown()) {
       throw new ValidationError(
         'PRODUCT_NOT_FOUND',
         'Product not found',
@@ -55,7 +57,10 @@ export class PublicProductController {
       success: true,
       code: 'PRODUCT_FETCHED',
       message: 'Product fetched successfully',
-      data: PublicProductListDto.fromDomain(product),
+      data: PublicProductListDto.fromDomain(
+        result.product,
+        result.category,
+      ),
     };
   }
 
@@ -67,10 +72,12 @@ export class PublicProductController {
   async getProductById(
     @Param('productId') productId: string,
   ) {
-    const product =
-      await this.orchestrator.getProductById(productId);
+    const result =
+      await this.orchestrator.getPublicProductById(
+        productId,
+      );
 
-    if (!product.canBeShown()) {
+    if (!result.product.canBeShown()) {
       throw new ValidationError(
         'PRODUCT_NOT_FOUND',
         'Product not found',
@@ -81,7 +88,10 @@ export class PublicProductController {
       success: true,
       code: 'PRODUCT_FETCHED',
       message: 'Product fetched successfully',
-      data: PublicProductListDto.fromDomain(product),
+      data: PublicProductListDto.fromDomain(
+        result.product,
+        result.category,
+      ),
     };
   }
 }

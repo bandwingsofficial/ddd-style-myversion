@@ -3,6 +3,12 @@ import { Product } from '../domain/models/product.model';
 export class PublicProductListDto {
   id: string;
 
+   category: {
+    id: string;
+    name: string;
+  };
+
+
   name: {
     value: string;
   };
@@ -44,9 +50,17 @@ export class PublicProductListDto {
   /* FACTORY                                          */
   /* ================================================= */
 
-  static fromDomain(product: Product): PublicProductListDto {
+ static fromDomain(
+  product: Product,
+  category: { id: string; name: string },
+): PublicProductListDto{
     return {
       id: product.id,
+
+      category: {
+    id: category.id,
+    name: category.name,
+  },
 
       name: {
         value: product.name.getValue(),

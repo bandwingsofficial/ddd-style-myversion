@@ -5,7 +5,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 
-import { ProductRepository } from '../repositories/product.repository';
+import { ProductOrchestratorService } from '../services/product-orchestrator.service';
 import { PublicProductListDto } from '../dtos/public-product-list.dto';
 
 @WebSocketGateway({
@@ -22,7 +22,7 @@ export class ProductPublicGateway
   private readonly server: Server;
 
   constructor(
-    private readonly productRepo: ProductRepository,
+    private readonly orchestrator: ProductOrchestratorService,
   ) {
     console.log('🚀 ProductPublicGateway initialized');
   }
@@ -42,10 +42,10 @@ export class ProductPublicGateway
 
   async emitFullProducts(client?: Socket): Promise<void> {
     const products =
-      await this.productRepo.findAll(); // ACTIVE only
+      await this.orchestrator.getPublicProducts();
 
-    const payload = products.map((product) =>
-      PublicProductListDto.fromDomain(product),
+    const payload = products.map(({ product, category }) =>
+      PublicProductListDto.fromDomain(product, category),
     );
 
     const data = {

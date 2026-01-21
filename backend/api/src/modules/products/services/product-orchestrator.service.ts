@@ -3,15 +3,6 @@ import { Injectable } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { Product } from '../domain/models/product.model';
 
-/**
- * Orchestrator = controller-facing layer
- * --------------------------------------------------
- * - Controllers talk ONLY to this class
- * - No domain logic
- * - No validation rules
- * - No data mutation
- * - Delegates to services
- */
 @Injectable()
 export class ProductOrchestratorService {
   constructor(
@@ -19,15 +10,11 @@ export class ProductOrchestratorService {
   ) {}
 
   /* ================================================= */
-  /* PRODUCT – READS                                  */
+  /* PRODUCT – READS (ADMIN / INTERNAL)                */
   /* ================================================= */
 
   async getAllProducts(): Promise<Product[]> {
     return this.productService.getAllProducts();
-  }
-
-  async getPublicProducts(): Promise<Product[]> {
-    return this.productService.getPublicProducts();
   }
 
   async getProductById(
@@ -40,6 +27,41 @@ export class ProductOrchestratorService {
     slug: string,
   ): Promise<Product> {
     return this.productService.getBySlug(slug);
+  }
+
+  /* ================================================= */
+  /* PRODUCT – READS (PUBLIC)                          */
+  /* ================================================= */
+
+  async getPublicProducts(): Promise<
+    {
+      product: Product;
+      category: { id: string; name: string };
+    }[]
+  > {
+    return this.productService.getPublicProductsWithCategory();
+  }
+
+  async getPublicProductById(
+    productId: string,
+  ): Promise<{
+    product: Product;
+    category: { id: string; name: string };
+  }> {
+    return this.productService.getByIdWithCategory(
+      productId,
+    );
+  }
+
+  async getPublicProductBySlug(
+    slug: string,
+  ): Promise<{
+    product: Product;
+    category: { id: string; name: string };
+  }> {
+    return this.productService.getBySlugWithCategory(
+      slug,
+    );
   }
 
   /* ================================================= */
