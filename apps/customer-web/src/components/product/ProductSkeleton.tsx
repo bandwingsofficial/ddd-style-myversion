@@ -12,16 +12,16 @@ export default function ProductSkeleton() {
       <style jsx>{`
         .skeleton-card {
           background: #ffffff;
-          border-radius: 24px;
+          border-radius: 16px;
           border: 1px solid #f1f5f9;
-          padding: 8px;
-          height: 330px;
+          padding: 6px;
+          height: 260px; /* Reduced overall height */
         }
 
         .skeleton-image {
-          height: 240px;
+          height: 170px; /* Matches new card image height */
           background: #f1f5f9;
-          border-radius: 18px;
+          border-radius: 12px;
           position: relative;
           overflow: hidden;
         }
@@ -35,8 +35,8 @@ export default function ProductSkeleton() {
           border-radius: 4px;
         }
 
-        .title { width: 70%; height: 16px; margin-bottom: 8px; }
-        .price { width: 40%; height: 14px; }
+        .title { width: 70%; height: 14px; margin-bottom: 6px; }
+        .price { width: 40%; height: 12px; }
 
         .skeleton-card * {
           animation: pulse 1.5s infinite ease-in-out;

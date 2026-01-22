@@ -11,7 +11,6 @@ const BACKEND_URL = "https://api.dev.local:4000";
 const getImageUrl = (path?: string) => {
   if (!path || path.trim() === "") return null;
   if (path.startsWith("http")) return path;
-  // Ensure we append slash if needed
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   return `${BACKEND_URL}${cleanPath}`;
 };
@@ -31,7 +30,6 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
   // Price Logic
   const originalPrice = product.price?.originalPrice || 0;
   const discountPrice = product.price?.discountPrice;
-  // If discount exists and is lower than original
   const hasDiscount = discountPrice !== undefined && discountPrice < originalPrice;
   const currentPrice = hasDiscount ? discountPrice : originalPrice;
 
@@ -59,14 +57,14 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
         
         <div style={styles.imageContainer} className="image-container">
           <button onClick={handleToggleFavorite} style={styles.favBtn} className="fav-btn">
-            <Heart size={20} fill={isFav ? "#ef4444" : "transparent"} color={isFav ? "#ef4444" : "#94a3b8"} strokeWidth={2.5} />
+            <Heart size={18} fill={isFav ? "#ef4444" : "transparent"} color={isFav ? "#ef4444" : "#94a3b8"} strokeWidth={2.5} />
           </button>
 
           {imageUrl && !imageError ? (
             <img src={imageUrl} alt={name} style={styles.productImage} onError={() => setImageError(true)} />
           ) : (
             <div style={styles.imageFallback}>
-              <ImageOff size={32} />
+              <ImageOff size={28} />
               <span>No Image</span>
             </div>
           )}
@@ -90,17 +88,17 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
           <div style={styles.actionArea} className="action-area">
             {quantity === 0 ? (
               <button style={styles.addButton} onClick={handleAdd} className="add-button">
-                <Plus size={18} strokeWidth={3} />
+                <Plus size={16} strokeWidth={3} />
                 <span>ADD</span>
               </button>
             ) : (
               <div style={styles.quantitySelector} className="quantity-selector">
                 <button style={styles.qtyBtn} onClick={(e) => updateQuantity(e, -1)}>
-                  <Minus size={16} strokeWidth={3} />
+                  <Minus size={14} strokeWidth={3} />
                 </button>
                 <span style={styles.qtyNumber}>{quantity}</span>
                 <button style={styles.qtyBtn} onClick={(e) => updateQuantity(e, 1)}>
-                  <Plus size={16} strokeWidth={3} />
+                  <Plus size={14} strokeWidth={3} />
                 </button>
               </div>
             )}
@@ -114,8 +112,8 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
         .fav-btn:active { transform: scale(0.9); }
         .add-button:hover { background: #16a34a !important; color: white !important; }
         @media (max-width: 640px) {
-          .image-container { height: 160px !important; }
-          .content { padding: 12px !important; flex-direction: column !important; align-items: stretch !important; }
+          .image-container { height: 150px !important; }
+          .content { padding: 10px !important; flex-direction: column !important; align-items: stretch !important; }
           .action-area { margin-top: 8px !important; }
           .add-button, .quantity-selector { width: 100% !important; justify-content: center !important; }
         }
@@ -126,22 +124,22 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
 
 const styles: { [key: string]: React.CSSProperties } = {
   cardWrapper: { position: "relative" },
-  productCard: { display: "block", background: "#ffffff", borderRadius: "20px", border: "1px solid #f1f5f9", overflow: "hidden", textDecoration: "none" },
-  imageContainer: { position: "relative", height: "220px", overflow: "hidden", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center" },
-  favBtn: { position: "absolute", top: "12px", right: "12px", zIndex: 20, background: "white", border: "none", borderRadius: "50%", width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", transition: "transform 0.2s" },
+  productCard: { display: "block", background: "#ffffff", borderRadius: "16px", border: "1px solid #f1f5f9", overflow: "hidden", textDecoration: "none" },
+  imageContainer: { position: "relative", height: "170px", overflow: "hidden", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center" }, // Reduced height
+  favBtn: { position: "absolute", top: "8px", right: "8px", zIndex: 20, background: "white", border: "none", borderRadius: "50%", width: "32px", height: "32px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", transition: "transform 0.2s" }, // Smaller btn
   productImage: { width: "100%", height: "100%", objectFit: "cover" },
-  imageFallback: { display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", color: "#94a3b8", fontSize: "0.75rem", fontWeight: 600 },
-  discountBadge: { position: "absolute", top: "12px", left: "12px", background: "#ef4444", color: "white", fontSize: "0.7rem", fontWeight: 800, padding: "4px 8px", borderRadius: "6px", zIndex: 10 },
-  content: { padding: "16px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "12px" },
+  imageFallback: { display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", color: "#94a3b8", fontSize: "0.7rem", fontWeight: 600 },
+  discountBadge: { position: "absolute", top: "8px", left: "8px", background: "#ef4444", color: "white", fontSize: "0.65rem", fontWeight: 800, padding: "3px 6px", borderRadius: "4px", zIndex: 10 },
+  content: { padding: "12px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "8px" }, // Reduced padding
   infoGroup: { flex: 1, minWidth: 0 },
-  productTitle: { fontSize: "1rem", fontWeight: 700, color: "#1e293b", marginBottom: "4px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
-  unitText: { fontSize: "0.8rem", color: "#64748b", fontWeight: 600, marginBottom: "4px" },
+  productTitle: { fontSize: "0.9rem", fontWeight: 700, color: "#1e293b", marginBottom: "2px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }, // Smaller font
+  unitText: { fontSize: "0.75rem", color: "#64748b", fontWeight: 600, marginBottom: "2px" },
   priceRow: { display: "flex", alignItems: "center", gap: "6px" },
-  currentPrice: { color: "#0f172a", fontWeight: 800, fontSize: "1.1rem" },
-  oldPrice: { color: "#94a3b8", textDecoration: "line-through", fontSize: "0.85rem", fontWeight: 500 },
+  currentPrice: { color: "#0f172a", fontWeight: 800, fontSize: "1rem" }, // Smaller font
+  oldPrice: { color: "#94a3b8", textDecoration: "line-through", fontSize: "0.8rem", fontWeight: 500 },
   actionArea: { display: "flex", justifyContent: "flex-end" },
-  addButton: { display: "flex", alignItems: "center", gap: "6px", background: "#f0fdf4", color: "#16a34a", border: "1px solid #16a34a", padding: "6px 14px", borderRadius: "10px", fontWeight: 800, fontSize: "0.85rem", cursor: "pointer", transition: "all 0.2s" },
-  quantitySelector: { display: "flex", alignItems: "center", background: "#16a34a", color: "white", padding: "4px", borderRadius: "10px", gap: "12px", boxShadow: "0 4px 10px rgba(22, 163, 74, 0.25)" },
-  qtyBtn: { background: "transparent", border: "none", color: "white", width: "28px", height: "28px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", borderRadius: "6px" },
-  qtyNumber: { fontWeight: 800, fontSize: "0.95rem", minWidth: "12px", textAlign: "center" },
+  addButton: { display: "flex", alignItems: "center", gap: "4px", background: "#f0fdf4", color: "#16a34a", border: "1px solid #16a34a", padding: "5px 10px", borderRadius: "8px", fontWeight: 800, fontSize: "0.75rem", cursor: "pointer", transition: "all 0.2s" }, // Compact button
+  quantitySelector: { display: "flex", alignItems: "center", background: "#16a34a", color: "white", padding: "3px", borderRadius: "8px", gap: "8px", boxShadow: "0 4px 10px rgba(22, 163, 74, 0.25)" },
+  qtyBtn: { background: "transparent", border: "none", color: "white", width: "24px", height: "24px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", borderRadius: "6px" },
+  qtyNumber: { fontWeight: 800, fontSize: "0.85rem", minWidth: "10px", textAlign: "center" },
 };

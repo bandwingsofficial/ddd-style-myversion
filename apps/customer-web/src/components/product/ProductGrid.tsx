@@ -40,17 +40,23 @@ export default function ProductGrid() {
 
   return (
     <section style={styles.productSection} className="product-section">
-      {/* Dynamic CSS for Grid Responsiveness */}
+      {/* Dynamic CSS for Grid Responsiveness - Updated for denser grid */}
       <style jsx>{`
+        @media (max-width: 1280px) {
+          .products-grid { 
+            grid-template-columns: repeat(4, 1fr) !important; 
+          }
+        }
         @media (max-width: 1024px) {
           .products-grid { 
             grid-template-columns: repeat(3, 1fr) !important; 
+            gap: 1.5rem !important;
           }
         }
         @media (max-width: 768px) {
           .products-grid { 
             grid-template-columns: repeat(2, 1fr) !important; 
-            gap: 1.5rem !important; 
+            gap: 1rem !important; 
           }
         }
         @media (max-width: 480px) {
@@ -108,10 +114,10 @@ export default function ProductGrid() {
           viewport={{ once: true, amount: 0.1 }}
         >
           {loading
-            ? Array.from({ length: 4 }).map((_, i) => (
+            ? Array.from({ length: 5 }).map((_, i) => (
                 <ProductSkeleton key={i} />
               ))
-            : products.slice(0, 8).map((product) => (
+            : products.slice(0, 10).map((product) => (
                 <motion.div key={product.id} variants={itemVariants}>
                   <ProductCard product={product} />
                 </motion.div>
@@ -138,27 +144,26 @@ export default function ProductGrid() {
 
 const styles: { [key: string]: React.CSSProperties } = {
   productSection: {
-    padding: "60px 0",
+    padding: "40px 0", // Reduced padding
     background: "#ffffff",
   },
   sectionContainer: {
-    maxWidth: "1280px", // Slightly wider to accommodate 4 items comfortably
+    maxWidth: "1350px", // Slightly wider to fit 5 items comfortably
     margin: "0 auto",
-    padding: "0 2rem",
+    padding: "0 1.5rem",
   },
   centeredHeader: {
     textAlign: "center",
-    marginBottom: "50px",
+    marginBottom: "40px",
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
   },
   title: {
-    fontSize: "2.5rem",
+    fontSize: "2.2rem",
     fontWeight: 800,
     margin: 0,
     letterSpacing: "-0.02em",
-    // SHINE EFFECT
     backgroundImage: "linear-gradient(to right, #0f172a 20%, #22c55e 40%, #22c55e 60%, #0f172a 80%)",
     backgroundSize: "200% auto",
     color: "transparent",
@@ -166,26 +171,26 @@ const styles: { [key: string]: React.CSSProperties } = {
     backgroundClip: "text",
   },
   subtitle: {
-    fontSize: "1.1rem",
+    fontSize: "1rem",
     color: "#64748b",
-    marginTop: "12px",
+    marginTop: "8px",
     marginBottom: "0",
-    lineHeight: "1.6",
+    lineHeight: "1.5",
   },
   titleUnderline: {
-    width: "60px",
-    height: "4px",
+    width: "50px",
+    height: "3px",
     background: "#22c55e",
     borderRadius: "2px",
-    marginTop: "20px",
+    marginTop: "16px",
   },
   productsGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(4, 1fr)",
-    gap: "2.5rem",
+    gridTemplateColumns: "repeat(5, 1fr)", // Changed from 4 to 5
+    gap: "1.5rem", // Reduced gap from 2.5rem
   },
   footerRow: {
-    marginTop: "60px",
+    marginTop: "50px",
     display: "flex",
     justifyContent: "center",
   },
@@ -193,11 +198,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: "flex",
     alignItems: "center",
     gap: "8px",
-    color: "#15803d", // Darker green text
+    color: "#15803d",
     fontWeight: 700,
-    fontSize: "1rem",
-    padding: "14px 28px",
-    borderRadius: "50px", // Pill shape
+    fontSize: "0.95rem",
+    padding: "12px 24px",
+    borderRadius: "50px",
     background: "#f0fdf4",
     border: "1px solid #bbf7d0",
     cursor: "pointer",
