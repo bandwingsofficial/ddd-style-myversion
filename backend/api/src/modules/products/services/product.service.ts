@@ -267,46 +267,89 @@ async getByIdWithCategory(productId: string): Promise<{
   /* UPDATE IMAGES                                    */
   /* ================================================= */
 
-  async updateImages(params: {
-    productId: string;
-    mainImage: string;
-    galleryImages?: string[];
-  }): Promise<Product> {
-    const product = await this.getById(params.productId);
+async updateImages(params: {
+  productId: string;
+  mainImage?: string;          // ✅ optional
+  galleryImages?: string[];
+}): Promise<Product> {
+  const product = await this.getById(params.productId);
 
-    if (!product.isActive()) {
-      throw new ValidationError(
-        'PRODUCT_INACTIVE',
-        'Inactive product cannot be updated',
-      );
-    }
-
-    const oldImages = [
-      product.images.getMain(),
-      ...product.images.getGallery(),
-    ];
-
-    const updated = product.updateImages({
-      mainImage: this.normalizeImagePath(params.mainImage)!,
-      galleryImages: params.galleryImages
-        ?.map((img) => this.normalizeImagePath(img)!)
-        .filter(Boolean),
-    });
-
-    await this.prisma.$transaction(async (tx) => {
-      await this.productRepo.updateImages(updated, tx);
-    });
-
-    oldImages.forEach((img) => this.deleteImageSafe(img));
-
-    this.productEvents.emitProductImagesChanged({
-      productId: updated.id,
-      mainImage: updated.images.getMain(),
-      galleryImages: updated.images.getGallery(),
-    });
-
-    return updated;
+  if (!product.isActive()) {
+    throw new ValidationError(
+      'PRODUCT_INACTIVE',
+      'Inactive product cannot be updated',
+    );
   }
+
+  /* ---------------------------------- */
+  /* Resolve next main image safely     */
+  /* ---------------------------------- */
+  const nextMainImage = params.mainImage
+    ? this.normalizeImagePath(params.mainImage)
+    : product.images.getMain();
+
+  if (!nextMainImage) {
+    throw new ValidationError(
+      'INVALID_MAIN_IMAGE',
+      'Main image must be a non-empty string',
+    );
+  }
+
+  /* ---------------------------------- */
+  /* Resolve next gallery images safely */
+  /* ---------------------------------- */
+  const nextGalleryImages =
+    params.galleryImages !== undefined
+      ? params.galleryImages
+          .map((img) => this.normalizeImagePath(img))
+          .filter((img): img is string => Boolean(img))
+      : product.images.getGallery();
+
+  /* ---------------------------------- */
+  /* Keep track of old images           */
+  /* ---------------------------------- */
+  const oldImages = new Set([
+    product.images.getMain(),
+    ...product.images.getGallery(),
+  ]);
+
+  /* ---------------------------------- */
+  /* Update domain model                */
+  /* ---------------------------------- */
+  const updated = product.updateImages({
+    mainImage: nextMainImage,
+    galleryImages: nextGalleryImages,
+  });
+
+  await this.prisma.$transaction(async (tx) => {
+    await this.productRepo.updateImages(updated, tx);
+  });
+
+  /* ---------------------------------- */
+  /* Delete ONLY removed images         */
+  /* ---------------------------------- */
+  const newImages = new Set([
+    updated.images.getMain(),
+    ...updated.images.getGallery(),
+  ]);
+
+  oldImages.forEach((img) => {
+    if (!newImages.has(img)) {
+      this.deleteImageSafe(img);
+    }
+  });
+
+  /* ---------------------------------- */
+  /* Emit event                         */
+  /* ---------------------------------- */
+  this.productEvents.emitProductImagesChanged({
+    productId: updated.id,
+    mainImage: updated.images.getMain(),
+    galleryImages: updated.images.getGallery(),
+  });
+
+  return updated;
+}
 
   /* ================================================= */
   /* TRENDING                                         */

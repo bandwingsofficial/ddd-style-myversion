@@ -230,6 +230,8 @@ model Customer {
   createdAt    DateTime @default(now())
 
   orders Order[]
+  carts Cart[]
+  
   savedAddresses CustomerSavedAddress[]
 }
 
@@ -286,6 +288,7 @@ model Outlet {
   users  OutletUser[]
   outletStocks OutletStock[]
   orders Order[]
+  carts Cart[]
 }
 
 model OutletUser {
@@ -593,6 +596,12 @@ model Product {
 
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
+
+  @@index([categoryId])
+  @@index([stockItemId])
+  @@index([status])
+
+  carts CartItem[]
 }
 
 
@@ -616,7 +625,7 @@ model ProductImage {
 }
 
 //////////////////////////////////////////////////////
-// PRODUCT IMAGES
+// saved address 
 //////////////////////////////////////////////////////
 
 enum SavedAddressType {
@@ -652,4 +661,75 @@ model CustomerSavedAddress {
   @@index([type])
   @@index([isDeleted])
   @@unique([customerId, type])
+}
+
+//////////////////////////////////////////////////////
+// cart +cartitems 
+//////////////////////////////////////////////////////
+
+
+enum CartStatus {
+  ACTIVE      // normal shopping
+  LOCKED      // checkout started
+  EXPIRED     // abandoned / invalid
+}
+
+model Cart {
+  id          String     @id @default(cuid())
+
+  // 🔗 Ownership (null = guest until merge)
+  customerId  String?
+  customer    Customer?  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  // 🏬 One cart = one outlet
+  outletId    String
+  outlet      Outlet     @relation(fields: [outletId], references: [id])
+
+  status      CartStatus @default(ACTIVE)
+
+  // 🧾 Metadata
+  currency    String     @default("INR")
+
+  // 🕒 Lifecycle
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  lockedAt    DateTime?
+  expiresAt   DateTime?
+
+  items       CartItem[]
+
+  // 🚀 Constraints
+  @@index([customerId])
+  @@index([outletId])
+  @@index([status])
+  @@unique([customerId, status], map: "one_active_cart_per_customer")
+}
+
+
+model CartItem {
+  id            String   @id @default(cuid())
+
+  cartId        String
+  cart          Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id])
+
+  // 📦 Quantity
+  quantity      Int
+
+  // 💰 PRICE SNAPSHOT (DO NOT REMOVE)
+  unitPrice     Decimal  @db.Decimal(12, 2)
+  discountPrice Decimal? @db.Decimal(12, 2)
+
+  // 🧾 Product snapshot (for safety)
+  productName   String
+  productImage  String
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // 🚀 Constraints
+  @@unique([cartId, productId])
+  @@index([productId])
 }

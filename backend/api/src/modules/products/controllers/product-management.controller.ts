@@ -202,25 +202,52 @@ export class ProductManagementController {
   /* ================================================= */
 
   @Post(':productId/images')
-  @Roles(ActorType.SUPER_ADMIN)
-  async updateProductImages(
-    @Param('productId') productId: string,
-    @Body() dto: UpdateProductImagesDto,
-  ) {
-    const data =
-      await this.orchestrator.updateProductImages({
-        productId,
-        mainImage: dto.mainImage,
-        galleryImages: dto.galleryImages,
-      });
+@Roles(ActorType.SUPER_ADMIN)
+@UseInterceptors(
+  FileFieldsInterceptor(
+    [
+      { name: 'mainImage', maxCount: 1 },
+      { name: 'galleryImages', maxCount: 5 },
+    ],
+    productImageUploadOptions,
+  ),
+)
+async updateProductImages(
+  @Param('productId') productId: string,
+  @Body() dto: UpdateProductImagesDto,
+  @UploadedFiles()
+  files: {
+    mainImage?: Express.Multer.File[];
+    galleryImages?: Express.Multer.File[];
+  },
+) {
+  const mainImagePath =
+    files?.mainImage?.length
+      ? `images/products/${files.mainImage[0].filename}`
+      : dto.mainImage;
 
-    return {
-      success: true,
-      code: 'PRODUCT_IMAGES_UPDATED',
-      message: 'Product images updated successfully',
-      data,
-    };
-  }
+  const galleryImagePaths =
+    files?.galleryImages?.length
+      ? files.galleryImages.map(
+          (f) => `images/products/${f.filename}`,
+        )
+      : dto.galleryImages;
+
+  const data =
+    await this.orchestrator.updateProductImages({
+      productId,
+      mainImage: mainImagePath,
+      galleryImages: galleryImagePaths,
+    });
+
+  return {
+    success: true,
+    code: 'PRODUCT_IMAGES_UPDATED',
+    message: 'Product images updated successfully',
+    data,
+  };
+}
+
 
   /* ================================================= */
   /* PRODUCT – ENABLE / DISABLE                       */

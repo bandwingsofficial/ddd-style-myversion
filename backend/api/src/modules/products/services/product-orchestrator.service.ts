@@ -94,12 +94,12 @@ export class ProductOrchestratorService {
   }
 
   async updateProductImages(params: {
-    productId: string;
-    mainImage: string;
-    galleryImages?: string[];
-  }): Promise<Product> {
-    return this.productService.updateImages(params);
-  }
+  productId: string;
+  mainImage?: string;        // ✅ optional
+  galleryImages?: string[];
+}): Promise<Product> {
+  return this.productService.updateImages(params);
+}
 
   /* ================================================= */
   /* PRODUCT – ENABLE / DISABLE                       */

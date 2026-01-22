@@ -7,9 +7,10 @@ import {
 } from 'class-validator';
 
 export class UpdateProductImagesDto {
+  @IsOptional()               // ✅ allow partial update
   @IsString()
   @IsNotEmpty()
-  mainImage: string;
+  mainImage?: string;
 
   @IsOptional()
   @IsArray()

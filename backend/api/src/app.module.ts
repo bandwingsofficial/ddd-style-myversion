@@ -15,6 +15,7 @@ import { StockItemsModule } from './modules/stock-items/modules/stock-items.modu
 import { InventoryModule } from './modules/inventory/modules/inventory.module';
 import { ProductsModule } from './modules/products/modules/products.module';
 import { SavedAddressModule } from './modules/saved-address/modules/saved-address.module';
+import { CartModule } from './modules/cart/modules/cart.module';
 
 import { OtpWorker } from './workers/otp.worker';
 import { SmsProvider } from './infrastructure/providers/sms.provider';
@@ -39,6 +40,7 @@ import { SmsProvider } from './infrastructure/providers/sms.provider';
     InventoryModule,
     ProductsModule,
     SavedAddressModule,
+    CartModule,
   ],
   providers: [
     OtpWorker,
