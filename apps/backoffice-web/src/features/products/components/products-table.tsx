@@ -21,7 +21,7 @@ export function ProductsTable({ products, loading, refresh }: TableProps) {
   const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
-  // Custom Popup State
+  // Flash Message Logic
   const [flashMessage, setFlashMessage] = useState<{ 
     title: string; 
     text: string; 
@@ -53,21 +53,6 @@ export function ProductsTable({ products, loading, refresh }: TableProps) {
     
     setSelectedIds((prev) => {
       if (prev.includes(id)) return prev.filter((item) => item !== id);
-      const currentSelected = products.filter(p => prev.includes(p.id));
-      const isTargetActive = targetProduct.status === "ACTIVE";
-
-      if (currentSelected.length > 0) {
-        const hasExistingActive = currentSelected.some(p => p.status === "ACTIVE");
-        const hasExistingInactive = currentSelected.some(p => p.status !== "ACTIVE");
-        if ((isTargetActive && hasExistingInactive) || (!isTargetActive && hasExistingActive)) {
-          setFlashMessage({
-            type: 'warning',
-            title: 'Mixed Selection',
-            text: 'Cannot manually mix Active/Inactive products. Please use "Select All" for bulk actions across different statuses.'
-          });
-          return prev;
-        }
-      }
       return [...prev, id];
     });
   };
@@ -87,7 +72,7 @@ export function ProductsTable({ products, loading, refresh }: TableProps) {
           setFlashMessage({
             type: 'success',
             title: 'Action Successful',
-            text: `Selected products have been successfully ${action === 'enable' ? 'activated' : 'deactivated'}.`
+            text: `Selected products have been ${action === 'enable' ? 'activated' : 'deactivated'}.`
           });
         } catch (err) {
           console.error(err);
@@ -130,11 +115,11 @@ export function ProductsTable({ products, loading, refresh }: TableProps) {
                 <input type="checkbox" onChange={handleSelectAll} checked={selectedIds.length === products.length && products.length > 0} />
               </th>
               <th style={styles.th}>PRODUCT</th>
+              <th style={styles.th}>CATEGORY</th>
               <th style={styles.th}>ITEM NAME</th>
               <th style={{ ...styles.th, textAlign: 'center' }}>STATUS</th>
               <th style={{ ...styles.th, textAlign: 'center' }}>TRENDING</th>
-              <th style={styles.th}>ORIGINAL PRICE</th>
-              <th style={styles.th}>DISCOUNT PRICE</th>
+              <th style={styles.th}>PRICE</th>
               <th style={{ ...styles.th, textAlign: 'right' }}>ACTIONS</th>
             </tr>
           </thead>
@@ -159,17 +144,14 @@ export function ProductsTable({ products, loading, refresh }: TableProps) {
           <ProductDetailModal productId={viewingProduct.id} onClose={() => setViewingProduct(null)} />
         )}
         {flashMessage && (
-          <FlashMessage 
-            {...flashMessage} 
-            onClose={() => setFlashMessage(null)} 
-          />
+          <FlashMessage {...flashMessage} onClose={() => setFlashMessage(null)} />
         )}
       </AnimatePresence>
     </div>
   );
 }
 
-// --- Internal Flash Message Component ---
+// Flash Message Component (Internal)
 function FlashMessage({ title, text, type, onClose, onConfirm }: any) {
   return createPortal(
     <div style={popupStyles.overlay}>
@@ -181,11 +163,10 @@ function FlashMessage({ title, text, type, onClose, onConfirm }: any) {
       >
         <div style={{ marginBottom: '24px' }}>
           {type === 'success' && <CheckCircle2 size={64} color="#10b981" />}
-          {type === 'warning' && <AlertTriangle size={64} color="#f59e0b" />}
-          {type === 'error' && <AlertTriangle size={64} color="#ef4444" />}
+          {(type === 'warning' || type === 'error') && <AlertTriangle size={64} color="#f59e0b" />}
         </div>
         
-        <h3 style={popupStyles.statusText}>{title.toUpperCase()}</h3>
+        <h3 style={{...popupStyles.statusText, color: type === 'warning' ? '#f59e0b' : '#10b981'}}>{title.toUpperCase()}</h3>
         <p style={popupStyles.text}>{text}</p>
         
         <div style={{ display: 'flex', gap: '12px' }}>
@@ -217,7 +198,7 @@ const styles: Record<string, React.CSSProperties> = {
 const popupStyles: Record<string, React.CSSProperties> = {
   overlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 },
   box: { backgroundColor: 'white', padding: '40px', borderRadius: '32px', width: '90%', maxWidth: '440px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' },
-  statusText: { fontSize: '24px', fontWeight: 800, color: '#10b981', margin: '0 0 16px 0', letterSpacing: '1px' },
+  statusText: { fontSize: '24px', fontWeight: 800, margin: '0 0 16px 0', letterSpacing: '1px' },
   text: { fontSize: '15px', color: '#475569', margin: '0 0 32px 0', lineHeight: '1.6', fontWeight: 500 },
   btn: { flex: 1, padding: '16px', borderRadius: '14px', border: 'none', color: 'white', fontWeight: 700, fontSize: '16px', cursor: 'pointer', transition: 'all 0.2s' }
 };

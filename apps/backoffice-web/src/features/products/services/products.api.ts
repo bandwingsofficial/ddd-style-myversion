@@ -1,63 +1,130 @@
-// features/products/services/products.api.ts
 import { axiosInstance } from "@/http/axios/instance";
 import { Product } from "../types/product.types";
 
 export const ProductsAPI = {
   // Fetch all products
   fetchAll: async (): Promise<Product[]> => {
-    const res = await axiosInstance.get("/products");
+    const res = await axiosInstance.get("/products?limit=1000&page=1");
     return res.data.data;
   },
 
-
-  update: async (
-  productId: string,
-  payload: {
-    originalPrice: number;
-    shortDescription: string;
-    longDescription: string;
-    mainImage: string;
-    galleryImages: string[];
-  }
-) => {
-  // 1. Update price
-  await axiosInstance.post(`/products/${productId}/price`, {
-    originalPrice: payload.originalPrice,
-  });
-
-  // 2. Update descriptions
-  await axiosInstance.post(`/products/${productId}/update`, {
-    shortDescription: payload.shortDescription,
-    longDescription: payload.longDescription,
-  });
-
-  // 3. Update images
-  await axiosInstance.post(`/products/${productId}/images`, {
-    mainImage: payload.mainImage,
-    galleryImages: payload.galleryImages,
-  });
-
-  return true;
-},
-
-
-  
-  // ADDED: Fetch single product details
+  // Fetch single product
   fetchById: async (productId: string): Promise<Product> => {
     const res = await axiosInstance.get(`/products/${productId}`);
     return res.data.data;
   },
 
-  
-  // Create a new product
+  // Create Product
   create: async (payload: {
+    categoryId: string;
+    stockItemId: string;
     productName: string;
     originalPrice: number;
-    stockItemId: string;
-    mainImage: string;
+    discountPrice: number;
+    unitValue: number;
+    unitType: string;
+    shortDescription: string;
+    longDescription: string;
+    isTrending: boolean;
+    tags: string[];
+    mainImage: File;
+    galleryImages: File[];
   }) => {
-    const res = await axiosInstance.post("/products", payload);
+    const formData = new FormData();
+    
+    formData.append("categoryId", payload.categoryId);
+    formData.append("stockItemId", payload.stockItemId);
+    formData.append("productName", payload.productName);
+    formData.append("originalPrice", String(payload.originalPrice));
+    formData.append("discountPrice", String(payload.discountPrice));
+    formData.append("unitValue", String(payload.unitValue));
+    formData.append("unitType", payload.unitType);
+    formData.append("shortDescription", payload.shortDescription);
+    formData.append("longDescription", payload.longDescription);
+    formData.append("isTrending", payload.isTrending ? "TRUE" : "FALSE");
+    
+    if (payload.tags && payload.tags.length > 0) {
+      payload.tags.forEach(tag => formData.append("tags", tag));
+    }
+
+    if (payload.mainImage) {
+      formData.append("mainImage", payload.mainImage);
+    }
+    
+    if (payload.galleryImages && payload.galleryImages.length > 0) {
+      payload.galleryImages.forEach((file) => {
+        formData.append("galleryImages", file);
+      });
+    }
+
+    const res = await axiosInstance.post("/products", formData);
     return res.data.data;
+  },
+
+  // --- FIXED UPDATE FUNCTION ---
+  update: async (
+    productId: string,
+    payload: {
+      productName: string;
+      originalPrice: number;
+      discountPrice: number;
+      shortDescription: string;
+      longDescription: string;
+      mainImage: string | File;
+      galleryImages: (string | File)[];
+    }
+  ) => {
+    // 1. Update Price
+    await axiosInstance.post(`/products/${productId}/price`, {
+      originalPrice: Number(payload.originalPrice),
+      discountPrice: Number(payload.discountPrice)
+    });
+
+    // 2. Update Details
+    // FIX: The backend requires 'mainImage' in the body here too
+    const detailsPayload: any = {
+      productName: payload.productName,
+      shortDescription: payload.shortDescription,
+      longDescription: payload.longDescription,
+    };
+
+    // If mainImage is just a string (existing image), send it here to satisfy validation
+    if (typeof payload.mainImage === 'string') {
+        detailsPayload.mainImage = payload.mainImage;
+    }
+
+    await axiosInstance.post(`/products/${productId}/update`, detailsPayload);
+
+    // 3. Update Images (Multimedia)
+    const imageFormData = new FormData();
+    let hasImageUpdates = false;
+
+    // Handle Main Image: Send File if new, String path if existing
+    if (payload.mainImage instanceof File) {
+        imageFormData.append("mainImage", payload.mainImage);
+        hasImageUpdates = true;
+    } else if (typeof payload.mainImage === 'string' && payload.mainImage) {
+        imageFormData.append("mainImage", payload.mainImage);
+    }
+
+    // Handle Gallery Images
+    if (payload.galleryImages && payload.galleryImages.length > 0) {
+        payload.galleryImages.forEach((file) => {
+            if (file instanceof File) {
+                imageFormData.append("galleryImages", file);
+                hasImageUpdates = true;
+            }
+        });
+    }
+
+    // Call image endpoint if we have files OR to re-confirm the main image string
+    if (payload.mainImage || hasImageUpdates) {
+        await axiosInstance.post(`/products/${productId}/images`, imageFormData, {
+             headers: { "Content-Type": "multipart/form-data" },
+        });
+    }
+
+    return true;
   },
 
   enable: async (productId: string) => {
@@ -74,14 +141,9 @@ export const ProductsAPI = {
       isTrending: turnOn
     });
   },
-
-  updatePrice: async (productId: string, originalPrice: number) => {
-    return axiosInstance.post(`/products/${productId}/price`, { originalPrice });
-  },
-
-  //image correction
-
-  updateDetails: async (productId: string, payload: { shortDescription: string }) => {
-    return axiosInstance.post(`/products/${productId}/update`, payload);
+  
+  fetchCategories: async () => {
+    const res = await axiosInstance.get("/categories?limit=1000&page=1");
+    return res.data.data; 
   }
 };

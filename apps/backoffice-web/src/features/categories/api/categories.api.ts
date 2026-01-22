@@ -7,6 +7,13 @@ export const CategoriesApi = {
     return res.data.data;
   },
 
+  // --- ADD THIS MISSING METHOD ---
+  getById: async (id: string): Promise<Category> => {
+    // Assuming your backend supports GET /categories/:id
+    const res = await axiosInstance.get(`/categories/${id}`);
+    return res.data.data;
+  },
+
   // Updated: Accepts FormData to handle text + image upload
   create: async (formData: FormData): Promise<Category> => {
     const res = await axiosInstance.post('/categories', formData, {

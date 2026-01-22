@@ -4,9 +4,12 @@ import { useState, useEffect, useRef } from "react";
 import { Product } from "../types/product.types";
 import { ProductsAPI } from "../services/products.api";
 import { InventoryAPI } from "@/features/inventory/api/inventory.api";
-import { X, ClipboardList, IndianRupee, Save, Upload, Trash2, Plus, CheckCircle2, AlertCircle } from "lucide-react";
+import { X, ClipboardList, IndianRupee, Save, Upload, Trash2, Plus, CheckCircle2, AlertCircle, Layers, Tag } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
+
+// Ensure this matches your actual backend URL for PREVIEWS ONLY
+const API_BASE_URL = "https://api.dev.local:4000";
 
 interface EditProductModalProps {
   product: Product;
@@ -17,70 +20,103 @@ interface EditProductModalProps {
 export default function EditProductModal({ product, onClose, onSuccess }: EditProductModalProps) {
   const [loading, setLoading] = useState(false);
   const [stockItems, setStockItems] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [popup, setPopup] = useState<{ title: string; text: string; type: 'success' | 'error' } | null>(null);
 
   const mainImageRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
-  // Prefilling state: Fixed mapping to match your exact API JSON response
+  // Preview Resolver
+  const resolveUrl = (path: string) => {
+    if (!path) return "";
+    if (path.startsWith('blob:') || path.startsWith('http')) return path;
+    const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+    return `${API_BASE_URL}/${cleanPath}`;
+  };
+
   const [form, setForm] = useState({
-  productName: product.name?.value || "",
-  originalPrice: product.price?.originalPrice || 0,
-  discountPrice: product.price?.discountPrice || 0,
-  stockItemId: product.stockItemId || "", // FIXED: Removed .inventory
-  mainImage: product.images?.mainImage || "",
-  galleryImages: product.images?.galleryImages || [], // FIXED: Changed .gallery to .galleryImages
-  shortDescription: product.shortDescription || "",
-  longDescription: product.longDescription || "",
-});
+    categoryId: product.categoryId || "",
+    stockItemId: product.stockItemId || "",
+    productName: product.name?.value || "",
+    originalPrice: product.price?.originalPrice || 0,
+    discountPrice: product.price?.discountPrice || 0,
+    unitValue: product.unitValue || 1,
+    unitType: product.unitType || "PCS",
+    tags: product.tags ? product.tags.join(", ") : "",
+    mainImage: product.images?.mainImage || null as string | File | null,
+    galleryImages: (product.images?.galleryImages || []) as (string | File)[],
+    shortDescription: product.shortDescription || "",
+    longDescription: product.longDescription || "",
+  });
 
   useEffect(() => {
     InventoryAPI.getAllStockItems().then((res) => {
-      setStockItems(res.data.data.filter((i: any) => i.status === "ACTIVE"));
+      const items = res.data?.data || [];
+      setStockItems(items.filter((i: any) => i.status === "ACTIVE"));
+    });
+    ProductsAPI.fetchCategories().then((res) => {
+      setCategories(res || []);
     });
   }, []);
 
   const handleMainImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) {
-      setForm(prev => ({ ...prev, mainImage: URL.createObjectURL(e.target.files![0]) }));
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setForm(prev => ({ ...prev, mainImage: file }));
     }
   };
 
   const handleGalleryUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const filesArray = Array.from(e.target.files).map(file => URL.createObjectURL(file));
-      setForm(prev => ({ ...prev, galleryImages: [...prev.galleryImages, ...filesArray] }));
+      const newFiles = Array.from(e.target.files);
+      setForm(prev => ({ 
+        ...prev, 
+        galleryImages: [...prev.galleryImages, ...newFiles] 
+      }));
     }
   };
 
+  const removeGalleryImage = (index: number) => {
+    setForm(prev => ({
+      ...prev,
+      galleryImages: prev.galleryImages.filter((_, i) => i !== index)
+    }));
+  };
+
+  const mainImagePreview = typeof form.mainImage === 'string' 
+    ? resolveUrl(form.mainImage) 
+    : (form.mainImage ? URL.createObjectURL(form.mainImage as File) : "");
+
   const handleUpdate = async () => {
-    if (!form.productName || form.originalPrice <= 0 || !form.mainImage) {
-      setPopup({ title: "REQUIRED FIELDS", text: "Name, Price, and Main Image are mandatory.", type: "error" });
+    if (!form.productName || form.originalPrice <= 0) {
+      setPopup({ title: "REQUIRED FIELDS", text: "Name and Price are mandatory.", type: "error" });
       return;
     }
 
     setLoading(true);
     try {
-      await ProductsAPI.update(product.id, form);
-      
-      // Show high-fidelity success popup
-      setPopup({ 
-        title: "SUCCESS", 
-        text: "Thank you for your request. The product details have been updated successfully.", 
-        type: "success" 
-      });
+      const payload = {
+        productName: form.productName,
+        originalPrice: form.originalPrice,
+        discountPrice: form.discountPrice,
+        shortDescription: form.shortDescription,
+        longDescription: form.longDescription,
+        mainImage: form.mainImage as string | File,
+        galleryImages: form.galleryImages
+      };
 
-      // Delay to let user see the success message
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 2000);
-    } catch (error) {
-      setPopup({ 
-        title: "UPDATE FAILED", 
-        text: "There was an error updating the product. Please check your connection and try again.", 
-        type: "error" 
-      });
+      await ProductsAPI.update(product.id, payload);
+      
+      setPopup({ title: "SUCCESS", text: "Product updated successfully.", type: "success" });
+      setTimeout(() => { onSuccess(); onClose(); }, 1500);
+    } catch (error: any) {
+      console.error("Update failed", error);
+      let errorMsg = "There was an error updating the product.";
+      if (error.response?.data?.message) {
+         const msg = error.response.data.message;
+         errorMsg = Array.isArray(msg) ? msg.join(", ") : msg;
+      }
+      setPopup({ title: "UPDATE FAILED", text: errorMsg, type: "error" });
     } finally {
       setLoading(false);
     }
@@ -106,29 +142,33 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
 
         <div style={modalStyles.scrollArea}>
           <div style={modalStyles.form}>
+            
             <div style={modalStyles.row}>
               <div style={{ flex: 1 }}>
-                <label style={modalStyles.label}>Base Stock Item</label>
+                <label style={modalStyles.label}>Category (Read Only)</label>
+                <div style={modalStyles.inputWrapper}>
+                  <Layers size={16} style={modalStyles.inputIcon} />
+                  <select disabled style={{...modalStyles.select, opacity: 0.7, cursor: 'not-allowed'}} value={form.categoryId}>
+                    <option value="">-- Select --</option>
+                    {categories.map((cat: any) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={modalStyles.label}>Base Stock Item (Read Only)</label>
                 <div style={modalStyles.inputWrapper}>
                   <ClipboardList size={16} style={modalStyles.inputIcon} />
-                  <select 
-                    style={modalStyles.select} 
-                    value={form.stockItemId} 
-                    onChange={e => setForm({...form, stockItemId: e.target.value})}
-                  >
+                  <select disabled style={{...modalStyles.select, opacity: 0.7, cursor: 'not-allowed'}} value={form.stockItemId}>
                     <option value="">-- Select --</option>
                     {stockItems.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
                   </select>
                 </div>
               </div>
-              <div style={{ flex: 1 }}>
-                <label style={modalStyles.label}>Product Name *</label>
-                <input 
-                  style={modalStyles.inputNoIcon} 
-                  value={form.productName} 
-                  onChange={e => setForm({...form, productName: e.target.value})} 
-                />
-              </div>
+            </div>
+
+            <div>
+              <label style={modalStyles.label}>Product Name</label>
+              <input style={modalStyles.inputNoIcon} value={form.productName} onChange={e => setForm({...form, productName: e.target.value})} />
             </div>
 
             <div style={modalStyles.row}>
@@ -136,24 +176,40 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
                 <label style={modalStyles.label}>Original Price (₹) *</label>
                 <div style={modalStyles.inputWrapper}>
                   <IndianRupee size={16} style={modalStyles.inputIcon} />
-                  <input 
-                    type="number" 
-                    style={modalStyles.input} 
-                    value={form.originalPrice} 
-                    onChange={e => setForm({...form, originalPrice: +e.target.value})} 
-                  />
+                  <input type="number" style={modalStyles.input} value={form.originalPrice} onChange={e => setForm({...form, originalPrice: +e.target.value})} />
                 </div>
               </div>
               <div style={{ flex: 1 }}>
                 <label style={modalStyles.label}>Discount Price (₹)</label>
                 <div style={modalStyles.inputWrapper}>
                   <IndianRupee size={16} style={modalStyles.inputIcon} />
-                  <input 
-                    type="number" 
-                    style={modalStyles.input} 
-                    value={form.discountPrice} 
-                    onChange={e => setForm({...form, discountPrice: +e.target.value})} 
-                  />
+                  <input type="number" style={modalStyles.input} value={form.discountPrice} onChange={e => setForm({...form, discountPrice: +e.target.value})} />
+                </div>
+              </div>
+            </div>
+
+            <div style={modalStyles.row}>
+              <div style={{ flex: 1, display: 'flex', gap: '8px' }}>
+                <div style={{ flex: 1 }}>
+                    <label style={modalStyles.label}>Unit Value (Read Only)</label>
+                    <input disabled style={{...modalStyles.inputNoIcon, opacity: 0.7}} value={form.unitValue} />
+                </div>
+                <div style={{ width: '80px' }}>
+                    <label style={modalStyles.label}>Type</label>
+                    <select disabled style={{...modalStyles.inputNoIcon, opacity: 0.7}} value={form.unitType}>
+                        <option value="PCS">PCS</option>
+                        <option value="KG">KG</option>
+                        <option value="LTR">LTR</option>
+                        <option value="GM">GM</option>
+                        <option value="ML">ML</option>
+                    </select>
+                </div>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={modalStyles.label}>Tags (Read Only)</label>
+                <div style={modalStyles.inputWrapper}>
+                  <Tag size={16} style={modalStyles.inputIcon} />
+                  <input disabled style={{...modalStyles.input, opacity: 0.7}} value={form.tags} />
                 </div>
               </div>
             </div>
@@ -161,8 +217,13 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
             <div style={modalStyles.inputGroup}>
               <label style={modalStyles.label}>Main Product Image</label>
               <input type="file" hidden ref={mainImageRef} accept="image/*" onChange={handleMainImageUpload} />
+              
               <div style={modalStyles.mainPreviewContainer}>
-                <img src={form.mainImage} style={modalStyles.mainPreviewImg} alt="Main" />
+                {mainImagePreview ? (
+                   <img src={mainImagePreview} style={modalStyles.mainPreviewImg} alt="Main" />
+                ) : (
+                   <div style={{height: '160px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc', color: '#94a3b8'}}>No Image</div>
+                )}
                 <button style={modalStyles.removeMainBtn} onClick={() => mainImageRef.current?.click()}>
                    <Upload size={16} /> Change Image
                 </button>
@@ -173,18 +234,17 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
               <label style={modalStyles.label}>Gallery Images</label>
               <input type="file" multiple hidden ref={galleryInputRef} accept="image/*" onChange={handleGalleryUpload} />
               <div style={modalStyles.galleryGrid}>
-                {form.galleryImages.map((src: string, i: number) => (
-                  <div key={i} className="gallery-item-wrapper" style={modalStyles.galleryItem}>
-                    <img src={src} style={modalStyles.galleryImg} alt="Gallery" />
-                    <div 
-                      className="gallery-hover-overlay" 
-                      style={modalStyles.galleryOverlay} 
-                      onClick={() => setForm(f => ({ ...f, galleryImages: f.galleryImages.filter((_, idx) => idx !== i) }))}
-                    >
-                      <Trash2 size={18} color="#fff" />
+                {form.galleryImages.map((item, i) => {
+                  const previewSrc = typeof item === 'string' ? resolveUrl(item) : URL.createObjectURL(item as File);
+                  return (
+                    <div key={i} className="gallery-item-wrapper" style={modalStyles.galleryItem}>
+                      <img src={previewSrc} style={modalStyles.galleryImg} alt="Gallery" />
+                      <div className="gallery-hover-overlay" style={modalStyles.galleryOverlay} onClick={() => removeGalleryImage(i)}>
+                        <Trash2 size={18} color="#fff" />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <div className="add-btn-hover" style={modalStyles.addGalleryBtn} onClick={() => galleryInputRef.current?.click()}>
                    <Plus size={24} color="#10b981" />
                 </div>
@@ -239,7 +299,7 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
 
 const modalStyles: Record<string, React.CSSProperties> = {
   overlay: { position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 },
-  modal: { backgroundColor: "#fff", width: "520px", maxHeight: "92vh", borderRadius: "32px", display: "flex", flexDirection: "column", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", overflow: "hidden" },
+  modal: { backgroundColor: "#fff", width: "550px", maxHeight: "92vh", borderRadius: "32px", display: "flex", flexDirection: "column", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", overflow: "hidden" },
   header: { padding: "24px 32px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" },
   scrollArea: { padding: "24px 32px", overflowY: "auto", flex: 1 },
   footer: { padding: "20px 32px", borderTop: "1px solid #f1f5f9", backgroundColor: "#fff" },

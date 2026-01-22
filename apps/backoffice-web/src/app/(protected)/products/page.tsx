@@ -12,7 +12,7 @@ export default function ProductsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Working Search Logic: Filters by Product Name or Item Name
+  // Filters by Product Name
   const filteredProducts = products.filter((p) =>
     p.name.value.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -31,7 +31,6 @@ export default function ProductsPage() {
         </div>
 
         <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-          {/* Working Search Bar */}
           <div style={styles.searchWrapper}>
             <Search size={18} color="#64748b" style={styles.searchIcon} />
             <input 
