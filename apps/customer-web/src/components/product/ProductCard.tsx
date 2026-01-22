@@ -6,31 +6,13 @@ import { ProductListItem } from "@/features/products/types/product.types";
 import { Plus, Minus, ImageOff, Heart } from "lucide-react";
 import { useFavorites } from "@/providers/CustomerAuthProvider"; 
 
-// --- UPDATED CONFIGURATION ---
-// Leave empty to use the Next.js Proxy (solves the Mixed Content/SSL error)
-const BACKEND_URL = ""; 
-
-const getImageUrl = (data: any) => {
-  if (!data) return null;
-
-  // 1. Resolve the path string
-  let path = "";
-  if (typeof data === 'string') {
-    path = data;
-  } else if (typeof data === 'object') {
-    path = data.mainImage || data.url || (Array.isArray(data) ? data[0] : "");
-  }
-
+// Helper to construct image URL matching your backend
+const BACKEND_URL = "https://api.dev.local:4000";
+const getImageUrl = (path?: string) => {
   if (!path || path.trim() === "") return null;
-
-  // 2. If it's already a full link (e.g. cloudinary), return it
-  if (path.startsWith("http") || path.startsWith("https")) return path;
-
-  // 3. Clean the path
+  if (path.startsWith("http")) return path;
+  // Ensure we append slash if needed
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
-
-  // 4. Return relative path (e.g. "/images/products/file.jpg")
-  // This hits the Next.js Rewrite -> Proxies to http://localhost:4000
   return `${BACKEND_URL}${cleanPath}`;
 };
 
@@ -41,17 +23,21 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
   
   const isFav = isFavorite(product.id);
   
+  // Safe Accessors
   const name = product.name?.value || "Unknown Product";
   const slug = product.slug?.value || "#";
   const unit = product.unit ? `${product.unit.value} ${product.unit.type}` : null;
   
+  // Price Logic
   const originalPrice = product.price?.originalPrice || 0;
   const discountPrice = product.price?.discountPrice;
+  // If discount exists and is lower than original
   const hasDiscount = discountPrice !== undefined && discountPrice < originalPrice;
   const currentPrice = hasDiscount ? discountPrice : originalPrice;
 
-  const imageUrl = getImageUrl(product.images);
+  const imageUrl = getImageUrl(product.images?.mainImage);
 
+  // --- HANDLERS ---
   const handleToggleFavorite = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
     isFav ? removeFromFavorites(product.id) : addToFavorites(product);
@@ -77,15 +63,7 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
           </button>
 
           {imageUrl && !imageError ? (
-            <img 
-                src={imageUrl} 
-                alt={name} 
-                style={styles.productImage} 
-                onError={(e) => {
-                    console.log("Failed to load:", imageUrl);
-                    setImageError(true);
-                }} 
-            />
+            <img src={imageUrl} alt={name} style={styles.productImage} onError={() => setImageError(true)} />
           ) : (
             <div style={styles.imageFallback}>
               <ImageOff size={32} />
