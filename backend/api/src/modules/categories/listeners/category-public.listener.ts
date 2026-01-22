@@ -21,6 +21,10 @@ export class CategoryPublicListener {
     }
 
     this.emitTimeout = setTimeout(async () => {
+      console.log(
+        '📡 [CATEGORY LISTENER] emitting full categories via socket',
+      );
+
       await this.gateway.emitFullCategories();
       this.emitTimeout = null;
     }, 50); // 🔥 batch window (50ms)
@@ -31,7 +35,12 @@ export class CategoryPublicListener {
   /* ================================================= */
 
   @OnEvent('category.*')
-  async handleAllCategoryEvents(): Promise<void> {
+  async handleAllCategoryEvents(payload: any): Promise<void> {
+    console.log(
+      '🔥 [EVENT LISTENER] category.* fired with payload:',
+      payload,
+    );
+
     this.scheduleEmit();
   }
 }

@@ -23,6 +23,11 @@ export class CategoryEventsService {
   emitCategoryCreated(
     payload: CategoryLifecycleEvent,
   ): void {
+    console.log(
+      '🟢 [EVENT EMIT] category.created',
+      payload,
+    );
+
     this.eventEmitter.emit(
       CategoryEvents.CATEGORY_CREATED,
       payload,
@@ -32,6 +37,11 @@ export class CategoryEventsService {
   emitCategoryEnabled(
     payload: CategoryLifecycleEvent,
   ): void {
+    console.log(
+      '🟢 [EVENT EMIT] category.enabled',
+      payload,
+    );
+
     this.eventEmitter.emit(
       CategoryEvents.CATEGORY_ENABLED,
       payload,
@@ -41,6 +51,11 @@ export class CategoryEventsService {
   emitCategoryDisabled(
     payload: CategoryLifecycleEvent,
   ): void {
+    console.log(
+      '🔴 [EVENT EMIT] category.disabled',
+      payload,
+    );
+
     this.eventEmitter.emit(
       CategoryEvents.CATEGORY_DISABLED,
       payload,
@@ -54,6 +69,11 @@ export class CategoryEventsService {
   emitCategoryUpdated(
     payload: CategoryUpdatedEvent,
   ): void {
+    console.log(
+      '🟡 [EVENT EMIT] category.updated',
+      payload,
+    );
+
     this.eventEmitter.emit(
       CategoryEvents.CATEGORY_UPDATED,
       payload,
@@ -67,6 +87,11 @@ export class CategoryEventsService {
     categoryId: string;
     imagePath: string;
   }): void {
+    console.log(
+      '🟣 [EVENT EMIT] category.image.updated',
+      payload,
+    );
+
     this.eventEmitter.emit(
       CategoryEvents.CATEGORY_IMAGE_UPDATED,
       payload,
@@ -79,6 +104,11 @@ export class CategoryEventsService {
   emitCategoryImageRemoved(payload: {
     categoryId: string;
   }): void {
+    console.log(
+      '🟠 [EVENT EMIT] category.image.removed',
+      payload,
+    );
+
     this.eventEmitter.emit(
       CategoryEvents.CATEGORY_IMAGE_REMOVED,
       payload,
@@ -92,6 +122,11 @@ export class CategoryEventsService {
   emitCategorySortOrderChanged(
     payload: CategorySortOrderChangedEvent,
   ): void {
+    console.log(
+      '🔵 [EVENT EMIT] category.sortOrder.changed',
+      payload,
+    );
+
     this.eventEmitter.emit(
       CategoryEvents.CATEGORY_SORT_ORDER_CHANGED,
       payload,

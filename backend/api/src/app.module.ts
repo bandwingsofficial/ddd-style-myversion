@@ -1,6 +1,7 @@
 // src/app.module.ts
 
 import { Module } from '@nestjs/common';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 
 import { AppConfigModule } from './config/config.module';
 import { PrismaModule } from './infrastructure/prisma/prisma.module';
@@ -15,18 +16,22 @@ import { InventoryModule } from './modules/inventory/modules/inventory.module';
 import { ProductsModule } from './modules/products/modules/products.module';
 import { SavedAddressModule } from './modules/saved-address/modules/saved-address.module';
 
-
 import { OtpWorker } from './workers/otp.worker';
 import { SmsProvider } from './infrastructure/providers/sms.provider';
-import { EventEmitterModule } from '@nestjs/event-emitter';
 
 @Module({
   imports: [
     AppConfigModule,
     PrismaModule,
     RedisModule,
-    QueueModule, // ⬅️ brings queue + QueueService
-    EventEmitterModule.forRoot(),
+    QueueModule,
+
+    // 🔥 CRITICAL FIX — ENABLE WILDCARDS
+    EventEmitterModule.forRoot({
+      wildcard: true,
+      delimiter: '.',
+    }),
+
     AuthModule,
     OutletsModule,
     CategoriesModule,

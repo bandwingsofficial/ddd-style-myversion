@@ -42,6 +42,6 @@ export const productImageUploadOptions: MulterOptions = {
   },
 
   limits: {
-    fileSize: 10 * 1024 * 1024, // 3MB (products usually need more than categories)
+    fileSize: 20 * 1024 * 1024, // 3MB (products usually need more than categories)
   },
 };

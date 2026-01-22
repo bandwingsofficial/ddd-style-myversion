@@ -23,7 +23,9 @@ export class CategoryPublicGateway
   constructor(
     private readonly categoryRepo: CategoryRepository,
   ) {
-    console.log('🚀 CategoryPublicGateway initialized');
+    console.log(
+      '🚀 [GATEWAY INIT] CategoryPublicGateway initialized',
+    );
   }
 
   /* ================================================= */
@@ -31,7 +33,11 @@ export class CategoryPublicGateway
   /* ================================================= */
 
   async handleConnection(client: Socket): Promise<void> {
-    console.log('✅ category client connected:', client.id);
+    console.log(
+      '✅ [SOCKET CONNECT] category client connected:',
+      client.id,
+    );
+
     await this.emitFullCategories(client);
   }
 
@@ -40,8 +46,17 @@ export class CategoryPublicGateway
   /* ================================================= */
 
   async emitFullCategories(client?: Socket): Promise<void> {
+    console.log(
+      '📡 [SOCKET EMIT] categories.updated',
+      client ? '(single client)' : '(broadcast)',
+    );
+
     const categories =
       await this.categoryRepo.findAll(false);
+
+    console.log(
+      `📦 [SOCKET PAYLOAD] ${categories.length} categories`,
+    );
 
     const payload = categories.map((c) => ({
       id: c.id,

@@ -30,25 +30,28 @@ export class ProductRepository {
   /* ================================================= */
 
   async findAll(
-    includeInactive = false,
-    tx?: PrismaTransaction,
-  ): Promise<Product[]> {
-    const client = tx ?? this.prisma;
+  context: 'admin' | 'public' = 'public',
+  tx?: PrismaTransaction,
+): Promise<Product[]> {
+  const client = tx ?? this.prisma;
 
-    const rows = await client.product.findMany({
-      where: includeInactive
-        ? {}
-        : {
-            status: ProductStatusMapper.toPrisma(
-              ProductStatus.ACTIVE,
-            ),
-          },
-      orderBy: { createdAt: 'desc' },
-      include: { galleryImages: true },
-    });
+  const where =
+    context === 'admin'
+      ? {}
+      : {
+          status: ProductStatusMapper.toPrisma(
+            ProductStatus.ACTIVE,
+          ),
+        };
 
-    return rows.map((row) => this.toDomain(row));
-  }
+  const rows = await client.product.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    include: { galleryImages: true },
+  });
+
+  return rows.map((row) => this.toDomain(row));
+}
 
   async findAllWithCategory(): Promise<
   {

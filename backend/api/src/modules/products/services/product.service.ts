@@ -54,11 +54,11 @@ export class ProductService {
   /* ================================================= */
 
   async getAllProducts(): Promise<Product[]> {
-    return this.productRepo.findAll();
+    return this.productRepo.findAll('admin');
   }
 
   async getPublicProducts(): Promise<Product[]> {
-    const products = await this.productRepo.findAll();
+    const products = await this.productRepo.findAll('public');
     return products.filter((p) => p.canBeShown());
     
   }
