@@ -6,82 +6,64 @@ import { ProductListItem } from "@/features/products/types/product.types";
 import { Plus, Minus, ImageOff, Heart } from "lucide-react";
 import { useFavorites } from "@/providers/CustomerAuthProvider"; 
 
-// --- HELPERS ---
-const resolveString = (data: any): string => {
-  if (!data) return "Unknown Product";
-  if (typeof data === "string") return data;
-  if (typeof data === "object" && data.value) return String(data.value);
-  return String(data);
-};
+// --- UPDATED CONFIGURATION ---
+// Leave empty to use the Next.js Proxy (solves the Mixed Content/SSL error)
+const BACKEND_URL = ""; 
 
-// Updated to match your JSON price structure
-const resolvePrice = (product: ProductListItem) => {
-  const p = product.price;
-  
-  // Default values
-  let current = 0;
-  let original = 0;
+const getImageUrl = (data: any) => {
+  if (!data) return null;
 
-  if (p && typeof p === "object") {
-    // If discountPrice exists and is different from original
-    if (p.discountPrice && p.discountPrice < p.originalPrice) {
-      current = p.discountPrice;
-      original = p.originalPrice;
-    } else {
-      current = p.originalPrice;
-      original = p.originalPrice;
-    }
+  // 1. Resolve the path string
+  let path = "";
+  if (typeof data === 'string') {
+    path = data;
+  } else if (typeof data === 'object') {
+    path = data.mainImage || data.url || (Array.isArray(data) ? data[0] : "");
   }
 
-  return { current: Number(current) || 0, original: Number(original) || 0 };
+  if (!path || path.trim() === "") return null;
+
+  // 2. If it's already a full link (e.g. cloudinary), return it
+  if (path.startsWith("http") || path.startsWith("https")) return path;
+
+  // 3. Clean the path
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+
+  // 4. Return relative path (e.g. "/images/products/file.jpg")
+  // This hits the Next.js Rewrite -> Proxies to http://localhost:4000
+  return `${BACKEND_URL}${cleanPath}`;
 };
 
 export default function ProductCard({ product }: { product: ProductListItem }) {
   const [quantity, setQuantity] = useState(0);
   const [imageError, setImageError] = useState(false);
-
-  // --- CONNECT FAVORITES ---
   const { isFavorite, addToFavorites, removeFromFavorites } = useFavorites();
-  const isFav = isFavorite(product.id);
-
-  // --- DATA RESOLUTION ---
-  const name = resolveString(product.name);
-  const slug = resolveString(product.slug);
-  const { current: price, original: originalPrice } = resolvePrice(product);
-  const hasDiscount = originalPrice > price;
   
-  const BACKEND_URL = "http://localhost:5000";
+  const isFav = isFavorite(product.id);
+  
+  const name = product.name?.value || "Unknown Product";
+  const slug = product.slug?.value || "#";
+  const unit = product.unit ? `${product.unit.value} ${product.unit.type}` : null;
+  
+  const originalPrice = product.price?.originalPrice || 0;
+  const discountPrice = product.price?.discountPrice;
+  const hasDiscount = discountPrice !== undefined && discountPrice < originalPrice;
+  const currentPrice = hasDiscount ? discountPrice : originalPrice;
 
-  // Updated to access product.images.mainImage based on your JSON
-  const getImageUrl = (path?: string) => {
-    if (!path || path.trim() === "") return null;
-    return path.startsWith("http")
-      ? path
-      : `${BACKEND_URL}${path.startsWith("/") ? "" : "/"}${path}`;
-  };
+  const imageUrl = getImageUrl(product.images);
 
-  const imageUrl = getImageUrl(product.images?.mainImage);
-
-  // --- HANDLERS ---
   const handleToggleFavorite = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (isFav) {
-      removeFromFavorites(product.id);
-    } else {
-      addToFavorites(product);
-    }
+    e.preventDefault(); e.stopPropagation();
+    isFav ? removeFromFavorites(product.id) : addToFavorites(product);
   };
 
   const handleAdd = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     setQuantity(1);
   };
 
   const updateQuantity = (e: React.MouseEvent, delta: number) => {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     setQuantity((prev) => Math.max(0, prev + delta));
   };
 
@@ -89,52 +71,52 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
     <div style={styles.cardWrapper}>
       <Link href={`/products/${slug}`} style={styles.productCard} className="product-card">
         
-        <div style={styles.imageContainer}>
-          {/* --- FAVORITE BUTTON --- */}
-          <button 
-            onClick={handleToggleFavorite}
-            style={styles.favBtn}
-            className="fav-btn"
-          >
-            <Heart 
-              size={20} 
-              fill={isFav ? "#ef4444" : "transparent"} 
-              color={isFav ? "#ef4444" : "#94a3b8"}
-              strokeWidth={2.5}
-            />
+        <div style={styles.imageContainer} className="image-container">
+          <button onClick={handleToggleFavorite} style={styles.favBtn} className="fav-btn">
+            <Heart size={20} fill={isFav ? "#ef4444" : "transparent"} color={isFav ? "#ef4444" : "#94a3b8"} strokeWidth={2.5} />
           </button>
 
           {imageUrl && !imageError ? (
-            <img src={imageUrl} alt={name} style={styles.productImage} onError={() => setImageError(true)} />
+            <img 
+                src={imageUrl} 
+                alt={name} 
+                style={styles.productImage} 
+                onError={(e) => {
+                    console.log("Failed to load:", imageUrl);
+                    setImageError(true);
+                }} 
+            />
           ) : (
             <div style={styles.imageFallback}>
               <ImageOff size={32} />
-              <span>Image not found</span>
+              <span>No Image</span>
             </div>
           )}
 
           {hasDiscount && (
-            <div style={styles.discountBadge}>SAVE ₹{originalPrice - price}</div>
+            <div style={styles.discountBadge}>SAVE ₹{originalPrice - currentPrice}</div>
           )}
         </div>
 
-        <div style={styles.content}>
+        <div style={styles.content} className="content">
           <div style={styles.infoGroup}>
             <h3 style={styles.productTitle}>{name}</h3>
+            {unit && <div style={styles.unitText}>{unit}</div>}
+            
             <div style={styles.priceRow}>
-              <span style={styles.currentPrice}>₹{price}</span>
+              <span style={styles.currentPrice}>₹{currentPrice}</span>
               {hasDiscount && <span style={styles.oldPrice}>₹{originalPrice}</span>}
             </div>
           </div>
 
-          <div style={styles.actionArea}>
+          <div style={styles.actionArea} className="action-area">
             {quantity === 0 ? (
               <button style={styles.addButton} onClick={handleAdd} className="add-button">
                 <Plus size={18} strokeWidth={3} />
                 <span>ADD</span>
               </button>
             ) : (
-              <div style={styles.quantitySelector}>
+              <div style={styles.quantitySelector} className="quantity-selector">
                 <button style={styles.qtyBtn} onClick={(e) => updateQuantity(e, -1)}>
                   <Minus size={16} strokeWidth={3} />
                 </button>
@@ -150,17 +132,13 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
 
       <style jsx>{`
         .product-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-        .product-card:hover { 
-          border-color: #16a34a33 !important; 
-          box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.08); 
-          transform: translateY(-4px); 
-        }
+        .product-card:hover { border-color: #16a34a33 !important; box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.08); transform: translateY(-4px); }
         .fav-btn:active { transform: scale(0.9); }
         .add-button:hover { background: #16a34a !important; color: white !important; }
         @media (max-width: 640px) {
-          .product-card .image-container { height: 160px !important; }
-          .product-card .content { padding: 12px !important; flex-direction: column !important; align-items: stretch !important; }
-          .product-card .action-area { margin-top: 8px !important; }
+          .image-container { height: 160px !important; }
+          .content { padding: 12px !important; flex-direction: column !important; align-items: stretch !important; }
+          .action-area { margin-top: 8px !important; }
           .add-button, .quantity-selector { width: 100% !important; justify-content: center !important; }
         }
       `}</style>
@@ -179,6 +157,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   content: { padding: "16px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "12px" },
   infoGroup: { flex: 1, minWidth: 0 },
   productTitle: { fontSize: "1rem", fontWeight: 700, color: "#1e293b", marginBottom: "4px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  unitText: { fontSize: "0.8rem", color: "#64748b", fontWeight: 600, marginBottom: "4px" },
   priceRow: { display: "flex", alignItems: "center", gap: "6px" },
   currentPrice: { color: "#0f172a", fontWeight: 800, fontSize: "1.1rem" },
   oldPrice: { color: "#94a3b8", textDecoration: "line-through", fontSize: "0.85rem", fontWeight: 500 },

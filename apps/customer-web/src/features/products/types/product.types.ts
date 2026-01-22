@@ -1,46 +1,52 @@
-export interface ProductListItem {
+export interface ProductPrice {
+  originalPrice: number;
+  discountPrice?: number;
+}
+
+export interface ProductImages {
+  mainImage: string;
+  galleryImages: string[];
+}
+
+export interface ProductUnit {
+  value: number;
+  type: string;
+}
+
+export interface ProductRating {
+  average: number;
+  count: number;
+}
+
+export interface ProductCategory {
+  id: string;
+  name: string;
+}
+
+// Common fields used in list and details
+export interface ProductBase {
   id: string;
   name: { value: string };
   slug: { value: string };
-  price: { 
-    originalPrice: number; 
-    discountPrice?: number;
-  };
-  images: {
-    mainImage: string;
-    galleryImages: string[];
-  };
-  unit?: {
-    value: number;
-    type: string;
-  };
+  price: ProductPrice;
+  images: ProductImages;
+  unit?: ProductUnit;
   tags?: string[];
   trendState?: {
     trending: boolean;
   };
+  rating?: ProductRating;
+  category?: ProductCategory;
+}
+
+// The shape of a product in the list
+export interface ProductListItem extends ProductBase {
   shortDescription?: string;
 }
 
-export interface ProductDetails {
-  id: string;
-  stockItemId: string;
-  name: { value: string };
-  slug: { value: string };
-  price: { 
-    originalPrice: number; 
-    discountPrice?: number; 
-  };
-  images: {
-    mainImage: string;
-    galleryImages: string[];
-  };
+// The shape of a product in the details page
+export interface ProductDetails extends ProductBase {
   shortDescription: string;
   longDescription: string;
-  tags: string[];
-  status: "ACTIVE" | "INACTIVE";
-  trendState: {
-    trending: boolean;
-  };
-  unitValue?: number;
-  unitType?: string;
+  status?: "ACTIVE" | "INACTIVE"; // kept optional if backend sends it
 }
