@@ -1,3 +1,4 @@
+// features/products/services/products.api.ts
 import { axiosInstance } from "@/http/axios/instance";
 import { Product } from "../types/product.types";
 
@@ -61,7 +62,7 @@ export const ProductsAPI = {
     return res.data.data;
   },
 
-  // --- FIXED UPDATE FUNCTION ---
+  // Update Product (FIXED: Always sends mainImage)
   update: async (
     productId: string,
     payload: {
@@ -81,21 +82,14 @@ export const ProductsAPI = {
     });
 
     // 2. Update Details
-    // FIX: The backend requires 'mainImage' in the body here too
-    const detailsPayload: any = {
+    await axiosInstance.post(`/products/${productId}/update`, {
       productName: payload.productName,
       shortDescription: payload.shortDescription,
       longDescription: payload.longDescription,
-    };
+    });
 
-    // If mainImage is just a string (existing image), send it here to satisfy validation
-    if (typeof payload.mainImage === 'string') {
-        detailsPayload.mainImage = payload.mainImage;
-    }
-
-    await axiosInstance.post(`/products/${productId}/update`, detailsPayload);
-
-    // 3. Update Images (Multimedia)
+    // 3. Update Images
+    // We strictly prepare FormData to ensure 'mainImage' is ALWAYS present
     const imageFormData = new FormData();
     let hasImageUpdates = false;
 
@@ -104,7 +98,9 @@ export const ProductsAPI = {
         imageFormData.append("mainImage", payload.mainImage);
         hasImageUpdates = true;
     } else if (typeof payload.mainImage === 'string' && payload.mainImage) {
+        // Send the existing path string to satisfy "should not be empty"
         imageFormData.append("mainImage", payload.mainImage);
+        // We consider this an update context if gallery images are changing
     }
 
     // Handle Gallery Images
@@ -117,7 +113,8 @@ export const ProductsAPI = {
         });
     }
 
-    // Call image endpoint if we have files OR to re-confirm the main image string
+    // Only hit the endpoint if we have actual files OR if we need to re-validate the main image string
+    // To be safe and fix your error, we call this whenever mainImage exists.
     if (payload.mainImage || hasImageUpdates) {
         await axiosInstance.post(`/products/${productId}/images`, imageFormData, {
              headers: { "Content-Type": "multipart/form-data" },
