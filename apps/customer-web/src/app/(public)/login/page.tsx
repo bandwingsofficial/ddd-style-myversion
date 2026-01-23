@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { requestOtp } from "@/features/customer-auth/api/auth.api";
-import { toast } from "sonner"; // Assuming you use sonner or similar
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get("redirect") || ""; // Capture redirect param
+  const redirectUrl = searchParams.get("redirect") || "";
 
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,7 +16,7 @@ export default function LoginPage() {
 
   const handleSubmit = async () => {
     if (!phone || phone.length !== 10) {
-      setError("Please enter a valid 10-digit phone number");
+      setError("Enter valid 10-digit number");
       return;
     }
 
@@ -27,14 +27,13 @@ export default function LoginPage() {
       
       await requestOtp(formattedPhone);
       
-      // Construct URL with phone AND the original redirect destination
       const nextUrl = `/verify-otp?phone=${encodeURIComponent(formattedPhone)}${redirectUrl ? `&redirect=${redirectUrl}` : ""}`;
       
       router.push(nextUrl);
       toast.success("OTP sent successfully!");
 
     } catch (err) {
-      setError("Failed to send OTP. Please try again.");
+      setError("Failed to send OTP");
     } finally {
       setLoading(false);
     }
@@ -45,258 +44,114 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="login-wrapper">
-      <div className="login-card">
-        {/* Compact Logo & Title */}
-        <header className="brand-header">
-          <div className="logo-icons">
-            <span className="icon">🥤</span>
-            <span className="icon">🎋</span>
-          </div>
-          <h1 className="brand-name">Sugarcane Fresh</h1>
-          <p className="brand-tagline">Pure & Natural Juice</p>
-        </header>
+    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] p-4 font-sans">
+      
+      {/* Refined Card Container - Reduced Width & Height */}
+      <main className="w-full max-w-[360px] bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.08)] border border-slate-100 overflow-hidden">
+        
+        {/* Accent Bar */}
+        <div className="h-1 w-full bg-emerald-600" />
 
-        <section className="form-content">
-          <div className="text-center mb-6">
-            <h2 className="welcome-text">Welcome Back</h2>
-            <p className="sub-text">Enter phone number to continue</p>
-          </div>
-
-          <div className="input-container">
-            <div className="input-wrapper">
-              <span className="prefix">+91</span>
-              <input
-                type="tel"
-                placeholder="00000 00000"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                onKeyPress={handleKeyPress}
-                maxLength={10}
-                className="phone-input"
-                disabled={loading}
-              />
+        <div className="px-6 py-8">
+          {/* Header - Compact & Professional */}
+          <header className="flex flex-col items-center mb-6">
+            <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600 mb-3">
+               {/* Brand Icon (Leaf) */}
+               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                 <path d="M12 20h9"/>
+                 <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+               </svg>
             </div>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Sugarcane Fresh</h1>
+            <p className="text-xs text-slate-500 font-medium mt-1">Sign in to your account</p>
+          </header>
+
+          {/* Form Content */}
+          <div className="space-y-4">
             
-            {error && <p className="error-text">{error}</p>}
-            {!error && <p className="helper-text">A 6-digit OTP will be sent</p>}
+            {/* Input Group */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700 ml-1">Phone Number</label>
+              <div 
+                className={`flex items-center bg-white border rounded-lg transition-all duration-200
+                  ${error ? 'border-red-300 ring-2 ring-red-50' : 'border-slate-200 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/10'}
+                `}
+              >
+                <div className="pl-3.5 pr-3 py-2.5 border-r border-slate-100 bg-slate-50/50 rounded-l-lg">
+                  <span className="text-sm font-semibold text-slate-600">+91</span>
+                </div>
+                <input
+                  type="tel"
+                  placeholder="98765 43210"
+                  value={phone}
+                  onChange={(e) => {
+                    setPhone(e.target.value.replace(/\D/g, '').slice(0, 10));
+                    if (error) setError(null);
+                  }}
+                  onKeyDown={handleKeyPress}
+                  maxLength={10}
+                  disabled={loading}
+                  className="flex-1 bg-transparent border-none outline-none px-3 text-slate-900 placeholder:text-slate-300 text-sm font-medium h-full py-2.5"
+                />
+              </div>
+              
+              {/* Error or Hint */}
+              <div className="h-4 flex items-center px-1">
+                {error ? (
+                  <p className="text-[10px] font-medium text-red-500 flex items-center gap-1">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    {error}
+                  </p>
+                ) : (
+                  <p className="text-[10px] text-slate-400">We will send you a one-time password</p>
+                )}
+              </div>
+            </div>
+
+            {/* Action Button */}
+            <button
+              onClick={handleSubmit}
+              disabled={loading || phone.length !== 10}
+              className={`
+                w-full py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm font-semibold transition-all duration-200
+                ${loading || phone.length !== 10 
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                  : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm hover:shadow active:scale-[0.98]'}
+              `}
+            >
+              {loading ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  Get OTP
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+                  </svg>
+                </>
+              )}
+            </button>
           </div>
 
-          <button
-            onClick={handleSubmit}
-            disabled={loading || phone.length !== 10}
-            className="cta-button"
-          >
-            {loading ? <span className="loader"></span> : "Get OTP"}
-            {!loading && <span className="arrow">→</span>}
-          </button>
-        </section>
+          {/* Footer - Integrated and minimal */}
+          <footer className="mt-8 pt-6 border-t border-slate-50 flex flex-col items-center gap-4">
+            <p className="text-[10px] text-slate-400 text-center leading-relaxed px-4">
+              By continuing, you agree to our 
+              <span className="text-emerald-600 font-medium cursor-pointer hover:underline mx-1">Terms</span> 
+              and 
+              <span className="text-emerald-600 font-medium cursor-pointer hover:underline mx-1">Privacy</span>
+            </p>
+            
+            <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
+              {/* Phone Icon */}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-600">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+              <span>Support: 1800-SUGAR</span>
+            </div>
+          </footer>
 
-        <footer className="card-footer">
-          <p className="legal-text">
-            By continuing, you agree to our <span>Terms & Privacy</span>
-          </p>
-          <div className="support-badge">
-            <span className="support-icon">📞</span>
-            <span>Support: 1800-SUGAR</span>
-          </div>
-        </footer>
-      </div>
-
-      <style jsx>{`
-        .login-wrapper {
-          min-height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background-color: #f8fafc;
-          padding: 1.5rem;
-          font-family: 'Inter', -apple-system, sans-serif;
-        }
-
-        .login-card {
-          width: 100%;
-          max-width: 380px;
-          background: #ffffff;
-          border-radius: 24px;
-          padding: 2.5rem 2rem;
-          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-          border: 1px solid #f1f5f9;
-        }
-
-        .brand-header {
-          text-align: center;
-          margin-bottom: 2rem;
-        }
-
-        .logo-icons {
-          font-size: 2.5rem;
-          display: flex;
-          justify-content: center;
-          gap: 0.5rem;
-          margin-bottom: 0.5rem;
-        }
-
-        .brand-name {
-          color: #15803d;
-          font-size: 1.5rem;
-          font-weight: 800;
-          margin: 0;
-          letter-spacing: -0.025em;
-        }
-
-        .brand-tagline {
-          color: #22c55e;
-          font-size: 0.813rem;
-          font-weight: 500;
-          margin-top: 0.25rem;
-        }
-
-        .welcome-text {
-          font-size: 1.25rem;
-          font-weight: 700;
-          color: #1e293b;
-          margin: 0;
-        }
-
-        .sub-text {
-          font-size: 0.875rem;
-          color: #64748b;
-          margin-top: 0.25rem;
-        }
-
-        .input-container {
-          margin: 1.5rem 0;
-        }
-
-        .input-wrapper {
-          display: flex;
-          align-items: center;
-          background: #f8fafc;
-          border: 1.5px solid #e2e8f0;
-          border-radius: 12px;
-          transition: all 0.2s ease;
-        }
-
-        .input-wrapper:focus-within {
-          border-color: #22c55e;
-          background: #ffffff;
-          box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.1);
-        }
-
-        .prefix {
-          padding-left: 1rem;
-          font-weight: 600;
-          color: #15803d;
-          border-right: 1.5px solid #e2e8f0;
-          padding-right: 0.75rem;
-          font-size: 0.95rem;
-        }
-
-        .phone-input {
-          flex: 1;
-          border: none;
-          padding: 0.875rem;
-          font-size: 1rem;
-          background: transparent;
-          outline: none;
-          color: #1e293b;
-          font-weight: 500;
-          letter-spacing: 0.05em;
-        }
-
-        .helper-text {
-          font-size: 0.75rem;
-          color: #94a3b8;
-          margin-top: 0.5rem;
-          text-align: center;
-        }
-
-        .error-text {
-          color: #ef4444;
-          font-size: 0.75rem;
-          margin-top: 0.5rem;
-          text-align: center;
-          font-weight: 500;
-        }
-
-        .cta-button {
-          width: 100%;
-          padding: 0.875rem;
-          background: #16a34a;
-          color: white;
-          border: none;
-          border-radius: 12px;
-          font-weight: 600;
-          font-size: 1rem;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.5rem;
-          transition: all 0.2s ease;
-        }
-
-        .cta-button:hover:not(:disabled) {
-          background: #15803d;
-          transform: translateY(-1px);
-        }
-
-        .cta-button:disabled {
-          background: #cbd5e1;
-          cursor: not-allowed;
-        }
-
-        .card-footer {
-          margin-top: 2rem;
-          text-align: center;
-        }
-
-        .legal-text {
-          font-size: 0.75rem;
-          color: #94a3b8;
-          margin-bottom: 1.25rem;
-        }
-
-        .legal-text span {
-          color: #16a34a;
-          font-weight: 500;
-          cursor: pointer;
-        }
-
-        .support-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          padding: 0.5rem 1rem;
-          background: #f0fdf4;
-          border-radius: 99px;
-          color: #16a34a;
-          font-size: 0.75rem;
-          font-weight: 600;
-          border: 1px solid #dcfce7;
-        }
-
-        .loader {
-          width: 18px;
-          height: 18px;
-          border: 2px solid #ffffff;
-          border-bottom-color: transparent;
-          border-radius: 50%;
-          animation: rotation 1s linear infinite;
-        }
-
-        @keyframes rotation {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-
-        @media (max-width: 400px) {
-          .login-card {
-            padding: 2rem 1.25rem;
-          }
-        }
-      `}</style>
+        </div>
+      </main>
     </div>
   );
 }

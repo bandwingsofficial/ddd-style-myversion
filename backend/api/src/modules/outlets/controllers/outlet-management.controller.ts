@@ -7,6 +7,7 @@ import {
   Param,
   Post,
   UseGuards,
+  Delete
 } from '@nestjs/common';
 
 import { OutletOrchestratorService } from '../services/outlet-orchestrator.service';
@@ -267,6 +268,153 @@ async getAllOutlets() {
       success: true,
       code: 'OUTLET_CAMERA_OFF',
       message: 'Camera turned off successfully',
+      data: null,
+    };
+  }
+
+  /* ================================================= */
+  /* OUTLET PRODUCTS – READ                            */
+  /* ================================================= */
+
+  @Get(':outletId/products')
+  @Roles(ActorType.SUPER_ADMIN, ActorType.OUTLET_USER)
+  async getOutletProducts(
+    @Param('outletId') outletId: string,
+  ) {
+    const data = await this.orchestrator.getOutletProducts(outletId);
+
+    return {
+      success: true,
+      code: 'OUTLET_PRODUCTS_FETCHED',
+      message: 'Outlet products fetched successfully',
+      data,
+    };
+  }
+
+  /* ================================================= */
+  /* OUTLET PRODUCTS – ASSIGN (SUPER ADMIN ONLY)       */
+  /* ================================================= */
+
+  @Post(':outletId/products')
+  @Roles(ActorType.SUPER_ADMIN)
+  async assignProduct(
+    @Param('outletId') outletId: string,
+    @Body() body: { productId: string },
+    @CurrentUser() user,
+  ) {
+    const data = await this.orchestrator.assignProductToOutlet({
+      outletId,
+      productId: body.productId,
+      adminId: user.actorId,
+    });
+
+    return {
+      success: true,
+      code: 'OUTLET_PRODUCT_ASSIGNED',
+      message: 'Product assigned to outlet successfully',
+      data,
+    };
+  }
+
+  /* ================================================= */
+  /* OUTLET PRODUCTS – ENABLE                          */
+  /* ================================================= */
+
+  @Post(':outletId/products/:productId/enable')
+  @Roles(ActorType.SUPER_ADMIN, ActorType.OUTLET_USER)
+  async enableProduct(
+    @Param('outletId') outletId: string,
+    @Param('productId') productId: string,
+    @CurrentUser() user,
+  ) {
+    await this.orchestrator.enableOutletProduct({
+      outletId,
+      productId,
+      adminId: user.actorId,
+    });
+
+    return {
+      success: true,
+      code: 'OUTLET_PRODUCT_ENABLED',
+      message: 'Product enabled successfully',
+      data: null,
+    };
+  }
+
+  /* ================================================= */
+  /* OUTLET PRODUCTS – DISABLE                         */
+  /* ================================================= */
+
+  @Post(':outletId/products/:productId/disable')
+  @Roles(ActorType.SUPER_ADMIN, ActorType.OUTLET_USER)
+  async disableProduct(
+    @Param('outletId') outletId: string,
+    @Param('productId') productId: string,
+    @CurrentUser() user,
+  ) {
+    await this.orchestrator.disableOutletProduct({
+      outletId,
+      productId,
+      adminId: user.actorId,
+    });
+
+    return {
+      success: true,
+      code: 'OUTLET_PRODUCT_DISABLED',
+      message: 'Product disabled successfully',
+      data: null,
+    };
+  }
+
+  /* ================================================= */
+  /* OUTLET PRODUCTS – PRICING UPDATE                  */
+  /* ================================================= */
+
+  @Post(':outletId/products/:productId/pricing')
+  @Roles(ActorType.SUPER_ADMIN)
+  async updatePricing(
+    @Param('outletId') outletId: string,
+    @Param('productId') productId: string,
+    @Body() body: { priceOverride?: number; discountOverride?: number },
+    @CurrentUser() user,
+  ) {
+    await this.orchestrator.updateOutletProductPricing({
+      outletId,
+      productId,
+      priceOverride: body.priceOverride ?? null,
+      discountOverride: body.discountOverride ?? null,
+      adminId: user.actorId,
+    });
+
+    return {
+      success: true,
+      code: 'OUTLET_PRODUCT_PRICING_UPDATED',
+      message: 'Product pricing updated successfully',
+      data: null,
+    };
+  }
+
+  /* ================================================= */
+  /* OUTLET PRODUCTS – DELETE (REMOVE ASSIGNMENT)      */
+  /* ================================================= */
+
+  @Delete(':outletId/products/:productId')
+  @Roles(ActorType.SUPER_ADMIN)
+  async deleteProduct(
+    @Param('outletId') outletId: string,
+    @Param('productId') productId: string,
+    @CurrentUser() user,
+  ) {
+    await this.orchestrator.removeProductFromOutlet({
+      outletId,
+      productId,
+      adminId: user.actorId,
+    });
+
+    return {
+      success: true,
+      code: 'OUTLET_PRODUCT_REMOVED',
+      message: 'Product removed from outlet successfully',
       data: null,
     };
   }

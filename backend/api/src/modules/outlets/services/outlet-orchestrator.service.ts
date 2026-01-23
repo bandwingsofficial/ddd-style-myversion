@@ -4,6 +4,8 @@ import { Injectable } from '@nestjs/common';
 
 import { OutletUserService } from './outlet-user.service';
 import { OutletService } from './outlet.service';
+import { OutletProductService } from './outlet-product.service'; // 🔥 ADD
+
 import { Outlet } from '../domain/models/outlet.model';
 
 /**
@@ -20,6 +22,7 @@ export class OutletOrchestratorService {
   constructor(
     private readonly outletUserService: OutletUserService,
     private readonly outletService: OutletService,
+    private readonly outletProductService: OutletProductService, // 🔥 ADD
   ) {}
 
   /* ================================================= */
@@ -29,20 +32,17 @@ export class OutletOrchestratorService {
   async getOutletById(outletId: string) {
     return this.outletService.getById(outletId);
   }
-  /* ================================================= */
-/* OUTLET – READS                                    */
-/* ================================================= */
 
-async getAllOutlets() {
-  return this.outletService.getAllOutlets();
-}
+  async getAllOutlets() {
+    return this.outletService.getAllOutlets();
+  }
 
   /* ================================================= */
   /* OUTLET – CREATE / UPDATE / ENABLE / DISABLE        */
   /* ================================================= */
 
   async createOutlet(params: {
-    outlet: Outlet; // ✅ typed aggregate
+    outlet: Outlet;
     adminId: string;
     ipAddress?: string;
     userAgent?: string;
@@ -139,6 +139,77 @@ async getAllOutlets() {
   }
 
   /* ================================================= */
+  /* OUTLET PRODUCT – READS 🔥 ADD                      */
+  /* ================================================= */
+
+  async getOutletProducts(outletId: string) {
+    return this.outletProductService.getProducts(outletId);
+  }
+
+  async getAvailableOutletProducts(outletId: string) {
+    return this.outletProductService.getAvailableProducts(outletId);
+  }
+
+    /**
+   * 🔥 NEW – for PUBLIC API (joins product details)
+   */
+  async getAvailableOutletProductsWithDetails(outletId: string) {
+    return this.outletProductService.getAvailableProductsWithDetails(outletId);
+  }
+
+  /* ================================================= */
+  /* OUTLET PRODUCT – ASSIGN / TOGGLE / PRICING 🔥 ADD */
+  /* ================================================= */
+
+  async assignProductToOutlet(params: {
+    outletId: string;
+    productId: string;
+    adminId: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }) {
+    return this.outletProductService.assignProduct(params);
+  }
+
+  async enableOutletProduct(params: {
+    outletId: string;
+    productId: string;
+    adminId: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }) {
+    return this.outletProductService.enableProduct(params);
+  }
+
+  async disableOutletProduct(params: {
+    outletId: string;
+    productId: string;
+    adminId: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }) {
+    return this.outletProductService.disableProduct(params);
+  }
+
+  async updateOutletProductPricing(params: {
+    outletId: string;
+    productId: string;
+    priceOverride?: number | null;
+    discountOverride?: number | null;
+    adminId: string;
+  }) {
+    return this.outletProductService.updatePricing(params);
+  }
+
+  async removeProductFromOutlet(params: {
+    outletId: string;
+    productId: string;
+    adminId: string;
+  }) {
+    return this.outletProductService.removeProduct(params);
+  }
+
+  /* ================================================= */
   /* OUTLET USER – READS                               */
   /* ================================================= */
 
@@ -151,7 +222,7 @@ async getAllOutlets() {
   }
 
   /* ================================================= */
-  /* OUTLET USER – CREATE / UPDATE (ADMIN)             */
+  /* OUTLET USER – CREATE / UPDATE                     */
   /* ================================================= */
 
   async createOutletUser(params: {

@@ -17,6 +17,7 @@ import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
+import { ValidationError } from '../../../common/errors';
 
 import { ActorType } from '../../auth/domain/enums/actor-type.enum';
 
@@ -25,6 +26,7 @@ import { CreateProductDto } from '../dtos/create-product.dto';
 import { UpdateProductDetailsDto } from '../dtos/update-product-details.dto';
 import { UpdateProductPriceDto } from '../dtos/update-product-price.dto';
 import { UpdateProductImagesDto } from '../dtos/update-product-images.dto';
+import { DeleteProductImageDto } from '../dtos/delete-product-image.dto';
 
 /* Domain */
 import { Product } from '../domain/models/product.model';
@@ -172,6 +174,9 @@ export class ProductManagementController {
     };
   }
 
+
+  
+
   /* ================================================= */
   /* PRODUCT – UPDATE PRICE                           */
   /* ================================================= */
@@ -201,14 +206,15 @@ export class ProductManagementController {
   /* PRODUCT – UPDATE IMAGES                          */
   /* ================================================= */
 
-  @Post(':productId/images')
+/* ================================================= */
+/* PRODUCT – UPDATE IMAGES                          */
+/* ================================================= */
+
+@Post(':productId/images')
 @Roles(ActorType.SUPER_ADMIN)
 @UseInterceptors(
   FileFieldsInterceptor(
-    [
-      { name: 'mainImage', maxCount: 1 },
-      { name: 'galleryImages', maxCount: 5 },
-    ],
+    [{ name: 'galleryImages', maxCount: 1 }],
     productImageUploadOptions,
   ),
 )
@@ -216,38 +222,62 @@ async updateProductImages(
   @Param('productId') productId: string,
   @Body() dto: UpdateProductImagesDto,
   @UploadedFiles()
-  files: {
-    mainImage?: Express.Multer.File[];
-    galleryImages?: Express.Multer.File[];
-  },
+  files: { galleryImages?: Express.Multer.File[] },
 ) {
-  const mainImagePath =
-    files?.mainImage?.length
-      ? `images/products/${files.mainImage[0].filename}`
-      : dto.mainImage;
+  if (!dto.replaceImage) {
+    throw new ValidationError(
+      'REPLACE_IMAGE_REQUIRED',
+      'replaceImage is required',
+    );
+  }
 
-  const galleryImagePaths =
-    files?.galleryImages?.length
-      ? files.galleryImages.map(
-          (f) => `images/products/${f.filename}`,
-        )
-      : dto.galleryImages;
+  if (!files?.galleryImages?.length) {
+    throw new ValidationError(
+      'NEW_IMAGE_REQUIRED',
+      'New image file is required',
+    );
+  }
 
-  const data =
-    await this.orchestrator.updateProductImages({
-      productId,
-      mainImage: mainImagePath,
-      galleryImages: galleryImagePaths,
-    });
+  const newImagePath = `images/products/${files.galleryImages[0].filename}`;
+
+  const data = await this.orchestrator.updateProductImages({
+  productId,
+  replaceImage: dto.replaceImage,
+  galleryImages: [newImagePath], // ✅ MUST be array
+});
 
   return {
     success: true,
-    code: 'PRODUCT_IMAGES_UPDATED',
-    message: 'Product images updated successfully',
+    code: 'PRODUCT_IMAGE_REPLACED',
+    message: 'Gallery image replaced successfully',
     data,
   };
 }
 
+
+/* ================================================= */
+/* PRODUCT – DELETE GALLERY IMAGE                   */
+/* ================================================= */
+
+@Post(':productId/images/delete')
+@Roles(ActorType.SUPER_ADMIN)
+async deleteProductImage(
+  @Param('productId') productId: string,
+  @Body() dto: DeleteProductImageDto,
+) {
+  const data =
+    await this.orchestrator.deleteProductImage({
+      productId,
+      imagePath: dto.imagePath,
+    });
+
+  return {
+    success: true,
+    code: 'PRODUCT_IMAGE_DELETED',
+    message: 'Product image deleted successfully',
+    data,
+  };
+}
 
   /* ================================================= */
   /* PRODUCT – ENABLE / DISABLE                       */

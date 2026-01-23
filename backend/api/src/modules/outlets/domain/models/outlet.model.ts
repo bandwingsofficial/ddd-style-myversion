@@ -1,5 +1,3 @@
-// src/modules/outlets/domain/models/outlet.model.ts
-
 import { ValidationError } from '../../../../common/errors';
 import { OutletStatus } from '../enums/outlet-status.enum';
 import { OutletWorkingState } from '../value-objects/outlet-working-state.vo';
@@ -56,7 +54,7 @@ export class Outlet {
   }
 
   /* ---------------------------------------------- */
-  /* FACTORIES                                     */
+  /* FACTORIES                                      */
   /* ---------------------------------------------- */
 
   static createNew(params: {
@@ -104,6 +102,9 @@ export class Outlet {
     return this.status === OutletStatus.ACTIVE;
   }
 
+  /**
+   * Used internally for ordering capability
+   */
   canAcceptOrders(): boolean {
     return (
       this.status === OutletStatus.ACTIVE &&
@@ -119,7 +120,23 @@ export class Outlet {
   }
 
   /* ---------------------------------------------- */
-  /* DOMAIN TRANSITIONS                             */
+  /* 🔥 NEW: PUBLIC VISIBILITY (CUSTOMER SIDE)       */
+  /* ---------------------------------------------- */
+
+  /**
+   * Used by:
+   * - public APIs
+   * - customer storefront
+   * - listing screens
+   *
+   * Only show outlet if customers can place orders
+   */
+  isPubliclyVisible(): boolean {
+    return this.canAcceptOrders();
+  }
+
+  /* ---------------------------------------------- */
+  /* DOMAIN TRANSITIONS                              */
   /* ---------------------------------------------- */
 
   openShop(now = new Date()): Outlet {
@@ -177,7 +194,7 @@ export class Outlet {
   }
 
   /* ---------------------------------------------- */
-  /* NEW: UPDATE DETAILS (STRUCTURAL ONLY)          */
+  /* UPDATE DETAILS                                  */
   /* ---------------------------------------------- */
 
   updateDetails(params: {
@@ -199,7 +216,7 @@ export class Outlet {
   }
 
   /* ---------------------------------------------- */
-  /* INVARIANTS                                     */
+  /* INVARIANTS                                      */
   /* ---------------------------------------------- */
 
   private assertValidState(): void {

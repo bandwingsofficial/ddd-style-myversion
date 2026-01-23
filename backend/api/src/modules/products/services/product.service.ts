@@ -263,17 +263,22 @@ async getByIdWithCategory(productId: string): Promise<{
     return updated;
   }
 
-  /* ================================================= */
-  /* UPDATE IMAGES                                    */
-  /* ================================================= */
+
+/* ================================================= */
+/* UPDATE IMAGES                                    */
+/* ================================================= */
 
 async updateImages(params: {
   productId: string;
-  mainImage?: string;          // ✅ optional
+  mainImage?: string;
   galleryImages?: string[];
+  replaceImage?: string; // 🔥 NEW
 }): Promise<Product> {
   const product = await this.getById(params.productId);
 
+  /* ---------------------------------- */
+  /* Product must be active             */
+  /* ---------------------------------- */
   if (!product.isActive()) {
     throw new ValidationError(
       'PRODUCT_INACTIVE',
@@ -282,7 +287,21 @@ async updateImages(params: {
   }
 
   /* ---------------------------------- */
-  /* Resolve next main image safely     */
+  /* Prevent empty update               */
+  /* ---------------------------------- */
+  if (
+    params.mainImage === undefined &&
+    params.galleryImages === undefined &&
+    params.replaceImage === undefined
+  ) {
+    throw new ValidationError(
+      'NO_IMAGES_PROVIDED',
+      'No images provided to update',
+    );
+  }
+
+  /* ---------------------------------- */
+  /* Resolve next main image             */
   /* ---------------------------------- */
   const nextMainImage = params.mainImage
     ? this.normalizeImagePath(params.mainImage)
@@ -296,17 +315,43 @@ async updateImages(params: {
   }
 
   /* ---------------------------------- */
-  /* Resolve next gallery images safely */
+  /* Handle gallery replacement 🔥      */
   /* ---------------------------------- */
-  const nextGalleryImages =
-    params.galleryImages !== undefined
-      ? params.galleryImages
-          .map((img) => this.normalizeImagePath(img))
-          .filter((img): img is string => Boolean(img))
-      : product.images.getGallery();
+  let nextGalleryImages = product.images.getGallery();
+
+  if (params.replaceImage && params.galleryImages?.length === 1) {
+    const target = this.normalizeImagePath(params.replaceImage);
+    const replacement = this.normalizeImagePath(
+      params.galleryImages[0],
+    );
+
+    const index = nextGalleryImages.indexOf(target!);
+
+    if (index === -1) {
+      throw new ValidationError(
+        'GALLERY_IMAGE_NOT_FOUND',
+        'Image to replace was not found in gallery',
+      );
+    }
+
+    nextGalleryImages = [...nextGalleryImages];
+    nextGalleryImages[index] = replacement!;
+
+    // delete ONLY replaced image
+    this.deleteImageSafe(target!);
+  }
 
   /* ---------------------------------- */
-  /* Keep track of old images           */
+  /* Full gallery replace (optional)    */
+  /* ---------------------------------- */
+  else if (params.galleryImages !== undefined) {
+    nextGalleryImages = params.galleryImages
+      .map((img) => this.normalizeImagePath(img))
+      .filter((img): img is string => Boolean(img));
+  }
+
+  /* ---------------------------------- */
+  /* Track old images                   */
   /* ---------------------------------- */
   const oldImages = new Set([
     product.images.getMain(),
@@ -314,7 +359,7 @@ async updateImages(params: {
   ]);
 
   /* ---------------------------------- */
-  /* Update domain model                */
+  /* Update domain                      */
   /* ---------------------------------- */
   const updated = product.updateImages({
     mainImage: nextMainImage,
@@ -326,7 +371,112 @@ async updateImages(params: {
   });
 
   /* ---------------------------------- */
-  /* Delete ONLY removed images         */
+  /* Delete removed files only          */
+  /* ---------------------------------- */
+  const newImages = new Set([
+    updated.images.getMain(),
+    ...updated.images.getGallery(),
+  ]);
+
+  oldImages.forEach((img) => {
+    if (!newImages.has(img)) {
+      this.deleteImageSafe(img);
+    }
+  });
+
+  /* ---------------------------------- */
+  /* Emit event                         */
+  /* ---------------------------------- */
+  this.productEvents.emitProductImagesChanged({
+    productId: updated.id,
+    mainImage: updated.images.getMain(),
+    galleryImages: updated.images.getGallery(),
+  });
+
+  return updated;
+}
+
+
+
+/* ================================================= */
+/* DELETE SINGLE GALLERY IMAGE                       */
+/* ================================================= */
+
+async deleteProductImage(params: {
+  productId: string;
+  imagePath: string;
+}): Promise<Product> {
+  const product = await this.getById(params.productId);
+
+  /* ---------------------------------- */
+  /* Product must be active             */
+  /* ---------------------------------- */
+  if (!product.isActive()) {
+    throw new ValidationError(
+      'PRODUCT_INACTIVE',
+      'Inactive product cannot be updated',
+    );
+  }
+
+  /* ---------------------------------- */
+  /* Normalize & validate image path    */
+  /* ---------------------------------- */
+  const normalizedPath =
+    this.normalizeImagePath(params.imagePath);
+
+  if (!normalizedPath) {
+    throw new ValidationError(
+      'INVALID_IMAGE_PATH',
+      'Invalid image path',
+    );
+  }
+
+  /* ---------------------------------- */
+  /* Block main image deletion          */
+  /* ---------------------------------- */
+  if (product.images.getMain() === normalizedPath) {
+    throw new ValidationError(
+      'MAIN_IMAGE_DELETE_FORBIDDEN',
+      'Main image cannot be deleted directly',
+    );
+  }
+
+  /* ---------------------------------- */
+  /* Ensure image exists in gallery     */
+  /* ---------------------------------- */
+  const galleryImages = product.images.getGallery();
+
+  if (!galleryImages.includes(normalizedPath)) {
+    throw new ValidationError(
+      'GALLERY_IMAGE_NOT_FOUND',
+      'Image not found in gallery',
+    );
+  }
+
+  /* ---------------------------------- */
+  /* Track old images                   */
+  /* ---------------------------------- */
+  const oldImages = new Set([
+    product.images.getMain(),
+    ...galleryImages,
+  ]);
+
+  /* ---------------------------------- */
+  /* Update domain (remove image)       */
+  /* ---------------------------------- */
+  const updated = product.updateImages({
+    mainImage: product.images.getMain(),
+    galleryImages: galleryImages.filter(
+      (img) => img !== normalizedPath,
+    ),
+  });
+
+  await this.prisma.$transaction(async (tx) => {
+    await this.productRepo.updateImages(updated, tx);
+  });
+
+  /* ---------------------------------- */
+  /* Delete removed file                */
   /* ---------------------------------- */
   const newImages = new Set([
     updated.images.getMain(),

@@ -93,13 +93,22 @@ export class ProductOrchestratorService {
     return this.productService.updatePrice(params);
   }
 
-  async updateProductImages(params: {
+ async updateProductImages(params: {
   productId: string;
-  mainImage?: string;        // ✅ optional
+  mainImage?: string;
   galleryImages?: string[];
+  replaceImage?: string; // 🔥 ADD THIS
 }): Promise<Product> {
   return this.productService.updateImages(params);
 }
+
+async deleteProductImage(params: {
+  productId: string;
+  imagePath: string;
+}): Promise<Product> {
+  return this.productService.deleteProductImage(params);
+}
+
 
   /* ================================================= */
   /* PRODUCT – ENABLE / DISABLE                       */

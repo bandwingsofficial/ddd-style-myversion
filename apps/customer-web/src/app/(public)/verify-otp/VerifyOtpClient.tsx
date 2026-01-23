@@ -4,15 +4,14 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useVerifyOtp } from "@/features/customer-auth/hooks/useVerifyOtp";
 import { useSession } from "@/features/customer-auth/hooks/useSession";
-// Importing API for the Resend functionality
 import { requestOtp } from "@/features/customer-auth/api/auth.api";
+import { toast } from "sonner"; // Assuming you have sonner for consistency
 
 export default function VerifyOtpClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const rawPhone = searchParams.get("phone");
-  // Clean up phone display
   const displayPhone = rawPhone?.replace("+91", "") || "";
   const phone = rawPhone?.startsWith("+") ? rawPhone : `+91${rawPhone}`;
 
@@ -53,12 +52,13 @@ export default function VerifyOtpClient() {
       setError(null);
 
       await verifyOtp(phone, otp);
-      await fetchSession(); // Hydrate session
+      await fetchSession();
 
       router.replace("/home");
+      toast.success("Welcome back!");
     } catch (err: any) {
-      setError(err?.message || "Invalid OTP. Please try again.");
-      setOtp(""); // Clear invalid OTP for better UX
+      setError(err?.message || "Invalid OTP");
+      setOtp(""); 
     } finally {
       setLoading(false);
     }
@@ -71,13 +71,13 @@ export default function VerifyOtpClient() {
       setError(null);
       await requestOtp(phone);
       
-      // Reset Timer
       setTimer(60);
       setCanResend(false);
       setOtp("");
       inputRef.current?.focus();
+      toast.success("Code resent successfully");
     } catch (err) {
-      setError("Failed to resend OTP. Try again later.");
+      setError("Failed to resend. Try again.");
     } finally {
       setResendLoading(false);
     }
@@ -94,297 +94,129 @@ export default function VerifyOtpClient() {
   };
 
   return (
-    <div className="verify-wrapper">
-      <div className="verify-card">
+    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] p-4 font-sans">
+      
+      {/* Card Container */}
+      <main className="w-full max-w-[360px] bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.08)] border border-slate-100 overflow-hidden relative">
         
-        {/* Brand Header */}
-        <header className="brand-header">
-          <div className="logo-icons">
-            <span className="icon">🥤</span>
-            <span className="icon">🎋</span>
-          </div>
-          <h1 className="brand-name">Sugarcane Fresh</h1>
-        </header>
+        {/* Top Accent Bar */}
+        <div className="h-1 w-full bg-emerald-600" />
 
-        <section className="form-content">
-          <div className="text-center mb-6">
-            <h2 className="welcome-text">Verification</h2>
-            <p className="sub-text">
-              We sent a code to <span className="highlight-phone">+91 {displayPhone}</span>
-              <br />
-              <button onClick={() => router.back()} className="edit-link">
-                (Wrong number?)
+        <div className="px-6 py-8">
+          
+          {/* Header */}
+          <header className="flex flex-col items-center mb-6">
+            <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600 mb-3">
+               {/* Lock Icon */}
+               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                 <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+               </svg>
+            </div>
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Verification</h1>
+            
+            <div className="text-center mt-2">
+              <p className="text-xs text-slate-500 font-medium">
+                Enter code sent to <span className="text-slate-900 font-semibold">+91 {displayPhone}</span>
+              </p>
+              <button 
+                onClick={() => router.back()} 
+                className="text-[10px] text-emerald-600 font-semibold hover:text-emerald-700 hover:underline mt-0.5 transition-colors"
+              >
+                Wrong number?
               </button>
-            </p>
-          </div>
+            </div>
+          </header>
 
-          <div className="input-container">
-            <div className={`input-wrapper ${error ? "input-error" : ""}`}>
-              <input
-                ref={inputRef}
-                value={otp}
-                onChange={handleOtpChange}
-                onKeyPress={handleKeyPress}
-                maxLength={6}
-                placeholder="• • • • • •"
-                className="otp-input"
-                disabled={loading}
-              />
+          {/* Form Content */}
+          <div className="space-y-6">
+            
+            {/* OTP Input */}
+            <div>
+              <div 
+                className={`relative flex items-center justify-center bg-white border rounded-lg transition-all duration-200 h-14 overflow-hidden
+                  ${error ? 'border-red-300 ring-2 ring-red-50' : 'border-slate-200 focus-within:border-emerald-500 focus-within:ring-2 focus-within:ring-emerald-500/10'}
+                `}
+              >
+                <input
+                  ref={inputRef}
+                  value={otp}
+                  onChange={handleOtpChange}
+                  onKeyDown={handleKeyPress}
+                  maxLength={6}
+                  placeholder="------"
+                  disabled={loading}
+                  className="w-full h-full text-center text-2xl font-bold tracking-[0.5em] text-slate-900 placeholder:text-slate-200 border-none outline-none bg-transparent pt-1"
+                  style={{ paddingLeft: '0.5em' }} // Visual fix for tracking
+                />
+              </div>
+
+              {/* Error Message */}
+              <div className="h-5 mt-1.5 flex justify-center">
+                {error && (
+                  <p className="text-[10px] font-medium text-red-500 flex items-center gap-1 animate-in fade-in slide-in-from-top-1">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    {error}
+                  </p>
+                )}
+              </div>
             </div>
 
-            {error && <p className="error-text">{error}</p>}
-          </div>
-
-          <button
-            onClick={handleVerify}
-            disabled={loading || otp.length !== 6}
-            className="cta-button"
-          >
-            {loading ? <span className="loader"></span> : "Verify & Proceed"}
-            {!loading && <span className="arrow">→</span>}
-          </button>
-
-          {/* Timer & Resend Section */}
-          <div className="timer-container">
-            {!canResend ? (
-              <p className="timer-text">
-                Resend code in <span className="countdown">00:{timer.toString().padStart(2, '0')}</span>
-              </p>
-            ) : (
-              <button 
-                onClick={handleResend} 
-                disabled={resendLoading}
-                className="resend-btn"
+            {/* Action Button */}
+            <div className="space-y-4">
+              <button
+                onClick={handleVerify}
+                disabled={loading || otp.length !== 6}
+                className={`
+                  w-full py-2.5 rounded-lg flex items-center justify-center gap-2 text-sm font-semibold transition-all duration-200
+                  ${loading || otp.length !== 6
+                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                    : 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm hover:shadow active:scale-[0.98]'}
+                `}
               >
-                {resendLoading ? "Sending..." : "Resend Code"}
+                {loading ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    Verify & Proceed
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+                    </svg>
+                  </>
+                )}
               </button>
-            )}
+
+              {/* Timer / Resend */}
+              <div className="text-center">
+                {!canResend ? (
+                  <p className="text-xs text-slate-400 font-medium">
+                    Resend code in <span className="text-emerald-600 tabular-nums">00:{timer.toString().padStart(2, '0')}</span>
+                  </p>
+                ) : (
+                  <button 
+                    onClick={handleResend} 
+                    disabled={resendLoading}
+                    className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 hover:underline disabled:text-slate-300 disabled:no-underline transition-colors"
+                  >
+                    {resendLoading ? "Sending..." : "Resend Code"}
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
-        </section>
 
-        <footer className="card-footer">
-            <div className="support-badge">
-             <span className="support-icon">🔒</span>
-             <span>Secure Authentication</span>
-           </div>
-        </footer>
-      </div>
+          {/* Footer */}
+          <footer className="mt-8 pt-6 border-t border-slate-50 flex justify-center">
+             <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium">
+               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-500">
+                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+               </svg>
+               <span>Secure 256-bit Encrypted</span>
+             </div>
+          </footer>
 
-      <style jsx>{`
-        .verify-wrapper {
-          min-height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background-color: #f8fafc;
-          padding: 1.5rem;
-          font-family: 'Inter', -apple-system, sans-serif;
-        }
-
-        .verify-card {
-          width: 100%;
-          max-width: 380px;
-          background: #ffffff;
-          border-radius: 24px;
-          padding: 2.5rem 2rem;
-          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
-          border: 1px solid #f1f5f9;
-        }
-
-        .brand-header {
-          text-align: center;
-          margin-bottom: 2rem;
-        }
-
-        .logo-icons {
-          font-size: 2.5rem;
-          margin-bottom: 0.5rem;
-        }
-
-        .brand-name {
-          color: #15803d;
-          font-size: 1.5rem;
-          font-weight: 800;
-          margin: 0;
-          letter-spacing: -0.025em;
-        }
-
-        .welcome-text {
-          font-size: 1.25rem;
-          font-weight: 700;
-          color: #1e293b;
-          margin: 0;
-        }
-
-        .sub-text {
-          font-size: 0.875rem;
-          color: #64748b;
-          margin-top: 0.5rem;
-          line-height: 1.5;
-        }
-
-        .highlight-phone {
-          color: #1e293b;
-          font-weight: 600;
-        }
-
-        .edit-link {
-          background: none;
-          border: none;
-          color: #16a34a;
-          font-size: 0.75rem;
-          font-weight: 500;
-          cursor: pointer;
-          padding: 0;
-          text-decoration: underline;
-        }
-
-        .input-container {
-          margin: 2rem 0 1.5rem 0;
-        }
-
-        .input-wrapper {
-          background: #f8fafc;
-          border: 1.5px solid #e2e8f0;
-          border-radius: 12px;
-          transition: all 0.2s ease;
-          padding: 0.5rem;
-        }
-
-        .input-wrapper:focus-within {
-          border-color: #22c55e;
-          background: #ffffff;
-          box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.1);
-        }
-        
-        .input-error {
-          border-color: #ef4444;
-          background: #fef2f2;
-        }
-
-        .otp-input {
-          width: 100%;
-          border: none;
-          background: transparent;
-          font-size: 1.75rem;
-          font-weight: 700;
-          color: #1e293b;
-          text-align: center;
-          letter-spacing: 0.75rem; /* This gives the "separate box" look */
-          outline: none;
-          padding: 0.5rem;
-        }
-        
-        .otp-input::placeholder {
-           color: #cbd5e1;
-           letter-spacing: 0.75rem;
-        }
-
-        .error-text {
-          color: #ef4444;
-          font-size: 0.75rem;
-          margin-top: 0.75rem;
-          text-align: center;
-          font-weight: 500;
-          background: #fef2f2;
-          padding: 0.5rem;
-          border-radius: 6px;
-        }
-
-        .cta-button {
-          width: 100%;
-          padding: 0.875rem;
-          background: #16a34a;
-          color: white;
-          border: none;
-          border-radius: 12px;
-          font-weight: 600;
-          font-size: 1rem;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 0.5rem;
-          transition: all 0.2s ease;
-        }
-
-        .cta-button:hover:not(:disabled) {
-          background: #15803d;
-          transform: translateY(-1px);
-        }
-
-        .cta-button:disabled {
-          background: #cbd5e1;
-          cursor: not-allowed;
-        }
-
-        .timer-container {
-          margin-top: 1.5rem;
-          text-align: center;
-          height: 24px; /* Fixed height to prevent layout jump */
-        }
-
-        .timer-text {
-          font-size: 0.875rem;
-          color: #64748b;
-        }
-
-        .countdown {
-          color: #16a34a;
-          font-weight: 600;
-          font-variant-numeric: tabular-nums;
-        }
-
-        .resend-btn {
-          background: none;
-          border: none;
-          color: #16a34a;
-          font-weight: 600;
-          font-size: 0.875rem;
-          cursor: pointer;
-          transition: color 0.2s;
-        }
-        
-        .resend-btn:hover:not(:disabled) {
-          color: #15803d;
-          text-decoration: underline;
-        }
-        
-        .resend-btn:disabled {
-           color: #94a3b8;
-           cursor: wait;
-        }
-
-        .card-footer {
-          margin-top: 2rem;
-          text-align: center;
-          border-top: 1px solid #f1f5f9;
-          padding-top: 1.5rem;
-        }
-
-        .support-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-          color: #64748b;
-          font-size: 0.75rem;
-          font-weight: 500;
-        }
-
-        .loader {
-          width: 18px;
-          height: 18px;
-          border: 2px solid #ffffff;
-          border-bottom-color: transparent;
-          border-radius: 50%;
-          animation: rotation 1s linear infinite;
-        }
-
-        @keyframes rotation {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
+        </div>
+      </main>
     </div>
   );
 }

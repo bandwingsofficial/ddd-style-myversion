@@ -6,86 +6,102 @@ import Footer from "@/components/customer/Footer";
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="page-wrapper">
+    <div className="min-h-screen bg-[#F8FAFC] font-sans flex flex-col">
       <Header />
       
-      <main className="main-content">
-        <article className="document-card">
-          <header className="doc-header">
-            <h1 className="doc-title shine-title">Privacy Policy</h1>
-            <p className="last-updated">Last Updated: January 2026</p>
+      {/* pt-36 ensures content clears fixed header.
+        animate-in gives a smooth entrance.
+      */}
+      <main className="flex-grow pt-36 pb-20 px-4 sm:px-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        
+        <article className="max-w-4xl mx-auto bg-white rounded-3xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.05)] border border-slate-200 overflow-hidden">
+          
+          {/* Document Header */}
+          <header className="px-8 py-12 sm:px-12 md:py-16 text-center border-b border-slate-100 bg-slate-50/30">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 mb-4 font-serif">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-800 via-emerald-600 to-emerald-800">
+                Privacy Policy
+              </span>
+            </h1>
+            <p className="text-sm font-medium text-slate-400 uppercase tracking-widest">
+              Last Updated: January 2026
+            </p>
           </header>
 
-          <div className="doc-content">
+          {/* Document Content */}
+          <div className="p-8 sm:p-12 md:p-16 space-y-12">
+            
+            {/* Section 1 */}
             <section>
-              <h2>1. Introduction</h2>
-              <p>
-                Cane & Tender ("we," "our," or "us") is committed to protecting your privacy. 
-                This Privacy Policy explains how we collect, use, and disclose your personal information.
+              <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-3">
+                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 text-sm font-bold">1</span>
+                Introduction
+              </h2>
+              <p className="text-slate-600 leading-relaxed text-lg">
+                <span className="font-semibold text-slate-800">Cane & Tender</span> ("we," "our," or "us") is committed to protecting your privacy. 
+                This Privacy Policy explains how we collect, use, and disclose your personal information when you use our website and services.
               </p>
             </section>
 
+            {/* Section 2 */}
             <section>
-              <h2>2. Information We Collect</h2>
-              <p>We may collect the following types of information:</p>
-              <ul>
-                <li><strong>Personal Data:</strong> Name, email address, phone number, and delivery address.</li>
-                <li><strong>Usage Data:</strong> Information on how you use our website and services.</li>
+              <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-3">
+                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 text-sm font-bold">2</span>
+                Information We Collect
+              </h2>
+              <p className="text-slate-600 leading-relaxed mb-4">
+                We may collect the following types of information to provide better services to all our users:
+              </p>
+              <ul className="space-y-3 pl-2">
+                <li className="flex gap-3 text-slate-600">
+                  <span className="w-1.5 h-1.5 mt-2.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                  <span>
+                    <strong className="text-slate-800">Personal Data:</strong> Name, email address, phone number, and delivery address required for processing orders.
+                  </span>
+                </li>
+                <li className="flex gap-3 text-slate-600">
+                  <span className="w-1.5 h-1.5 mt-2.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                  <span>
+                    <strong className="text-slate-800">Usage Data:</strong> Information on how you access and use our website, including device information and browsing patterns.
+                  </span>
+                </li>
               </ul>
             </section>
 
+            {/* Section 3 */}
             <section>
-              <h2>3. How We Use Your Information</h2>
-              <p>
+              <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-3">
+                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 text-sm font-bold">3</span>
+                How We Use Your Information
+              </h2>
+              <p className="text-slate-600 leading-relaxed text-lg">
                 We use your data to process orders, manage your account, and improve our services. 
-                We do not sell your personal data to third parties.
+                We adhere to strict data protection standards and <span className="font-semibold text-slate-800">do not sell your personal data</span> to third parties for marketing purposes.
               </p>
             </section>
 
+            {/* Section 4 */}
             <section>
-              <h2>4. Contact Us</h2>
-              <p>
-                If you have questions about this policy, please contact us at privacy@caneandtender.com.
-              </p>
+              <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-3">
+                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 text-sm font-bold">4</span>
+                Contact Us
+              </h2>
+              <div className="bg-slate-50 rounded-xl p-6 border border-slate-100">
+                <p className="text-slate-600 mb-2">
+                  If you have questions about this policy or our data practices, please contact our Data Protection Officer:
+                </p>
+                <a href="mailto:privacy@caneandtender.com" className="text-emerald-600 font-semibold hover:underline hover:text-emerald-700 transition-colors">
+                  privacy@caneandtender.com
+                </a>
+              </div>
             </section>
+
           </div>
         </article>
+
       </main>
 
       <Footer />
-      
-      {/* Reusing the EXACT Pro Styles from Refund Policy */}
-      <style jsx>{`
-        .page-wrapper { background: #f8fafc; min-height: 100vh; }
-        .main-content { padding-top: 130px; padding-bottom: 100px; animation: slideUp 0.6s ease-out; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-        .shine-title {
-          background: linear-gradient(to right, #052e16 20%, #16a34a 40%, #16a34a 60%, #052e16 80%);
-          background-size: 200% auto;
-          color: #052e16;
-          background-clip: text;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          animation: shine 4s linear infinite;
-        }
-        @keyframes shine { to { background-position: 200% center; } }
-        .document-card {
-          max-width: 850px; margin: 0 auto; background: #ffffff; padding: 60px;
-          border-radius: 24px; box-shadow: 0 10px 40px -10px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;
-        }
-        .doc-header { text-align: center; margin-bottom: 3rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 2rem; }
-        .doc-title { font-size: 2.8rem; font-weight: 800; margin-bottom: 0.5rem; font-family: serif; line-height: 1.2; }
-        .last-updated { color: #94a3b8; font-size: 0.95rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
-        .doc-content section { margin-bottom: 3rem; }
-        .doc-content h2 { font-size: 1.4rem; font-weight: 700; color: #1e293b; margin-bottom: 1rem; }
-        .doc-content p { color: #475569; line-height: 1.8; margin-bottom: 1rem; font-size: 1.05rem; }
-        .doc-content ul { padding-left: 1.5rem; color: #475569; line-height: 1.8; margin-bottom: 1rem; }
-        .doc-content li { margin-bottom: 0.5rem; }
-        @media (max-width: 768px) {
-          .document-card { padding: 30px; margin: 0 20px; }
-          .doc-title { font-size: 2rem; }
-        }
-      `}</style>
     </div>
   );
 }

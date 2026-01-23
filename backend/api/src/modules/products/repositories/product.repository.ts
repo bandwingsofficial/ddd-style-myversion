@@ -276,33 +276,34 @@ async findByIdWithCategory(
   /* UPDATE – IMAGES (UPDATE ONLY, NO AUTO TX)         */
   /* ================================================= */
 
-  async updateImages(
-    product: Product,
-    tx: PrismaTransaction,
-  ): Promise<Product> {
-    await tx.productImage.deleteMany({
-      where: { productId: product.id },
-    });
+async updateImages(
+  product: Product,
+  tx: PrismaTransaction,
+): Promise<Product> {
+  await tx.productImage.deleteMany({
+    where: { productId: product.id },
+  });
 
-    const row = await tx.product.update({
-      where: { id: product.id },
-      data: {
-        mainImage: product.images.getMain(),
-        updatedAt: product.updatedAt,
-        galleryImages: {
-          create: product.images.getGallery().map(
-            (imageUrl, index) => ({
-              imageUrl,
-              sortOrder: index,
-            }),
-          ),
-        },
+  const row = await tx.product.update({
+    where: { id: product.id },
+    data: {
+      mainImage: product.images.getMain(),
+      updatedAt: product.updatedAt,
+      galleryImages: {
+        create: product.images.getGallery().map(
+          (imageUrl, index) => ({
+            imageUrl,
+            sortOrder: index,
+          }),
+        ),
       },
-      include: { galleryImages: true },
-    });
+    },
+    include: { galleryImages: true },
+  });
 
-    return this.toDomain(row);
-  }
+  return this.toDomain(row);
+}
+
 
   /* ================================================= */
   /* STATUS / TRENDING                                */

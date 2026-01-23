@@ -6,49 +6,61 @@ import Footer from "@/components/customer/Footer";
 
 export default function RefundPolicyPage() {
   return (
-    <div className="page-wrapper">
+    <div className="min-h-screen bg-slate-50">
       <Header />
-      
-      <main className="main-content">
-        <article className="document-card">
-          <header className="doc-header">
-            <h1 className="doc-title shine-title">Refund & Cancellation Policy</h1>
-            <p className="last-updated">Last Updated: January 2026</p>
+
+      {/* Main Content
+          - pt-[130px]: Padding top to account for fixed header
+          - pb-[100px]: Padding bottom for spacing before footer
+          - animate-slide-up: Custom animation class defined below
+      */}
+      <main className="animate-slide-up pb-[100px] pt-[130px]">
+        <article className="mx-auto max-w-[850px] rounded-3xl border border-slate-200 bg-white p-[30px] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.05)] md:p-[60px]">
+          
+          {/* Document Header */}
+          <header className="mb-12 border-b border-slate-100 pb-8 text-center">
+            <h1 className="animate-shine mb-2 bg-gradient-to-r from-[#052e16] via-[#16a34a] to-[#052e16] bg-[length:200%_auto] bg-clip-text font-serif text-[2rem] font-extrabold leading-tight text-transparent md:text-[2.8rem]">
+              Refund & Cancellation Policy
+            </h1>
+            <p className="text-[0.95rem] font-medium uppercase tracking-wide text-slate-400">
+              Last Updated: January 2026
+            </p>
           </header>
 
-          <div className="doc-content">
-            <section>
-              <h2>1. Overview</h2>
-              <p>
+          {/* Document Content */}
+          <div className="text-lg leading-relaxed text-slate-600">
+            <section className="mb-12">
+              <h2 className="mb-4 text-[1.4rem] font-bold text-slate-800">1. Overview</h2>
+              <p className="mb-4">
                 At Cane & Tender, we strive to deliver the freshest products. Due to the perishable nature 
                 of our goods (fresh juices and tender coconuts), we have strict guidelines regarding refunds and cancellations.
               </p>
             </section>
 
-            <section>
-              <h2>2. Order Cancellation</h2>
-              <p>
+            <section className="mb-12">
+              <h2 className="mb-4 text-[1.4rem] font-bold text-slate-800">2. Order Cancellation</h2>
+              <p className="mb-4">
                 You may cancel your order within 5 minutes of placing it. Once the order has been processed 
                 or dispatched, cancellations are not permitted.
               </p>
             </section>
 
-            <section>
-              <h2>3. Refunds</h2>
-              <p>Refunds are initiated only under the following conditions:</p>
-              <ul>
-                <li>The item delivered was damaged or spoiled.</li>
-                <li>The wrong item was delivered.</li>
-                <li>The package was tampered with during delivery.</li>
+            <section className="mb-12">
+              <h2 className="mb-4 text-[1.4rem] font-bold text-slate-800">3. Refunds</h2>
+              <p className="mb-4">Refunds are initiated only under the following conditions:</p>
+              <ul className="mb-4 list-disc pl-6">
+                <li className="mb-2">The item delivered was damaged or spoiled.</li>
+                <li className="mb-2">The wrong item was delivered.</li>
+                <li className="mb-2">The package was tampered with during delivery.</li>
               </ul>
-              <p>
-                Please report any issues to <strong>support@caneandtender.com</strong> within 1 hour of delivery with photographic evidence.
+              <p className="mb-4">
+                Please report any issues to <strong className="font-semibold text-slate-900">support@caneandtender.com</strong> within 1 hour of delivery with photographic evidence.
               </p>
             </section>
 
-            <section>
-              <h2>4. Processing Time</h2>
-              <p>
+            <section className="mb-12">
+              <h2 className="mb-4 text-[1.4rem] font-bold text-slate-800">4. Processing Time</h2>
+              <p className="mb-4">
                 Approved refunds will be processed within 5-7 business days and credited back to the original payment method.
               </p>
             </section>
@@ -58,48 +70,28 @@ export default function RefundPolicyPage() {
 
       <Footer />
 
-      <style jsx>{`
-        .page-wrapper { background: #f8fafc; min-height: 100vh; }
-        .main-content { padding-top: 130px; padding-bottom: 100px; animation: slideUp 0.6s ease-out; }
-        
-        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* --- SHINE TITLE --- */
-        .shine-title {
-          background: linear-gradient(to right, #052e16 20%, #16a34a 40%, #16a34a 60%, #052e16 80%);
-          background-size: 200% auto;
-          color: #052e16;
-          background-clip: text;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
+      {/* Custom Keyframe Animations */}
+      <style jsx global>{`
+        @keyframes shine {
+          to {
+            background-position: 200% center;
+          }
+        }
+        .animate-shine {
           animation: shine 4s linear infinite;
         }
-        @keyframes shine { to { background-position: 200% center; } }
-
-        /* Document Card Styles */
-        .document-card {
-          max-width: 850px;
-          margin: 0 auto;
-          background: #ffffff;
-          padding: 60px;
-          border-radius: 24px;
-          box-shadow: 0 10px 40px -10px rgba(0,0,0,0.05);
-          border: 1px solid #e2e8f0;
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
-
-        .doc-header { text-align: center; margin-bottom: 3rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 2rem; }
-        .doc-title { font-size: 2.8rem; font-weight: 800; margin-bottom: 0.5rem; font-family: serif; line-height: 1.2; }
-        .last-updated { color: #94a3b8; font-size: 0.95rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
-
-        .doc-content section { margin-bottom: 3rem; }
-        .doc-content h2 { font-size: 1.4rem; font-weight: 700; color: #1e293b; margin-bottom: 1rem; }
-        .doc-content p { color: #475569; line-height: 1.8; margin-bottom: 1rem; font-size: 1.05rem; }
-        .doc-content ul { padding-left: 1.5rem; color: #475569; line-height: 1.8; margin-bottom: 1rem; }
-        .doc-content li { margin-bottom: 0.5rem; }
-
-        @media (max-width: 768px) {
-          .document-card { padding: 30px; margin: 0 20px; }
-          .doc-title { font-size: 2rem; }
+        .animate-slide-up {
+          animation: slideUp 0.6s ease-out;
         }
       `}</style>
     </div>

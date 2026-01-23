@@ -9,6 +9,8 @@ import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 /* ---------------------------------------------- */
 import { OutletController } from './../controllers/outlet.controller';
 import { OutletManagementController } from './../controllers/outlet-management.controller';
+import { PublicOutletController } from './../controllers/public-outlet.controller';
+import { MyOutletController } from './../controllers/my-outlet.controller';
 
 /* ---------------------------------------------- */
 /* SERVICES                                       */
@@ -16,12 +18,15 @@ import { OutletManagementController } from './../controllers/outlet-management.c
 import { OutletOrchestratorService } from './../services/outlet-orchestrator.service';
 import { OutletUserService } from './../services/outlet-user.service';
 import { OutletService } from './../services/outlet.service';
+import { OutletProductService } from './../services/outlet-product.service';
+
 
 /* ---------------------------------------------- */
 /* REPOSITORIES                                   */
 /* ---------------------------------------------- */
 import { OutletUserRepository } from './../repositories/outlet-user.repository';
 import { OutletRepository } from './../repositories/outlet.repository';
+import { OutletProductRepository } from './../repositories/outlet-product.repository';
 
 /* ---------------------------------------------- */
 /* POLICIES                                       */
@@ -45,7 +50,7 @@ import { OutletPublicGateway } from './../gateways/outlet-public.gateway';
 import { OutletPublicListener } from './../listeners/outlet-public.listener';
 
 @Module({
-  controllers: [OutletController, OutletManagementController],
+  controllers: [OutletController, OutletManagementController, PublicOutletController, MyOutletController],
   providers: [
     // Infrastructure
     PrismaService,
@@ -56,11 +61,14 @@ import { OutletPublicListener } from './../listeners/outlet-public.listener';
     // Core services
     OutletUserService,
     OutletService,
+    OutletProductService,
 
     // Repositories
     OutletUserRepository,
     OutletRepository,
     AuditLogRepository,
+    OutletProductRepository,
+
 
     // Policies
     OutletUserActivePolicy,
@@ -77,8 +85,10 @@ import { OutletPublicListener } from './../listeners/outlet-public.listener';
   exports: [
     OutletUserService,
     OutletService,
+    OutletProductService,
     OutletUserRepository,
     OutletRepository,
+    OutletProductRepository,
     OutletOrchestratorService,
     OutletEventsService,
   ],

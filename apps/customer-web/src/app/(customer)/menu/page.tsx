@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import Header from "@/components/customer/Header";
 import Footer from "@/components/customer/Footer";
 import { useProducts } from "@/features/products/hooks/useProducts";
@@ -10,111 +11,46 @@ export default function MenuPage() {
   const { products, loading } = useProducts();
 
   return (
-    <div className="menu-page">
+    <div className="min-h-screen bg-white">
       <Header />
-      
-      <main className="main-content">
-        <section className="container">
-          <header className="page-header">
-            <h1 className="title">Our Menu</h1>
+
+      {/* Main Content Padding:
+        pt-[110px] matches your input. 
+        If your header is covering content (like on the Contact page), 
+        try increasing this to pt-[140px] or pt-[160px].
+      */}
+      <main className="pb-[60px] pt-[110px] md:pt-[140px]">
+        <section className="mx-auto max-w-[1400px] px-4 md:px-6">
+          
+          {/* Page Header */}
+          <header className="mb-8 border-b border-slate-100 pb-4">
+            <h1 className="text-left text-[1.75rem] font-extrabold text-[#052e16] md:text-[2rem]">
+              Our Menu
+            </h1>
           </header>
 
-          <div className="grid-layout">
+          {/* Grid Layout */}
+          <div className="grid grid-cols-2 gap-3 md:gap-5 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[380px]:grid-cols-2 max-[379px]:grid-cols-1">
             {loading
-              ? Array.from({ length: 10 }).map((_, i) => <ProductSkeleton key={i} />)
-              : products.map((product) => <ProductCard key={product.id} product={product} />)}
+              ? Array.from({ length: 10 }).map((_, i) => (
+                  <ProductSkeleton key={i} />
+                ))
+              : products.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
           </div>
 
+          {/* Empty State */}
           {!loading && products.length === 0 && (
-            <div className="empty-state">
+            <div className="py-16 text-left text-slate-400">
               <p>No products found. Check back soon!</p>
             </div>
           )}
+          
         </section>
       </main>
 
       <Footer />
-
-      <style jsx>{`
-        .menu-page { 
-          background: #ffffff; 
-          min-height: 100vh; 
-        }
-        
-        .main-content { 
-          padding-top: 110px; 
-          padding-bottom: 60px; 
-        }
-        
-        .container { 
-          max-width: 1400px; /* Increased max-width to allow 5 items breathing room */
-          margin: 0 auto; 
-          padding: 0 1.5rem; 
-        }
-
-        .page-header {
-          margin-bottom: 2rem;
-          border-bottom: 1px solid #f1f5f9;
-          padding-bottom: 1rem;
-        }
-
-        .title {
-          font-size: 2rem;
-          font-weight: 800;
-          color: #052e16;
-          text-align: left;
-        }
-
-        /* --- GRID CONFIGURATION --- */
-        .grid-layout {
-          display: grid;
-          /* Default: 5 items per row for standard laptops/desktops */
-          grid-template-columns: repeat(5, 1fr); 
-          gap: 1.25rem; /* Slightly tighter gap to help fit 5 items */
-        }
-
-        .empty-state {
-          padding: 4rem 0;
-          color: #94a3b8;
-          text-align: left;
-        }
-
-        /* --- RESPONSIVE BREAKPOINTS --- */
-        
-        /* Only drop to 4 items if screen is smaller than 1200px */
-        @media (max-width: 1200px) {
-          .grid-layout {
-            grid-template-columns: repeat(4, 1fr);
-          }
-        }
-        
-        /* Drop to 3 items on tablets/smaller laptops */
-        @media (max-width: 992px) {
-          .grid-layout { 
-            grid-template-columns: repeat(3, 1fr); 
-            gap: 1rem;
-          }
-        }
-
-        /* Drop to 2 items on mobile landscape / large phones */
-        @media (max-width: 640px) {
-          .main-content { padding-top: 90px; }
-          .title { font-size: 1.75rem; }
-          .container { padding: 0 1rem; }
-          
-          .grid-layout { 
-            grid-template-columns: repeat(2, 1fr); 
-            gap: 0.75rem; 
-          }
-        }
-
-        /* (Optional) 1 item on very small phones if needed, otherwise 2 looks okay */
-        @media (max-width: 380px) {
-          .grid-layout { 
-            grid-template-columns: 1fr; 
-          }
-        }
-      `}</style>
     </div>
   );
 }

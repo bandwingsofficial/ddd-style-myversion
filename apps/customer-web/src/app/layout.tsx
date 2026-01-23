@@ -1,4 +1,5 @@
 import CustomerAuthProvider from "@/providers/CustomerAuthProvider";
+import "./globals.css";
 
 export default function RootLayout({
   children,
