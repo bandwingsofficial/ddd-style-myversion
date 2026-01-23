@@ -3,16 +3,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useLogout } from '@/features/auth/hooks/useLogout'; 
-import { useRouter } from 'next/navigation'; // Added for navigation
+import { useRouter } from 'next/navigation';
 import { 
   Menu, Bell, Search, CalendarDays, 
   ChevronDown, LogOut, User, Settings as SettingsIcon,
-  // Imported icons for the search results
-  LayoutDashboard, Store, Users, Boxes, Package, Layers, Warehouse
+  LayoutDashboard, Store, Users, Boxes, Package, Layers, Warehouse, Command
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Define the searchable items (Same as Sidebar)
+// Define the searchable items
 const SEARCH_ITEMS = [
   { label: 'Dashboard', path: '/', icon: LayoutDashboard },
   { label: 'Outlets', path: '/outlets', icon: Store },
@@ -29,9 +28,9 @@ interface HeaderProps {
 }
 
 export function Header({ onToggleSidebar }: HeaderProps) {
-  const { actorType } = useAuth(); // Removed actorId if not used to save space
+  const { actorType } = useAuth();
   const { logout } = useLogout();
-  const router = useRouter(); // Hook for navigation
+  const router = useRouter();
   
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -47,9 +46,9 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   useEffect(() => {
     const now = new Date();
     const formatted = now.toLocaleDateString('en-US', { 
-      weekday: 'long', 
+      weekday: 'short', 
       year: 'numeric', 
-      month: 'long', 
+      month: 'short', 
       day: 'numeric' 
     });
     setDateString(formatted);
@@ -58,7 +57,6 @@ export function Header({ onToggleSidebar }: HeaderProps) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
       }
-      // Close search results if clicking outside
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
         setIsSearchFocused(false);
       }
@@ -67,7 +65,6 @@ export function Header({ onToggleSidebar }: HeaderProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Handle Search Input
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const query = e.target.value;
     setSearchQuery(query);
@@ -82,16 +79,15 @@ export function Header({ onToggleSidebar }: HeaderProps) {
     }
   };
 
-  // Handle Navigation
   const handleNavigate = (path: string) => {
     router.push(path);
     setIsSearchFocused(false);
-    setSearchQuery(''); // Optional: Clear search after navigation
+    setSearchQuery('');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && filteredItems.length > 0) {
-        handleNavigate(filteredItems[0].path);
+      handleNavigate(filteredItems[0].path);
     }
   };
 
@@ -99,274 +95,162 @@ export function Header({ onToggleSidebar }: HeaderProps) {
     <motion.header 
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      style={{
-        height: '80px',
-        padding: '0 32px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        position: 'sticky',
-        top: 0,
-        zIndex: 40,
-        backgroundColor: 'rgba(255, 255, 255, 0.85)',
-        backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid #e2e8f0',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
-      }}
+      className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-border bg-background/80 px-8 backdrop-blur-md"
     >
       {/* LEFT SECTION */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+      <div className="flex items-center gap-6">
+        {/* Toggle Button */}
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={onToggleSidebar}
-          style={{
-            background: '#f8fafc',
-            border: '1px solid #e2e8f0',
-            borderRadius: '12px',
-            padding: '10px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            color: '#64748b'
-          }}
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-input bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <Menu size={20} />
         </motion.button>
 
-        {/* SEARCH BAR SECTION */}
-        <div 
-            ref={searchContainerRef}
-            style={{ position: 'relative', display: 'flex', alignItems: 'center' }}
-        >
-          <Search 
-            size={18} 
-            color={isSearchFocused ? '#10b981' : '#94a3b8'} 
-            style={{ position: 'absolute', left: '12px', pointerEvents: 'none', transition: 'color 0.3s' }} 
-          />
-          <input
-            placeholder="Quick Search..."
-            value={searchQuery}
-            onChange={handleSearch}
-            onKeyDown={handleKeyDown}
-            onFocus={() => setIsSearchFocused(true)}
-            // Note: We handle blur via click outside ref, otherwise clicking the result triggers blur first
-            style={{
-              padding: '10px 10px 10px 40px',
-              borderRadius: '12px',
-              border: `1px solid ${isSearchFocused ? '#10b981' : '#f1f5f9'}`,
-              backgroundColor: isSearchFocused ? '#ffffff' : '#f8fafc',
-              fontSize: '14px',
-              width: isSearchFocused ? '270px' : '240px',
-              outline: 'none',
-              transition: 'all 0.3s ease',
-              color: '#334155'
-            }}
-          />
-          
-          <div style={{ 
-            position: 'absolute', right: '12px', opacity: isSearchFocused ? 0 : 0.5, 
-            fontSize: '12px', pointerEvents: 'none', transition: 'opacity 0.2s' 
-          }}>
-            ⌘K
+        {/* SEARCH BAR */}
+        <div ref={searchContainerRef} className="relative hidden md:block">
+          <div className="relative flex items-center">
+            <Search 
+              size={18} 
+              className={`absolute left-3.5 transition-colors ${isSearchFocused ? 'text-primary' : 'text-muted-foreground'}`}
+            />
+            <input
+              placeholder="Quick Search..."
+              value={searchQuery}
+              onChange={handleSearch}
+              onKeyDown={handleKeyDown}
+              onFocus={() => setIsSearchFocused(true)}
+              className={`
+                h-11 w-64 rounded-xl border bg-muted/50 py-2 pl-10 pr-12 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground
+                focus:w-80 focus:border-primary/50 focus:bg-background focus:ring-4 focus:ring-primary/10
+                ${isSearchFocused ? 'border-primary/50 bg-background' : 'border-transparent'}
+              `}
+            />
+            <div className={`absolute right-3 flex items-center gap-1 rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground transition-opacity ${isSearchFocused ? 'opacity-0' : 'opacity-100'}`}>
+              <Command size={10} /> K
+            </div>
           </div>
 
           {/* SEARCH RESULTS DROPDOWN */}
           <AnimatePresence>
             {isSearchFocused && searchQuery && (
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 10 }}
-                    style={{
-                        position: 'absolute',
-                        top: '50px',
-                        left: 0,
-                        width: '300px',
-                        backgroundColor: 'white',
-                        borderRadius: '12px',
-                        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-                        border: '1px solid #f1f5f9',
-                        overflow: 'hidden',
-                        zIndex: 50
-                    }}
-                >
-                    {filteredItems.length > 0 ? (
-                        filteredItems.map((item, index) => {
-                            const Icon = item.icon;
-                            return (
-                                <div
-                                    key={item.path}
-                                    onClick={() => handleNavigate(item.path)}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '12px',
-                                        padding: '12px 16px',
-                                        cursor: 'pointer',
-                                        borderBottom: index !== filteredItems.length - 1 ? '1px solid #f8fafc' : 'none',
-                                        transition: 'background 0.2s'
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
-                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-                                >
-                                    <div style={{ 
-                                        padding: '6px', borderRadius: '8px', 
-                                        backgroundColor: '#ecfdf5', color: '#10b981' 
-                                    }}>
-                                        <Icon size={16} />
-                                    </div>
-                                    <span style={{ fontSize: '14px', color: '#334155', fontWeight: 500 }}>
-                                        {item.label}
-                                    </span>
-                                </div>
-                            );
-                        })
-                    ) : (
-                        <div style={{ padding: '16px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
-                            No results found.
-                        </div>
-                    )}
-                </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                className="absolute left-0 top-full mt-2 w-full min-w-[320px] overflow-hidden rounded-xl border border-border bg-popover p-1.5 shadow-xl"
+              >
+                {filteredItems.length > 0 ? (
+                  <div className="flex flex-col gap-0.5">
+                    {filteredItems.map((item, index) => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.path}
+                          onClick={() => handleNavigate(item.path)}
+                          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                        >
+                          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+                            <Icon size={16} />
+                          </div>
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center text-sm text-muted-foreground">
+                    No results found for "{searchQuery}"
+                  </div>
+                )}
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
       </div>
 
       {/* RIGHT SECTION */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+      <div className="flex items-center gap-6">
         
+        {/* Date Display */}
         {dateString && (
-          <div style={{ 
-            display: 'flex', alignItems: 'center', gap: '10px', 
-            padding: '8px 16px', 
-            background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
-            border: '1px solid #bbf7d0', 
-            borderRadius: '12px', 
-            color: '#166534', 
-            fontSize: '13px', 
-            fontWeight: 600,
-            boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-          }}>
-            <CalendarDays size={16} color="#15803d" />
+          <div className="hidden lg:flex items-center gap-2 rounded-xl bg-primary/5 px-4 py-2 text-xs font-bold text-primary border border-primary/10">
+            <CalendarDays size={16} />
             <span>{dateString}</span>
           </div>
         )}
 
+        {/* Notifications */}
         <motion.button 
-          whileHover={{ rotate: 15 }}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', position: 'relative', color: '#94a3b8' }}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          className="relative text-muted-foreground transition-colors hover:text-foreground"
         >
           <Bell size={22} />
-          <span style={{ position: 'absolute', top: 0, right: 0, width: '10px', height: '10px' }}>
-            <span style={{ 
-              position: 'absolute', width: '100%', height: '100%', 
-              borderRadius: '50%', background: '#f87171', opacity: 0.75, 
-              animation: 'ping 1s cubic-bezier(0, 0, 0.2, 1) infinite' 
-            }}></span>
-            <span style={{ 
-              position: 'relative', display: 'block', width: '10px', height: '10px', 
-              borderRadius: '50%', background: '#ef4444', border: '2px solid white' 
-            }}></span>
+          <span className="absolute right-0 top-0 flex h-2.5 w-2.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75"></span>
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-destructive border-2 border-background"></span>
           </span>
         </motion.button>
 
-        <div style={{ height: '32px', width: '1px', background: '#e2e8f0' }} />
+        <div className="h-8 w-px bg-border" />
 
-        {/* DROPDOWN USER PROFILE */}
-        <div 
-          ref={dropdownRef}
-          style={{ position: 'relative' }}
-        >
-          <div 
+        {/* USER DROPDOWN */}
+        <div ref={dropdownRef} className="relative">
+          <button 
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', userSelect: 'none' }}
+            className="flex items-center gap-3 outline-none"
           >
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b' }}>
-                Super Admin
-              </div>
+            <div className="hidden text-right md:block">
+              <div className="text-sm font-bold text-foreground">Super Admin</div>
+              <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{actorType || 'ADMIN'}</div>
             </div>
 
-            <div style={{ position: 'relative' }}>
+            <div className="relative">
               <motion.div 
                 whileHover={{ scale: 1.05 }}
-                style={{
-                  width: '44px', height: '44px', borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #10b981 0%, #34d399 100%)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: 'white', fontWeight: 'bold', fontSize: '18px',
-                  boxShadow: '0 4px 10px rgba(16, 185, 129, 0.3)'
-                }}
+                className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-emerald-400 text-lg font-bold text-white shadow-lg shadow-primary/20"
               >
                 S
               </motion.div>
-              <div style={{ 
-                position: 'absolute', bottom: -2, right: -2, width: '14px', height: '14px', 
-                background: '#22c55e', borderRadius: '50%', border: '2px solid white' 
-              }} />
+              <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-background bg-green-500" />
             </div>
             
-            <ChevronDown size={16} color="#94a3b8" />
-          </div>
+            <ChevronDown size={16} className={`text-muted-foreground transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
 
           <AnimatePresence>
             {isDropdownOpen && (
               <motion.div
-                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                initial={{ opacity: 0, y: 8, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                transition={{ duration: 0.2 }}
-                style={{
-                  position: 'absolute',
-                  top: '60px',
-                  right: 0,
-                  width: '220px',
-                  backgroundColor: 'white',
-                  borderRadius: '16px',
-                  boxShadow: '0 10px 40px -10px rgba(0,0,0,0.1)',
-                  border: '1px solid #f1f5f9',
-                  padding: '8px',
-                  zIndex: 100,
-                  overflow: 'hidden'
-                }}
+                exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                className="absolute right-0 top-full mt-2 w-56 overflow-hidden rounded-xl border border-border bg-popover p-1.5 shadow-xl"
               >
-                <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', marginBottom: '4px' }}>
-                   <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '2px' }}>Signed in as</p>
-                   <p style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>Super Admin</p>
+                <div className="px-3 py-2.5 border-b border-border mb-1">
+                  <p className="text-xs text-muted-foreground">Signed in as</p>
+                  <p className="text-sm font-bold text-foreground truncate">admin@example.com</p>
                 </div>
 
-                <div 
-                  style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', borderRadius: '8px', fontSize: '14px', color: '#475569', transition: 'background 0.2s' }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                >
-                  <User size={16} />
-                  <span>My Profile</span>
-                </div>
+                <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                  <User size={16} /> My Profile
+                </button>
 
-                <div 
-                  style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', borderRadius: '8px', fontSize: '14px', color: '#475569', transition: 'background 0.2s' }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                >
-                  <SettingsIcon size={16} />
-                  <span>Settings</span>
-                </div>
+                <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                  <SettingsIcon size={16} /> Settings
+                </button>
 
-                <div style={{ height: '1px', background: '#f1f5f9', margin: '4px 0' }} />
+                <div className="my-1 h-px bg-border" />
 
-                <div 
+                <button 
                   onClick={logout}
-                  style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', borderRadius: '8px', fontSize: '14px', color: '#ef4444', transition: 'background 0.2s' }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#fef2f2'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
                 >
-                  <LogOut size={16} />
-                  <span>Log Out</span>
-                </div>
-
+                  <LogOut size={16} /> Log Out
+                </button>
               </motion.div>
             )}
           </AnimatePresence>

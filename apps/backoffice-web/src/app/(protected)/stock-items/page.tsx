@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Search, RefreshCw, Box, AlertCircle } from "lucide-react";
+import { motion } from "framer-motion";
+import { Plus, Search, RefreshCw, Box } from "lucide-react";
 import { StockItemsAPI } from '@/features/stock-items/stockItems.api';
 import { StockItem } from '@/features/stock-items/stockItems.types';
 import StockItemsTable from './components/StockItemsTable';
@@ -33,57 +33,73 @@ export default function StockItemsPage() {
   }, [items, search]);
 
   if (loading && items.length === 0) return (
-    <div style={styles.loaderContainer}>
+    <div className="flex h-screen flex-col items-center justify-center bg-slate-50">
       <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}>
-        <RefreshCw size={40} color="#10b981" />
+        <RefreshCw size={40} className="text-emerald-500" />
       </motion.div>
-      <p style={{ marginTop: 12, color: "#64748b", fontWeight: 500 }}>Syncing Inventory...</p>
+      <p className="mt-4 text-sm font-semibold text-slate-500">Syncing Inventory...</p>
     </div>
   );
 
   return (
-    <div style={styles.container}>
-      {/* Header Section */}
-      <div style={styles.header}>
-        <div style={styles.headerTitleGroup}>
-          <div style={styles.iconCircleHeader}><Box size={24} color="#10b981"/></div>
+    <div className="min-h-screen bg-slate-50 p-6 md:p-8 font-sans">
+      
+      {/* --- HEADER SECTION --- */}
+      <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+        <div className="flex items-center gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+             <Box size={24} />
+          </div>
           <div>
-            <h1 style={styles.title}>Stock Items</h1>
-            <p style={styles.subtitle}>Super Admin Control Panel | Manage raw materials</p>
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Stock Items</h1>
+            <p className="mt-1 text-sm font-medium text-slate-500">
+              Super Admin Control Panel | Manage raw materials
+            </p>
           </div>
         </div>
         
-        <div style={styles.headerActions}>
-          <div style={styles.searchBox}>
-            <Search size={18} color="#94a3b8" />
+        <div className="flex items-center gap-3">
+          {/* Search Box */}
+          <div className="flex w-64 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm transition-all focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500">
+            <Search size={18} className="text-slate-400" />
             <input 
               placeholder="Search items..." 
-              style={styles.searchInput} 
+              className="w-full bg-transparent text-sm text-slate-700 placeholder:text-slate-400 outline-none"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+
+          {/* Create Button */}
           <motion.button 
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            style={styles.greenPopButton} 
+            className="flex items-center gap-2 rounded-xl bg-gradient-to-b from-emerald-400 to-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-200 transition-all hover:shadow-emerald-300 hover:from-emerald-500 hover:to-emerald-700 active:scale-95"
             onClick={() => setOpenCreate(true)}
           >
-            <Plus size={20} /> Create Stock Item
+            <Plus size={20} strokeWidth={2.5} /> <span className="hidden sm:inline">Create Stock Item</span>
           </motion.button>
         </div>
       </div>
 
-      {/* Main Content Card */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={styles.tableCard}>
-        <div style={styles.tableHeaderSection}>
-          <h3 style={styles.tableTitle}>Inventory List</h3>
-          <button onClick={fetchItems} style={styles.refreshBtn}>
+      {/* --- MAIN CONTENT CARD --- */}
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }} 
+        animate={{ opacity: 1, y: 0 }} 
+        className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+      >
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5 bg-white">
+          <h3 className="text-base font-bold text-slate-800">Inventory List</h3>
+          <button 
+            onClick={fetchItems} 
+            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-50 hover:text-emerald-500"
+            title="Refresh List"
+          >
             <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
           </button>
         </div>
         
-        <div style={styles.tableBodyWrapper}>
+        <div className="p-0">
           <StockItemsTable
             data={filteredItems}
             loading={loading}
@@ -92,6 +108,7 @@ export default function StockItemsPage() {
         </div>
       </motion.div>
 
+      {/* --- MODAL --- */}
       <CreateStockItemModal
         open={openCreate}
         onClose={() => setOpenCreate(false)}
@@ -100,22 +117,3 @@ export default function StockItemsPage() {
     </div>
   );
 }
-
-const styles: { [key: string]: React.CSSProperties } = {
-  container: { padding: "10px", backgroundColor: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', sans-serif" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "32px" },
-  headerTitleGroup: { display: "flex", alignItems: "center", gap: "16px" },
-  iconCircleHeader: { width: "48px", height: "48px", borderRadius: "12px", backgroundColor: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center" },
-  title: { fontSize: "28px", fontWeight: 800, color: "#1e293b", margin: 0 },
-  subtitle: { color: "#64748b", margin: "4px 0 0 0", fontSize: "14px" },
-  headerActions: { display: "flex", gap: "16px", alignItems: "center" },
-  searchBox: { display: "flex", alignItems: "center", backgroundColor: "#fff", padding: "0 16px", borderRadius: "12px", border: "1px solid #e2e8f0", width: "280px", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" },
-  searchInput: { border: "none", padding: "12px", outline: "none", width: "100%", fontSize: "14px", backgroundColor: "transparent" },
-  greenPopButton: { background: "linear-gradient(180deg, #34d399 0%, #10b981 100%)", color: "white", border: "none", padding: "12px 24px", borderRadius: "12px", fontWeight: 600, display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", boxShadow: "0 4px 14px rgba(16, 185, 129, 0.3)" },
-  tableCard: { backgroundColor: "#fff", borderRadius: "20px", border: "1px solid #e2e8f0", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.05)", overflow: "hidden" },
-  tableHeaderSection: { padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff' },
-  tableTitle: { fontSize: '16px', fontWeight: 700, color: '#1e293b', margin: 0 },
-  refreshBtn: { background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' },
-  tableBodyWrapper: { padding: '0' },
-  loaderContainer: { height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }
-};

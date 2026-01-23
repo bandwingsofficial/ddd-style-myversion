@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLogin } from '../hooks/useLogin';
 import { motion } from 'framer-motion';
+// Ideally, use an icon library like lucide-react in the future
+// import { ArrowRight, AlertCircle } from 'lucide-react'; 
 
 export function LoginPage() {
   const router = useRouter();
@@ -20,129 +22,79 @@ export function LoginPage() {
     router.push('/auth/verify');
   }
 
-  const colors = {
-    primary: '#10b981', 
-    primaryDark: '#059669',
-    white: '#ffffff',
-    // Clean, soft radial spotlight background
-    bg: 'radial-gradient(circle at center, #f0fdf4 0%, #ffffff 100%)',
-    inputBg: '#f9fafb',
-  };
-
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: colors.bg,
-      fontFamily: "'Inter', sans-serif",
-      padding: '20px',
-    }}>
+    // 1. PAGE CONTAINER
+    // Uses your theme's background color and centers content
+    <div className="min-h-screen w-full flex items-center justify-center bg-background p-4 font-sans text-foreground">
       
+      {/* 2. ANIMATED CARD WRAPPER */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        style={{
-          width: '100%',
-          maxWidth: '380px',
-          backgroundColor: colors.white,
-          borderRadius: '24px',
-          overflow: 'hidden',
-          boxShadow: '0 10px 40px -10px rgba(0, 0, 0, 0.08)',
-          border: '1px solid #f1f5f9'
-        }}
+        transition={{ duration: 0.4, ease: "easeOut" }}
+        className="w-full max-w-[380px] overflow-hidden rounded-3xl border border-border bg-card shadow-2xl"
       >
-        {/* COMPACT TOP SECTION */}
-        <div style={{
-          height: '110px', // Reduced height
-          background: `linear-gradient(135deg, ${colors.primary}, ${colors.primaryDark})`,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: colors.white
-        }}>
-          <div style={{
-            fontSize: '11px',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '1.5px',
-            opacity: 0.9,
-            marginBottom: '4px'
-          }}>
-            Admin Panel
+        
+        {/* 3. DECORATIVE HEADER */}
+        {/* Uses the primary color from your CSS variables for the gradient */}
+        <div className="relative flex h-28 flex-col items-center justify-center bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
+          {/* Subtle texture overlay or noise could go here */}
+          <div className="flex flex-col items-center z-10">
+            <span className="mb-1 text-[11px] font-bold uppercase tracking-[2px] opacity-80">
+              Admin Panel
+            </span>
+            <h2 className="text-lg font-bold tracking-tight">
+              SECURE ACCESS
+            </h2>
           </div>
-          <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>SECURE ACCESS</h2>
         </div>
 
-        {/* COMPACT FORM SECTION */}
-        <div style={{ padding: '30px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <h1 style={{ color: '#111827', margin: '0 0 4px 0', fontSize: '22px', fontWeight: 700 }}>WELCOME!</h1>
-            <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0 }}>Login to your account</p>
+        {/* 4. FORM SECTION */}
+        <div className="px-8 py-8">
+          <div className="mb-6 text-center">
+            <h1 className="text-2xl font-bold text-foreground">Welcome!</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Please enter your details to continue.
+            </p>
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <input
-              type="email"
-              placeholder="Email or Username"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              style={{
-                width: '100%',
-                padding: '14px 18px',
-                borderRadius: '12px',
-                border: '1px solid #e5e7eb',
-                backgroundColor: colors.inputBg,
-                fontSize: '14px',
-                outline: 'none',
-                boxSizing: 'border-box'
-              }}
-            />
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            
+            {/* EMAIL INPUT */}
+            <div className="space-y-1">
+              <input
+                type="email"
+                placeholder="Email or Username"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full rounded-xl border border-input bg-input/50 px-4 py-3.5 text-sm transition-all placeholder:text-muted-foreground focus:border-primary focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
 
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              style={{
-                width: '100%',
-                padding: '14px 18px',
-                borderRadius: '12px',
-                border: '1px solid #e5e7eb',
-                backgroundColor: colors.inputBg,
-                fontSize: '14px',
-                outline: 'none',
-                boxSizing: 'border-box'
-              }}
-            />
+            {/* PASSWORD INPUT */}
+            <div className="space-y-1">
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full rounded-xl border border-input bg-input/50 px-4 py-3.5 text-sm transition-all placeholder:text-muted-foreground focus:border-primary focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+            </div>
 
+            {/* SUBMIT BUTTON */}
             <motion.button
-  
               whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: 1.01 }}
               type="submit"
               disabled={loading}
-              style={{
-                marginTop: '8px',
-                padding: '14px',
-                borderRadius: '12px',
-                border: 'none',
-                background: colors.primary,
-                color: '#fff',
-                fontSize: '15px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                transition: '0.2s all'
-              }}
+              className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 hover:shadow-primary/40 disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              {loading ? '...' : (
+              {loading ? (
+                <span className="animate-pulse">Processing...</span>
+              ) : (
                 <>
                   NEXT
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
@@ -150,22 +102,24 @@ export function LoginPage() {
               )}
             </motion.button>
 
+            {/* ERROR MESSAGE */}
             {error && (
-              <p style={{ 
-                color: '#dc2626', 
-                fontSize: '12px', 
-                textAlign: 'center', 
-                marginTop: '10px',
-                padding: '8px',
-                backgroundColor: '#fef2f2',
-                borderRadius: '8px'
-              }}>
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="rounded-lg bg-destructive/10 p-3 text-center text-xs font-medium text-destructive"
+              >
                 {error.message}
-              </p>
+              </motion.div>
             )}
           </form>
         </div>
       </motion.div>
+      
+      {/* Optional Footer/Copyright */}
+      <div className="absolute bottom-6 text-xs text-muted-foreground opacity-50">
+        &copy; 2026 Enterprise Admin. All rights reserved.
+      </div>
     </div>
   );
 }

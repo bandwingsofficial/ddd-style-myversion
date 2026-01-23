@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Product } from "../types/product.types";
 import { ProductsAPI } from "../services/products.api";
 import { InventoryAPI } from "@/features/inventory/api/inventory.api";
-import { X, ClipboardList, IndianRupee, Save, Upload, Trash2, Plus, CheckCircle2, AlertCircle, Layers, Tag, Info } from "lucide-react";
+import { X, ClipboardList, Save, Upload, Trash2, Plus, Layers, Tag, ImagePlus, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 
@@ -123,169 +123,247 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
   };
 
   return (
-    <div style={modalStyles.overlay} onClick={onClose}>
-      <style>{`
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
-        .custom-scroll::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
-        .gallery-item-wrapper:hover .gallery-hover-overlay { opacity: 1 !important; }
-        .add-btn-hover:hover { background-color: #f0fdf4 !important; border-color: #10b981 !important; }
-        .input-focus:focus-within { border-color: #10b981 !important; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1) !important; }
-      `}</style>
-
+    // 1. OVERLAY
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      
+      {/* 2. MODAL CARD */}
       <motion.div 
         initial={{ y: 20, opacity: 0, scale: 0.98 }} 
         animate={{ y: 0, opacity: 1, scale: 1 }} 
-        exit={{ y: 20, opacity: 0, scale: 0.98 }}
-        style={modalStyles.modal} 
+        className="w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden rounded-3xl bg-background shadow-2xl ring-1 ring-border"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
-        <div style={modalStyles.header}>
+        
+        {/* HEADER */}
+        <div className="flex items-center justify-between border-b border-border bg-muted/20 px-8 py-5">
           <div>
-            <h2 style={modalStyles.title}>Edit Product</h2>
-            <p style={modalStyles.subtitle}>Update details for <span style={{color: '#10b981'}}>{product.name?.value}</span></p>
+            <h2 className="text-xl font-bold tracking-tight text-foreground">Edit Product</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Update details for <span className="font-bold text-primary">{product.name?.value}</span>
+            </p>
           </div>
-          <button onClick={onClose} style={modalStyles.closeBtn}><X size={20}/></button>
-        </div>
-
-        {/* Scrollable Content */}
-        <div className="custom-scroll" style={modalStyles.scrollArea}>
-          <div style={modalStyles.form}>
-            
-            {/* Read Only Context Section - Styled as a dashboard card */}
-            <div style={modalStyles.infoCard}>
-                <div style={modalStyles.infoRow}>
-                    <div style={modalStyles.infoItem}>
-                        <label style={modalStyles.infoLabel}><Layers size={10} style={{marginRight:4}}/> Category</label>
-                        <div style={modalStyles.infoValue}>
-                             {categories.find(c => c.id === form.categoryId)?.name || "N/A"}
-                        </div>
-                    </div>
-                    <div style={modalStyles.infoSeparator}></div>
-                    <div style={modalStyles.infoItem}>
-                        <label style={modalStyles.infoLabel}><ClipboardList size={10} style={{marginRight:4}}/> Base Item</label>
-                        <div style={modalStyles.infoValue}>
-                            {stockItems.find(i => i.id === form.stockItemId)?.name || "N/A"}
-                        </div>
-                    </div>
-                    <div style={modalStyles.infoSeparator}></div>
-                    <div style={modalStyles.infoItem}>
-                        <label style={modalStyles.infoLabel}><Tag size={10} style={{marginRight:4}}/> Unit</label>
-                        <div style={modalStyles.infoValue}>{form.unitValue} {form.unitType}</div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Editable Fields */}
-            <div>
-              <label style={modalStyles.label}>Product Name</label>
-              <div className="input-focus" style={modalStyles.inputWrapperClean}>
-                  <input style={modalStyles.inputClean} value={form.productName} onChange={e => setForm({...form, productName: e.target.value})} />
-              </div>
-            </div>
-
-            <div style={modalStyles.row}>
-              <div style={{ flex: 1 }}>
-                <label style={modalStyles.label}>Original Price (₹) <span style={{color:'#ef4444'}}>*</span></label>
-                <div className="input-focus" style={modalStyles.inputWrapperClean}>
-                  <IndianRupee size={16} style={modalStyles.inputIcon} />
-                  <input type="number" style={modalStyles.inputWithIcon} value={form.originalPrice} onChange={e => setForm({...form, originalPrice: +e.target.value})} />
-                </div>
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={modalStyles.label}>Discount Price (₹)</label>
-                <div className="input-focus" style={modalStyles.inputWrapperClean}>
-                  <IndianRupee size={16} style={modalStyles.inputIcon} />
-                  <input type="number" style={modalStyles.inputWithIcon} value={form.discountPrice} onChange={e => setForm({...form, discountPrice: +e.target.value})} />
-                </div>
-              </div>
-            </div>
-
-            <div style={modalStyles.sectionDivider}></div>
-
-            <div style={modalStyles.row}>
-                {/* Main Image */}
-                <div style={{ width: '40%' }}>
-                     <label style={modalStyles.label}>Main Image</label>
-                     <div style={modalStyles.mainPreviewContainer}>
-                        {mainImagePreview ? (
-                            <img src={mainImagePreview} style={modalStyles.mainPreviewImg} alt="Main" />
-                        ) : (
-                            <div style={modalStyles.noImagePlaceholder}>No Image</div>
-                        )}
-                        <input type="file" hidden ref={mainImageRef} accept="image/*" onChange={handleMainImageUpload} />
-                        <button style={modalStyles.editImageBtn} onClick={() => mainImageRef.current?.click()}>
-                           <Upload size={14} /> Edit
-                        </button>
-                     </div>
-                </div>
-
-                {/* Gallery */}
-                <div style={{ flex: 1 }}>
-                    <label style={modalStyles.label}>Gallery ({form.galleryImages.length})</label>
-                    <input type="file" multiple hidden ref={galleryInputRef} accept="image/*" onChange={handleGalleryUpload} />
-                    <div style={modalStyles.galleryGrid}>
-                        {form.galleryImages.map((item, i) => {
-                            const previewSrc = typeof item === 'string' ? resolveUrl(item) : URL.createObjectURL(item as File);
-                            return (
-                            <div key={i} className="gallery-item-wrapper" style={modalStyles.galleryItem}>
-                                <img src={previewSrc} style={modalStyles.galleryImg} alt="Gallery" />
-                                <div className="gallery-hover-overlay" style={modalStyles.galleryOverlay} onClick={() => removeGalleryImage(i)}>
-                                <Trash2 size={16} color="#fff" />
-                                </div>
-                            </div>
-                            );
-                        })}
-                        <div className="add-btn-hover" style={modalStyles.addGalleryBtn} onClick={() => galleryInputRef.current?.click()}>
-                            <Plus size={20} color="#64748b" />
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div style={modalStyles.sectionDivider}></div>
-
-            <div>
-              <label style={modalStyles.label}>Short Description</label>
-              <div className="input-focus" style={modalStyles.inputWrapperClean}>
-                <input style={modalStyles.inputClean} placeholder="Brief highlight..." value={form.shortDescription} onChange={e => setForm({...form, shortDescription: e.target.value})} />
-              </div>
-            </div>
-
-            <div>
-              <label style={modalStyles.label}>Long Description</label>
-              <div className="input-focus" style={modalStyles.inputWrapperClean}>
-                 <textarea style={modalStyles.textarea} placeholder="Detailed product information..." value={form.longDescription} onChange={e => setForm({...form, longDescription: e.target.value})} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div style={modalStyles.footer}>
-          <button onClick={onClose} style={modalStyles.secondaryBtn}>Cancel</button>
-          <button onClick={handleUpdate} disabled={loading} style={modalStyles.primaryBtn}>
-            {loading ? "Updating..." : <><Save size={18} /> Save Changes</>}
+          <button 
+            onClick={onClose} 
+            className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <X size={20} />
           </button>
         </div>
+
+        {/* SCROLLABLE CONTENT */}
+        <div className="flex-1 overflow-y-auto p-8">
+          <div className="flex flex-col gap-6">
+            
+            {/* READ-ONLY INFO CARD */}
+            <div className="grid grid-cols-3 gap-4 rounded-xl border border-border bg-muted/30 p-4">
+              <div className="flex flex-col gap-1 border-r border-border pr-4">
+                 <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <Layers size={10} /> Category
+                 </span>
+                 <span className="text-sm font-semibold text-foreground truncate">
+                    {categories.find(c => c.id === form.categoryId)?.name || "N/A"}
+                 </span>
+              </div>
+              <div className="flex flex-col gap-1 border-r border-border px-4">
+                 <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <ClipboardList size={10} /> Base Item
+                 </span>
+                 <span className="text-sm font-semibold text-foreground truncate">
+                    {stockItems.find(i => i.id === form.stockItemId)?.name || "N/A"}
+                 </span>
+              </div>
+              <div className="flex flex-col gap-1 pl-4">
+                 <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <Tag size={10} /> Unit
+                 </span>
+                 <span className="text-sm font-semibold text-foreground">
+                    {form.unitValue} {form.unitType}
+                 </span>
+              </div>
+            </div>
+
+            {/* PRODUCT NAME */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Product Name</label>
+              <input 
+                className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm font-medium outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-primary/10"
+                value={form.productName} 
+                onChange={e => setForm({...form, productName: e.target.value})} 
+              />
+            </div>
+
+            {/* PRICES ROW */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Original Price <span className="text-destructive">*</span></label>
+                <div className="relative">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">₹</div>
+                  <input 
+                    type="number" 
+                    className="w-full rounded-xl border border-input bg-background py-3 pl-9 pr-4 text-sm font-bold outline-none transition-all placeholder:font-normal focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    value={form.originalPrice} 
+                    onChange={e => setForm({...form, originalPrice: +e.target.value})} 
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Discount Price</label>
+                <div className="relative">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">₹</div>
+                  <input 
+                    type="number" 
+                    className="w-full rounded-xl border border-input bg-background py-3 pl-9 pr-4 text-sm font-bold outline-none transition-all placeholder:font-normal focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    value={form.discountPrice} 
+                    onChange={e => setForm({...form, discountPrice: +e.target.value})} 
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* DIVIDER */}
+            <div className="h-px w-full bg-border" />
+
+            {/* IMAGES SECTION */}
+            <div className="space-y-4 rounded-2xl border border-border bg-muted/20 p-5">
+               <h3 className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+                  <ImagePlus size={16} /> Media
+               </h3>
+
+               {/* MAIN IMAGE */}
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="space-y-2">
+                     <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Main Image</label>
+                     <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border bg-background">
+                        {mainImagePreview ? (
+                           <img src={mainImagePreview} className="h-full w-full object-cover" alt="Main" />
+                        ) : (
+                           <div className="flex h-full items-center justify-center text-xs text-muted-foreground">No Image</div>
+                        )}
+                        <input type="file" hidden ref={mainImageRef} accept="image/*" onChange={handleMainImageUpload} />
+                        <button 
+                           onClick={() => mainImageRef.current?.click()}
+                           className="absolute bottom-2 right-2 flex items-center gap-1 rounded-lg border border-border bg-background/95 px-2 py-1.5 text-xs font-bold text-foreground shadow-sm hover:bg-muted"
+                        >
+                           <Upload size={12} /> Edit
+                        </button>
+                     </div>
+                  </div>
+
+                  {/* GALLERY */}
+                  <div className="space-y-2">
+                     <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Gallery ({form.galleryImages.length})</label>
+                     <input type="file" multiple hidden ref={galleryInputRef} accept="image/*" onChange={handleGalleryUpload} />
+                     
+                     <div className="grid grid-cols-4 gap-2">
+                        {form.galleryImages.map((item, i) => {
+                           const previewSrc = typeof item === 'string' ? resolveUrl(item) : URL.createObjectURL(item as File);
+                           return (
+                              <div key={i} className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-background">
+                                 <img src={previewSrc} className="h-full w-full object-cover" alt="Gallery" />
+                                 <div 
+                                    onClick={() => removeGalleryImage(i)}
+                                    className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100"
+                                 >
+                                    <Trash2 size={16} className="text-white" />
+                                 </div>
+                              </div>
+                           );
+                        })}
+                        <div 
+                           onClick={() => galleryInputRef.current?.click()}
+                           className="flex aspect-square cursor-pointer items-center justify-center rounded-lg border border-dashed border-muted-foreground/30 bg-background transition-colors hover:bg-muted hover:border-primary/50"
+                        >
+                           <Plus size={20} className="text-muted-foreground" />
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+
+            {/* DESCRIPTIONS */}
+            <div className="space-y-4">
+               <div className="space-y-2">
+                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Short Description</label>
+                 <input 
+                    className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="Brief highlight..." 
+                    value={form.shortDescription} 
+                    onChange={e => setForm({...form, shortDescription: e.target.value})} 
+                  />
+               </div>
+               <div className="space-y-2">
+                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Long Description</label>
+                 <textarea 
+                    className="min-h-[100px] w-full resize-none rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="Detailed product information..." 
+                    value={form.longDescription} 
+                    onChange={e => setForm({...form, longDescription: e.target.value})} 
+                  />
+               </div>
+            </div>
+
+          </div>
+        </div>
+
+        {/* FOOTER */}
+        <div className="flex items-center justify-end gap-3 border-t border-border bg-muted/20 px-8 py-5">
+          <button 
+            onClick={onClose} 
+            disabled={loading}
+            className="rounded-xl border border-input bg-background px-6 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={handleUpdate} 
+            disabled={loading} 
+            className="flex items-center gap-2 rounded-xl bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/40 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? (
+               <>
+                  <Loader2 size={18} className="animate-spin" /> Updating...
+               </>
+            ) : (
+               <>
+                  <Save size={18} /> Save Changes
+               </>
+            )}
+          </button>
+        </div>
+
       </motion.div>
 
-      {/* Popup Notification */}
+      {/* POPUP NOTIFICATION */}
       {createPortal(
         <AnimatePresence>
           {popup && (
-            <div style={popupStyles.overlay}>
-              <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} style={popupStyles.box}>
-                <div style={{ marginBottom: '20px' }}>
+            <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/20 backdrop-blur-sm p-4">
+              <motion.div 
+                 initial={{ scale: 0.9, opacity: 0 }} 
+                 animate={{ scale: 1, opacity: 1 }} 
+                 exit={{ scale: 0.9, opacity: 0 }} 
+                 className="w-full max-w-sm overflow-hidden rounded-2xl bg-background p-6 shadow-2xl ring-1 ring-border text-center"
+              >
+                <div className="mb-4 flex justify-center">
                   {popup.type === 'success' ? (
-                    <div style={popupStyles.successIconWrapper}><CheckCircle2 size={40} color="#10b981" /></div>
-                  ) : <AlertCircle size={40} color="#ef4444" />}
+                    <div className="rounded-full bg-green-100 p-3 text-green-600">
+                       <CheckCircle2 size={40} />
+                    </div>
+                  ) : (
+                    <div className="rounded-full bg-red-100 p-3 text-red-600">
+                       <AlertCircle size={40} />
+                    </div>
+                  )}
                 </div>
-                <h3 style={{ ...popupStyles.title, color: popup.type === 'success' ? '#10b981' : '#ef4444' }}>{popup.title}</h3>
-                <p style={popupStyles.text}>{popup.text}</p>
-                <button onClick={() => setPopup(null)} style={{ ...popupStyles.btn, backgroundColor: popup.type === 'success' ? '#10b981' : '#1e293b' }}>
-                  {popup.type === 'success' ? 'Continue' : 'Close'}
+                <h3 className={`text-lg font-bold ${popup.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                   {popup.title}
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground">{popup.text}</p>
+                <button 
+                   onClick={() => setPopup(null)} 
+                   className={`mt-6 w-full rounded-xl py-3 text-sm font-bold text-white shadow-md transition-transform active:scale-95 ${popup.type === 'success' ? 'bg-green-600 hover:bg-green-700' : 'bg-slate-800 hover:bg-slate-900'}`}
+                >
+                   {popup.type === 'success' ? 'Continue' : 'Close'}
                 </button>
               </motion.div>
             </div>
@@ -293,65 +371,7 @@ export default function EditProductModal({ product, onClose, onSuccess }: EditPr
         </AnimatePresence>,
         document.body
       )}
+
     </div>
   );
 }
-
-const modalStyles: Record<string, React.CSSProperties> = {
-  overlay: { position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.5)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 },
-  modal: { backgroundColor: "#fff", width: "600px", maxHeight: "90vh", borderRadius: "24px", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px -10px rgba(0,0,0,0.3)", overflow: "hidden" },
-  
-  // Header
-  header: { padding: "20px 32px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: 'rgba(255,255,255,0.95)' },
-  title: { fontSize: "18px", fontWeight: 700, color: "#0f172a", margin: 0, lineHeight: 1.2 },
-  subtitle: { fontSize: "13px", color: "#64748b", margin: "4px 0 0 0" },
-  closeBtn: { background: "#f1f5f9", border: "none", borderRadius: '8px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: "pointer", color: "#64748b", transition: '0.2s' },
-  
-  // Body
-  scrollArea: { padding: "24px 32px", overflowY: "auto", flex: 1, backgroundColor: '#fff' },
-  form: { display: "flex", flexDirection: "column", gap: "20px" },
-  
-  // Info Card (Read Only Group)
-  infoCard: { backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "12px 16px" },
-  infoRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-  infoItem: { display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 },
-  infoLabel: { fontSize: '10px', fontWeight: 700, textTransform: 'uppercase', color: '#94a3b8', display: 'flex', alignItems: 'center', letterSpacing: '0.05em' },
-  infoValue: { fontSize: '13px', fontWeight: 600, color: '#334155' },
-  infoSeparator: { width: '1px', height: '24px', backgroundColor: '#cbd5e1', margin: '0 16px' },
-
-  // Inputs
-  row: { display: "flex", gap: "16px" },
-  label: { fontSize: "12px", fontWeight: 600, color: "#334155", marginBottom: "6px", display: "block" },
-  inputWrapperClean: { position: "relative", display: "flex", alignItems: "center", borderRadius: "10px", border: "1px solid #e2e8f0", backgroundColor: "#fff", transition: "0.2s ease" },
-  inputClean: { width: "100%", padding: "10px 12px", borderRadius: "10px", border: "none", fontSize: "14px", outline: "none", background: "transparent", color: "#0f172a" },
-  inputWithIcon: { width: "100%", padding: "10px 12px 10px 36px", borderRadius: "10px", border: "none", fontSize: "14px", outline: "none", background: "transparent", fontWeight: 600, color: "#0f172a" },
-  inputIcon: { position: "absolute", left: "10px", color: "#94a3b8" },
-  textarea: { width: "100%", padding: "12px", borderRadius: "10px", border: "none", fontSize: "14px", minHeight: "80px", outline: "none", resize: "none", background: "transparent", color: "#0f172a", fontFamily: 'inherit' },
-
-  // Images
-  sectionDivider: { height: '1px', backgroundColor: '#f1f5f9', width: '100%' },
-  mainPreviewContainer: { position: "relative", borderRadius: "12px", overflow: "hidden", border: "1px solid #e2e8f0", aspectRatio: '16/9', backgroundColor: '#f8fafc' },
-  mainPreviewImg: { width: "100%", height: "100%", objectFit: "cover" },
-  noImagePlaceholder: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cbd5e1', fontSize: '12px' },
-  editImageBtn: { position: "absolute", bottom: "8px", right: "8px", backgroundColor: "white", border: "1px solid #e2e8f0", padding: "6px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 600, color: "#0f172a", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", boxShadow: "0 2px 4px rgba(0,0,0,0.05)" },
-  
-  galleryGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(60px, 1fr))", gap: "8px" },
-  galleryItem: { position: "relative", aspectRatio: "1/1", borderRadius: "8px", overflow: "hidden", border: "1px solid #e2e8f0" },
-  galleryImg: { width: "100%", height: "100%", objectFit: "cover" },
-  galleryOverlay: { position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0, transition: "0.2s ease", cursor: "pointer" },
-  addGalleryBtn: { aspectRatio: "1/1", borderRadius: "8px", border: "1px dashed #cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backgroundColor: "#f8fafc", transition: "0.2s ease" },
-
-  // Footer
-  footer: { padding: "16px 32px", borderTop: "1px solid #f1f5f9", backgroundColor: "#fff", display: 'flex', justifyContent: 'flex-end', gap: '12px' },
-  secondaryBtn: { padding: "10px 20px", borderRadius: "10px", border: "1px solid #e2e8f0", background: "white", color: "#64748b", fontWeight: 600, cursor: "pointer", fontSize: "14px" },
-  primaryBtn: { padding: "10px 24px", borderRadius: "10px", background: "#10b981", color: "white", border: "none", fontWeight: 600, cursor: "pointer", fontSize: "14px", display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)' }
-};
-
-const popupStyles: Record<string, React.CSSProperties> = {
-  overlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.2)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
-  box: { backgroundColor: 'white', padding: '32px', borderRadius: '24px', width: '90%', maxWidth: '380px', textAlign: 'center', boxShadow: '0 20px 50px -10px rgba(0,0,0,0.15)' },
-  successIconWrapper: { display: 'flex', justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: '20px', fontWeight: 700, margin: '12px 0 8px 0' },
-  text: { fontSize: '14px', color: '#64748b', margin: '0 0 24px 0', lineHeight: '1.5' },
-  btn: { width: '100%', padding: '12px', borderRadius: '12px', border: 'none', color: 'white', fontWeight: 600, cursor: 'pointer', fontSize: '14px' }
-};

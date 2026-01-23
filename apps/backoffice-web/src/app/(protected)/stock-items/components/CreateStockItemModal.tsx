@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Package, Layers, AlertCircle } from 'lucide-react'; // Added AlertCircle
+import { X, Package, Layers, AlertCircle } from 'lucide-react';
 import { StockItemsAPI } from '@/features/stock-items/stockItems.api';
 
 interface Props {
@@ -15,7 +15,7 @@ export default function CreateStockItemModal({ open, onClose, onSuccess }: Props
   const [name, setName] = useState('');
   const [unit, setUnit] = useState('PIECE');
   const [isSaving, setIsSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null); // New state for error messages
+  const [formError, setFormError] = useState<string | null>(null);
 
   const submit = async () => {
     if (!name.trim()) {
@@ -29,9 +29,8 @@ export default function CreateStockItemModal({ open, onClose, onSuccess }: Props
     try {
       await StockItemsAPI.create({ name: name.trim(), unit: unit as any });
       onSuccess();
-      handleClose(); // Use internal close to reset state
+      handleClose(); 
     } catch (err: any) {
-      // Check if it's a conflict (usually 409) or just handle the 500/general error
       if (err.response?.status === 409 || err.response?.data?.message?.includes('exists')) {
         setFormError(`"${name}" already exists in the inventory.`);
       } else {
@@ -52,80 +51,100 @@ export default function CreateStockItemModal({ open, onClose, onSuccess }: Props
   return (
     <AnimatePresence>
       {open && (
-        <div style={styles.modalOverlay} onClick={handleClose}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="absolute inset-0" onClick={handleClose} />
+          
           <motion.div 
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            style={styles.modal} 
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={styles.header}>
+            {/* --- HEADER --- */}
+            <div className="flex items-center justify-between border-b border-slate-100 px-8 py-6 bg-slate-50/50">
               <div>
-                <h2 style={styles.title}>Create Stock Item</h2>
-                <p style={styles.subtitle}>Add new raw materials to inventory</p>
+                <h2 className="text-xl font-bold text-slate-900">Create Stock Item</h2>
+                <p className="text-xs font-medium text-slate-500 mt-1">Add new raw materials to inventory</p>
               </div>
-              <button onClick={handleClose} style={styles.closeBtn}><X size={20}/></button>
+              <button 
+                onClick={handleClose} 
+                className="rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X size={20}/>
+              </button>
             </div>
 
-            <div style={styles.form}>
-              {/* --- ERROR BANNER --- */}
+            {/* --- FORM BODY --- */}
+            <div className="p-8">
+              
+              {/* Error Banner */}
               <AnimatePresence>
                 {formError && (
                   <motion.div 
-                    initial={{ height: 0, opacity: 0 }} 
-                    animate={{ height: 'auto', opacity: 1 }} 
-                    style={styles.errorBanner}
+                    initial={{ height: 0, opacity: 0, marginBottom: 0 }} 
+                    animate={{ height: 'auto', opacity: 1, marginBottom: 24 }} 
+                    exit={{ height: 0, opacity: 0, marginBottom: 0 }}
+                    className="overflow-hidden"
                   >
-                    <AlertCircle size={16} />
-                    <span>{formError}</span>
+                    <div className="flex items-start gap-3 rounded-xl bg-rose-50 p-4 text-xs font-medium text-rose-600 ring-1 ring-rose-100">
+                      <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                      <p>{formError}</p>
+                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Item Name *</label>
-                <div style={styles.inputWrapper}>
-                  <Package size={18} style={styles.inputIcon} />
-                  <input 
-                    style={styles.input} 
-                    placeholder="e.g. Tomato Sauce" 
-                    value={name} 
-                    onChange={(e) => {
-                        setName(e.target.value);
-                        if(formError) setFormError(null); // Clear error when user types
-                    }} 
-                  />
+              <div className="flex flex-col gap-5">
+                
+                {/* Name Input */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Item Name <span className="text-rose-500">*</span></label>
+                  <div className="relative flex items-center">
+                    <Package size={18} className="absolute left-3.5 text-slate-400" />
+                    <input 
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10"
+                      placeholder="e.g. Tomato Sauce" 
+                      value={name} 
+                      onChange={(e) => {
+                          setName(e.target.value);
+                          if(formError) setFormError(null);
+                      }} 
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Measurement Unit *</label>
-                <div style={styles.inputWrapper}>
-                  <Layers size={18} style={styles.inputIcon} />
-                  <select 
-                    style={styles.input} 
-                    value={unit} 
-                    onChange={e => setUnit(e.target.value)}
-                  >
-                    <option value="PIECE">Piece (Pcs)</option>
-                    <option value="KG">Kilogram (Kg)</option>
-                    <option value="LITER">Liter (Ltr)</option>
-                    <option value="PACKET">Packet</option>
-                    <option value="ML">Milliliter (ml)</option>
-                    <option value="GRAM">Gram (g)</option>
-                  </select>
+                {/* Unit Select */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Measurement Unit <span className="text-rose-500">*</span></label>
+                  <div className="relative flex items-center">
+                    <Layers size={18} className="absolute left-3.5 text-slate-400" />
+                    <select 
+                      className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 cursor-pointer"
+                      value={unit} 
+                      onChange={e => setUnit(e.target.value)}
+                    >
+                      <option value="PIECE">Piece (Pcs)</option>
+                      <option value="KG">Kilogram (Kg)</option>
+                      <option value="LITER">Liter (Ltr)</option>
+                      <option value="PACKET">Packet</option>
+                      <option value="ML">Milliliter (ml)</option>
+                      <option value="GRAM">Gram (g)</option>
+                    </select>
+                  </div>
                 </div>
-              </div>
 
-              <motion.button 
-                whileTap={{ scale: 0.98 }}
-                style={styles.submitBtn} 
-                onClick={submit} 
-                disabled={isSaving}
-              >
-                {isSaving ? "Creating..." : "Create Item"}
-              </motion.button>
+                {/* Submit Button */}
+                <motion.button 
+                  whileTap={{ scale: 0.98 }}
+                  className="mt-4 w-full rounded-xl bg-gradient-to-b from-emerald-400 to-emerald-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-200 transition-all hover:shadow-emerald-300 hover:from-emerald-500 hover:to-emerald-700 disabled:opacity-70 disabled:cursor-not-allowed uppercase tracking-wider"
+                  onClick={submit} 
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Creating..." : "Create Item"}
+                </motion.button>
+
+              </div>
             </div>
           </motion.div>
         </div>
@@ -133,32 +152,3 @@ export default function CreateStockItemModal({ open, onClose, onSuccess }: Props
     </AnimatePresence>
   );
 }
-
-const styles: { [key: string]: React.CSSProperties } = {
-  modalOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 },
-  modal: { backgroundColor: "#fff", width: "450px", borderRadius: "24px", padding: "32px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)" },
-  header: { display: "flex", justifyContent: "space-between", marginBottom: "24px" },
-  title: { fontSize: "22px", fontWeight: 700, color: "#1e293b", margin: 0 },
-  subtitle: { color: "#64748b", fontSize: "13px", margin: "4px 0 0 0" },
-  closeBtn: { background: "none", border: "none", cursor: "pointer", color: "#64748b" },
-  form: { display: "flex", flexDirection: "column", gap: "20px" },
-  errorBanner: { 
-    display: 'flex', 
-    alignItems: 'center', 
-    gap: '8px', 
-    padding: "12px", 
-    backgroundColor: "#fef2f2", 
-    color: "#ef4444", 
-    borderRadius: "12px", 
-    fontSize: "13px", 
-    fontWeight: 500,
-    border: "1px solid #fee2e2",
-    overflow: 'hidden'
-  },
-  inputGroup: { display: "flex", flexDirection: "column", gap: "8px" },
-  label: { fontSize: "13px", fontWeight: 600, color: "#475569" },
-  inputWrapper: { position: 'relative', display: 'flex', alignItems: 'center' },
-  inputIcon: { position: 'absolute', left: '12px', color: '#94a3b8' },
-  input: { width: "100%", padding: "12px 12px 12px 40px", borderRadius: "12px", border: "1px solid #e2e8f0", outline: "none", fontSize: "14px", backgroundColor: "#f8fafc" },
-  submitBtn: { background: "linear-gradient(180deg, #34d399 0%, #10b981 100%)", color: "white", border: "none", padding: "16px", borderRadius: "14px", fontWeight: 700, fontSize: "15px", cursor: "pointer", boxShadow: "0 6px 20px rgba(16, 185, 129, 0.4)", marginTop: "10px" }
-};

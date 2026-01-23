@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, Mail, ShieldCheck, Key, Plus, X, 
-  Loader2, RefreshCw, Eye, EyeOff, CheckCircle2 
+  Loader2, RefreshCw, Eye, EyeOff, CheckCircle2, AlertCircle 
 } from 'lucide-react';
 import { UsersService } from '@/features/users/users.service';
 
@@ -23,7 +23,6 @@ export default function OutletUsersPage() {
   const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   
-  // New States for requested features
   const [showPass, setShowPass] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -43,13 +42,23 @@ export default function OutletUsersPage() {
 
   async function fetchUsers() {
     setLoading(true);
-    const res = await UsersService.getUsersByOutlet(outletId);
-    setUsers(res.data.data);
-    setLoading(false);
+    try {
+        const res = await UsersService.getUsersByOutlet(outletId);
+        setUsers(res.data.data || []);
+    } catch (err) {
+        console.error("Failed to fetch users", err);
+    } finally {
+        setLoading(false);
+    }
   }
 
   async function createUser() {
     setError(null);
+    if (!email || !password) {
+        setError("Email and password are required.");
+        return;
+    }
+
     try {
       await UsersService.createUser({
         outletId,
@@ -69,6 +78,11 @@ export default function OutletUsersPage() {
 
   async function resetPassword() {
     setError(null);
+    if (!newPassword) {
+        setError("New password is required.");
+        return;
+    }
+
     try {
       await UsersService.resetPassword(resetEmail!, newPassword);
       setResetEmail(null);
@@ -79,10 +93,8 @@ export default function OutletUsersPage() {
     }
   }
 
-  // Toggle User Status Logic Fixed
   async function toggleUserStatus(user: any) {
     try {
-      // Correcting method calls based on your service's available methods
       if (user.isActive) {
         await UsersService.disableUser(user.id);
       } else {
@@ -97,127 +109,160 @@ export default function OutletUsersPage() {
   }
 
   if (loading) return (
-    <div style={styles.loaderContainer}>
+    <div className="flex h-screen flex-col items-center justify-center bg-slate-50">
       <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
-        <RefreshCw size={40} color="#10b981" />
+        <RefreshCw size={40} className="text-emerald-500" />
       </motion.div>
-      <p style={{ marginTop: 12, color: "#64748b", fontWeight: 500 }}>Fetching users...</p>
+      <p className="mt-4 text-sm font-semibold text-slate-500">Fetching users...</p>
     </div>
   );
 
   return (
-    <div style={styles.container}>
-      {/* SUCCESS TOAST */}
+    <div className="min-h-screen bg-slate-50 p-6 md:p-8 font-sans">
+      
+      {/* --- SUCCESS TOAST --- */}
       <AnimatePresence>
         {successMsg && (
-          <motion.div 
-            initial={{ opacity: 0, y: -50, x: '-50%' }}
-            animate={{ opacity: 1, y: 20, x: '-50%' }}
-            exit={{ opacity: 0, y: -50, x: '-50%' }}
-            style={styles.toast}
-          >
-            <CheckCircle2 size={18} /> {successMsg}
-          </motion.div>
+          <div className="fixed top-6 left-1/2 z-50 -translate-x-1/2">
+             <motion.div 
+               initial={{ opacity: 0, y: -20 }}
+               animate={{ opacity: 1, y: 0 }}
+               exit={{ opacity: 0, y: -20 }}
+               className="flex items-center gap-2 rounded-full bg-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-xl shadow-emerald-500/20"
+             >
+               <CheckCircle2 size={18} /> {successMsg}
+             </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
-      {/* HEADER */}
-      <div style={styles.header}>
+      {/* --- HEADER --- */}
+      <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }}>
-          <h1 style={styles.title}>Outlet Users</h1>
-          <p style={styles.subtitle}>Manage accounts created under this location</p>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Outlet Users</h1>
+          <p className="mt-1 text-sm font-medium text-slate-500">Manage accounts created under this location</p>
         </motion.div>
 
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => { setShowCreate(true); setShowPass(false); }}
-          style={styles.greenPopButton}
+          onClick={() => { setShowCreate(true); setShowPass(false); setError(null); }}
+          className="flex items-center gap-2 rounded-xl bg-gradient-to-b from-emerald-400 to-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-200 transition-all hover:shadow-emerald-300 hover:from-emerald-500 hover:to-emerald-700"
         >
-          <Plus size={18} /> Create User
+          <Plus size={18} strokeWidth={2.5} /> Create User
         </motion.button>
       </div>
 
-      {/* TABLE */}
-      <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} style={styles.tableCard}>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>USER EMAIL</th>
-              <th style={styles.th}>STATUS</th>
-              <th style={styles.th} align="right">ACTIONS</th>
-            </tr>
-          </thead>
-          <tbody>
-            <AnimatePresence mode="popLayout">
-              {users.map((u) => (
-                <motion.tr 
-                  layout
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  key={u.id} 
-                  style={styles.tr}
-                >
-                  <td style={styles.td}>
-                    <div style={styles.nameGroup}>
-                      <div style={styles.iconCircle}><Mail size={16} color="#10b981"/></div>
-                      <span style={styles.emailText}>{u.email}</span>
-                    </div>
-                  </td>
-                  <td style={styles.td}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ ...styles.statusBadge, color: u.isActive ? '#059669' : '#64748b' }}>
-                        <div style={{ ...styles.dot, backgroundColor: u.isActive ? '#10b981' : '#94a3b8' }} />
-                        {u.isActive ? 'ACTIVE' : 'INACTIVE'}
-                      </div>
-                      {/* Toggle Switch */}
-                      <button 
-                        onClick={() => toggleUserStatus(u)}
-                        style={{
-                          ...styles.toggleBg,
-                          backgroundColor: u.isActive ? '#10b981' : '#cbd5e1'
-                        }}
-                      >
-                        <motion.div 
-                          animate={{ x: u.isActive ? 18 : 2 }}
-                          style={styles.toggleDot} 
-                        />
-                      </button>
-                    </div>
-                  </td>
-                  <td style={styles.td} align="right">
-                    <motion.button
-                      whileHover={{ backgroundColor: '#f1f5f9' }}
-                      onClick={() => { setResetEmail(u.email); setShowPass(false); }}
-                      style={styles.actionBtn}
+      {/* --- TABLE CARD --- */}
+      <motion.div 
+        initial={{ y: 10, opacity: 0 }} 
+        animate={{ y: 0, opacity: 1 }} 
+        className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+      >
+        <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left">
+            <thead className="bg-slate-50/80">
+                <tr>
+                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">User Email</th>
+                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
+                <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Actions</th>
+                </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+                <AnimatePresence mode="popLayout">
+                {users.map((u) => (
+                    <motion.tr 
+                        layout
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        key={u.id} 
+                        className="transition-colors hover:bg-slate-50/50"
                     >
-                      <Key size={14} style={{ marginRight: 6 }} /> Reset Password
-                    </motion.button>
-                  </td>
-                </motion.tr>
-              ))}
-            </AnimatePresence>
-          </tbody>
-        </table>
+                        {/* Email */}
+                        <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                                    <Mail size={16} />
+                                </div>
+                                <span className="text-sm font-semibold text-slate-800">{u.email}</span>
+                            </div>
+                        </td>
+
+                        {/* Status Toggle */}
+                        <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                                <span className={`
+                                    inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold tracking-wide border
+                                    ${u.isActive 
+                                        ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
+                                        : "bg-slate-100 text-slate-500 border-slate-200"
+                                    }
+                                `}>
+                                    <div className={`h-1.5 w-1.5 rounded-full ${u.isActive ? "bg-emerald-500" : "bg-slate-400"}`} />
+                                    {u.isActive ? 'ACTIVE' : 'INACTIVE'}
+                                </span>
+
+                                <button 
+                                    onClick={() => toggleUserStatus(u)}
+                                    className={`
+                                        relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none
+                                        ${u.isActive ? 'bg-emerald-500' : 'bg-slate-300'}
+                                    `}
+                                >
+                                    <span
+                                        aria-hidden="true"
+                                        className={`
+                                            pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out
+                                            ${u.isActive ? 'translate-x-4' : 'translate-x-0'}
+                                        `}
+                                    />
+                                </button>
+                            </div>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="px-6 py-4 text-right">
+                            <motion.button
+                                whileHover={{ scale: 1.02, backgroundColor: '#f1f5f9' }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => { setResetEmail(u.email); setShowPass(false); setError(null); }}
+                                className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 shadow-sm transition-colors hover:text-slate-900"
+                            >
+                                <Key size={14} className="mr-1.5 text-slate-400" /> Reset Password
+                            </motion.button>
+                        </td>
+                    </motion.tr>
+                ))}
+                </AnimatePresence>
+                {users.length === 0 && (
+                    <tr>
+                        <td colSpan={3} className="py-12 text-center text-slate-400 text-sm font-medium">
+                            No users found for this outlet.
+                        </td>
+                    </tr>
+                )}
+            </tbody>
+            </table>
+        </div>
       </motion.div>
 
-      {/* CREATE USER MODAL */}
+      {/* --- CREATE USER MODAL --- */}
       <AnimatePresence>
         {showCreate && (
           <Modal title="Create Outlet User" onClose={() => setShowCreate(false)}>
-            {error && <Error text={error} />}
-            <div style={styles.formStack}>
-              <div style={styles.inputWrapper}>
+            {error && <ErrorBanner text={error} />}
+            <div className="flex flex-col gap-4">
+              <div className="space-y-1.5">
                 <input 
-                  style={styles.input} 
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10" 
                   placeholder="Email Address" 
                   value={email} 
                   onChange={(e) => setEmail(e.target.value)} 
                 />
               </div>
-              <div style={styles.passwordContainer}>
+              <div className="relative">
                 <input 
-                  style={styles.input} 
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10" 
                   placeholder="Password" 
                   type={showPass ? "text" : "password"} 
                   value={password} 
@@ -225,7 +270,7 @@ export default function OutletUsersPage() {
                 />
                 <button 
                   onClick={() => setShowPass(!showPass)} 
-                  style={styles.eyeBtn}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
                   {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -236,18 +281,20 @@ export default function OutletUsersPage() {
         )}
       </AnimatePresence>
 
-      {/* RESET PASSWORD MODAL */}
+      {/* --- RESET PASSWORD MODAL --- */}
       <AnimatePresence>
         {resetEmail && (
           <Modal title="Reset Password" onClose={() => setResetEmail(null)}>
-            <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
-              Setting new password for: <strong>{resetEmail}</strong>
-            </p>
-            {error && <Error text={error} />}
-            <div style={styles.formStack}>
-              <div style={styles.passwordContainer}>
+            <div className="mb-4 rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
+               Setting new password for: <strong className="text-slate-800">{resetEmail}</strong>
+            </div>
+            
+            {error && <ErrorBanner text={error} />}
+            
+            <div className="flex flex-col gap-4">
+              <div className="relative">
                 <input 
-                  style={styles.input} 
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10" 
                   placeholder="New Password" 
                   type={showPass ? "text" : "password"} 
                   value={newPassword} 
@@ -255,7 +302,7 @@ export default function OutletUsersPage() {
                 />
                 <button 
                   onClick={() => setShowPass(!showPass)} 
-                  style={styles.eyeBtn}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
                   {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -269,23 +316,35 @@ export default function OutletUsersPage() {
   );
 }
 
-/* ---------- helper components ---------- */
+/* --- HELPER COMPONENTS --- */
 
 function Modal({ title, children, onClose }: any) {
   return (
-    <div style={styles.overlay}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+      <div className="absolute inset-0" onClick={onClose} />
       <motion.div 
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        style={styles.modalBody}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="relative w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200"
+        onClick={(e) => e.stopPropagation()}
       >
-        <div style={styles.modalHeader}>
-          <h3 style={styles.modalTitle}>{title}</h3>
-          <button onClick={onClose} style={styles.closeBtn}><X size={18}/></button>
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5 bg-white">
+          <h3 className="text-lg font-bold text-slate-900">{title}</h3>
+          <button onClick={onClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors">
+            <X size={20}/>
+          </button>
         </div>
-        {children}
-        <button onClick={onClose} style={styles.cancelLink}>Cancel and Close</button>
+        
+        <div className="p-6">
+            {children}
+            <button 
+                onClick={onClose} 
+                className="mt-4 w-full text-center text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors"
+            >
+                Cancel and Close
+            </button>
+        </div>
       </motion.div>
     </div>
   );
@@ -296,157 +355,21 @@ function PrimaryButton({ children, onClick }: any) {
     <motion.button
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      style={styles.greenPopButtonLarge}
+      className="w-full rounded-xl bg-gradient-to-b from-emerald-400 to-emerald-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-200 transition-all hover:shadow-emerald-300 hover:from-emerald-500 hover:to-emerald-700 active:scale-95 uppercase tracking-wider"
     >
       {children}
     </motion.button>
   );
 }
 
-function Error({ text }: any) {
+function ErrorBanner({ text }: any) {
   return (
-    <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} style={styles.errorBanner}>
-      <AlertCircle size={14} style={{ marginRight: 6 }} /> {text}
+    <motion.div 
+        initial={{ opacity: 0, height: 0, marginBottom: 0 }} 
+        animate={{ opacity: 1, height: 'auto', marginBottom: 16 }}
+        className="flex items-center gap-2 rounded-xl bg-rose-50 p-3 text-xs font-bold text-rose-600 ring-1 ring-rose-100"
+    >
+      <AlertCircle size={16} className="shrink-0" /> {text}
     </motion.div>
   );
 }
-
-const AlertCircle = ({ size, style }: any) => (
-  <svg width={size} height={size} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-);
-
-/* ---------- professional styles ---------- */
-
-const styles: { [key: string]: React.CSSProperties } = {
-  container: {
-    padding: '40px',
-    backgroundColor: '#f8fafc',
-    minHeight: '100vh',
-    fontFamily: "'Inter', sans-serif"
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    marginBottom: '32px'
-  },
-  title: { fontSize: '28px', fontWeight: 800, color: '#1e293b', margin: 0 },
-  subtitle: { color: '#64748b', margin: '4px 0 0 0', fontSize: '14px' },
-  greenPopButton: {
-    background: 'linear-gradient(180deg, #34d399 0%, #10b981 100%)',
-    color: 'white',
-    border: 'none',
-    padding: '12px 20px',
-    borderRadius: '12px',
-    fontWeight: 600,
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    cursor: 'pointer',
-    boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
-  },
-  tableCard: {
-    backgroundColor: '#fff',
-    borderRadius: '20px',
-    border: '1px solid #e2e8f0',
-    overflow: 'hidden',
-    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)'
-  },
-  table: { width: '100%', borderCollapse: 'collapse' },
-  th: {
-    textAlign: 'left',
-    padding: '16px 24px',
-    backgroundColor: '#f1f5f9',
-    color: '#64748b',
-    fontSize: '12px',
-    fontWeight: 700,
-    letterSpacing: '0.05em'
-  },
-  tr: { borderTop: '1px solid #f1f5f9' },
-  td: { padding: '16px 24px' },
-  nameGroup: { display: 'flex', alignItems: 'center', gap: '12px' },
-  iconCircle: { 
-    width: '32px', height: '32px', borderRadius: '8px', 
-    backgroundColor: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center' 
-  },
-  emailText: { fontWeight: 600, color: '#1e293b', fontSize: '14px' },
-  statusBadge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '6px',
-    padding: '6px 12px',
-    borderRadius: '20px',
-    fontSize: '12px',
-    fontWeight: 600,
-    backgroundColor: '#f8fafc'
-  },
-  dot: { width: '8px', height: '8px', borderRadius: '50%' },
-  actionBtn: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    padding: '8px 14px',
-    borderRadius: '10px',
-    border: '1px solid #e2e8f0',
-    backgroundColor: 'white',
-    fontSize: '13px',
-    fontWeight: 500,
-    color: '#475569',
-    cursor: 'pointer',
-    transition: 'all 0.2s'
-  },
-  overlay: {
-    position: 'fixed', inset: 0, 
-    background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
-  },
-  modalBody: { 
-    background: 'white', padding: '32px', borderRadius: '24px', 
-    width: '400px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' 
-  },
-  modalHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' },
-  modalTitle: { fontSize: '20px', fontWeight: 700, margin: 0 },
-  closeBtn: { background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' },
-  formStack: { display: 'flex', flexDirection: 'column', gap: '12px' },
-  passwordContainer: { position: 'relative', width: '100%' },
-  eyeBtn: { 
-    position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
-    background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' 
-  },
-  input: {
-    width: '90%', padding: '12px 16px', borderRadius: '12px', 
-    border: '1px solid #e2e8f0', outline: 'none', fontSize: '14px'
-  },
-  greenPopButtonLarge: {
-    background: 'linear-gradient(180deg, #34d399 0%, #10b981 100%)',
-    color: 'white', border: 'none', padding: '14px', borderRadius: '14px',
-    fontWeight: 700, cursor: 'pointer', marginTop: '8px', width: '100%',
-    boxShadow: '0 6px 16px rgba(16, 185, 129, 0.3)'
-  },
-  cancelLink: {
-    width: '100%', background: 'none', border: 'none', color: '#94a3b8',
-    fontSize: '13px', marginTop: '16px', cursor: 'pointer'
-  },
-  errorBanner: {
-    display: 'flex', alignItems: 'center', padding: '10px 14px', 
-    backgroundColor: '#fef2f2', color: '#dc2626', borderRadius: '10px', 
-    fontSize: '13px', marginBottom: '16px', border: '1px solid #fee2e2'
-  },
-  loaderContainer: {
-    height: '100vh', display: 'flex', flexDirection: 'column', 
-    alignItems: 'center', justifyContent: 'center'
-  },
-  toast: {
-    position: 'fixed', left: '50%', top: '20px', transform: 'translateX(-50%)',
-    background: '#1e293b', color: '#fff', padding: '12px 24px', borderRadius: '50px',
-    display: 'flex', alignItems: 'center', gap: '8px', zIndex: 2000,
-    boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '14px', fontWeight: 500
-  },
-  toggleBg: {
-    width: '38px', height: '20px', borderRadius: '20px', border: 'none',
-    position: 'relative', cursor: 'pointer', transition: 'background 0.3s'
-  },
-  toggleDot: {
-    width: '16px', height: '16px', borderRadius: '50%', background: '#fff',
-    position: 'absolute', top: '2px', left: 0
-  }
-};

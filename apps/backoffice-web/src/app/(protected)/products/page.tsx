@@ -18,42 +18,50 @@ export default function ProductsPage() {
   );
 
   return (
-    <div style={styles.container}>
-      <div style={styles.header}>
-        <div style={styles.headerTitleGroup}>
-          <div style={styles.iconCircleHeader}>
-            <LayoutGrid size={22} color="#10b981" />
+    <div className="min-h-screen bg-slate-50 px-8 py-5">
+      {/* HEADER */}
+      <div className="mb-6 flex items-center justify-between">
+        {/* Left: Title Group */}
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50">
+            <LayoutGrid size={22} className="text-emerald-500" />
           </div>
           <div>
-            <h1 style={styles.title}>Products Management</h1>
-            <p style={styles.subtitle}>Super Admin Control Panel</p>
+            <h1 className="m-0 text-2xl font-extrabold text-slate-900">Products Management</h1>
+            <p className="m-0 text-sm font-medium text-slate-500">Super Admin Control Panel</p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-          <div style={styles.searchWrapper}>
-            <Search size={18} color="#64748b" style={styles.searchIcon} />
+        {/* Right: Actions */}
+        <div className="flex items-center gap-4">
+          <div className="relative flex items-center">
+            <Search size={18} className="absolute left-3 text-slate-500" />
             <input 
               type="text" 
               placeholder="Search products..." 
-              style={styles.searchInput}
+              className="w-[280px] rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
-          <button onClick={() => setIsCreateModalOpen(true)} style={styles.createBtn}>
+          <button 
+            onClick={() => setIsCreateModalOpen(true)} 
+            className="flex items-center gap-2 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-500 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 transition-transform hover:scale-105 active:scale-95"
+          >
             <Plus size={18} /> Create Product
           </button>
         </div>
       </div>
 
+      {/* TABLE */}
       <ProductsTable 
         products={filteredProducts} 
         loading={loading} 
         refresh={refresh} 
       />
 
+      {/* MODAL */}
       <AnimatePresence>
         {isCreateModalOpen && (
           <CreateProductModal 
@@ -65,16 +73,3 @@ export default function ProductsPage() {
     </div>
   );
 }
-
-const styles: { [key: string]: React.CSSProperties } = {
-  container: { padding: "20px 32px", backgroundColor: "#f8fafc", minHeight: "100vh" },
-  header: { marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" },
-  headerTitleGroup: { display: "flex", alignItems: "center", gap: "12px" },
-  iconCircleHeader: { width: "48px", height: "48px", borderRadius: "12px", backgroundColor: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center" },
-  title: { fontSize: "28px", fontWeight: 800, color: "#1e293b", margin: 0 },
-  subtitle: { color: "#64748b", margin: 0, fontSize: "14px", fontWeight: 500 },
-  searchWrapper: { position: 'relative', display: 'flex', alignItems: 'center' },
-  searchIcon: { position: 'absolute', left: '12px' },
-  searchInput: { padding: '10px 12px 10px 40px', borderRadius: '10px', border: '1px solid #e2e8f0', width: '280px', fontSize: '14px', outline: 'none' },
-  createBtn: { background: "linear-gradient(135deg, #34d399 0%, #10b981 100%)", color: "white", border: "none", padding: "10px 20px", borderRadius: "10px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" },
-};

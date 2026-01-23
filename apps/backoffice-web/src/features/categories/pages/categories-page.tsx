@@ -11,66 +11,44 @@ export default function CategoriesPage() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div style={{ padding: '16px', backgroundColor: '#f8fafc', minHeight: '100vh', fontFamily: 'sans-serif' }}>
+    // 1. PAGE CONTAINER
+    <div className="min-h-screen bg-background p-6 md:p-8 font-sans">
       
-      {/* --- Page Header Section --- */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+      {/* 2. PAGE HEADER SECTION */}
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 style={{ fontSize: '26px', fontWeight: 800, color: '#1e293b', margin: 0 }}>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Categories
           </h1>
-          <p style={{ marginTop: '4px', fontSize: '14px', color: '#64748b' }}>
+          <p className="mt-2 text-sm text-muted-foreground">
             Super Admin Control Panel | Manage product categories
           </p>
         </div>
 
-        {/* Action Button */}
+        {/* 3. ACTION BUTTON */}
         <button
           onClick={() => setOpen(true)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', // Emerald Gradient
-            color: 'white',
-            border: 'none',
-            padding: '12px 20px',
-            borderRadius: '12px',
-            fontWeight: 600,
-            fontSize: '14px',
-            cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
-            transition: 'transform 0.2s',
-          }}
-          onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.96)'}
-          onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          className="group flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/40 active:scale-95"
         >
-          <div style={{ backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '50%', padding: '2px', display: 'flex' }}>
-            <Plus size={16} />
+          {/* Icon with subtle semi-transparent background */}
+          <div className="flex items-center justify-center rounded-full bg-white/20 p-1 transition-transform group-hover:rotate-90">
+            <Plus size={16} strokeWidth={3} />
           </div>
           Create Category
         </button>
       </div>
 
-      {/* --- Content Card --- */}
-      <div style={{ 
-        backgroundColor: 'white', 
-        borderRadius: '16px', 
-        border: '1px solid #e2e8f0', 
-        boxShadow: '0 4px 6px rgba(0,0,0,0.02)',
-        overflow: 'hidden'
-      }}>
-        <div style={{ padding: '4px' }}>
-          <CategoryTable
-            categories={categories}
-            loading={loading}
-            onRefresh={refresh}
-          />
-        </div>
+      {/* 4. CONTENT SECTION */}
+      {/* The CategoryTable now has its own 'Card' styling, so we place it directly here */}
+      <div className="fade-in animate-in duration-500">
+        <CategoryTable
+          categories={categories}
+          loading={loading}
+          onRefresh={refresh}
+        />
       </div>
 
-      {/* Modal Component */}
+      {/* 5. MODAL */}
       <CreateCategoryModal
         open={open}
         onClose={() => setOpen(false)}

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { ProductsAPI } from "../services/products.api";
 import { InventoryAPI } from "@/features/inventory/api/inventory.api";
-import { X, ClipboardList, Upload, Trash2, Plus, Tag, Layers, ChevronDown, Check, Sparkles } from "lucide-react";
+import { X, ClipboardList, Upload, Trash2, Plus, Tag, Layers, ChevronDown, Check, ImagePlus, DollarSign } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // CONSTANTS
@@ -131,289 +131,304 @@ export default function CreateProductModal({ onClose, onSuccess }: { onClose: ()
   };
 
   return (
-    <div style={modalStyles.overlay} onClick={onClose}>
-      {/* Global CSS for this component */}
-      <style>{`
-        .custom-scroll::-webkit-scrollbar { width: 6px; }
-        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
-        .custom-scroll::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
-        
-        .input-group:focus-within { border-color: #10b981 !important; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1) !important; }
-        
-        .tag-option:hover { background-color: #f8fafc; color: #0f172a; }
-        .gallery-item:hover .gallery-overlay { opacity: 1 !important; }
-      `}</style>
-
+    // 1. OVERLAY
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      
+      {/* 2. MODAL CARD */}
       <motion.div 
         initial={{ y: 20, opacity: 0, scale: 0.98 }} 
         animate={{ y: 0, opacity: 1, scale: 1 }} 
-        exit={{ y: 20, opacity: 0, scale: 0.98 }}
-        style={modalStyles.modal} 
+        className="w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden rounded-3xl bg-background shadow-2xl ring-1 ring-border"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
-        <div style={modalStyles.header}>
+        
+        {/* HEADER */}
+        <div className="flex items-center justify-between border-b border-border bg-muted/20 px-8 py-5">
           <div>
-            <h2 style={modalStyles.title}>Add New Product</h2>
+            <h2 className="text-xl font-bold tracking-tight text-foreground">Add New Product</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Fill in the details to create a product</p>
           </div>
-          <button onClick={onClose} style={modalStyles.closeBtn}><X size={20}/></button>
+          <button 
+            onClick={onClose} 
+            className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <X size={20}/>
+          </button>
         </div>
 
-        {/* Scrollable Content */}
-        <div className="custom-scroll" style={modalStyles.scrollArea}>
-          <div style={modalStyles.form}>
+        {/* SCROLLABLE CONTENT */}
+        <div className="flex-1 overflow-y-auto p-8">
+          <div className="flex flex-col gap-6">
             
-            {/* Row 1: Selects */}
-            <div style={modalStyles.row}>
-              <div style={{ flex: 1 }}>
-                <label style={modalStyles.label}>Category <span style={{color: '#ef4444'}}>*</span></label>
-                <div className="input-group" style={modalStyles.inputWrapper}>
-                  <Layers size={15} style={modalStyles.inputIcon} />
-                  <select style={modalStyles.select} value={form.categoryId} onChange={e => setForm({...form, categoryId: e.target.value})}>
+            {/* ROW 1: CATEGORY & STOCK */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Category <span className="text-destructive">*</span></label>
+                <div className="relative">
+                  <Layers size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <select 
+                    className="w-full appearance-none rounded-xl border border-input bg-background py-3 pl-11 pr-4 text-sm font-medium outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    value={form.categoryId} 
+                    onChange={e => setForm({...form, categoryId: e.target.value})}
+                  >
                     <option value="">Select Category</option>
                     {categories.map((cat: any) => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
                   </select>
-                  <ChevronDown size={14} style={{position:'absolute', right: 12, pointerEvents:'none', color:'#94a3b8'}} />
+                  <ChevronDown size={14} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 </div>
               </div>
-              <div style={{ flex: 1 }}>
-                <label style={modalStyles.label}>Stock Link <span style={{color: '#ef4444'}}>*</span></label>
-                <div className="input-group" style={modalStyles.inputWrapper}>
-                  <ClipboardList size={15} style={modalStyles.inputIcon} />
-                  <select style={modalStyles.select} value={form.stockItemId} onChange={e => setForm({...form, stockItemId: e.target.value})}>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Stock Link <span className="text-destructive">*</span></label>
+                <div className="relative">
+                  <ClipboardList size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <select 
+                    className="w-full appearance-none rounded-xl border border-input bg-background py-3 pl-11 pr-4 text-sm font-medium outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    value={form.stockItemId} 
+                    onChange={e => setForm({...form, stockItemId: e.target.value})}
+                  >
                     <option value="">Select Stock Item</option>
                     {stockItems.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
                   </select>
-                  <ChevronDown size={14} style={{position:'absolute', right: 12, pointerEvents:'none', color:'#94a3b8'}} />
+                  <ChevronDown size={14} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 </div>
               </div>
             </div>
 
-            {/* Product Name */}
-            <div>
-              <label style={modalStyles.label}>Product Name <span style={{color: '#ef4444'}}>*</span></label>
-              <div className="input-group" style={modalStyles.inputWrapper}>
-                 <input style={modalStyles.inputClean} placeholder="e.g. Alphonso Mango" value={form.productName} onChange={e => setForm({...form, productName: e.target.value})} />
+            {/* PRODUCT NAME */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Product Name <span className="text-destructive">*</span></label>
+              <input 
+                className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm font-medium outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-primary/10"
+                placeholder="e.g. Alphonso Mango" 
+                value={form.productName} 
+                onChange={e => setForm({...form, productName: e.target.value})} 
+              />
+            </div>
+
+            {/* ROW 2: PRICES */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Original Price <span className="text-destructive">*</span></label>
+                <div className="relative">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">₹</div>
+                  <input 
+                    type="number" 
+                    className="w-full rounded-xl border border-input bg-background py-3 pl-9 pr-4 text-sm font-bold outline-none transition-all placeholder:font-normal focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="0.00" 
+                    value={form.originalPrice || ''} 
+                    onChange={e => setForm({...form, originalPrice: +e.target.value})} 
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Discount Price</label>
+                <div className="relative">
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">₹</div>
+                  <input 
+                    type="number" 
+                    className="w-full rounded-xl border border-input bg-background py-3 pl-9 pr-4 text-sm font-bold outline-none transition-all placeholder:font-normal focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="0.00" 
+                    value={form.discountPrice || ''} 
+                    onChange={e => setForm({...form, discountPrice: +e.target.value})} 
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Price Row */}
-            <div style={modalStyles.row}>
-              <div style={{ flex: 1 }}>
-                <label style={modalStyles.label}>Original Price <span style={{color: '#ef4444'}}>*</span></label>
-                <div className="input-group" style={modalStyles.inputWrapper}>
-                  <div style={modalStyles.currencySymbol}>₹</div>
-                  <input type="number" style={modalStyles.inputCurrency} placeholder="0.00" value={form.originalPrice || ''} onChange={e => setForm({...form, originalPrice: +e.target.value})} />
+            {/* ROW 3: UNITS & TAGS */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="flex gap-3">
+                <div className="flex-1 space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Unit</label>
+                  <input 
+                    type="number" 
+                    className="w-full rounded-xl border border-input bg-background px-3 py-3 text-sm font-medium outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    value={form.unitValue} 
+                    onChange={e => setForm({...form, unitValue: +e.target.value})} 
+                  />
+                </div>
+                <div className="w-24 space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Type</label>
+                  <select 
+                    className="w-full rounded-xl border border-input bg-background px-2 py-3 text-sm font-medium outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    value={form.unitType} 
+                    onChange={e => setForm({...form, unitType: e.target.value})}
+                  >
+                    {['PCS', 'KG', 'LTR', 'GM', 'ML'].map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
                 </div>
               </div>
-              <div style={{ flex: 1 }}>
-                <label style={modalStyles.label}>Discounted Price</label>
-                <div className="input-group" style={modalStyles.inputWrapper}>
-                  <div style={modalStyles.currencySymbol}>₹</div>
-                  <input type="number" style={modalStyles.inputCurrency} placeholder="0.00" value={form.discountPrice || ''} onChange={e => setForm({...form, discountPrice: +e.target.value})} />
-                </div>
-              </div>
-            </div>
 
-            {/* Units & Tags */}
-            <div style={modalStyles.row}>
-              <div style={{ flex: 1, display: 'flex', gap: '8px' }}>
-                <div style={{ flex: 1 }}>
-                    <label style={modalStyles.label}>Unit</label>
-                    <div className="input-group" style={modalStyles.inputWrapper}>
-                         <input type="number" style={modalStyles.inputClean} value={form.unitValue} onChange={e => setForm({...form, unitValue: +e.target.value})} />
-                    </div>
-                </div>
-                <div style={{ width: '85px' }}>
-                    <label style={modalStyles.label}>Type</label>
-                    <div className="input-group" style={modalStyles.inputWrapper}>
-                        <select style={{...modalStyles.select, paddingLeft: 10}} value={form.unitType} onChange={e => setForm({...form, unitType: e.target.value})}>
-                            {['PCS', 'KG', 'LTR', 'GM', 'ML'].map(t => <option key={t} value={t}>{t}</option>)}
-                        </select>
-                    </div>
-                </div>
-              </div>
-              
-              {/* Refined Tags Component - Now matches input style */}
-              <div style={{ flex: 1, position: 'relative' }}>
-                <label style={modalStyles.label}>Tags</label>
+              {/* TAGS SELECTOR */}
+              <div className="space-y-2 relative">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tags</label>
                 <div 
-                  className="input-group"
-                  style={modalStyles.tagsContainer} 
+                  className="flex min-h-[46px] w-full cursor-pointer flex-wrap items-center gap-2 rounded-xl border border-input bg-background px-3 py-2 transition-all hover:border-primary/50"
                   onClick={() => setShowTagDropdown(!showTagDropdown)}
                 >
-                  <Tag size={15} style={modalStyles.tagIcon} />
+                  <Tag size={16} className="text-muted-foreground mr-1" />
                   {form.tags.length === 0 ? (
-                      <span style={{ color: '#94a3b8', fontSize: '13px', paddingLeft: 36 }}>Select tags...</span>
+                    <span className="text-sm text-muted-foreground/60">Select tags...</span>
                   ) : (
-                      <div style={modalStyles.tagScroll}>
-                        {form.tags.map(tag => (
-                            <span key={tag} style={modalStyles.tagPill}>
-                                {tag.replace(/_/g, " ")} 
-                            </span>
-                        ))}
-                      </div>
+                    form.tags.map(tag => (
+                      <span key={tag} className="inline-flex items-center rounded-md bg-muted px-2 py-1 text-[11px] font-bold text-foreground uppercase tracking-wide border border-border">
+                        {tag.replace(/_/g, " ")}
+                      </span>
+                    ))
                   )}
-                  <ChevronDown size={14} color="#94a3b8" style={{position: 'absolute', right: 12}}/>
+                  <ChevronDown size={14} className="ml-auto text-muted-foreground" />
                 </div>
-                
+
+                {/* TAGS DROPDOWN */}
                 <AnimatePresence>
                   {showTagDropdown && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }}
-                      style={modalStyles.tagDropdown}
-                    >
-                      {PREDEFINED_TAGS.map(tag => {
-                        const isSelected = form.tags.includes(tag);
-                        return (
-                        <div key={tag} className="tag-option" style={modalStyles.tagOption} onClick={() => toggleTag(tag)}>
-                          <span style={{color: isSelected ? '#10b981' : 'inherit', fontWeight: isSelected ? 600 : 400}}>
-                              {tag.replace(/_/g, " ")}
-                          </span>
-                          {isSelected && <Check size={14} color="#10b981" />}
-                        </div>
-                      )})}
-                    </motion.div>
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setShowTagDropdown(false)} />
+                      <motion.div 
+                        initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }}
+                        className="absolute left-0 right-0 top-[110%] z-20 max-h-48 overflow-y-auto rounded-xl border border-border bg-popover p-2 shadow-xl"
+                      >
+                        {PREDEFINED_TAGS.map(tag => {
+                          const isSelected = form.tags.includes(tag);
+                          return (
+                            <div 
+                              key={tag} 
+                              onClick={() => toggleTag(tag)}
+                              className={`flex cursor-pointer items-center justify-between rounded-lg px-3 py-2 text-sm font-medium transition-colors ${isSelected ? 'bg-primary/10 text-primary' : 'hover:bg-muted text-foreground'}`}
+                            >
+                              <span>{tag.replace(/_/g, " ")}</span>
+                              {isSelected && <Check size={14} />}
+                            </div>
+                          )
+                        })}
+                      </motion.div>
+                    </>
                   )}
                 </AnimatePresence>
-                {showTagDropdown && <div style={{ position: 'fixed', inset: 0, zIndex: 9 }} onClick={() => setShowTagDropdown(false)} />}
               </div>
             </div>
 
-            {/* Images */}
-            <div>
-              <label style={modalStyles.label}>Main Image <span style={{color: '#ef4444'}}>*</span></label>
-              <input type="file" hidden ref={mainImageRef} accept="image/*" onChange={handleMainImageUpload} />
-              {!form.mainImagePreview ? (
-                <div style={modalStyles.uploadBox} onClick={() => mainImageRef.current?.click()}>
-                   <div style={modalStyles.uploadIconCircle}><Upload size={20} color="#10b981" /></div>
-                   <div style={{textAlign: 'center'}}>
-                       <p style={{fontSize: '13px', fontWeight: 600, color: '#334155', margin: '0 0 4px 0'}}>Click to upload</p>
-                       <p style={{fontSize: '11px', color: '#94a3b8', margin: 0}}>SVG, PNG, JPG (Max 800x800px)</p>
-                   </div>
-                </div>
-              ) : (
-                <div style={modalStyles.previewBox}>
-                  <img src={form.mainImagePreview} style={{width: '100%', height: '100%', objectFit: 'cover'}} alt="Main" />
-                  <button style={modalStyles.removeBtn} onClick={() => setForm({...form, mainImage: null, mainImagePreview: ""})}>
-                    <Trash2 size={14} /> Remove
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <label style={modalStyles.label}>Gallery ({form.galleryImages.length})</label>
-              <input type="file" multiple hidden ref={galleryInputRef} accept="image/*" onChange={handleGalleryUpload} />
-              <div style={modalStyles.galleryGrid}>
-                {form.galleryPreviews.map((src, i) => (
-                  <div key={i} className="gallery-item" style={modalStyles.galleryItem}>
-                    <img src={src} style={{width: '100%', height: '100%', objectFit: 'cover'}} alt="Gallery" />
-                    <div className="gallery-overlay" style={modalStyles.galleryOverlay} onClick={() => removeGalleryImage(i)}>
-                      <Trash2 size={16} color="#fff" />
+            {/* IMAGES SECTION */}
+            <div className="space-y-4 rounded-2xl border border-border bg-muted/20 p-5">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+                <ImagePlus size={16} /> Media
+              </h3>
+              
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Main Image <span className="text-destructive">*</span></label>
+                <input type="file" hidden ref={mainImageRef} accept="image/*" onChange={handleMainImageUpload} />
+                
+                {!form.mainImagePreview ? (
+                  <div 
+                    onClick={() => mainImageRef.current?.click()}
+                    className="flex h-40 cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-muted-foreground/25 bg-background transition-all hover:bg-muted hover:border-primary/50"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <Upload size={20} />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-sm font-semibold text-foreground">Click to upload main image</p>
+                      <p className="text-xs text-muted-foreground">SVG, PNG, JPG (Max 800x800px)</p>
                     </div>
                   </div>
-                ))}
-                <div className="input-group" style={modalStyles.addGalleryBtn} onClick={() => galleryInputRef.current?.click()}>
-                   <Plus size={20} color="#94a3b8" />
+                ) : (
+                  <div className="relative h-48 w-full overflow-hidden rounded-xl border border-border">
+                    <img src={form.mainImagePreview} className="h-full w-full object-cover" alt="Main" />
+                    <button 
+                      onClick={() => setForm({...form, mainImage: null, mainImagePreview: ""})}
+                      className="absolute right-2 top-2 flex items-center gap-1 rounded-lg border border-destructive/20 bg-background/95 px-2 py-1.5 text-xs font-bold text-destructive shadow-sm hover:bg-destructive/10"
+                    >
+                      <Trash2 size={12} /> Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Gallery ({form.galleryImages.length})</label>
+                <input type="file" multiple hidden ref={galleryInputRef} accept="image/*" onChange={handleGalleryUpload} />
+                
+                <div className="grid grid-cols-4 gap-3">
+                  {form.galleryPreviews.map((src, i) => (
+                    <div key={i} className="group relative aspect-square overflow-hidden rounded-lg border border-border">
+                      <img src={src} className="h-full w-full object-cover" alt="Gallery" />
+                      <div 
+                        onClick={() => removeGalleryImage(i)}
+                        className="absolute inset-0 flex cursor-pointer items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100"
+                      >
+                        <Trash2 size={18} className="text-white" />
+                      </div>
+                    </div>
+                  ))}
+                  <div 
+                    onClick={() => galleryInputRef.current?.click()}
+                    className="flex aspect-square cursor-pointer items-center justify-center rounded-lg border border-dashed border-muted-foreground/30 bg-background transition-colors hover:bg-muted hover:border-primary/50"
+                  >
+                    <Plus size={24} className="text-muted-foreground" />
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Descriptions */}
-            <div>
-              <label style={modalStyles.label}>Descriptions</label>
-              <div style={{display:'flex', flexDirection:'column', gap: '10px'}}>
-                  <div className="input-group" style={modalStyles.inputWrapper}>
-                    <input style={modalStyles.inputClean} placeholder="Short Description (e.g. Best seller)" value={form.shortDescription} onChange={e => setForm({...form, shortDescription: e.target.value})} />
-                  </div>
-                  <div className="input-group" style={modalStyles.inputWrapper}>
-                    <textarea style={modalStyles.textarea} placeholder="Detailed product information..." value={form.longDescription} onChange={e => setForm({...form, longDescription: e.target.value})} />
-                  </div>
-              </div>
+            {/* DESCRIPTIONS */}
+            <div className="space-y-4">
+               <div className="space-y-2">
+                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Short Description</label>
+                 <input 
+                    className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="e.g. Best seller, Seasonal favorite" 
+                    value={form.shortDescription} 
+                    onChange={e => setForm({...form, shortDescription: e.target.value})} 
+                  />
+               </div>
+               <div className="space-y-2">
+                 <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Detailed Description</label>
+                 <textarea 
+                    className="min-h-[100px] w-full resize-none rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-primary/10"
+                    placeholder="Product details, ingredients, etc..." 
+                    value={form.longDescription} 
+                    onChange={e => setForm({...form, longDescription: e.target.value})} 
+                  />
+               </div>
             </div>
 
-            {/* Trending Toggle - Styled */}
-            <div style={modalStyles.toggleContainer} onClick={() => setForm({...form, isTrending: !form.isTrending})}>
-                <div style={{display: 'flex', alignItems: 'center', gap: '12px'}}>
-                    <div style={{...modalStyles.checkbox, backgroundColor: form.isTrending ? '#10b981' : '#e2e8f0', borderColor: form.isTrending ? '#10b981' : '#cbd5e1'}}>
-                        {form.isTrending && <Check size={12} color="white" />}
-                    </div>
-                    <div>
-                        <p style={{fontSize: '14px', fontWeight: 600, color: '#334155', margin: 0, display: 'flex', alignItems: 'center', gap: '6px'}}>
-                            Mark as Trending 
-                        </p>
-                        <p style={{fontSize: '11px', color: '#64748b', margin: '2px 0 0 0'}}>Product will be pinned to top of app</p>
-                    </div>
-                </div>
+            {/* TRENDING TOGGLE */}
+            <div 
+              onClick={() => setForm({...form, isTrending: !form.isTrending})}
+              className="flex cursor-pointer items-center gap-4 rounded-xl border border-border bg-muted/20 p-4 transition-all hover:bg-muted/40"
+            >
+              <div className={`flex h-6 w-6 items-center justify-center rounded-md border-2 transition-colors ${form.isTrending ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/30 bg-background'}`}>
+                {form.isTrending && <Check size={14} strokeWidth={3} />}
+              </div>
+              <div>
+                <p className="text-sm font-bold text-foreground">Mark as Trending</p>
+                <p className="text-xs text-muted-foreground">Product will be pinned to the top of the app.</p>
+              </div>
             </div>
 
           </div>
         </div>
 
-        {/* Footer */}
-        <div style={modalStyles.footer}>
-          <button onClick={onClose} style={modalStyles.secondaryBtn}>Cancel</button>
-          <button onClick={handleSubmit} disabled={loading} style={modalStyles.primaryBtn}>
+        {/* FOOTER */}
+        <div className="flex items-center justify-end gap-3 border-t border-border bg-muted/20 px-8 py-5">
+          <button 
+            onClick={onClose} 
+            disabled={loading}
+            className="rounded-xl border border-input bg-background px-6 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button 
+            onClick={handleSubmit} 
+            disabled={loading} 
+            className="rounded-xl bg-primary px-8 py-2.5 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/40 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             {loading ? "Creating..." : "Create Product"}
           </button>
         </div>
+
       </motion.div>
     </div>
   );
 }
-
-const modalStyles: Record<string, React.CSSProperties> = {
-  overlay: { position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 },
-  modal: { backgroundColor: "#fff", width: "550px", maxHeight: "90vh", borderRadius: "24px", display: "flex", flexDirection: "column", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)", overflow: "hidden" },
-  
-  // Header
-  header: { padding: "20px 32px", borderBottom: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: 'rgba(255,255,255,0.9)' },
-  title: { fontSize: "18px", fontWeight: 700, color: "#0f172a", margin: 0, letterSpacing: '-0.02em' },
-  subtitle: { fontSize: "13px", color: "#64748b", margin: '2px 0 0 0' },
-  closeBtn: { background: "transparent", border: "1px solid #f1f5f9", borderRadius: '8px', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: "pointer", color: "#64748b", transition: '0.2s' },
-
-  // Scroll Area
-  scrollArea: { padding: "24px 32px", overflowY: "auto", flex: 1, backgroundColor: "#fff" },
-  form: { display: "flex", flexDirection: "column", gap: "20px" },
-  row: { display: "flex", gap: "16px" },
-  
-  // Inputs
-  label: { fontSize: "12px", fontWeight: 600, color: "#334155", marginBottom: "6px", display: "block" },
-  inputWrapper: { position: "relative", display: "flex", alignItems: "center", borderRadius: "10px", border: "1px solid #e2e8f0", backgroundColor: "#fff", transition: "all 0.2s ease" },
-  inputClean: { width: "100%", padding: "10px 12px", borderRadius: "10px", border: "none", fontSize: "14px", outline: "none", background: "transparent", color: "#0f172a" },
-  inputIcon: { position: "absolute", left: "12px", color: "#94a3b8" },
-  select: { width: "100%", padding: "10px 12px 10px 36px", borderRadius: "10px", border: "none", backgroundColor: "transparent", appearance: "none", outline: "none", fontSize: "14px", color: "#0f172a", cursor: 'pointer' },
-  currencySymbol: { paddingLeft: "12px", color: "#94a3b8", fontSize: "14px", fontWeight: 500 },
-  inputCurrency: { width: "100%", padding: "10px 12px 10px 4px", borderRadius: "10px", border: "none", fontSize: "14px", outline: "none", background: "transparent", color: "#0f172a", fontWeight: 500 },
-  textarea: { width: "100%", padding: "12px", borderRadius: "10px", border: "none", fontSize: "14px", minHeight: "80px", backgroundColor: "transparent", outline: "none", resize: "none", fontFamily: 'inherit' },
-
-  // Tags - Now styled like an input
-  tagsContainer: { width: "82%", minHeight: "32px", padding: "4px 30px 4px 12px", borderRadius: "10px", border: "1px solid #e2e8f0", backgroundColor: "#fff", cursor: "pointer", display: "flex", alignItems: "center", position: 'relative', transition: "all 0.2s ease" },
-  tagIcon: { position: "absolute", left: "12px", color: "#94a3b8" },
-  tagScroll: { display: 'flex', gap: '6px', flexWrap: 'wrap', width: '100%', paddingLeft: '24px' },
-  tagPill: { backgroundColor: "#f1f5f9", color: "#334155", padding: "2px 8px", borderRadius: "6px", fontSize: "11px", fontWeight: 600, border: '1px solid #e2e8f0' },
-  tagDropdown: { position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, backgroundColor: "white", borderRadius: "10px", border: "1px solid #e2e8f0", boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)", zIndex: 10, maxHeight: "160px", overflowY: "auto", padding: "6px" },
-  tagOption: { padding: "8px 12px", borderRadius: "6px", fontSize: "13px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "0.2s" },
-
-  // Images
-  uploadBox: { border: "1px dashed #cbd5e1", borderRadius: "12px", height: '140px', display: "flex", flexDirection: "column", alignItems: "center", justifyContent: 'center', gap: "10px", cursor: "pointer", backgroundColor: "#f8fafc", transition: '0.2s' },
-  uploadIconCircle: { width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  previewBox: { position: "relative", borderRadius: "12px", overflow: "hidden", border: "1px solid #e2e8f0", height: '160px' },
-  removeBtn: { position: "absolute", top: "8px", right: "8px", backgroundColor: "white", border: "1px solid #e2e8f0", padding: "6px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 600, color: "#ef4444", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", boxShadow: "0 2px 4px rgba(0,0,0,0.05)" },
-  
-  galleryGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(60px, 1fr))", gap: "8px" },
-  galleryItem: { position: "relative", aspectRatio: "1/1", borderRadius: "8px", overflow: "hidden", border: "1px solid #e2e8f0" },
-  galleryOverlay: { position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0, transition: "0.2s ease", cursor: "pointer" },
-  addGalleryBtn: { aspectRatio: "1/1", borderRadius: "8px", border: "1px dashed #cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", backgroundColor: "#f8fafc", transition: "0.2s ease" },
-
-  // Toggle
-  toggleContainer: { padding: '12px', border: '1px solid #e2e8f0', borderRadius: '12px', cursor: 'pointer', backgroundColor: '#f8fafc' },
-  checkbox: { width: '20px', height: '20px', borderRadius: '6px', border: '2px solid', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.2s' },
-
-  // Footer
-  footer: { padding: "16px 32px", borderTop: "1px solid #f1f5f9", backgroundColor: "#fff", display: 'flex', justifyContent: 'flex-end', gap: '12px' },
-  secondaryBtn: { padding: "10px 20px", borderRadius: "10px", border: "1px solid #e2e8f0", background: "white", color: "#64748b", fontWeight: 600, cursor: "pointer", fontSize: "14px" },
-  primaryBtn: { padding: "10px 24px", borderRadius: "10px", background: "#10b981", color: "white", border: "none", fontWeight: 600, cursor: "pointer", fontSize: "14px", boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)' }
-};

@@ -2,7 +2,7 @@
 
 import { useState, ChangeEvent } from 'react';
 import { CategoriesApi } from '../api/categories.api';
-import { X, Upload, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { X, Upload, Image as ImageIcon, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function CreateCategoryModal({
   open,
@@ -18,18 +18,15 @@ export default function CreateCategoryModal({
   const [sortOrder, setSortOrder] = useState('1');
   const [image, setImage] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
-  
-  // New state for error messages
   const [error, setError] = useState('');
 
   if (!open) return null;
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    setError(''); // Clear previous errors
+    setError('');
 
     if (file) {
-      // VALIDATION: Check if file is larger than 5MB
       if (file.size > 5 * 1024 * 1024) {
         setError('File is too large. Please choose an image under 5MB.');
         return;
@@ -38,7 +35,8 @@ export default function CreateCategoryModal({
     }
   };
 
-  const submit = async () => {
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault(); // Prevent default form submission
     if (!name.trim() || !subtitle.trim()) return;
     setError('');
 
@@ -56,7 +54,7 @@ export default function CreateCategoryModal({
 
       await CategoriesApi.create(formData);
       
-      // Reset form
+      // Reset & Close
       setName('');
       setSubtitle('');
       setSortOrder('1');
@@ -67,7 +65,6 @@ export default function CreateCategoryModal({
       onClose();
     } catch (err: any) {
       console.error("Failed to create category", err);
-      // specific check for the 413 error if it still slips through
       if (err.response?.status === 413) {
         setError('Image is still too large for the server. Try a smaller file.');
       } else {
@@ -78,193 +75,163 @@ export default function CreateCategoryModal({
     }
   };
 
-  const labelStyle = {
-    display: 'block',
-    fontSize: '12px',
-    fontWeight: 700,
-    color: '#64748b',
-    marginBottom: '8px',
-    textTransform: 'uppercase' as const
-  };
-
-  const inputStyle = {
-    width: '100%',
-    padding: '12px 16px',
-    borderRadius: '12px',
-    border: '1px solid #e2e8f0',
-    fontSize: '14px',
-    outline: 'none',
-    boxSizing: 'border-box' as const,
-    marginBottom: '16px'
-  };
-
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      zIndex: 100,
-      backgroundColor: 'rgba(0, 0, 0, 0.4)',
-      backdropFilter: 'blur(4px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
-    }}>
-      <div style={{
-        width: '100%',
-        maxWidth: '500px',
-        backgroundColor: 'white',
-        borderRadius: '20px',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        maxHeight: '90vh'
-      }}>
+    // 1. OVERLAY (Backdrop Blur)
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      
+      {/* 2. MODAL CONTAINER */}
+      <div 
+        className="w-full max-w-lg overflow-hidden rounded-2xl bg-background shadow-2xl ring-1 ring-border animate-in zoom-in-95 duration-200"
+        role="dialog"
+        aria-modal="true"
+      >
         
-        {/* Header */}
-        <div style={{
-          padding: '20px 24px',
-          borderBottom: '1px solid #f1f5f9',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          backgroundColor: '#f8fafc'
-        }}>
-          <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#1e293b', margin: 0 }}>Create Category</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+        {/* HEADER */}
+        <div className="flex items-center justify-between border-b border-border bg-muted/30 px-6 py-4">
+          <h2 className="text-lg font-bold tracking-tight text-foreground">Create Category</h2>
+          <button 
+            onClick={onClose}
+            className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
             <X size={20} />
           </button>
         </div>
 
-        {/* Body */}
-        <div style={{ padding: '24px', overflowY: 'auto' }}>
+        {/* BODY */}
+        <div className="max-h-[80vh] overflow-y-auto px-6 py-6">
           
           {/* Error Alert */}
           {error && (
-            <div style={{
-              backgroundColor: '#fef2f2',
-              border: '1px solid #fca5a5',
-              color: '#ef4444',
-              padding: '12px',
-              borderRadius: '8px',
-              marginBottom: '16px',
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
+            <div className="mb-6 flex items-center gap-3 rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-sm font-medium text-destructive">
               <AlertCircle size={18} />
               {error}
             </div>
           )}
 
-          <label style={labelStyle}>Category Name *</label>
-          <input
-            type="text"
-            placeholder="e.g. Hot Drinks"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            style={inputStyle}
-          />
-
-          <label style={labelStyle}>Subtitle *</label>
-          <input
-            type="text"
-            placeholder="e.g. New arrivals"
-            value={subtitle}
-            onChange={(e) => setSubtitle(e.target.value)}
-            style={inputStyle}
-          />
-
-          <label style={labelStyle}>Sort Order</label>
-          <input
-            type="number"
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value)}
-            style={inputStyle}
-          />
-
-          <label style={labelStyle}>Cover Image (Max 5MB)</label>
-          <div style={{
-            border: error && image === null ? '2px dashed #ef4444' : '2px dashed #e2e8f0', // Red border on error
-            borderRadius: '12px',
-            padding: '20px',
-            textAlign: 'center',
-            backgroundColor: '#f8fafc',
-            position: 'relative',
-            cursor: 'pointer',
-          }}>
-            <input 
-              type="file" 
-              accept="image/*"
-              onChange={handleFileChange}
-              style={{
-                position: 'absolute',
-                inset: 0,
-                opacity: 0,
-                cursor: 'pointer'
-              }}
-            />
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', color: '#64748b' }}>
-              {image ? (
-                <>
-                   <ImageIcon size={32} color="#10b981" />
-                   <span style={{ fontSize: '14px', color: '#10b981', fontWeight: 600 }}>{image.name}</span>
-                   <span style={{ fontSize: '12px', color: '#64748b' }}>{(image.size / 1024 / 1024).toFixed(2)} MB</span>
-                </>
-              ) : (
-                <>
-                  <Upload size={24} />
-                  <span style={{ fontSize: '13px' }}>Click to upload image</span>
-                </>
-              )}
+          <form id="create-category-form" onSubmit={submit} className="flex flex-col gap-5">
+            
+            {/* NAME INPUT */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Category Name <span className="text-destructive">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Hot Drinks"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-primary/10"
+              />
             </div>
-          </div>
+
+            {/* SUBTITLE INPUT */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Subtitle <span className="text-destructive">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. New arrivals"
+                value={subtitle}
+                onChange={(e) => setSubtitle(e.target.value)}
+                required
+                className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-primary/10"
+              />
+            </div>
+
+            {/* SORT ORDER */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Sort Order
+              </label>
+              <input
+                type="number"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+                className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-primary/10"
+              />
+            </div>
+
+            {/* FILE UPLOAD */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Cover Image <span className="text-[10px] font-normal lowercase">(max 5mb)</span>
+              </label>
+              
+              <div className={`
+                relative flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed 
+                bg-muted/30 p-8 text-center transition-all hover:bg-muted/50 hover:border-primary/50
+                ${error && !image ? 'border-destructive/50 bg-destructive/5' : 'border-border'}
+              `}>
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="absolute inset-0 cursor-pointer opacity-0"
+                />
+                
+                {image ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="rounded-full bg-primary/10 p-3">
+                      <ImageIcon size={24} className="text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{image.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {(image.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setImage(null);
+                      }}
+                      className="mt-2 text-xs font-bold text-destructive hover:underline"
+                    >
+                      Remove Image
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="rounded-full bg-muted p-3">
+                      <Upload size={20} className="text-muted-foreground" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-foreground">Click to upload</p>
+                      <p className="text-xs text-muted-foreground">SVG, PNG, JPG or GIF</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </form>
         </div>
 
-        {/* Footer */}
-        <div style={{
-          padding: '20px 24px',
-          backgroundColor: '#f8fafc',
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: '12px',
-          borderTop: '1px solid #f1f5f9'
-        }}>
+        {/* FOOTER */}
+        <div className="flex items-center justify-end gap-3 border-t border-border bg-muted/30 px-6 py-4">
           <button
             onClick={onClose}
-            style={{
-              padding: '10px 18px',
-              borderRadius: '10px',
-              border: '1px solid #e2e8f0',
-              backgroundColor: 'white',
-              color: '#475569',
-              fontSize: '14px',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
+            type="button"
+            disabled={loading}
+            className="rounded-xl border border-input bg-background px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
           >
             Cancel
           </button>
+          
           <button
-            onClick={submit}
-            disabled={loading || !name || !subtitle || !!error} // Disable if there is an error
-            style={{
-              padding: '10px 24px',
-              borderRadius: '10px',
-              border: 'none',
-              background: (loading || !name || !subtitle || !!error) ? '#94a3b8' : '#10b981',
-              color: 'white',
-              fontSize: '14px',
-              fontWeight: 600,
-              cursor: (loading || !name || !subtitle || !!error) ? 'not-allowed' : 'pointer',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-            }}
+            form="create-category-form"
+            type="submit"
+            disabled={loading || !name || !subtitle}
+            className="flex items-center gap-2 rounded-xl bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? 'Creating...' : 'Create'}
+            {loading && <Loader2 size={16} className="animate-spin" />}
+            {loading ? 'Creating...' : 'Create Category'}
           </button>
         </div>
+
       </div>
     </div>
   );

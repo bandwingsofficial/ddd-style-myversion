@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-// Note: Ensure your api path is correct
+import { useRouter, useSearchParams } from "next/navigation";
 import { requestOtp } from "@/features/customer-auth/api/auth.api";
+import { toast } from "sonner"; // Assuming you use sonner or similar
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get("redirect") || ""; // Capture redirect param
+
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,8 +24,15 @@ export default function LoginPage() {
       setLoading(true);
       setError(null);
       const formattedPhone = `+91${phone}`;
+      
       await requestOtp(formattedPhone);
-      router.push(`/verify-otp?phone=${encodeURIComponent(formattedPhone)}`);
+      
+      // Construct URL with phone AND the original redirect destination
+      const nextUrl = `/verify-otp?phone=${encodeURIComponent(formattedPhone)}${redirectUrl ? `&redirect=${redirectUrl}` : ""}`;
+      
+      router.push(nextUrl);
+      toast.success("OTP sent successfully!");
+
     } catch (err) {
       setError("Failed to send OTP. Please try again.");
     } finally {
@@ -99,7 +109,7 @@ export default function LoginPage() {
           display: flex;
           align-items: center;
           justify-content: center;
-          background-color: #f8fafc; /* Professional Off-White */
+          background-color: #f8fafc;
           padding: 1.5rem;
           font-family: 'Inter', -apple-system, sans-serif;
         }

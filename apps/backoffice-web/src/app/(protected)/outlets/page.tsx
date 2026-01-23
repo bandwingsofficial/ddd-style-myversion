@@ -127,290 +127,326 @@ export default function OutletsPage() {
   };
 
   if (loading) return (
-    <div style={styles.loaderContainer}>
+    <div className="flex h-screen flex-col items-center justify-center bg-slate-50">
       <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}>
-        <RefreshCw size={40} color="#10b981" />
+        <RefreshCw size={40} className="text-emerald-500" />
       </motion.div>
-      <p style={{ marginTop: 12, color: "#64748b", fontWeight: 500 }}>Syncing Dashboard...</p>
+      <p className="mt-4 text-sm font-semibold text-slate-500">Syncing Dashboard...</p>
     </div>
   );
 
-  if (error) return <div style={{ padding: 40, color: "#ef4444" }}>{error}</div>;
+  if (error) return <div className="p-10 text-red-500 font-bold">{error}</div>;
 
   return (
-    <div style={styles.container}>
+    <div className="min-h-screen bg-slate-50 p-6 md:p-8 font-sans">
       
       {/* --- FLOATING NOTIFICATION --- */}
       <AnimatePresence>
         {cameraWarning && (
-          <motion.div 
-            initial={{ y: -100, opacity: 0 }}
-            animate={{ y: 20, opacity: 1 }}
-            exit={{ y: -100, opacity: 0 }}
-            style={styles.toast}
-          >
-            <AlertCircle size={20} />
-            <span>{cameraWarning}</span>
-            <button onClick={() => setCameraWarning(null)} style={styles.toastClose}><X size={16}/></button>
-          </motion.div>
+          <div className="fixed top-6 left-1/2 z-50 -translate-x-1/2">
+            <motion.div 
+              initial={{ y: -50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: -50, opacity: 0 }}
+              className="flex items-center gap-3 rounded-xl bg-slate-800 px-4 py-3 text-sm font-medium text-white shadow-xl shadow-slate-900/20 ring-1 ring-white/10"
+            >
+              <AlertCircle size={18} className="text-amber-400" />
+              <span>{cameraWarning}</span>
+              <button onClick={() => setCameraWarning(null)} className="ml-2 rounded-full p-1 hover:bg-white/20">
+                <X size={14}/>
+              </button>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
       
       {/* --- HEADER --- */}
-      <div style={styles.header}>
+      <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div>
-          <h1 style={styles.title}>Outlets Management</h1>
-          <p style={styles.subtitle}>Super Admin Control Panel</p>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Outlets Management</h1>
+          <p className="mt-1 text-sm text-slate-500 font-medium">Super Admin Control Panel</p>
         </div>
         
-        <div style={styles.headerActions}>
-          <div style={styles.searchBox}>
-            <Search size={18} color="#94a3b8" />
+        <div className="flex items-center gap-3">
+          {/* Search */}
+          <div className="flex w-64 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm transition-shadow focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500">
+            <Search size={18} className="text-slate-400" />
             <input 
               placeholder="Search outlets..." 
-              style={styles.searchInput} 
+              className="w-full bg-transparent text-sm text-slate-700 placeholder:text-slate-400 outline-none"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+
+          {/* Create Button */}
           <motion.button 
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            style={styles.greenPopButton} 
+            className="flex items-center gap-2 rounded-xl bg-gradient-to-b from-emerald-400 to-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-200 transition-all hover:shadow-emerald-300 hover:from-emerald-500 hover:to-emerald-700"
             onClick={() => setIsCreateModalOpen(true)}
           >
-            <Plus size={20} /> Create New Outlet
+            <Plus size={18} strokeWidth={2.5} /> <span className="hidden sm:inline">Create Outlet</span>
           </motion.button>
         </div>
       </div>
 
       {/* --- TABLE SECTION --- */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={styles.tableCard}>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>OUTLET DETAILS</th>
-              <th style={styles.th}>STATUS</th>
-              <th style={styles.th}>OPERATION</th>
-              <th style={styles.th}>LIVE CAMERA</th>
-              <th style={styles.th}>ACTIONS</th>
-            </tr>
-          </thead>
-          <tbody>
-            <AnimatePresence mode="popLayout">
-              {filteredOutlets.map((o) => {
-                const isDeactivated = o.status !== "ACTIVE";
-                const isNotOpen = o.workingState.status !== "OPEN";
-                const cameraTooltip = isDeactivated ? "Shop is inactive" : isNotOpen ? "Camera only available when OPEN" : "Toggle Camera";
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }} 
+        animate={{ opacity: 1, y: 0 }} 
+        className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left">
+            <thead className="bg-slate-50/80">
+              <tr>
+                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Outlet Details</th>
+                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
+                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Operation</th>
+                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Live Camera</th>
+                <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              <AnimatePresence mode="popLayout">
+                {filteredOutlets.map((o) => {
+                  const isDeactivated = o.status !== "ACTIVE";
+                  const isNotOpen = o.workingState.status !== "OPEN";
+                  const cameraTooltip = isDeactivated ? "Shop is inactive" : isNotOpen ? "Camera only available when OPEN" : "Toggle Camera";
 
-                return (
-                  <motion.tr 
-                    layout
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    key={o.id} 
-                    style={{ 
-                      ...styles.tr, 
-                      filter: isDeactivated ? "grayscale(0.6) opacity(0.8)" : "none", 
-                      backgroundColor: isDeactivated ? "#F8FAFC" : "white" 
-                    }}
-                  >
-                    <td style={styles.td}>
-                      <div style={styles.nameGroup}>
-                        <div style={styles.iconCircle}><Store size={16} color="#10b981"/></div>
-                        <div>
-                          <div style={styles.nameText}>{o.name}</div>
-                          <div style={styles.branchText}><MapPin size={12}/> {o.branch ?? "Main"}</div>
+                  return (
+                    <motion.tr 
+                      layout
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      key={o.id} 
+                      className={`
+                        transition-colors hover:bg-slate-50/50 
+                        ${isDeactivated ? "bg-slate-50/80 grayscale opacity-75" : "bg-white"}
+                      `}
+                    >
+                      {/* Name Group */}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                             <Store size={18} />
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-slate-800">{o.name}</div>
+                            <div className="flex items-center gap-1 text-xs text-slate-500 font-medium">
+                              <MapPin size={10} /> {o.branch ?? "Main"}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td style={styles.td}>
-                      <span style={{ ...styles.statusBadge, backgroundColor: !isDeactivated ? "#DCFCE7" : "#F1F5F9", color: !isDeactivated ? "#166534" : "#64748B" }}>
-                        <div style={{...styles.dot, backgroundColor: !isDeactivated ? "#22C55E" : "#94A3B8"}} />
-                        {o.status}
-                      </span>
-                    </td>
-                    <td style={styles.td}>
-                      <select 
-                        disabled={isDeactivated} 
-                        value={o.workingState.status} 
-                        style={styles.select} 
-                        onChange={(e) => updateWorkingStatus(o.id, e.target.value as any)}
-                      >
-                        <option value="OPEN">🟢 OPEN</option>
-                        <option value="CLOSED">🔴 CLOSED</option>
-                        <option value="TEMPORARILY_CLOSED">🟡 TEMP CLOSED</option>
-                      </select>
-                    </td>
-                    <td style={styles.td}>
-                      <div 
-                        onClick={() => handleCameraToggle(o)} 
-                        style={{ cursor: 'pointer', display: 'inline-block' }}
-                      >
-                        <motion.button
-                          whileTap={{ scale: 0.8 }}
-                          title={cameraTooltip}
-                           
-                          style={{ 
-                            ...styles.toggleSwitch, 
-                            backgroundColor: o.cameraState.status === "ON" && !isDeactivated && !isNotOpen ? "#10b981" : "#D1D5DB",
-                            opacity: (isDeactivated || isNotOpen) ? 0.6 : 1
-                          }}
-                        >
-                          <motion.div 
-                            animate={{ x: o.cameraState.status === "ON" && !isDeactivated && !isNotOpen ? 20 : 2 }} 
-                            style={styles.toggleThumb} 
-                          />
-                        </motion.button>
-                      </div>
-                    </td>
-                    <td style={styles.td}>
-                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                        <button style={styles.iconBtn} onClick={() => setEditingOutlet({ ...o, latitude: o.location?.latitude || "", longitude: o.location?.longitude || "", deliveryRadiusKm: o.deliveryRadiusKm || "" })}>
-                          <Edit3 size={18} color="#3B82F6" />
-                        </button>
-                        
-                        {isDeactivated ? (
-                          <motion.button 
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            style={styles.activateBtnHighlight} 
-                            onClick={() => setDeleteConfirm(o)}
+                      </td>
+
+                      {/* Status Badge */}
+                      <td className="px-6 py-4">
+                        <div className={`
+                          inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold tracking-wide border
+                          ${!isDeactivated 
+                            ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
+                            : "bg-slate-100 text-slate-500 border-slate-200"
+                          }
+                        `}>
+                          <div className={`h-1.5 w-1.5 rounded-full ${!isDeactivated ? "bg-emerald-500" : "bg-slate-400"}`} />
+                          {o.status}
+                        </div>
+                      </td>
+
+                      {/* Operation Select */}
+                      <td className="px-6 py-4">
+                        <div className="relative">
+                          <select 
+                            disabled={isDeactivated} 
+                            value={o.workingState.status} 
+                            onChange={(e) => updateWorkingStatus(o.id, e.target.value as any)}
+                            className="w-full min-w-[140px] appearance-none rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-8 text-xs font-bold text-slate-700 shadow-sm transition-all hover:border-slate-300 focus:border-emerald-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400 cursor-pointer"
                           >
-                            ACTIVATE
-                          </motion.button>
-                        ) : (
-                          <button style={styles.iconBtn} onClick={() => setDeleteConfirm(o)}>
-                            <Trash2 size={18} color="#EF4444" />
+                            <option value="OPEN">🟢 OPEN</option>
+                            <option value="CLOSED">🔴 CLOSED</option>
+                            <option value="TEMPORARILY_CLOSED">🟡 TEMP CLOSED</option>
+                          </select>
+                          {/* Custom Arrow */}
+                          <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                            <MoreHorizontal size={14} />
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Camera Toggle */}
+                      <td className="px-6 py-4">
+                        <div 
+                          onClick={() => handleCameraToggle(o)} 
+                          className={`
+                            relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2
+                            ${o.cameraState.status === "ON" && !isDeactivated && !isNotOpen ? 'bg-emerald-500' : 'bg-slate-200'}
+                            ${(isDeactivated || isNotOpen) ? 'cursor-not-allowed opacity-60' : ''}
+                          `}
+                          title={cameraTooltip}
+                        >
+                          <span className="sr-only">Use setting</span>
+                          <span
+                            aria-hidden="true"
+                            className={`
+                              pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out
+                              ${o.cameraState.status === "ON" && !isDeactivated && !isNotOpen ? 'translate-x-5' : 'translate-x-0'}
+                            `}
+                          />
+                        </div>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <button 
+                             onClick={() => setEditingOutlet({ ...o, latitude: o.location?.latitude || "", longitude: o.location?.longitude || "", deliveryRadiusKm: o.deliveryRadiusKm || "" })}
+                             className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-blue-600 transition-colors"
+                          >
+                            <Edit3 size={16} />
                           </button>
-                        )}
-                      </div>
-                    </td>
-                  </motion.tr>
-                );
-              })}
-            </AnimatePresence>
-          </tbody>
-        </table>
+                          
+                          {isDeactivated ? (
+                            <motion.button 
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => setDeleteConfirm(o)}
+                              className="rounded-lg bg-emerald-500 px-3 py-1.5 text-[10px] font-bold text-white shadow-sm shadow-emerald-200 hover:bg-emerald-600"
+                            >
+                              ACTIVATE
+                            </motion.button>
+                          ) : (
+                            <button 
+                              onClick={() => setDeleteConfirm(o)}
+                              className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </motion.tr>
+                  );
+                })}
+              </AnimatePresence>
+            </tbody>
+          </table>
+        </div>
       </motion.div>
 
-      {/* --- CREATE MODAL --- */}
+      {/* --- CREATE / EDIT MODAL WRAPPER --- */}
       <AnimatePresence>
-        {isCreateModalOpen && (
-          <div style={styles.modalOverlay} onClick={() => { setIsCreateModalOpen(false); setFormError(null); }}>
+        {(isCreateModalOpen || editingOutlet) && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+            <div className="absolute inset-0" onClick={() => { setIsCreateModalOpen(false); setEditingOutlet(null); setFormError(null); }} />
+            
             <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              style={styles.editModal} 
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-200"
               onClick={(e) => e.stopPropagation()}
             >
-              <div style={styles.drawerHeader}>
+              {/* Modal Header */}
+              <div className="flex items-center justify-between border-b border-slate-100 px-8 py-6 bg-slate-50/50">
                 <div>
-                  <h2 style={styles.drawerTitle}>Create New Outlet</h2>
-                  <p style={styles.subtitle}>Register a new branch location.</p>
+                  <h2 className="text-xl font-bold text-slate-900">
+                    {isCreateModalOpen ? "Create New Outlet" : "Edit Outlet"}
+                  </h2>
+                  <p className="text-xs font-medium text-slate-500 mt-1">
+                    {isCreateModalOpen ? "Register a new branch location." : `ID: ${editingOutlet?.id.slice(-6).toUpperCase()}`}
+                  </p>
                 </div>
-                <button onClick={() => setIsCreateModalOpen(false)} style={styles.closeBtn}><X size={20}/></button>
-              </div>
-              
-              {formError && <div style={styles.errorBanner}>{formError}</div>}
-
-              <div style={styles.grid}>
-                <div style={styles.inputGroup}>
-                  <label style={styles.label}>Outlet Name *</label>
-                  <input style={styles.input} placeholder="e.g. Bengaluru" value={createForm.name} onChange={(e) => setCreateForm({...createForm, name: e.target.value})} />
-                </div>
-                <div style={styles.inputGroup}>
-                  <label style={styles.label}>Branch Code</label>
-                  <input style={styles.input} placeholder="e.g. B1" value={createForm.branch} onChange={(e) => setCreateForm({...createForm, branch: e.target.value})} />
-                </div>
-                <div style={styles.inputGroup}>
-                  <label style={styles.label}>Latitude *</label>
-                  <input style={styles.input} type="number" value={createForm.latitude} onChange={(e) => setCreateForm({...createForm, latitude: e.target.value})} />
-                </div>
-                <div style={styles.inputGroup}>
-                  <label style={styles.label}>Longitude *</label>
-                  <input style={styles.input} type="number" value={createForm.longitude} onChange={(e) => setCreateForm({...createForm, longitude: e.target.value})} />
-                </div>
-                <div style={{...styles.inputGroup, gridColumn: 'span 2'}}>
-                  <label style={styles.label}>Delivery Radius (km)</label>
-                  <input style={styles.input} type="number" value={createForm.deliveryRadiusKm} onChange={(e) => setCreateForm({...createForm, deliveryRadiusKm: e.target.value})} />
-                </div>
+                <button 
+                  onClick={() => { setIsCreateModalOpen(false); setEditingOutlet(null); }}
+                  className="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                >
+                  <X size={20}/>
+                </button>
               </div>
 
-              <div style={{marginTop: '20px'}}>
-                 <label style={styles.checkboxContainer}>
-                    <input type="checkbox" checked={createForm.cameraEnabled} onChange={e => setCreateForm({...createForm, cameraEnabled: e.target.checked})} />
-                    <span style={styles.checkboxTitle}>Enable Live Camera</span>
-                 </label>
+              {/* Modal Body */}
+              <div className="p-8">
+                 {formError && (
+                    <div className="mb-6 flex items-start gap-3 rounded-xl bg-rose-50 p-4 text-xs font-medium text-rose-600">
+                       <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                       <p>{formError}</p>
+                    </div>
+                 )}
+
+                 <div className="grid grid-cols-2 gap-5">
+                    <div className="space-y-1.5">
+                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Outlet Name</label>
+                       <input 
+                          className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10" 
+                          placeholder="e.g. Bengaluru" 
+                          value={isCreateModalOpen ? createForm.name : editingOutlet?.name} 
+                          onChange={(e) => isCreateModalOpen ? setCreateForm({...createForm, name: e.target.value}) : setEditingOutlet({...editingOutlet, name: e.target.value})} 
+                       />
+                    </div>
+                    <div className="space-y-1.5">
+                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Branch Code</label>
+                       <input 
+                          className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10" 
+                          placeholder="e.g. B1" 
+                          value={isCreateModalOpen ? createForm.branch : editingOutlet?.branch} 
+                          onChange={(e) => isCreateModalOpen ? setCreateForm({...createForm, branch: e.target.value}) : setEditingOutlet({...editingOutlet, branch: e.target.value})} 
+                       />
+                    </div>
+                    <div className="space-y-1.5">
+                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Latitude</label>
+                       <input 
+                          type="number"
+                          className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10" 
+                          value={isCreateModalOpen ? createForm.latitude : editingOutlet?.latitude} 
+                          onChange={(e) => isCreateModalOpen ? setCreateForm({...createForm, latitude: e.target.value}) : setEditingOutlet({...editingOutlet, latitude: e.target.value})} 
+                       />
+                    </div>
+                    <div className="space-y-1.5">
+                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Longitude</label>
+                       <input 
+                          type="number"
+                          className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10" 
+                          value={isCreateModalOpen ? createForm.longitude : editingOutlet?.longitude} 
+                          onChange={(e) => isCreateModalOpen ? setCreateForm({...createForm, longitude: e.target.value}) : setEditingOutlet({...editingOutlet, longitude: e.target.value})} 
+                       />
+                    </div>
+                    <div className="col-span-2 space-y-1.5">
+                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Delivery Radius (km)</label>
+                       <input 
+                          type="number"
+                          className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10" 
+                          value={isCreateModalOpen ? createForm.deliveryRadiusKm : editingOutlet?.deliveryRadiusKm} 
+                          onChange={(e) => isCreateModalOpen ? setCreateForm({...createForm, deliveryRadiusKm: e.target.value}) : setEditingOutlet({...editingOutlet, deliveryRadiusKm: e.target.value})} 
+                       />
+                    </div>
+                 </div>
+
+                 {isCreateModalOpen && (
+                    <div className="mt-6 flex items-center">
+                       <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-4 py-3 transition-colors hover:bg-slate-50 w-full">
+                          <input 
+                             type="checkbox" 
+                             className="h-4 w-4 rounded border-slate-300 accent-emerald-500 focus:ring-emerald-500/20"
+                             checked={createForm.cameraEnabled} 
+                             onChange={e => setCreateForm({...createForm, cameraEnabled: e.target.checked})} 
+                          />
+                          <span className="text-sm font-bold text-slate-700">Enable Live Camera Immediately</span>
+                       </label>
+                    </div>
+                 )}
+
+                 <motion.button 
+                    whileTap={{ scale: 0.98 }}
+                    className="mt-8 w-full rounded-xl bg-gradient-to-b from-emerald-400 to-emerald-600 py-4 text-sm font-bold text-white shadow-lg shadow-emerald-200 transition-all hover:shadow-emerald-300 hover:from-emerald-500 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider"
+                    onClick={isCreateModalOpen ? handleCreateSubmit : handleEditSave}
+                    disabled={isSaving}
+                 >
+                    {isSaving ? (isCreateModalOpen ? "Creating..." : "Saving...") : (isCreateModalOpen ? "Create Outlet" : "Save Changes")}
+                 </motion.button>
               </div>
-
-              <motion.button 
-                whileTap={{ scale: 0.98 }}
-                style={styles.greenPopButtonLarge} 
-                onClick={handleCreateSubmit} 
-                disabled={isSaving}
-              >
-                {isSaving ? "Creating..." : "Create Outlet"}
-              </motion.button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* --- EDIT MODAL (ORIGINAL LOGIC) --- */}
-      <AnimatePresence>
-        {editingOutlet && (
-          <div style={styles.modalOverlay} onClick={() => { setEditingOutlet(null); setFormError(null); }}>
-            <motion.div 
-              initial={{ opacity: 0, x: 50 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 50 }}
-              style={styles.editModal} 
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div style={styles.drawerHeader}>
-                <div>
-                  <h2 style={styles.drawerTitle}>Edit Outlet</h2>
-                  <span style={styles.idBadge}>ID: {editingOutlet.id.slice(-6).toUpperCase()}</span>
-                </div>
-                <button onClick={() => setEditingOutlet(null)} style={styles.closeBtn}><X size={20}/></button>
-              </div>
-
-              {formError && <div style={styles.errorBanner}>{formError}</div>}
-
-              <div style={styles.grid}>
-                <div style={styles.inputGroup}>
-                  <label style={styles.label}>Outlet Name</label>
-                  <input style={styles.input} value={editingOutlet.name} onChange={(e) => setEditingOutlet({...editingOutlet, name: e.target.value})} />
-                </div>
-                <div style={styles.inputGroup}>
-                  <label style={styles.label}>Branch</label>
-                  <input style={styles.input} value={editingOutlet.branch} onChange={(e) => setEditingOutlet({...editingOutlet, branch: e.target.value})} />
-                </div>
-                <div style={styles.inputGroup}>
-                  <label style={styles.label}>Latitude</label>
-                  <input style={styles.input} type="number" value={editingOutlet.latitude} onChange={(e) => setEditingOutlet({...editingOutlet, latitude: e.target.value})} />
-                </div>
-                <div style={styles.inputGroup}>
-                  <label style={styles.label}>Longitude</label>
-                  <input style={styles.input} type="number" value={editingOutlet.longitude} onChange={(e) => setEditingOutlet({...editingOutlet, longitude: e.target.value})} />
-                </div>
-                <div style={{...styles.inputGroup, gridColumn: 'span 2'}}>
-                  <label style={styles.label}>Delivery Radius (km)</label>
-                  <input style={styles.input} type="number" value={editingOutlet.deliveryRadiusKm} onChange={(e) => setEditingOutlet({...editingOutlet, deliveryRadiusKm: e.target.value})} />
-                </div>
-              </div>
-
-              <motion.button 
-                whileTap={{ scale: 0.98 }}
-                style={styles.greenPopButtonLarge} 
-                onClick={handleEditSave} 
-                disabled={isSaving}
-              >
-                {isSaving ? "Saving..." : "Save Changes"}
-              </motion.button>
             </motion.div>
           </div>
         )}
@@ -419,30 +455,44 @@ export default function OutletsPage() {
       {/* --- STATUS CONFIRMATION MODAL --- */}
       <AnimatePresence>
         {deleteConfirm && (
-          <div style={styles.modalOverlay}>
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              style={styles.modal}
+              className="w-full max-w-sm overflow-hidden rounded-3xl bg-white p-8 text-center shadow-2xl ring-1 ring-slate-200"
             >
-              <div style={{ marginBottom: '20px', textAlign: 'center' }}>
+              <div className="mb-6 flex justify-center">
                 {deleteConfirm.status === "ACTIVE" ? (
-                  <AlertCircle size={60} color="#EF4444" strokeWidth={1.5} />
+                  <div className="rounded-full bg-rose-100 p-4 text-rose-500">
+                    <AlertCircle size={48} strokeWidth={1.5} />
+                  </div>
                 ) : (
-                  <CheckCircle2 size={60} color="#10B981" strokeWidth={1.5} />
+                  <div className="rounded-full bg-emerald-100 p-4 text-emerald-500">
+                    <CheckCircle2 size={48} strokeWidth={1.5} />
+                  </div>
                 )}
               </div>
-              <h3 style={styles.modalTitle}>
+              
+              <h3 className="text-xl font-bold text-slate-900">
                 {deleteConfirm.status === "ACTIVE" ? "Deactivate Outlet?" : "Activate Outlet?"}
               </h3>
-              <p style={{ color: '#64748B', fontSize: '14px', textAlign: 'center', lineHeight: '1.5', marginBottom: '32px' }}>
-                Changing <strong>{deleteConfirm.name}</strong> will update its availability immediately.
+              <p className="mt-3 text-sm font-medium text-slate-500 leading-relaxed">
+                Changing <strong className="text-slate-800">{deleteConfirm.name}</strong> will update its availability immediately across the platform.
               </p>
-              <div style={styles.modalActions}>
-                <button style={styles.modalCancel} onClick={() => setDeleteConfirm(null)}>Cancel</button>
+              
+              <div className="mt-8 flex gap-3">
                 <button 
-                  style={{...styles.modalConfirm, backgroundColor: deleteConfirm.status === "ACTIVE" ? "#EF4444" : "#10B981"}} 
+                  className="flex-1 rounded-xl bg-slate-100 py-3 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-200"
+                  onClick={() => setDeleteConfirm(null)}
+                >
+                  Cancel
+                </button>
+                <button 
+                  className={`
+                    flex-1 rounded-xl py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg active:scale-95
+                    ${deleteConfirm.status === "ACTIVE" ? "bg-rose-500 shadow-rose-200 hover:bg-rose-600" : "bg-emerald-500 shadow-emerald-200 hover:bg-emerald-600"}
+                  `}
                   onClick={() => { toggleOutletStatus(deleteConfirm); setDeleteConfirm(null); }}
                 >
                   Confirm
@@ -455,194 +505,3 @@ export default function OutletsPage() {
     </div>
   );
 }
-
-const styles: { [key: string]: React.CSSProperties } = {
-  container: {
-    padding: "10px",
-    backgroundColor: "#f8fafc",
-    minHeight: "100vh",
-    fontFamily: "'Inter', sans-serif",
-    position: "relative"
-  },
-  toast: {
-    position: "fixed",
-    top: "20px",
-    left: "50%",
-    transform: "translateX(-50%)",
-    backgroundColor: "#1e293b",
-    color: "#fff",
-    padding: "12px 20px",
-    borderRadius: "12px",
-    display: "flex",
-    alignItems: "center",
-    gap: "12px",
-    zIndex: 9999,
-    boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
-    fontSize: "14px",
-    fontWeight: 500,
-    border: "1px solid rgba(255,255,255,0.1)"
-  },
-  toastClose: {
-    background: "none",
-    border: "none",
-    color: "rgba(255,255,255,0.5)",
-    cursor: "pointer",
-    padding: "4px",
-    marginLeft: "8px"
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    marginBottom: "32px"
-  },
-  headerActions: { display: "flex", gap: "16px", alignItems: "center" },
-  title: { fontSize: "28px", fontWeight: 800, color: "#1e293b", margin: 0 },
-  subtitle: { color: "#64748b", margin: "4px 0 0 0", fontSize: "14px" },
-  searchBox: {
-    display: "flex",
-    alignItems: "center",
-    backgroundColor: "#fff",
-    padding: "0 16px",
-    borderRadius: "12px",
-    border: "1px solid #e2e8f0",
-    width: "280px",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.02)"
-  },
-  searchInput: {
-    border: "none",
-    padding: "12px",
-    outline: "none",
-    width: "100%",
-    fontSize: "14px",
-    backgroundColor: "transparent"
-  },
-  greenPopButton: {
-    background: "linear-gradient(180deg, #34d399 0%, #10b981 100%)",
-    color: "white",
-    border: "none",
-    padding: "12px 24px",
-    borderRadius: "12px",
-    fontWeight: 600,
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    cursor: "pointer",
-    boxShadow: "0 4px 14px rgba(16, 185, 129, 0.3)",
-  },
-  greenPopButtonLarge: {
-    background: "linear-gradient(180deg, #34d399 0%, #10b981 100%)",
-    color: "white",
-    border: "none",
-    padding: "16px",
-    borderRadius: "14px",
-    fontWeight: 700,
-    fontSize: "16px",
-    width: "100%",
-    marginTop: "24px",
-    cursor: "pointer",
-    boxShadow: "0 6px 20px rgba(16, 185, 129, 0.4)",
-    textTransform: "uppercase",
-    letterSpacing: "1px"
-  },
-  activateBtnHighlight: {
-    backgroundColor: "#10B981",
-    color: "white",
-    border: "none",
-    padding: "6px 14px",
-    borderRadius: "8px",
-    fontSize: "11px",
-    fontWeight: 800,
-    cursor: "pointer",
-    boxShadow: "0 4px 10px rgba(16, 185, 129, 0.3)",
-    letterSpacing: "0.5px",
-    textTransform: "uppercase"
-  },
-  tableCard: {
-    backgroundColor: "#fff",
-    borderRadius: "20px",
-    border: "1px solid #e2e8f0",
-    overflow: "hidden",
-    boxShadow: "0 10px 15px -3px rgba(0,0,0,0.05)"
-  },
-  table: { width: "100%", borderCollapse: "collapse" },
-  th: {
-    textAlign: "left",
-    padding: "16px 24px",
-    backgroundColor: "#f1f5f9",
-    color: "#64748b",
-    fontSize: "12px",
-    fontWeight: 700,
-    letterSpacing: "0.05em"
-  },
-  td: { padding: "20px 24px", borderBottom: "1px solid #f1f5f9", verticalAlign: "middle" },
-  nameGroup: { display: "flex", alignItems: "center", gap: "12px" },
-  iconCircle: { 
-    width: "36px", height: "36px", borderRadius: "10px", 
-    backgroundColor: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center" 
-  },
-  nameText: { fontWeight: 700, color: "#1e293b", fontSize: "15px" },
-  branchText: { color: "#94a3b8", fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" },
-  statusBadge: {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "6px",
-    padding: "6px 12px",
-    borderRadius: "20px",
-    fontSize: "12px",
-    fontWeight: 600
-  },
-  dot: { width: "8px", height: "8px", borderRadius: "50%" },
-  select: {
-    padding: "8px 12px",
-    borderRadius: "8px",
-    border: "1px solid #e2e8f0",
-    fontSize: "13px",
-    fontWeight: 600,
-    cursor: "pointer",
-    outline: "none",
-    backgroundColor: "#fff"
-  },
-  toggleSwitch: {
-    width: "44px", height: "22px", borderRadius: "20px",
-    border: "none", cursor: "pointer", position: "relative",
-    padding: 0, transition: "background-color 0.3s"
-  },
-  toggleThumb: {
-    width: "18px", height: "18px", backgroundColor: "#fff",
-    borderRadius: "50%", position: "absolute", top: "2px",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
-  },
-  iconBtn: {
-    background: "none", border: "none", cursor: "pointer",
-    padding: "8px", borderRadius: "8px", transition: "background 0.2s"
-  },
-  modalOverlay: {
-    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(4px)",
-    display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000
-  },
-  editModal: {
-    backgroundColor: "#fff", width: "500px", borderRadius: "24px",
-    padding: "32px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)"
-  },
-  drawerHeader: { display: "flex", justifyContent: "space-between", marginBottom: "24px" },
-  drawerTitle: { fontSize: "22px", fontWeight: 700, color: "#1e293b", margin: 0 },
-  closeBtn: { background: "none", border: "none", cursor: "pointer", color: "#64748b" },
-  grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" },
-  inputGroup: { display: "flex", flexDirection: "column", gap: "6px" },
-  label: { fontSize: "13px", fontWeight: 600, color: "#475569" },
-  input: {
-    padding: "12px", borderRadius: "10px", border: "1px solid #e2e8f0", outline: "none", fontSize: "14px"
-  },
-  checkboxContainer: { display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" },
-  checkboxTitle: { fontSize: "14px", fontWeight: 500, color: "#475569" },
-  idBadge: { fontSize: "11px", backgroundColor: "#f1f5f9", padding: "2px 8px", borderRadius: "4px", color: "#64748b" },
-  errorBanner: { padding: "12px", backgroundColor: "#fef2f2", color: "#ef4444", borderRadius: "8px", marginBottom: "16px", fontSize: "13px" },
-  modal: { backgroundColor: "#fff", width: "400px", borderRadius: "20px", padding: "32px" },
-  modalTitle: { textAlign: "center", fontSize: "20px", fontWeight: 700, marginBottom: "8px" },
-  modalActions: { display: "flex", gap: "12px" },
-  modalCancel: { flex: 1, padding: "12px", borderRadius: "10px", border: "1px solid #e2e8f0", backgroundColor: "#fff", cursor: "pointer" },
-  modalConfirm: { flex: 1, padding: "12px", borderRadius: "10px", border: "none", color: "#fff", fontWeight: 600, cursor: "pointer" },
-  loaderContainer: { height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }
-};

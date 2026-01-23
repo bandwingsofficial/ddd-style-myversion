@@ -1,17 +1,22 @@
 "use client";
 
-import React, { 
-  createContext, 
-  useContext, 
-  useEffect, 
-  useState, 
-  useRef 
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useRef,
 } from "react";
 import { useSession } from "@/features/customer-auth/hooks/useSession";
+import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
+import { useCartStore } from "@/features/cart/cart.store";
 import { ProductListItem } from "@/features/products/types/product.types";
-import { toast } from "sonner"; 
+import { toast } from "sonner";
 
-// --- 1. DEFINITIONS ---
+/* ======================================================
+   1. FAVORITES CONTEXT
+====================================================== */
+
 type FavoritesContextType = {
   favorites: ProductListItem[];
   addToFavorites: (product: ProductListItem) => void;
@@ -19,41 +24,51 @@ type FavoritesContextType = {
   isFavorite: (productId: string | number) => boolean;
 };
 
-const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined);
+const FavoritesContext = createContext<FavoritesContextType | undefined>(
+  undefined
+);
 
-// --- 2. FAVORITES LOGIC ---
+/* ======================================================
+   2. FAVORITES PROVIDER
+====================================================== */
+
 function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const [favorites, setFavorites] = useState<ProductListItem[]>([]);
   const [userId, setUserId] = useState("guest");
+
   const STORAGE_KEY = `favorites_${userId}`;
 
-  // Load User ID
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedUser = localStorage.getItem("current_user_id"); 
-      if (storedUser) setUserId(storedUser);
-    }
-  }, []);
+  // Load user ID from auth store
+  const { actorId, isAuthenticated } = useCustomerAuthStore();
 
-  // Load Favorites
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        try {
-          setFavorites(JSON.parse(stored));
-        } catch (e) {
-          console.error("Error parsing favorites", e);
-        }
+    if (isAuthenticated && actorId) {
+      setUserId(actorId);
+    } else {
+      setUserId("guest");
+    }
+  }, [isAuthenticated, actorId]);
+
+  // Load favorites
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try {
+        setFavorites(JSON.parse(stored));
+      } catch {
+        setFavorites([]);
       }
+    } else {
+      setFavorites([]);
     }
-  }, [userId, STORAGE_KEY]);
+  }, [STORAGE_KEY]);
 
-  // Save Favorites
+  // Persist favorites
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(favorites));
-    }
+    if (typeof window === "undefined") return;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(favorites));
   }, [favorites, STORAGE_KEY]);
 
   const addToFavorites = (product: ProductListItem) => {
@@ -69,44 +84,60 @@ function FavoritesProvider({ children }: { children: React.ReactNode }) {
     toast.info("Removed from favorites");
   };
 
-  const isFavorite = (productId: string | number) => {
-    return favorites.some((p) => p.id === productId);
-  };
+  const isFavorite = (productId: string | number) =>
+    favorites.some((p) => p.id === productId);
 
   return (
-    <FavoritesContext.Provider value={{ favorites, addToFavorites, removeFromFavorites, isFavorite }}>
+    <FavoritesContext.Provider
+      value={{ favorites, addToFavorites, removeFromFavorites, isFavorite }}
+    >
       {children}
     </FavoritesContext.Provider>
   );
 }
 
-// --- 3. EXPORT HOOK ---
+/* ======================================================
+   3. FAVORITES HOOK
+====================================================== */
+
 export function useFavorites() {
   const context = useContext(FavoritesContext);
   if (!context) {
-    throw new Error("useFavorites must be used within a CustomerAuthProvider");
+    throw new Error("useFavorites must be used within CustomerAuthProvider");
   }
   return context;
 }
 
-// --- 4. MAIN WRAPPER COMPONENT ---
+/* ======================================================
+   4. MAIN CUSTOMER AUTH PROVIDER
+====================================================== */
+
 export default function CustomerAuthProvider({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const fetchSession = useSession();
+  const hydrateSession = useSession();
   const hasInitialized = useRef(false);
 
+  const isHydrated = useCustomerAuthStore((s) => s.isHydrated);
+  const isAuthenticated = useCustomerAuthStore((s) => s.isAuthenticated);
+
+  const loadCart = useCartStore((s) => s.loadCart);
+
+  // 1️⃣ Hydrate auth ONCE
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
-    fetchSession();
-  }, [fetchSession]);
+    hydrateSession();
+  }, [hydrateSession]);
 
-  return (
-    <FavoritesProvider>
-      {children}
-    </FavoritesProvider>
-  );
+  // 2️⃣ Hydrate cart AFTER auth
+  useEffect(() => {
+    if (isHydrated) {
+      loadCart(isAuthenticated);
+    }
+  }, [isHydrated, isAuthenticated, loadCart]);
+
+  return <FavoritesProvider>{children}</FavoritesProvider>;
 }

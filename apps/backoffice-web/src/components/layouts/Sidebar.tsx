@@ -29,140 +29,114 @@ export function Sidebar({ isOpen }: SidebarProps) {
   const router = useRouter();
 
   return (
-    <>
-      <style dangerouslySetInnerHTML={{__html: `
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}} />
-
-      <motion.aside
-        initial={false}
-        animate={{ width: isOpen ? '280px' : '90px' }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        style={{
-          background: 'linear-gradient(180deg, #064e3b 0%, #022c22 100%)',
-          color: 'white',
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100vh',
-          position: 'sticky',
-          top: 0,
-          zIndex: 50,
-          boxShadow: '4px 0 24px rgba(0,0,0,0.15)',
-          overflow: 'hidden'
-        }}
-      >
-        {/* LOGO SECTION - CENTERED & ZOOMED IN */}
-        <div style={{ 
-          padding: '0px 0', // Increased vertical padding
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', // Always center the logo like in the screenshot
-          height: '140px', // Taller container for a bigger logo
-          flexShrink: 0 
-        }}>
-          <motion.div
-            // Animate width: Bigger when open (180px), smaller when closed (50px)
-            animate={{ width: isOpen ? '180px' : '50px', height: isOpen ? '100px' : '50px' }}
-            transition={{ duration: 0.2 }}
-            style={{ 
-              position: 'relative', 
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <img 
-              src="/4.png"
-              alt="Logo"
-              style={{ 
-                height: '100%', 
-                width: '100%', 
-                objectFit: 'contain', // Keeps logo proportions correct
-                objectPosition: 'center'
-              }} 
-            />
-          </motion.div>
-        </div>
-
-        {/* NAVIGATION */}
-        <nav 
-          className="hide-scrollbar" 
-          style={{ flex: 1, padding: '0 16px', overflowY: 'auto' }}
+    <motion.aside
+      initial={false}
+      animate={{ width: isOpen ? 280 : 90 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      className="sticky top-0 z-50 flex h-screen flex-col overflow-hidden bg-gradient-to-b from-emerald-900 to-emerald-950 text-white shadow-2xl border-r border-emerald-800/50"
+    >
+      
+      {/* --- LOGO SECTION --- */}
+      <div className="flex h-[140px] shrink-0 items-center justify-center py-6 relative z-20">
+        <motion.div
+          animate={{ 
+            width: isOpen ? 160 : 50, 
+            height: isOpen ? 90 : 50 
+          }}
+          transition={{ duration: 0.2 }}
+          className="relative flex items-center justify-center"
         >
+          <img 
+            src="/4.png"
+            alt="Logo"
+            className="h-full w-full object-contain object-center drop-shadow-lg"
+          />
+        </motion.div>
+      </div>
+
+      {/* --- NAVIGATION --- */}
+      <nav className="flex-1 overflow-y-auto px-4 py-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="flex flex-col gap-2">
           {menuItems.map((item) => {
-            const isActive = item.path === '/' ? pathname === '/' : pathname.startsWith(item.path);
+            const isActive = item.path === '/' 
+              ? pathname === '/' 
+              : pathname.startsWith(item.path);
+            
             const Icon = item.icon;
 
             return (
               <div
                 key={item.label}
                 onClick={() => router.push(item.path)}
-                style={{
-                  position: 'relative',
-                  padding: '14px 18px',
-                  borderRadius: '14px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '16px',
-                  marginBottom: '8px',
-                  transition: 'all 0.2s ease',
-                  color: isActive ? 'white' : '#a7f3d0'
-                }}
-                onMouseEnter={(e) => {
-                   if (!isActive) e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
-                }}
-                onMouseLeave={(e) => {
-                   if (!isActive) e.currentTarget.style.backgroundColor = 'transparent';
-                }}
+                className={`
+                  group relative flex cursor-pointer items-center rounded-xl px-4 py-3.5 transition-all duration-200 outline-none
+                  ${isActive ? 'text-white' : 'text-emerald-100/70 hover:bg-emerald-800/50 hover:text-white'}
+                `}
               >
+                {/* Active Background Indicator */}
                 {isActive && (
                   <motion.div
-                    layoutId="active-nav"
-                    style={{
-                      position: 'absolute', inset: 0, borderRadius: '14px',
-                      backgroundColor: 'rgba(52, 211, 153, 0.2)',
-                      border: '1px solid rgba(52, 211, 153, 0.3)',
-                      zIndex: 0
-                    }}
+                    layoutId="sidebar-active-indicator"
+                    className="absolute inset-0 rounded-xl bg-emerald-600/30 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
                   />
                 )}
 
-                <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <Icon size={22} color={isActive ? '#ffffff' : '#6ee7b7'} />
-                  {isOpen && (
-                    <motion.span
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      style={{ fontSize: 15, fontWeight: isActive ? 600 : 400 }}
-                    >
-                      {item.label}
-                    </motion.span>
-                  )}
+                {/* Icon & Label Container */}
+                <div className="relative z-10 flex items-center gap-4 overflow-hidden">
+                  <Icon 
+                    size={22} 
+                    className={`shrink-0 transition-colors ${isActive ? 'text-emerald-400' : 'text-emerald-100/70 group-hover:text-emerald-300'}`} 
+                  />
+                  
+                  <AnimatePresence mode="wait">
+                    {isOpen && (
+                      <motion.span
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        transition={{ duration: 0.2 }}
+                        className={`text-[15px] whitespace-nowrap ${isActive ? 'font-bold tracking-wide' : 'font-medium'}`}
+                      >
+                        {item.label}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
                 </div>
               </div>
             );
           })}
-        </nav>
-
-        {/* LOGOUT */}
-        <div style={{ padding: '24px', borderTop: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
-          <motion.button
-            whileHover={{ scale: 1.02, backgroundColor: 'rgba(220, 38, 38, 0.2)' }}
-            onClick={logout}
-            style={{
-              width: '100%', padding: '14px', borderRadius: '12px', border: 'none',
-              backgroundColor: 'rgba(220, 38, 38, 0.1)', color: '#f87171',
-              fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center',
-              justifyContent: isOpen ? 'flex-start' : 'center', gap: '12px'
-            }}
-          >
-            <LogOut size={20} />
-            {isOpen && <span>Logout</span>}
-          </motion.button>
         </div>
-      </motion.aside>
-    </>
+      </nav>
+
+      {/* --- LOGOUT SECTION --- */}
+      <div className="shrink-0 border-t border-emerald-800/50 p-6 z-20 bg-gradient-to-t from-emerald-950 to-transparent">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={logout}
+          className={`
+            flex w-full items-center rounded-xl bg-red-500/10 p-3.5 text-red-400 
+            transition-colors hover:bg-red-500/20 hover:text-red-300
+            ${isOpen ? 'justify-start gap-3' : 'justify-center'}
+          `}
+        >
+          <LogOut size={20} className="shrink-0" />
+          <AnimatePresence>
+            {isOpen && (
+              <motion.span 
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: 'auto' }}
+                exit={{ opacity: 0, width: 0 }}
+                className="font-semibold whitespace-nowrap overflow-hidden"
+              >
+                Logout
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </motion.button>
+      </div>
+
+    </motion.aside>
   );
 }

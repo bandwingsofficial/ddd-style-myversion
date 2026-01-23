@@ -6,7 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Search, ChevronRight, MapPin, Loader2, Info, Store, Package } from 'lucide-react';
 import { useOutletStore } from '@/features/outlets/outlet.store';
 
-// --- Simple Toast Component ---
+// --- Components ---
+
 const Toast = ({ message, visible }: { message: string; visible: boolean }) => (
   <AnimatePresence>
     {visible && (
@@ -14,9 +15,9 @@ const Toast = ({ message, visible }: { message: string; visible: boolean }) => (
         initial={{ opacity: 0, y: -20, x: '-50%' }}
         animate={{ opacity: 1, y: 0, x: '-50%' }}
         exit={{ opacity: 0, y: -20, x: '-50%' }}
-        style={styles.toast}
+        className="fixed top-8 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-xl shadow-slate-900/10"
       >
-        <Info size={16} />
+        <Info size={16} className="text-emerald-400" />
         {message}
       </motion.div>
     )}
@@ -47,142 +48,136 @@ export default function UsersOutletSelectPage() {
 
   if (loading) {
     return (
-      <div style={styles.loaderContainer}>
+      <div className="flex h-screen flex-col items-center justify-center bg-slate-50">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
         >
-          <Loader2 size={40} color="#10b981" />
+          <Loader2 size={40} className="text-emerald-500" />
         </motion.div>
-        <p style={{ marginTop: 12, color: "#64748b", fontWeight: 500 }}>Loading Directory...</p>
+        <p className="mt-4 font-medium text-slate-500 animate-pulse">Loading Directory...</p>
       </div>
     );
   }
 
   return (
-    <div style={styles.container}>
-      <Toast message={toast.msg} visible={toast.show} />
+    <div className="min-h-screen bg-slate-50 p-6 font-sans md:p-10">
+      <div className="mx-auto max-w-4xl">
+        <Toast message={toast.msg} visible={toast.show} />
 
-      <header style={styles.header}>
-        <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }}>
-          <h1 style={styles.title}>Staff Directory</h1>
-          <p style={styles.subtitle}>Select an outlet to manage users or view stock</p>
-        </motion.div>
-      </header>
+        {/* HEADER */}
+        <header className="mb-8">
+          <motion.div 
+            initial={{ x: -20, opacity: 0 }} 
+            animate={{ x: 0, opacity: 1 }}
+            className="flex flex-col gap-1"
+          >
+            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
+              Staff Directory
+            </h1>
+            <p className="text-sm font-medium text-slate-500">
+              Select an outlet to manage users or view stock
+            </p>
+          </motion.div>
+        </header>
 
-      {/* Search Section */}
-      <div style={styles.searchWrapper}>
-        <div style={styles.searchBox}>
-          <Search size={18} color="#94a3b8" />
-          <input
-            type="text"
-            placeholder="Search by name or branch..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={styles.searchInput}
-          />
+        {/* SEARCH BAR */}
+        <div className="mb-8">
+          <div className="relative group">
+            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+              <Search size={18} className="text-slate-400 transition-colors group-focus-within:text-emerald-500" />
+            </div>
+            <input
+              type="text"
+              placeholder="Search by name or branch..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-2xl border border-slate-200 bg-white py-4 pl-11 pr-4 text-base font-medium text-slate-900 shadow-sm transition-all placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
+            />
+          </div>
         </div>
-      </div>
 
-      {/* List Section */}
-      <motion.div 
-        layout
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        style={styles.grid}
-      >
-        <AnimatePresence mode='popLayout'>
-          {filteredOutlets.map((o) => (
-            <motion.div
-              key={o.id}
-              layout
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              whileHover={{ y: -2 }}
-              style={styles.card}
-            >
-              <div style={styles.cardInfo}>
-                <div style={styles.iconCircle}>
-                  <Store size={18} color="#10b981"/>
-                </div>
-                <div>
-                  <span style={styles.outletName}>{o.name}</span>
-                  <div style={styles.locationWrapper}>
-                    <MapPin size={12} />
-                    <span>{o.branch ?? 'Main Branch'}</span>
+        {/* LIST SECTION */}
+        <motion.div 
+          layout
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col gap-4"
+        >
+          <AnimatePresence mode='popLayout'>
+            {filteredOutlets.map((o) => (
+              <motion.div
+                key={o.id}
+                layout
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                whileHover={{ y: -2 }}
+                className="group relative flex flex-col items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-emerald-500/30 hover:shadow-md sm:flex-row sm:items-center"
+              >
+                
+                {/* Card Info */}
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition-colors group-hover:bg-emerald-100 group-hover:text-emerald-700">
+                    <Store size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-800">{o.name}</h3>
+                    <div className="mt-0.5 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                      <MapPin size={12} />
+                      <span>{o.branch ?? 'Main Branch'}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
-                {/* NEW STOCK BUTTON */}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    // Navigate to the new stock page
-                    router.push(`/users/${o.id}/stock`); 
-                  }}
-                  style={{...styles.gradientButton, background: '#334155', boxShadow: 'none'}}
-                  title="View Stock"
-                >
-                  <Package size={16} />
-                  Stock
-                </motion.button>
+                {/* Actions */}
+                <div className="flex w-full gap-3 sm:w-auto">
+                  {/* Stock Button (Secondary) */}
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => router.push(`/users/${o.id}/stock`)}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 sm:flex-none"
+                    title="View Stock"
+                  >
+                    <Package size={16} />
+                    Stock
+                  </motion.button>
 
-                {/* MANAGE BUTTON */}
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    showToast(`Loading ${o.name}...`);
-                    router.push(`/users/${o.id}`);
-                  }}
-                  style={styles.gradientButton}
-                >
-                  Manage
-                  <ChevronRight size={16} />
-                </motion.button>
+                  {/* Manage Button (Primary) */}
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => {
+                      showToast(`Loading ${o.name}...`);
+                      router.push(`/users/${o.id}`);
+                    }}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-white shadow-lg shadow-emerald-500/20 transition-all hover:shadow-emerald-500/40 sm:flex-none"
+                  >
+                    Manage
+                    <ChevronRight size={16} />
+                  </motion.button>
+                </div>
+
+              </motion.div>
+            ))}
+          </AnimatePresence>
+
+          {/* Empty State */}
+          {filteredOutlets.length === 0 && (
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              className="py-12 text-center"
+            >
+              <div className="mb-3 flex justify-center text-slate-300">
+                <Store size={48} />
               </div>
+              <p className="text-base font-medium text-slate-500">No outlets match your search.</p>
             </motion.div>
-          ))}
-        </AnimatePresence>
-
-        {filteredOutlets.length === 0 && (
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={styles.noResults}>
-            No outlets match your search.
-          </motion.p>
-        )}
-      </motion.div>
+          )}
+        </motion.div>
+      </div>
     </div>
   );
 }
-
-// --- Styles ---
-const styles: { [key: string]: React.CSSProperties } = {
-  container: {
-    maxWidth: '800px', // Slightly wider to fit 2 buttons
-    margin: '0 auto',
-    padding: '20px',
-    fontFamily: "'Inter', sans-serif",
-    backgroundColor: "#f8fafc",
-    minHeight: "100vh",
-  },
-  header: { marginBottom: '32px' },
-  title: { fontSize: '32px', fontWeight: 800, color: '#1e293b', letterSpacing: '-0.025em', marginBottom: '4px' },
-  subtitle: { fontSize: '15px', color: '#64748b', fontWeight: 500 },
-  searchWrapper: { marginBottom: '24px' },
-  searchBox: { display: "flex", alignItems: "center", backgroundColor: "#fff", padding: "0 16px", borderRadius: "14px", border: "1px solid #e2e8f0", boxShadow: "0 2px 4px rgba(0,0,0,0.02)", transition: "all 0.2s ease" },
-  searchInput: { width: '100%', padding: '14px', fontSize: '15px', border: "none", outline: 'none', backgroundColor: 'transparent', color: "#1e293b" },
-  grid: { display: 'flex', flexDirection: 'column', gap: '14px' },
-  card: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderRadius: '18px', border: '1px solid #e2e8f0', backgroundColor: '#fff', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03)' },
-  cardInfo: { display: 'flex', alignItems: 'center', gap: '16px' },
-  iconCircle: { width: "40px", height: "40px", borderRadius: "12px", backgroundColor: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center" },
-  outletName: { fontSize: '17px', fontWeight: 700, color: "#1e293b" },
-  locationWrapper: { display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px', color: '#94a3b8', marginTop: "2px" },
-  gradientButton: { display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 16px', borderRadius: '12px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: 700, color: '#fff', background: 'linear-gradient(180deg, #34d399 0%, #10b981 100%)', boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)', textTransform: "uppercase", letterSpacing: "0.5px" },
-  toast: { position: 'fixed', top: '30px', left: '50%', transform: 'translateX(-50%)', backgroundColor: '#1e293b', color: '#fff', padding: '12px 24px', borderRadius: '50px', fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '10px', zIndex: 1000, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' },
-  loaderContainer: { display: 'flex', flexDirection: 'column', height: '80vh', alignItems: 'center', justifyContent: 'center' },
-  noResults: { textAlign: 'center', color: '#94a3b8', marginTop: '32px', fontSize: '15px', fontWeight: 500 }
-};

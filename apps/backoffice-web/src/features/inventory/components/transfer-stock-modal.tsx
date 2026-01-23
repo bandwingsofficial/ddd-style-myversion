@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { InventoryItem } from "../types/inventory.types";
 import { InventoryAPI } from "../api/inventory.api";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Truck, AlertCircle, CheckCircle, Package } from "lucide-react";
+import { X, Truck, AlertCircle, CheckCircle, Package, Store, Loader2, ArrowRight } from "lucide-react";
 
 interface Props {
   item: InventoryItem & { stockName?: string }; // Include stockName for display
@@ -22,7 +22,7 @@ interface Outlet {
 export default function TransferStockModal({ item, onClose, onSuccess }: Props) {
   const [outlets, setOutlets] = useState<Outlet[]>([]);
   const [outletId, setOutletId] = useState("");
-  const [quantity, setQuantity] = useState(0);
+  const [quantity, setQuantity] = useState<number | ''>('');
   const [formError, setFormError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,13 +46,19 @@ export default function TransferStockModal({ item, onClose, onSuccess }: Props) 
   }, []);
 
   const submit = async () => {
+    const qtyVal = Number(quantity);
+
     if (!outletId) {
       setFormError("Please select a destination outlet.");
       return;
     }
-    if (quantity <= 0) {
+    if (qtyVal <= 0) {
       setFormError("Quantity must be greater than 0.");
       return;
+    }
+    if (qtyVal > item.availableQty.value) {
+        setFormError(`Insufficient stock. Max transfer is ${item.availableQty.value} ${item.unit}.`);
+        return;
     }
 
     try {
@@ -62,7 +68,7 @@ export default function TransferStockModal({ item, onClose, onSuccess }: Props) 
       await InventoryAPI.transferStock({ 
         stockItemId: item.stockItemId, 
         outletId: outletId, 
-        quantity 
+        quantity: qtyVal 
       });
 
       setIsSuccess(true);
@@ -70,7 +76,7 @@ export default function TransferStockModal({ item, onClose, onSuccess }: Props) 
       setTimeout(() => {
         onSuccess();
         onClose();
-      }, 2000);
+      }, 1500);
 
     } catch (err: any) {
       setFormError(err.response?.data?.message || "Failed to process transfer.");
@@ -79,122 +85,159 @@ export default function TransferStockModal({ item, onClose, onSuccess }: Props) 
   };
 
   return (
-    <div style={styles.overlay} onClick={onClose}>
+    // 1. OVERLAY
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      
+      {/* 2. MODAL CARD */}
       <motion.div 
-        initial={{ scale: 0.9, opacity: 0 }} 
+        initial={{ scale: 0.95, opacity: 0 }} 
         animate={{ scale: 1, opacity: 1 }} 
-        style={styles.modal} 
+        className="w-full max-w-md overflow-hidden rounded-3xl bg-background p-8 shadow-2xl ring-1 ring-border"
         onClick={e => e.stopPropagation()}
       >
-        <div style={styles.header}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Truck size={20} color="#f59e0b" />
-            <h2 style={styles.title}>Transfer Stock</h2>
+        
+        {/* HEADER */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
+              <Truck size={20} />
+            </div>
+            <div>
+               <h2 className="text-xl font-bold text-foreground">Transfer Stock</h2>
+               <p className="text-xs text-muted-foreground">Move inventory to an outlet</p>
+            </div>
           </div>
-          <button onClick={onClose} style={styles.closeBtn}><X size={20}/></button>
+          <button 
+            onClick={onClose} 
+            className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+          >
+            <X size={20}/>
+          </button>
         </div>
 
-        <div style={styles.body}>
-          {/* Display Item Name */}
-          <div style={styles.itemDisplay}>
-            <Package size={16} color="#64748b" />
-            <span style={styles.info}>Item: <strong>{item.stockName || item.stockItemId}</strong></span>
+        {/* BODY */}
+        <div className="flex flex-col gap-6">
+          
+          {/* ITEM DISPLAY */}
+          <div className="flex items-center justify-between rounded-2xl border border-border bg-muted/30 p-4">
+            <div className="flex items-center gap-3">
+               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-background border border-border text-muted-foreground">
+                  <Package size={16} />
+               </div>
+               <div className="flex flex-col">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Item Name</span>
+                  <span className="text-sm font-bold text-foreground">{item.stockName || item.stockItemId}</span>
+               </div>
+            </div>
+            <div className="text-right">
+               <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Available</span>
+               <div className="text-sm font-bold text-foreground">{item.availableQty.value} {item.unit}</div>
+            </div>
           </div>
 
+          {/* FEEDBACK BANNERS */}
           <AnimatePresence>
             {formError && (
               <motion.div 
                 initial={{ height: 0, opacity: 0 }} 
                 animate={{ height: 'auto', opacity: 1 }} 
                 exit={{ height: 0, opacity: 0 }}
-                style={styles.errorBanner}
+                className="flex items-center gap-3 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm font-medium text-destructive"
               >
-                <AlertCircle size={16} />
+                <AlertCircle size={18} />
                 <span>{formError}</span>
               </motion.div>
             )}
-
             {isSuccess && (
               <motion.div 
                 initial={{ height: 0, opacity: 0 }} 
                 animate={{ height: 'auto', opacity: 1 }} 
-                style={styles.successBanner}
+                className="flex items-center gap-3 rounded-xl border border-green-500/20 bg-green-500/10 p-3 text-sm font-medium text-green-600"
               >
-                <CheckCircle size={16} />
+                <CheckCircle size={18} />
                 <span>Stock transferred successfully!</span>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* DROPDOWN FOR OUTLET SELECTION */}
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Destination Outlet *</label>
-            <select 
-              disabled={isSuccess || isSubmitting || isLoadingOutlets}
-              style={styles.input} 
-              value={outletId} 
-              onChange={(e) => {
-                setOutletId(e.target.value);
-                if (formError) setFormError(null);
-              }} 
-            >
-              <option value="">{isLoadingOutlets ? "Loading outlets..." : "-- Select Outlet --"}</option>
-              {outlets.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {o.name} {o.branch ? `(${o.branch})` : ''}
-                </option>
-              ))}
-            </select>
+          {/* FORM INPUTS */}
+          <div className="space-y-4">
+            
+            {/* DESTINATION OUTLET */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Destination Outlet <span className="text-destructive">*</span>
+              </label>
+              <div className="relative">
+                <Store size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <select 
+                  disabled={isSuccess || isSubmitting || isLoadingOutlets}
+                  value={outletId} 
+                  onChange={(e) => {
+                    setOutletId(e.target.value);
+                    if (formError) setFormError(null);
+                  }}
+                  className="w-full appearance-none rounded-xl border border-input bg-background py-3 pl-11 pr-4 text-sm font-medium text-foreground outline-none transition-all focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 disabled:opacity-50"
+                >
+                  <option value="">{isLoadingOutlets ? "Loading..." : "-- Select Outlet --"}</option>
+                  {outlets.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name} {o.branch ? `(${o.branch})` : ''}
+                    </option>
+                  ))}
+                </select>
+                {/* Arrow Icon */}
+                <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                   <ArrowRight size={14} className="rotate-90" />
+                </div>
+              </div>
+            </div>
+
+            {/* QUANTITY INPUT */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Quantity to Transfer ({item.unit})
+              </label>
+              <input 
+                type="number" 
+                disabled={isSuccess || isSubmitting}
+                value={quantity} 
+                onChange={(e) => {
+                  setQuantity(e.target.value === '' ? '' : Number(e.target.value));
+                  if (formError) setFormError(null);
+                }} 
+                placeholder="0"
+                className="w-full rounded-xl border border-input bg-background px-4 py-3 text-lg font-bold text-foreground outline-none transition-all placeholder:font-normal placeholder:text-muted-foreground focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 disabled:opacity-50"
+              />
+            </div>
           </div>
 
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Quantity to Transfer ({item.unit})</label>
-            <input 
-              disabled={isSuccess || isSubmitting}
-              type="number" 
-              style={styles.input} 
-              value={quantity} 
-              onChange={(e) => {
-                setQuantity(+e.target.value);
-                if (formError) setFormError(null);
-              }} 
-            />
-          </div>
-          
+          {/* SUBMIT BUTTON */}
           <button 
             disabled={isSuccess || isSubmitting || isLoadingOutlets} 
             onClick={submit} 
-            style={{
-              ...styles.submitBtn, 
-              opacity: (isSuccess || isSubmitting || !outletId) ? 0.7 : 1,
-              cursor: (isSuccess || isSubmitting || !outletId) ? "not-allowed" : "pointer"
-            }}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 py-4 text-base font-bold text-white shadow-lg shadow-amber-500/25 transition-all hover:bg-amber-600 hover:shadow-amber-500/40 active:scale-98 disabled:opacity-70 disabled:cursor-not-allowed disabled:shadow-none"
           >
-            {isSubmitting ? "Processing..." : isSuccess ? "Success!" : "Process Transfer"}
+            {isSubmitting ? (
+               <>
+                 <Loader2 size={18} className="animate-spin" />
+                 Processing...
+               </>
+            ) : isSuccess ? (
+               <>
+                 <CheckCircle size={18} />
+                 Success
+               </>
+            ) : (
+               "Process Transfer"
+            )}
           </button>
         </div>
+
       </motion.div>
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  overlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-  modal: { backgroundColor: '#fff', width: '400px', borderRadius: '24px', padding: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' },
-  header: { display: 'flex', justifyContent: 'space-between', marginBottom: '24px' },
-  title: { fontSize: '20px', fontWeight: 700, color: '#1e293b', margin: 0 },
-  closeBtn: { background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' },
-  body: { display: 'flex', flexDirection: 'column', gap: '20px' },
-  itemDisplay: { display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', backgroundColor: '#f8fafc', borderRadius: '10px', border: '1px solid #f1f5f9' },
-  info: { fontSize: '14px', color: '#64748b', margin: 0 },
-  inputGroup: { display: 'flex', flexDirection: 'column', gap: '6px' },
-  label: { fontSize: '13px', fontWeight: 600, color: '#475569' },
-  input: { padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', outline: 'none', fontSize: '14px', backgroundColor: '#f8fafc', width: '100%' },
-  submitBtn: { background: '#f59e0b', color: 'white', border: 'none', padding: '14px', borderRadius: '12px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' },
-  errorBanner: { 
-    display: 'flex', alignItems: 'center', gap: '8px', padding: "12px", backgroundColor: "#fef2f2", color: "#ef4444", borderRadius: "12px", fontSize: "13px", fontWeight: 500, border: "1px solid #fee2e2", marginBottom: "8px"
-  },
-  successBanner: { 
-    display: 'flex', alignItems: 'center', gap: '8px', padding: "12px", backgroundColor: "#ecfdf5", color: "#10b981", borderRadius: "12px", fontSize: "13px", fontWeight: 500, border: "1px solid #d1fae5", marginBottom: "8px"
-  },
-};

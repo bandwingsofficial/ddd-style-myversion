@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { CategoriesApi } from '../api/categories.api';
 import { Category } from '../types/category.types';
-import { X, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 
 interface Props {
   category: Category | null;
@@ -17,8 +17,9 @@ export default function RenameCategoryModal({ category, isOpen, onClose, onSucce
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
+  // Sync state when modal opens
   useEffect(() => {
-    if (category) {
+    if (category && isOpen) {
       setName(category.name);
       setFeedback(null);
     }
@@ -32,21 +33,21 @@ export default function RenameCategoryModal({ category, isOpen, onClose, onSucce
       setLoading(true);
       await CategoriesApi.rename(category.id, name);
       
-      // SUCCESS
-      setFeedback({ type: 'success', message: 'Category updated successfully' });
+      // SUCCESS STATE
+      setFeedback({ type: 'success', message: 'Category renamed successfully' });
+      
+      // Auto close after delay
       setTimeout(() => {
         onSuccess();
         onClose();
-        setFeedback(null);
+        setFeedback(null); // Reset for next time
       }, 1500);
 
     } catch (error) {
-      // ERROR HANDLING
-      // Note: The browser will still print a red 400 error line. This is normal.
-      // We catch it here to show the popup.
+      console.error(error);
       setFeedback({ 
         type: 'error', 
-        message: 'Failed to rename. Category might be closed or invalid.' 
+        message: 'Failed to rename. The category might be closed or removed.' 
       });
     } finally {
       setLoading(false);
@@ -56,98 +57,108 @@ export default function RenameCategoryModal({ category, isOpen, onClose, onSucce
   if (!isOpen || !category) return null;
 
   return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 50
-    }}>
-      <div style={{
-        backgroundColor: 'white', borderRadius: '12px', width: '400px',
-        padding: '24px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', position: 'relative'
-      }}>
+    // 1. OVERLAY (Backdrop)
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+      
+      {/* 2. MODAL CARD */}
+      <div 
+        className="relative w-full max-w-md overflow-hidden rounded-2xl bg-background shadow-2xl ring-1 ring-border animate-in zoom-in-95 duration-200"
+        role="dialog"
+        aria-modal="true"
+      >
         
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: 700, margin: 0 }}>Rename Category</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-            <X size={20} color="#64748b" />
+        {/* HEADER */}
+        <div className="flex items-center justify-between border-b border-border bg-muted/30 px-6 py-4">
+          <h2 className="text-lg font-bold tracking-tight text-foreground">Rename Category</h2>
+          <button 
+            onClick={onClose} 
+            className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <X size={20} />
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit}>
-          <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#64748b', marginBottom: '8px' }}>
-            Category Name
-          </label>
-          <input
-            type="text" value={name} onChange={(e) => setName(e.target.value)}
-            disabled={loading || feedback?.type === 'success'}
-            style={{
-              width: '100%', padding: '10px', borderRadius: '6px',
-              border: '1px solid #e2e8f0', marginBottom: '20px', outline: 'none', fontSize: '14px'
-            }}
-          />
+        {/* BODY */}
+        <div className="px-6 py-8">
+          <form id="rename-form" onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Category Name
+              </label>
+              <input
+                type="text" 
+                value={name} 
+                onChange={(e) => setName(e.target.value)}
+                disabled={loading || feedback?.type === 'success'}
+                placeholder={category.name}
+                className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Changing the name will update it across the entire store immediately.
+              </p>
+            </div>
+          </form>
+        </div>
+
+        {/* FOOTER */}
+        <div className="flex items-center justify-end gap-3 border-t border-border bg-muted/30 px-6 py-4">
+          <button
+            type="button" 
+            onClick={onClose} 
+            disabled={loading}
+            className="rounded-xl border border-input bg-background px-5 py-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+          >
+            Cancel
+          </button>
           
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-            <button
-              type="button" onClick={onClose} disabled={loading}
-              style={{
-                padding: '8px 16px', borderRadius: '6px', border: '1px solid #e2e8f0',
-                background: 'white', cursor: 'pointer', fontWeight: 600, color: '#64748b'
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit" disabled={loading || !name.trim() || feedback?.type === 'success'}
-              style={{
-                padding: '8px 16px', borderRadius: '6px', border: 'none',
-                background: '#10b981', color: 'white', cursor: 'pointer', fontWeight: 600,
-                opacity: (loading || feedback?.type === 'success') ? 0.7 : 1
-              }}
-            >
-              {loading ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
-        </form>
+          <button
+            type="submit" 
+            form="rename-form"
+            disabled={loading || !name.trim() || feedback?.type === 'success'}
+            className="flex items-center gap-2 rounded-xl bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/40 disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            {loading && <Loader2 size={16} className="animate-spin" />}
+            {loading ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
 
-        {/* FEEDBACK POPUP */}
+        {/* 3. FEEDBACK OVERLAY (Success/Error) */}
+        {/* This sits ON TOP of the modal content if feedback exists */}
         {feedback && (
-          <div style={{
-            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(255,255,255, 0.95)', borderRadius: '12px',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            zIndex: 60
-          }}>
-            {feedback.type === 'success' ? (
-              <CheckCircle size={48} color="#10b981" style={{ marginBottom: '16px' }} />
-            ) : (
-              <AlertCircle size={48} color="#ef4444" style={{ marginBottom: '16px' }} />
-            )}
+          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/95 backdrop-blur-[2px] animate-in fade-in duration-200">
             
-            <p style={{ 
-              margin: '0 0 16px 0', fontWeight: 600, 
-              color: feedback.type === 'success' ? '#065f46' : '#991b1b',
-              fontSize: '16px', textAlign: 'center', padding: '0 20px'
-            }}>
-              {feedback.message}
-            </p>
-
-            {feedback.type === 'error' && (
-              <button 
-                onClick={() => setFeedback(null)}
-                style={{
-                  padding: '8px 20px', background: 'white', border: '1px solid #e2e8f0',
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.05)', borderRadius: '6px',
-                  cursor: 'pointer', fontSize: '14px', fontWeight: 600, color: '#475569'
-                }}
-              >
-                Try Again
-              </button>
+            {feedback.type === 'success' ? (
+              <div className="flex flex-col items-center gap-3 text-center">
+                <div className="rounded-full bg-green-100 p-3 dark:bg-green-900/30">
+                  <CheckCircle size={48} className="text-green-600 dark:text-green-500 animate-in zoom-in duration-300" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">Success!</h3>
+                  <p className="text-sm text-muted-foreground">{feedback.message}</p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-4 text-center p-6">
+                <div className="rounded-full bg-red-100 p-3 dark:bg-red-900/30">
+                  <AlertCircle size={48} className="text-destructive animate-in shake duration-300" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-foreground">Error</h3>
+                  <p className="text-sm text-muted-foreground max-w-[200px] mx-auto">
+                    {feedback.message}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setFeedback(null)}
+                  className="mt-2 rounded-lg border border-border bg-background px-6 py-2 text-sm font-semibold shadow-sm hover:bg-muted"
+                >
+                  Try Again
+                </button>
+              </div>
             )}
           </div>
         )}
+
       </div>
     </div>
   );

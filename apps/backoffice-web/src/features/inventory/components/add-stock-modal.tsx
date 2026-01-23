@@ -1,10 +1,9 @@
-"use client";
+'use client';
 
 import { useState } from "react";
 import { InventoryItem } from "../types/inventory.types";
 import { InventoryAPI } from "../api/inventory.api";
-import { motion, AnimatePresence } from "framer-motion";
-import { X, PlusCircle, Package } from "lucide-react";
+import { X, PlusCircle, Package, Loader2 } from "lucide-react";
 
 // Local interface extension to handle the stockName we added in the hook
 interface MergedItem extends InventoryItem {
@@ -41,76 +40,86 @@ export default function AddStockModal({ item, onClose, onSuccess }: Props) {
   };
 
   return (
-    <AnimatePresence>
-      <div style={styles.overlay} onClick={onClose}>
-        <motion.div 
-          initial={{ scale: 0.9, opacity: 0, y: 10 }} 
-          animate={{ scale: 1, opacity: 1, y: 0 }} 
-          exit={{ scale: 0.9, opacity: 0, y: 10 }}
-          style={styles.modal} 
-          onClick={e => e.stopPropagation()}
-        >
-          <div style={styles.header}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={styles.iconBox}><PlusCircle size={20} color="#10b981"/></div>
-              <h2 style={styles.title}>Add Stock</h2>
+    // 1. OVERLAY
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      {/* 2. MODAL CARD */}
+      <div 
+        className="w-full max-w-sm overflow-hidden rounded-3xl bg-background p-8 shadow-2xl ring-1 ring-border animate-in zoom-in-95 duration-200"
+        onClick={e => e.stopPropagation()}
+      >
+        
+        {/* HEADER */}
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <PlusCircle size={22} />
             </div>
-            <button onClick={onClose} style={styles.closeBtn}><X size={20}/></button>
+            <h2 className="text-xl font-bold text-foreground">Add Stock</h2>
           </div>
+          <button 
+            onClick={onClose} 
+            className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <X size={20} />
+          </button>
+        </div>
 
-          <div style={styles.body}>
-            {/* ✅ Updated to show stockName instead of stockItemId */}
-            <div style={styles.itemDisplay}>
-              <Package size={16} color="#64748b" />
-              <p style={styles.info}>
-                Item: <strong style={{ color: '#1e293b' }}>{item.stockName || item.stockItemId}</strong>
-              </p>
+        {/* BODY */}
+        <div className="flex flex-col gap-6">
+          
+          {/* ITEM INFO CARD */}
+          <div className="flex items-center gap-3 rounded-2xl border border-border bg-muted/40 p-4">
+            <Package size={18} className="text-muted-foreground" />
+            <div className="flex flex-col">
+               <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Item Name</span>
+               <span className="text-sm font-bold text-foreground">{item.stockName || item.stockItemId}</span>
             </div>
-            
-            <div style={styles.inputGroup}>
-              <label style={styles.label}>Quantity to Add ({item.unit})</label>
+          </div>
+          
+          {/* INPUT GROUP */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Quantity to Add ({item.unit})
+            </label>
+            <div className="relative">
               <input 
                 type="number" 
                 autoFocus
-                value={quantity} 
-                style={styles.input} 
+                value={quantity || ''} 
                 onChange={(e) => setQuantity(+e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && submit()}
                 placeholder="0"
                 min="1"
+                className="w-full rounded-xl border border-input bg-background px-4 py-3.5 text-lg font-bold text-foreground outline-none transition-all placeholder:font-normal placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-primary/10"
               />
+              {/* Optional: Add unit inside input */}
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground pointer-events-none">
+                {item.unit}
+              </div>
             </div>
-
-            <button 
-              onClick={submit} 
-              style={{
-                ...styles.submitBtn,
-                opacity: (loading || quantity <= 0) ? 0.7 : 1,
-                cursor: (loading || quantity <= 0) ? 'not-allowed' : 'pointer'
-              }} 
-              disabled={loading || quantity <= 0}
-            >
-              {loading ? "Processing..." : "Confirm Addition"}
-            </button>
           </div>
-        </motion.div>
+
+          {/* SUBMIT BUTTON */}
+          <button 
+            onClick={submit} 
+            disabled={loading || quantity <= 0}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-4 text-base font-bold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 hover:shadow-primary/40 active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+          >
+            {loading ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                Processing...
+              </>
+            ) : (
+              "Confirm Addition"
+            )}
+          </button>
+        </div>
+
       </div>
-    </AnimatePresence>
+    </div>
   );
 }
-
-const styles: { [key: string]: React.CSSProperties } = {
-  overlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-  modal: { backgroundColor: '#fff', width: '400px', borderRadius: '24px', padding: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' },
-  iconBox: { width: '36px', height: '36px', backgroundColor: '#ecfdf5', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: '20px', fontWeight: 700, color: '#1e293b', margin: 0 },
-  closeBtn: { background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' },
-  body: { display: 'flex', flexDirection: 'column', gap: '20px' },
-  itemDisplay: { display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #f1f5f9' },
-  info: { fontSize: '14px', color: '#64748b', margin: 0 },
-  inputGroup: { display: 'flex', flexDirection: 'column', gap: '8px' },
-  label: { fontSize: '13px', fontWeight: 600, color: '#475569' },
-  input: { padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0', outline: 'none', fontSize: '16px', fontWeight: 600, backgroundColor: '#ffffff', transition: 'border 0.2s' },
-  submitBtn: { background: 'linear-gradient(180deg, #34d399 0%, #10b981 100%)', color: 'white', border: 'none', padding: '16px', borderRadius: '14px', fontWeight: 700, fontSize: '15px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)', transition: 'all 0.2s' }
-};

@@ -19,81 +19,71 @@ export default function InventoryRowActions({ item, onActionComplete }: Props) {
   // Check if the item is inactive to restrict actions
   const isDisabled = item.status === "INACTIVE";
 
+  // Common button class for DRY code
+  const baseBtnClass = "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:border-transparent disabled:opacity-70";
+
   return (
     <>
-      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-        {/* ADD STOCK - Restricted */}
+      <div className="flex items-center justify-end gap-2">
+        
+        {/* ADD STOCK - Primary Action */}
         <button 
           onClick={() => !isDisabled && setAction("add")} 
           disabled={isDisabled}
-          style={{
-            ...styles.actionBtn,
-            ...(isDisabled ? styles.disabledBtn : {})
-          }} 
+          className={`${baseBtnClass} border-input bg-background text-primary hover:border-primary hover:bg-primary/5 focus:ring-primary/20`}
           title={isDisabled ? "Cannot add stock to inactive item" : "Add Stock"}
         >
-          <Plus size={16} /> Add
+          <Plus size={14} /> 
+          <span className="hidden sm:inline">Add</span>
         </button>
 
-        {/* ADJUST - Restricted */}
+        {/* ADJUST - Blue Action */}
         <button 
           onClick={() => !isDisabled && setAction("adjust")} 
           disabled={isDisabled}
-          style={{
-            ...styles.actionBtn, 
-            color: isDisabled ? '#94a3b8' : '#3b82f6',
-            ...(isDisabled ? styles.disabledBtn : {})
-          }} 
+          className={`${baseBtnClass} border-input bg-background text-blue-600 hover:border-blue-500 hover:bg-blue-50 focus:ring-blue-500/20`}
           title={isDisabled ? "Cannot adjust inactive item" : "Adjust"}
         >
-          <Edit3 size={16} />
+          <Edit3 size={14} />
+          <span className="hidden sm:inline">Adjust</span>
         </button>
 
-        {/* TRANSFER - Restricted */}
+        {/* TRANSFER - Amber Action */}
         <button 
           onClick={() => !isDisabled && setAction("transfer")} 
           disabled={isDisabled}
-          style={{
-            ...styles.actionBtn, 
-            color: isDisabled ? '#94a3b8' : '#f59e0b',
-            ...(isDisabled ? styles.disabledBtn : {})
-          }} 
+          className={`${baseBtnClass} border-input bg-background text-amber-600 hover:border-amber-500 hover:bg-amber-50 focus:ring-amber-500/20`}
           title={isDisabled ? "Cannot transfer inactive item" : "Transfer"}
         >
-          <Send size={16} />
+          <Send size={14} />
+          <span className="hidden sm:inline">Transfer</span>
         </button>
 
-        {/* LOGS - Always Active */}
+        {/* LOGS - Neutral Action (Always Active) */}
         <button 
           onClick={() => setAction("logs")} 
-          style={{...styles.actionBtn, color: '#64748b'}} 
+          className={`${baseBtnClass} border-transparent text-muted-foreground hover:bg-muted hover:text-foreground`}
           title="Transaction History"
         >
-          <span style={{ display: 'flex', alignItems: 'center' }}>
-            <ClipboardList size={16} />
-          </span>
+          <ClipboardList size={16} />
+          {/* Logs usually just needs an icon to save space, but you can uncomment below if you want text */}
+          {/* <span className="hidden sm:inline">Logs</span> */}
         </button>
       </div>
 
-      {action === "add" && <AddStockModal item={item} onClose={() => setAction(null)} onSuccess={onActionComplete} />}
-      {action === "adjust" && <AdjustStockModal item={item} onClose={() => setAction(null)} onSuccess={onActionComplete} />}
-      {action === "transfer" && <TransferStockModal item={item} onClose={() => setAction(null)} onSuccess={onActionComplete} />}
-      {action === "logs" && <InventoryTransactionsModal item={item} onClose={() => setAction(null)} />}
+      {/* MODALS */}
+      {action === "add" && (
+        <AddStockModal item={item} onClose={() => setAction(null)} onSuccess={onActionComplete} />
+      )}
+      {action === "adjust" && (
+        <AdjustStockModal item={item} onClose={() => setAction(null)} onSuccess={onActionComplete} />
+      )}
+      {action === "transfer" && (
+        <TransferStockModal item={item} onClose={() => setAction(null)} onSuccess={onActionComplete} />
+      )}
+      {action === "logs" && (
+        <InventoryTransactionsModal item={item} onClose={() => setAction(null)} />
+      )}
     </>
   );
 }
-
-const styles: { [key: string]: React.CSSProperties } = {
-  actionBtn: { 
-    display: 'flex', alignItems: 'center', gap: '4px', background: '#fff', border: '1px solid #e2e8f0', 
-    padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 600, color: '#10b981', 
-    cursor: 'pointer', transition: 'all 0.2s'
-  },
-  disabledBtn: {
-    backgroundColor: '#f8fafc',
-    borderColor: '#f1f5f9',
-    color: '#94a3b8',
-    cursor: 'not-allowed',
-    opacity: 0.6
-  }
-};

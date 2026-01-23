@@ -4,20 +4,20 @@ module.exports = {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
-    
-    // 👇 CRITICAL: This line fixes the "nonsense" unstyled look
-    "./src/features/**/*.{js,ts,jsx,tsx,mdx}", 
+    "./src/features/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
-      // Added your specific footer colors here for global reuse
       colors: {
         brand: {
-          dark: "#052e16",   // The dark green background/text
-          mint: "#4ade80",   // The bright mint icons
-          light: "#f0fdf4",  // The light hover background
-          border: "#86efac", // The light green borders
+          dark: "#15803d",  // green-700
+          DEFAULT: "#16a34a", // green-600 (Primary Action)
+          light: "#22c55e",   // green-500
+          surface: "#f0fdf4", // green-50
         }
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'], // Ensure you have Inter or a nice sans font
       }
     },
   },

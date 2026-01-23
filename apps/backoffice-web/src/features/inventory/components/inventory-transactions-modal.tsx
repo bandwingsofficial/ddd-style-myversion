@@ -3,97 +3,143 @@
 import React, { useEffect, useState } from "react";
 import { InventoryAPI } from "../api/inventory.api";
 import { InventoryItem, InventoryTransaction } from "../types/inventory.types";
-import { X, History, ArrowUpRight, ArrowDownLeft, Minus, ArrowRightLeft } from "lucide-react";
+import { X, History, ArrowUpRight, ArrowDownLeft, Minus, ArrowRightLeft, PackageOpen, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
+// 🔴 FIX: We extend the type here to allow 'stockName' without error
 interface Props {
-  item: InventoryItem;
+  item: InventoryItem & { stockName?: string }; 
   onClose: () => void;
 }
 
 export default function InventoryTransactionsModal({ item, onClose }: Props) {
   const [logs, setLogs] = useState<InventoryTransaction[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    InventoryAPI.getTransactions(item.stockItemId).then((res) => {
-      setLogs(res.data.data);
-    });
+    InventoryAPI.getTransactions(item.stockItemId)
+      .then((res) => {
+        setLogs(res.data.data);
+      })
+      .catch((err) => console.error("Failed to load logs", err))
+      .finally(() => setLoading(false));
   }, [item.stockItemId]);
 
-  // Helper to render specific icons and colors based on type
   const getLogDetails = (type: string) => {
-    if (type.includes('ADD')) return { icon: <ArrowUpRight size={18} />, color: "#10b981", bg: "#ecfdf5" };
-    if (type.includes('TRANSFER')) return { icon: <ArrowRightLeft size={18} />, color: "#f59e0b", bg: "#fffbeb" };
-    if (type.includes('ADJUST')) return { icon: <Minus size={18} />, color: "#3b82f6", bg: "#eff6ff" };
-    return { icon: <ArrowDownLeft size={18} />, color: "#ef4444", bg: "#fef2f2" };
+    if (type.includes('ADD')) return { 
+       icon: <ArrowUpRight size={18} />, 
+       color: "text-emerald-600", 
+       bg: "bg-emerald-500/10",
+       border: "border-emerald-200/50"
+    };
+    if (type.includes('TRANSFER')) return { 
+       icon: <ArrowRightLeft size={18} />, 
+       color: "text-amber-600", 
+       bg: "bg-amber-500/10",
+       border: "border-amber-200/50"
+    };
+    if (type.includes('ADJUST')) return { 
+       icon: <Minus size={18} />, 
+       color: "text-blue-600", 
+       bg: "bg-blue-500/10",
+       border: "border-blue-200/50"
+    };
+    return { 
+       icon: <ArrowDownLeft size={18} />, 
+       color: "text-red-600", 
+       bg: "bg-red-500/10",
+       border: "border-red-200/50"
+    };
   };
 
   return (
-    <div style={styles.overlay} onClick={onClose}>
+    <div 
+       className="fixed inset-0 z-50 flex justify-end bg-black/30 backdrop-blur-sm" 
+       onClick={onClose}
+    >
       <motion.div 
-        initial={{ x: "100%", opacity: 0.5 }} 
-        animate={{ x: 0, opacity: 1 }} 
-        transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        style={styles.drawer} 
+        initial={{ x: "100%" }} 
+        animate={{ x: 0 }} 
+        exit={{ x: "100%" }}
+        transition={{ type: "spring", damping: 30, stiffness: 300 }}
+        className="h-full w-full max-w-md border-l border-border bg-background shadow-2xl sm:w-[480px]"
         onClick={e => e.stopPropagation()}
       >
-        <div style={styles.header}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={styles.historyIconBox}>
-              <History size={22} color="#10b981" />
+        {/* HEADER */}
+        <div className="flex items-center justify-between border-b border-border p-6">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <History size={24} />
             </div>
             <div>
-              <h2 style={styles.title}>Transaction History</h2>
-              <p style={styles.subtitle}>{item.stockItemId}</p>
+              <h2 className="text-xl font-bold tracking-tight text-foreground">Transaction History</h2>
+              {/* NOW WORKING: Typescript knows stockName is allowed */}
+              <p className="font-mono text-xs text-muted-foreground mt-0.5">
+                {item.stockName || item.stockItemId}
+              </p>
             </div>
           </div>
-          <button onClick={onClose} style={styles.closeBtn}><X size={20}/></button>
+          <button 
+            onClick={onClose} 
+            className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <X size={20} />
+          </button>
         </div>
 
-        <div style={styles.logList}>
-          {logs.length === 0 ? (
-            <div style={styles.emptyState}>No transactions found for this item.</div>
+        {/* BODY */}
+        <div className="h-[calc(100vh-100px)] overflow-y-auto p-6">
+          {loading ? (
+             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+                <Loader2 size={32} className="animate-spin text-primary mb-3" />
+                <p>Loading history...</p>
+             </div>
+          ) : logs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground text-center">
+               <div className="mb-4 rounded-full bg-muted p-4">
+                 <PackageOpen size={32} className="text-muted-foreground/50" />
+               </div>
+               <p className="font-medium text-foreground">No transactions found</p>
+            </div>
           ) : (
-            logs.map((log) => {
-              const details = getLogDetails(log.type);
-              return (
-                <div key={log.id} style={styles.logItem}>
-                  <div style={{ ...styles.logIcon, backgroundColor: details.bg, color: details.color }}>
-                    {details.icon}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={styles.logType}>{log.type}</div>
-                    <div style={styles.logDate}>
-                       {new Date(log.createdAt).toLocaleDateString()} • {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            <div className="flex flex-col gap-4">
+              {logs.map((log) => {
+                const details = getLogDetails(log.type);
+                const isPositive = log.type.includes('ADD');
+                
+                return (
+                  <div 
+                    key={log.id} 
+                    className={`flex items-center gap-4 rounded-2xl border bg-card p-4 transition-all hover:shadow-sm ${details.border}`}
+                  >
+                    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${details.bg} ${details.color}`}>
+                      {details.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="truncate text-sm font-bold text-foreground">
+                        {log.type.replace(/_/g, ' ')}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {new Date(log.createdAt).toLocaleDateString()} 
+                        <span className="mx-1">•</span>
+                        {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                    <div className={`text-right font-bold ${details.color}`}>
+                      <div className="text-lg leading-none">
+                         {isPositive ? '+' : '-'}{log.quantity.value}
+                      </div>
+                      <div className="text-[10px] font-bold text-muted-foreground uppercase mt-1">
+                         {item.unit}
+                      </div>
                     </div>
                   </div>
-                  <div style={{ ...styles.logQty, color: details.color }}>
-                    {log.type.includes('ADD') ? '+' : '-'}{log.quantity.value} <span style={styles.unitText}>{item.unit}</span>
-                  </div>
-                </div>
-              );
-            })
+                );
+              })}
+            </div>
           )}
         </div>
       </motion.div>
     </div>
   );
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  overlay: { position: 'fixed', inset: 0, backgroundColor: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', zIndex: 1000 },
-  drawer: { backgroundColor: '#fff', width: '480px', height: '100%', padding: '32px', boxShadow: '-10px 0 30px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column' },
-  header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', borderBottom: '1px solid #f1f5f9', paddingBottom: '24px' },
-  historyIconBox: { width: '44px', height: '44px', borderRadius: '12px', backgroundColor: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: '20px', fontWeight: 800, color: '#1e293b', margin: 0, letterSpacing: '-0.5px' },
-  subtitle: { color: '#94a3b8', fontSize: '12px', margin: '2px 0 0 0', fontFamily: 'monospace' },
-  closeBtn: { background: '#f8fafc', border: 'none', cursor: 'pointer', color: '#64748b', padding: '8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.2s' },
-  logList: { display: 'flex', flexDirection: 'column', gap: '14px', overflowY: 'auto', flex: 1, paddingRight: '4px' },
-  logItem: { display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', borderRadius: '16px', border: '1px solid #f1f5f9', backgroundColor: '#fff', transition: '0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' },
-  logIcon: { width: '40px', height: '40px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  logType: { fontWeight: 700, fontSize: '14px', color: '#334155', letterSpacing: '0.3px' },
-  logDate: { fontSize: '12px', color: '#94a3b8', marginTop: '2px' },
-  logQty: { fontWeight: 800, fontSize: '16px', textAlign: 'right' },
-  unitText: { fontSize: '11px', fontWeight: 600, color: '#94a3b8', marginLeft: '2px' },
-  emptyState: { textAlign: 'center', padding: '40px', color: '#94a3b8', fontSize: '14px' }
-};

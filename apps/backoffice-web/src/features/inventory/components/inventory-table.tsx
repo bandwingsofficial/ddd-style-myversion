@@ -2,7 +2,7 @@
 
 import { useInventory } from "../hooks/use-inventory";
 import InventoryRowActions from "./inventory-row-actions";
-import { RefreshCw, Layers, SearchX } from "lucide-react";
+import { RefreshCw, Layers, SearchX, PackageOpen } from "lucide-react";
 
 interface InventoryTableProps {
   searchQuery?: string;
@@ -17,64 +17,109 @@ export default function InventoryTable({ searchQuery = "" }: InventoryTableProps
     item.stockItemId?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // 1. LOADING STATE
   if (loading) {
     return (
-      <div style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
-        <RefreshCw size={32} color="#10b981" className="animate-spin" style={{ margin: '0 auto 12px' }} />
-        <p style={{ fontWeight: 500 }}>Syncing Inventory Levels...</p>
+      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+        <RefreshCw size={32} className="mb-3 animate-spin text-primary" />
+        <p className="font-medium animate-pulse">Syncing Inventory Levels...</p>
       </div>
     );
   }
 
+  // 2. EMPTY STATE (When API returns empty array initially)
+  if (!loading && inventory.length === 0) {
+     return (
+        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+           <div className="mb-4 rounded-full bg-muted p-4">
+              <PackageOpen size={40} className="text-muted-foreground/50" />
+           </div>
+           <h3 className="text-lg font-bold text-foreground">No Inventory Yet</h3>
+           <p className="text-sm">Initialize your first stock item to get started.</p>
+        </div>
+     )
+  }
+
+  // 3. TABLE RENDER
   return (
-    <div style={{ overflowX: "auto" }}>
-      <table style={styles.table}>
+    <div className="w-full overflow-x-auto">
+      <table className="w-full min-w-[800px] text-left text-sm">
+        {/* HEADER */}
         <thead>
-          <tr>
-            <th style={styles.th}>STOCK ITEM</th>
-            <th style={styles.th}>UNIT</th>
-            <th style={styles.th}>AVAILABLE</th>
-            <th style={styles.th}>TOTAL</th>
-            <th style={styles.th}>STATUS</th>
-            <th style={styles.th}></th>
+          <tr className="border-b border-border bg-muted/40">
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Stock Item</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Unit</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Available</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Total</th>
+            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Status</th>
+            <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">Actions</th>
           </tr>
         </thead>
-        <tbody>
+
+        {/* BODY */}
+        <tbody className="divide-y divide-border">
           {filteredInventory.map((item) => {
             const isLow = item.availableQty.value < 10;
             const isActive = item.status === "ACTIVE";
 
             return (
-              <tr key={item.id} style={styles.tr}>
-                <td style={styles.td}>
-                  <div style={styles.itemCell}>
-                    <div style={styles.iconBox}><Layers size={14} color="#10b981"/></div>
-                    <span style={styles.itemName}>{item.stockName}</span>
+              <tr 
+                key={item.id} 
+                className="group bg-background transition-colors hover:bg-muted/30"
+              >
+                {/* NAME */}
+                <td className="px-6 py-4 align-middle">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Layers size={14} />
+                    </div>
+                    <span className="font-bold text-foreground">{item.stockName}</span>
                   </div>
                 </td>
-                <td style={styles.td}>
-                  <span style={styles.unitBadge}>{item.unit}</span>
+
+                {/* UNIT */}
+                <td className="px-6 py-4 align-middle">
+                  <span className="inline-flex items-center rounded-md bg-muted px-2.5 py-1 text-xs font-bold text-muted-foreground uppercase">
+                    {item.unit}
+                  </span>
                 </td>
-                <td style={styles.td}>
-                  <div style={{ color: isLow ? '#ef4444' : '#1e293b', fontWeight: 700 }}>
+
+                {/* AVAILABLE */}
+                <td className="px-6 py-4 align-middle">
+                  <div className={`font-bold ${isLow ? 'text-destructive' : 'text-foreground'}`}>
                     {item.availableQty.value}
+                    {isLow && (
+                       <span className="ml-2 inline-block h-2 w-2 rounded-full bg-destructive animate-pulse" title="Low Stock Warning" />
+                    )}
                   </div>
                 </td>
-                <td style={styles.td}>
-                  <div style={{ color: '#64748b', fontWeight: 600 }}>{item.totalQty.value}</div>
+
+                {/* TOTAL */}
+                <td className="px-6 py-4 align-middle">
+                  <div className="font-semibold text-muted-foreground">
+                    {item.totalQty.value}
+                  </div>
                 </td>
-                <td style={styles.td}>
-                  <span style={{ 
-                    ...styles.statusBadge, 
-                    backgroundColor: isActive ? "#DCFCE7" : "#F1F5F9",
-                    color: isActive ? "#166534" : "#64748B"
-                  }}>
-                    <div style={{...styles.dot, backgroundColor: isActive ? "#22C55E" : "#94A3B8"}} />
+
+                {/* STATUS */}
+                <td className="px-6 py-4 align-middle">
+                  <span className={`
+                    inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide
+                    ${isActive 
+                      ? "bg-green-500/10 text-green-600" 
+                      : "bg-slate-100 text-slate-500"}
+                  `}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-green-500" : "bg-slate-400"}`} />
                     {item.status}
                   </span>
                 </td>
-                <td style={styles.td}>
-                  <InventoryRowActions item={item} onActionComplete={refresh} />
+
+                {/* ACTIONS */}
+                <td className="px-6 py-4 align-middle">
+                   {/* We wrap the actions component to ensure it aligns right */}
+                   <div className="flex justify-end">
+                      <InventoryRowActions item={item} onActionComplete={refresh} />
+                   </div>
                 </td>
               </tr>
             );
@@ -82,26 +127,14 @@ export default function InventoryTable({ searchQuery = "" }: InventoryTableProps
         </tbody>
       </table>
 
-      {/* Empty Search Results Display */}
-      {filteredInventory.length === 0 && (
-        <div style={{ padding: '80px 0', textAlign: 'center', color: '#94a3b8' }}>
-          <SearchX size={48} style={{ margin: '0 auto 16px', opacity: 0.5 }} />
-          <p style={{ fontSize: '15px', fontWeight: 500 }}>No items found matching "{searchQuery}"</p>
+      {/* 4. EMPTY SEARCH RESULTS */}
+      {!loading && inventory.length > 0 && filteredInventory.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+          <SearchX size={48} className="mb-4 text-muted-foreground/30" />
+          <p className="font-medium text-foreground">No items found matching "{searchQuery}"</p>
+          <p className="text-sm">Try adjusting your search terms.</p>
         </div>
       )}
     </div>
   );
 }
-
-const styles: { [key: string]: React.CSSProperties } = {
-  table: { width: "100%", borderCollapse: "collapse" },
-  th: { textAlign: "left", padding: "16px 24px", backgroundColor: "#f8fafc", color: "#64748b", fontSize: "12px", fontWeight: 700, letterSpacing: "0.05em" },
-  td: { padding: "18px 24px", borderBottom: "1px solid #f1f5f9", verticalAlign: "middle" },
-  tr: { transition: "background 0.2s" },
-  itemCell: { display: 'flex', alignItems: 'center', gap: '10px' },
-  iconBox: { width: '28px', height: '28px', backgroundColor: '#ecfdf5', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  itemName: { fontWeight: 700, color: '#1e293b', fontSize: '14px' },
-  unitBadge: { backgroundColor: "#f1f5f9", padding: "4px 10px", borderRadius: "6px", fontSize: "11px", fontWeight: 700, color: "#475569" },
-  statusBadge: { display: "inline-flex", alignItems: "center", gap: "6px", padding: "6px 12px", borderRadius: "20px", fontSize: "11px", fontWeight: 700 },
-  dot: { width: "6px", height: "6px", borderRadius: "50%" },
-};

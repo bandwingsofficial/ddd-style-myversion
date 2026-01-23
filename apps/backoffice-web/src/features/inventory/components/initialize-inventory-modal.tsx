@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { InventoryAPI } from "../api/inventory.api";
-import { X, Box, Layers, Truck, AlertCircle } from "lucide-react"; // Updated icon to Truck
+import { X, Box, Layers, Truck, AlertCircle, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Props {
@@ -21,7 +21,7 @@ export default function InitializeInventoryModal({ onClose, onSuccess }: Props) 
   const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [stockItemId, setStockItemId] = useState("");
   const [unit, setUnit] = useState("");
-  const [quantity, setQuantity] = useState(0);
+  const [quantity, setQuantity] = useState<number | ''>('');
   const [loading, setLoading] = useState(false);
   const [fetchingStocks, setFetchingStocks] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
@@ -31,7 +31,6 @@ export default function InitializeInventoryModal({ onClose, onSuccess }: Props) 
     const loadStocks = async () => {
       try {
         const res = await InventoryAPI.getAllStockItems();
-        // Filter to display only stock items with "ACTIVE" status
         const activeStocks = res.data.data.filter((item: StockItem) => item.status === "ACTIVE");
         setStockItems(activeStocks);
       } catch (err) {
@@ -48,7 +47,6 @@ export default function InitializeInventoryModal({ onClose, onSuccess }: Props) 
     setStockItemId(id);
     setFormError(null);
 
-    // Automatically find and set the unit from the selected stock item
     const selectedItem = stockItems.find((item) => item.id === id);
     if (selectedItem) {
       setUnit(selectedItem.unit);
@@ -62,6 +60,9 @@ export default function InitializeInventoryModal({ onClose, onSuccess }: Props) 
       setFormError("Please select a Stock Item");
       return;
     }
+    
+    // Convert to number for API, default to 0 if empty
+    const qtyValue = Number(quantity);
 
     setLoading(true);
     setFormError(null);
@@ -70,7 +71,7 @@ export default function InitializeInventoryModal({ onClose, onSuccess }: Props) 
       await InventoryAPI.initialize({
         stockItemId,
         unit,
-        quantity,
+        quantity: qtyValue,
       });
 
       onSuccess(); 
@@ -90,45 +91,64 @@ export default function InitializeInventoryModal({ onClose, onSuccess }: Props) 
   };
 
   return (
-    <div style={styles.overlay} onClick={onClose}>
+    // 1. OVERLAY
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+      onClick={onClose}
+    >
+      
+      {/* 2. MODAL CARD */}
       <motion.div 
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        style={styles.modal} 
+        className="w-full max-w-md overflow-hidden rounded-3xl bg-background p-8 shadow-2xl ring-1 ring-border"
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={styles.header}>
+        
+        {/* HEADER */}
+        <div className="flex items-start justify-between mb-6">
           <div>
-            <h2 style={styles.title}>Initialize Inventory</h2>
-            <p style={styles.subtitle}>Set initial stock levels for a raw material</p>
+            <h2 className="text-xl font-bold text-foreground">Initialize Inventory</h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Set initial stock levels for a raw material.
+            </p>
           </div>
-          <button onClick={onClose} style={styles.closeBtn}><X size={20}/></button>
+          <button 
+            onClick={onClose} 
+            className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <X size={20}/>
+          </button>
         </div>
 
-        <div style={styles.form}>
+        {/* FORM */}
+        <div className="flex flex-col gap-5">
+          
           <AnimatePresence>
             {formError && (
               <motion.div 
                 initial={{ height: 0, opacity: 0 }} 
                 animate={{ height: "auto", opacity: 1 }} 
-                style={styles.errorBanner}
+                className="flex items-center gap-3 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm font-medium text-destructive"
               >
-                <AlertCircle size={16} />
+                <AlertCircle size={18} />
                 <span>{formError}</span>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* STOCK ITEM DROPDOWN - STYLED TO MATCH IMAGE */}
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Select Stock Item *</label>
-            <div style={styles.inputWrapper}>
-              <Truck size={18} style={styles.inputIcon} />
+          {/* STOCK ITEM DROPDOWN */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Select Stock Item <span className="text-destructive">*</span>
+            </label>
+            <div className="relative">
+              <Truck size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <select
                 value={stockItemId}
                 onChange={(e) => handleStockChange(e.target.value)}
-                style={styles.input}
                 disabled={fetchingStocks}
+                className="w-full appearance-none rounded-xl border border-input bg-background py-3 pl-11 pr-4 text-sm font-medium text-foreground outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10 disabled:opacity-50"
               >
                 <option value="">{fetchingStocks ? "Loading..." : "-- Select Item --"}</option>
                 {stockItems.map((item) => (
@@ -137,70 +157,67 @@ export default function InitializeInventoryModal({ onClose, onSuccess }: Props) 
                   </option>
                 ))}
               </select>
+              {/* Custom Arrow for select */}
+              <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">
+                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 1l4 4 4-4"/></svg>
+              </div>
             </div>
           </div>
 
           {/* UNIT DISPLAY (READ-ONLY) */}
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Measurement Unit (Auto-filled)</label>
-            <div style={styles.inputWrapper}>
-              <Layers size={18} style={styles.inputIcon} />
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Measurement Unit <span className="text-[10px] font-normal normal-case">(Auto-filled)</span>
+            </label>
+            <div className="relative">
+              <Layers size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/70" />
               <input
                 value={unit || "Select an item first"}
                 readOnly
-                style={{ ...styles.input, backgroundColor: "#f1f5f9", cursor: "not-allowed", color: "#64748b" }}
+                className="w-full rounded-xl border border-border bg-muted/50 py-3 pl-11 pr-4 text-sm font-medium text-muted-foreground outline-none cursor-not-allowed"
               />
             </div>
           </div>
 
           {/* QUANTITY INPUT */}
-          <div style={styles.inputGroup}>
-            <label style={styles.label}>Initial Quantity *</label>
-            <div style={styles.inputWrapper}>
-              <Box size={18} style={styles.inputIcon} />
+          <div className="space-y-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Initial Quantity <span className="text-destructive">*</span>
+            </label>
+            <div className="relative">
+              <Box size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="number"
                 placeholder="0"
                 value={quantity}
-                onChange={(e) => setQuantity(+e.target.value)}
-                style={styles.input}
+                onChange={(e) => setQuantity(e.target.value === '' ? '' : Number(e.target.value))}
                 min="0"
+                className="w-full rounded-xl border border-input bg-background py-3 pl-11 pr-4 text-sm font-bold text-foreground outline-none transition-all placeholder:font-normal focus:border-primary focus:ring-4 focus:ring-primary/10"
               />
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
+          {/* BUTTONS */}
+          <div className="flex gap-3 mt-2">
+            <button 
+              onClick={onClose} 
+              disabled={loading}
+              className="flex-1 rounded-xl border border-input bg-background py-3 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+            >
+              Cancel
+            </button>
             <button 
               onClick={submit} 
               disabled={loading || fetchingStocks || !stockItemId} 
-              style={loading || !stockItemId ? { ...styles.primaryBtn, opacity: 0.7, cursor: 'not-allowed' } : styles.primaryBtn}
+              className="flex-[2] flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
             >
+              {loading && <Loader2 size={16} className="animate-spin" />}
               {loading ? "Initializing..." : "Initialize Stock"}
             </button>
-            <button onClick={onClose} style={styles.secondaryBtn}>
-              Cancel
-            </button>
           </div>
+
         </div>
       </motion.div>
     </div>
   );
 }
-
-const styles: { [key: string]: React.CSSProperties } = {
-  overlay: { position: "fixed", inset: 0, backgroundColor: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 },
-  modal: { backgroundColor: "#fff", width: "450px", borderRadius: "24px", padding: "32px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)" },
-  header: { display: "flex", justifyContent: "space-between", marginBottom: "24px" },
-  title: { fontSize: "22px", fontWeight: 700, color: "#1e293b", margin: 0 },
-  subtitle: { color: "#64748b", fontSize: "13px", margin: "4px 0 0 0" },
-  closeBtn: { background: "none", border: "none", cursor: "pointer", color: "#64748b" },
-  form: { display: "flex", flexDirection: "column", gap: "20px" },
-  inputGroup: { display: "flex", flexDirection: "column", gap: "8px" },
-  label: { fontSize: "  13px", fontWeight: 600, color: "#475569" },
-  inputWrapper: { position: "relative", display: "flex", alignItems: "center" },
-  inputIcon: { position: "absolute", left: "12px", color: "#94a3b8", zIndex: 1 },
-  input: { width: "100%", padding: "12px 12px 12px 40px", borderRadius: "12px", border: "1px solid #e2e8f0", outline: "none", fontSize: "14px", backgroundColor: "#f8fafc", appearance: "none" },
-  primaryBtn: { flex: 1, background: "linear-gradient(180deg, #34d399 0%, #10b981 100%)", color: "white", border: "none", padding: "14px", borderRadius: "12px", fontWeight: 700, fontSize: "15px", cursor: "pointer", boxShadow: "0 6px 20px rgba(16, 185, 129, 0.4)" },
-  secondaryBtn: { flex: 0.5, padding: "14px", borderRadius: "12px", border: "1px solid #e2e8f0", backgroundColor: "#ffffff", fontWeight: 600, color: "#64748b", cursor: "pointer" },
-  errorBanner: { display: "flex", alignItems: "center", gap: "8px", padding: "12px", backgroundColor: "#fef2f2", color: "#ef4444", borderRadius: "12px", fontSize: "13px", fontWeight: 500, border: "1px solid #fee2e2" },
-};

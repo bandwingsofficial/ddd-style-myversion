@@ -1,203 +1,76 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@custom-variant dark (&:is(.dark *));
-
-/* ==================================================
-   THEME TOKEN MAPPING (shadcn compatible)
-================================================== */
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-
-  --color-destructive: var(--destructive);
-
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 6px);
-  --radius-2xl: calc(var(--radius) + 12px);
-  --radius-3xl: calc(var(--radius) + 20px);
-}
-
-/* ==================================================
-   LIGHT MODE — SUGARCANE / TENDER THEME
-================================================== */
-:root {
-  --radius: 0.75rem;
-
-  /* 🌱 Backgrounds */
-  --background: #ffffff;
-  --foreground: oklch(0.25 0.05 145);
-
-  /* 🪟 Glass cards */
-  --card: oklch(1 0 0 / 70%);
-  --card-foreground: oklch(0.22 0.04 145);
-
-  --popover: oklch(1 0 0 / 75%);
-  --popover-foreground: oklch(0.22 0.04 145);
-
-  /* 🍃 Primary (Sugarcane Green) */
-  --primary: oklch(0.72 0.18 145);
-  --primary-foreground: oklch(0.98 0 0);
-
-  /* 🌿 Secondary */
-  --secondary: oklch(0.92 0.05 145);
-  --secondary-foreground: oklch(0.28 0.05 145);
-
-  /* 🌱 Muted */
-  --muted: oklch(0.94 0.04 145);
-  --muted-foreground: oklch(0.45 0.05 145);
-
-  /* 🍏 Accent */
-  --accent: oklch(0.9 0.08 145);
-  --accent-foreground: oklch(0.22 0.04 145);
-
-  /* 🚨 Destructive */
-  --destructive: oklch(0.62 0.22 25);
-
-  /* 🧊 Borders & rings */
-  --border: oklch(0.88 0.04 145);
-  --input: oklch(1 0 0 / 65%);
-  --ring: oklch(0.72 0.18 145);
-
-  /* 🌫️ Glass helpers */
-  --glass-bg: oklch(1 0 0 / 65%);
-  --glass-border: oklch(0.9 0.03 145 / 60%);
-  --glass-shadow: 0 20px 40px rgba(20, 120, 70, 0.18);
-}
-
-/* ==================================================
-   DARK MODE — TENDER COCONUT NIGHT
-================================================== */
-.dark {
-  --background: oklch(0.18 0.03 145);
-  --foreground: oklch(0.96 0.01 145);
-
-  --card: oklch(0.22 0.03 145 / 80%);
-  --card-foreground: oklch(0.96 0.01 145);
-
-  --popover: oklch(0.22 0.03 145 / 85%);
-  --popover-foreground: oklch(0.96 0.01 145);
-
-  --primary: oklch(0.75 0.17 145);
-  --primary-foreground: oklch(0.18 0.03 145);
-
-  --secondary: oklch(0.3 0.04 145);
-  --secondary-foreground: oklch(0.96 0.01 145);
-
-  --muted: oklch(0.28 0.03 145);
-  --muted-foreground: oklch(0.7 0.04 145);
-
-  --accent: oklch(0.32 0.05 145);
-  --accent-foreground: oklch(0.96 0.01 145);
-
-  --destructive: oklch(0.7 0.22 25);
-
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 18%);
-  --ring: oklch(0.75 0.17 145);
-
-  --glass-bg: oklch(0.22 0.03 145 / 75%);
-  --glass-border: oklch(1 0 0 / 18%);
-  --glass-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-}
-
-/* ==================================================
-   BASE STYLES + TYPOGRAPHY SCALE (UPDATED)
-================================================== */
 @layer base {
-  /* ⬆️ Global font size increase */
-  html {
-    font-size: 17px; /* default was 16px */
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 158 93% 40%; /* Sugarcane Green */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 155 30% 95%;
+    --secondary-foreground: 158 40% 30%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 155 30% 94%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 158 93% 40%;
+
+    --radius: 0.75rem;
   }
 
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+ 
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+ 
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+ 
+    --primary: 158 93% 40%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+ 
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+ 
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+ 
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+ 
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+ 
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 158 93% 40%;
+  }
+}
+
+@layer base {
   * {
-    @apply border-border outline-ring/40;
+    @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground;
-    font-size: 1rem; /* = 17px */
-    line-height: 1.6;
   }
-
-  /* Headings (commerce-friendly scale) */
-  h1 {
-    font-size: 2.6rem; /* ~44px */
-    line-height: 1.1;
-    font-weight: 800;
-  }
-
-  h2 {
-    font-size: 2rem; /* ~34px */
-    line-height: 1.15;
-    font-weight: 700;
-  }
-
-  h3 {
-    font-size: 1.4rem; /* ~24px */
-    line-height: 1.25;
-    font-weight: 600;
-  }
-
-  p {
-    font-size: 1rem;
-    line-height: 1.65;
-  }
-
-  /* Inputs & buttons (touch friendly) */
-  input,
-  button,
-  select,
-  textarea {
-    font-size: 1rem;
-  }
-}
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
-}
-
-@keyframes shimmer {
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-.animate-shimmer {
-  animation: shimmer 1.4s infinite;
-}
-
-
-/* Hide scrollbar but keep scrolling */
-.no-scrollbar {
-  -ms-overflow-style: none; /* IE & Edge */
-  scrollbar-width: none; /* Firefox */
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none; /* Chrome, Safari */
 }

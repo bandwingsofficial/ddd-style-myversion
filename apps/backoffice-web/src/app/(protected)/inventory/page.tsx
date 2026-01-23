@@ -8,7 +8,8 @@ import {
   LayoutGrid, 
   Plus, 
   Search,
-  X
+  X,
+  RefreshCw
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import InitializeInventoryModal from "@/features/inventory/components/initialize-inventory-modal";
@@ -19,103 +20,88 @@ export default function InventoryPage() {
   const { refresh } = useInventory();
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }} 
-      animate={{ opacity: 1 }} 
-      style={styles.container}
-    >
-      {/* --- HEADER SECTION --- */}
-      <div style={styles.header}>
-        <motion.div 
-          initial={{ x: -20, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          style={styles.headerTitleGroup}
-        >
-          <div style={styles.iconCircleHeader}>
-            <LayoutGrid size={20} color="#10b981" />
+    // 1. PAGE CONTAINER
+    <div className="min-h-screen bg-background p-6 md:p-8 font-sans animate-in fade-in duration-500">
+      
+      {/* 2. HEADER SECTION */}
+      <div className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+        
+        {/* Title Group */}
+        <div className="flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <LayoutGrid size={24} />
           </div>
           <div>
-            <h1 style={styles.title}>Inventory</h1>
-            <p style={styles.subtitle}>Super Admin Panel</p>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">Inventory</h1>
+            <p className="text-sm text-muted-foreground">Super Admin Panel</p>
           </div>
-        </motion.div>
+        </div>
 
-        {/* Search Bar */}
-        <motion.div 
-          initial={{ y: -10, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          whileFocus={{ scale: 1.02 }}
-          style={styles.searchContainer}
-        >
-          <Search size={18} color="#94a3b8" style={styles.searchIcon} />
-          <input 
-            type="text" 
-            placeholder="Search items..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={styles.searchInput}
-          />
-          {searchQuery && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-            >
-              <X 
-                size={16} 
-                color="#94a3b8" 
-                style={{ cursor: 'pointer', marginRight: '12px' }} 
-                onClick={() => setSearchQuery("")} 
-              />
-            </motion.div>
-          )}
-        </motion.div>
+        {/* Actions Group (Search + Button) */}
+        <div className="flex flex-1 flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
+          
+          {/* Search Bar */}
+          <div className="relative w-full max-w-xs">
+            <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input 
+              type="text" 
+              placeholder="Search items..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="h-11 w-full rounded-xl border border-input bg-background pl-10 pr-10 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-primary/10"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
 
-        <motion.div 
-          initial={{ x: 20, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          style={styles.actionBar}
-        >
-          <motion.button 
-            whileHover={{ scale: 1.05, boxShadow: "0 6px 15px rgba(16, 185, 129, 0.3)" }}
-            whileTap={{ scale: 0.95 }}
-            style={styles.initButton}
+          {/* Initialize Button */}
+          <button 
             onClick={() => setIsInitOpen(true)}
+            className="flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-primary/40 active:scale-95"
           >
             <Plus size={18} />
             Initialize
-          </motion.button>
-        </motion.div>
+          </button>
+        </div>
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        style={styles.card}
-      >
-        <div style={styles.cardHeader}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={styles.headerIconBg}>
-              <Package size={16} color="#10b981" />
+      {/* 3. CONTENT CARD */}
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        
+        {/* Card Header */}
+        <div className="flex items-center justify-between border-b border-border bg-muted/20 px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+              <Package size={16} />
             </div>
-            <h3 style={styles.cardTitle}>Inventory Overview</h3>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">
+              Inventory Overview
+            </h3>
           </div>
-          <motion.div 
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ repeat: Infinity, duration: 2 }}
-            style={styles.badge}
-          >
+          
+          {/* Live Sync Badge */}
+          <div className="flex items-center gap-2 rounded-full bg-background px-3 py-1 text-[10px] font-bold uppercase tracking-wide border border-border text-muted-foreground">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
             Live Sync
-          </motion.div>
+          </div>
         </div>
 
-        <div style={styles.tableWrapper}>
-          {/* ✅ SEARCH INTEGRATION: Passing searchQuery to Table */}
+        {/* Table Wrapper */}
+        <div className="p-0">
           <InventoryTable searchQuery={searchQuery} />
         </div>
-      </motion.div>
+      </div>
 
+      {/* 4. MODALS */}
       <AnimatePresence>
         {isInitOpen && (
           <InitializeInventoryModal 
@@ -127,26 +113,6 @@ export default function InventoryPage() {
           />
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }
-
-const styles: { [key: string]: React.CSSProperties } = {
-  container: { padding: "20px 32px", backgroundColor: "#f8fafc", minHeight: "100vh", fontFamily: "'Inter', sans-serif" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", gap: "24px" },
-  headerTitleGroup: { display: "flex", alignItems: "center", gap: "12px", minWidth: "180px" },
-  iconCircleHeader: { width: "42px", height: "42px", borderRadius: "12px", backgroundColor: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center" },
-  title: { fontSize: "30px", fontWeight: 800, color: "#1e293b", margin: 0 },
-  subtitle: { color: "#64748b", margin: 0, fontSize: "13px", fontWeight: 500 },
-  searchContainer: { flex: 1, maxWidth: "400px", display: "flex", alignItems: "center", backgroundColor: "#ffffff", borderRadius: "12px", border: "1px solid #e2e8f0", padding: "2px 4px", transition: "all 0.2s ease", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" },
-  searchIcon: { marginLeft: "12px" },
-  searchInput: { flex: 1, border: "none", padding: "10px 12px", fontSize: "14px", outline: "none", color: "#1e293b", backgroundColor: "transparent" },
-  actionBar: { display: "flex", gap: "12px" },
-  initButton: { display: "flex", alignItems: "center", gap: "8px", padding: "10px 20px", borderRadius: "10px", background: "linear-gradient(135deg, #34d399 0%, #10b981 100%)", color: "#ffffff", border: "none", fontWeight: 700, fontSize: "14px", cursor: "pointer", boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)" },
-  card: { backgroundColor: "#fff", borderRadius: "20px", border: "1px solid #f1f5f9", boxShadow: "0 4px 20px rgba(0,0,0,0.03)", overflow: "hidden" },
-  cardHeader: { padding: "18px 24px", borderBottom: "1px solid #f8fafc", display: "flex", justifyContent: "space-between", alignItems: "center" },
-  headerIconBg: { width: "32px", height: "32px", borderRadius: "8px", backgroundColor: "#ecfdf5", display: "flex", alignItems: "center", justifyContent: "center" },
-  cardTitle: { fontSize: "15px", fontWeight: 700, color: "#1e293b", margin: 0 },
-  badge: { padding: "4px 10px", borderRadius: "20px", backgroundColor: "#f0fdf4", color: "#16a34a", fontSize: "10px", fontWeight: 700 },
-  tableWrapper: { padding: "0 8px 8px 8px" }
-};

@@ -10,7 +10,4 @@ const customerAxios = axios.create({
   },
 });
 
-// ❌ REMOVE request interceptor completely
-// ❌ DO NOT attach Authorization header
-
 export default customerAxios;
