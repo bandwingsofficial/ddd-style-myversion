@@ -3,12 +3,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-// Added ShoppingBag to imports
 import { Search, ChevronRight, MapPin, Loader2, Info, Store, Package, ShoppingBag } from 'lucide-react';
 import { useOutletStore } from '@/features/outlets/outlet.store';
 
 // --- Components ---
-
 const Toast = ({ message, visible }: { message: string; visible: boolean }) => (
   <AnimatePresence>
     {visible && (
@@ -63,7 +61,7 @@ export default function UsersOutletSelectPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 font-sans md:p-10">
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-5xl">
         <Toast message={toast.msg} visible={toast.show} />
 
         {/* HEADER */}
@@ -74,10 +72,10 @@ export default function UsersOutletSelectPage() {
             className="flex flex-col gap-1"
           >
             <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-              Staff Directory
+              Outlet Operations
             </h1>
             <p className="text-sm font-medium text-slate-500">
-              Select an outlet to manage users, products, or view stock
+              Select an outlet to manage users, stock, or products
             </p>
           </motion.div>
         </header>
@@ -114,13 +112,13 @@ export default function UsersOutletSelectPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 whileHover={{ y: -2 }}
-                className="group relative flex flex-col items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-emerald-500/30 hover:shadow-md sm:flex-row sm:items-center"
+                className="group relative flex flex-col items-start justify-between gap-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-emerald-500/30 hover:shadow-md md:flex-row md:items-center"
               >
                 
                 {/* Card Info */}
                 <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition-colors group-hover:bg-emerald-100 group-hover:text-emerald-700">
-                    <Store size={22} />
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition-colors group-hover:bg-emerald-100 group-hover:text-emerald-700">
+                    <Store size={24} />
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-slate-800">{o.name}</h3>
@@ -132,43 +130,41 @@ export default function UsersOutletSelectPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex w-full gap-3 sm:w-auto flex-wrap sm:flex-nowrap">
+                <div className="flex w-full flex-wrap gap-3 md:w-auto">
                   
                   {/* Stock Button */}
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => router.push(`/users/${o.id}/stock`)}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 sm:flex-none"
-                    title="View Stock"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 md:flex-none"
                   >
                     <Package size={16} />
                     Stock
                   </motion.button>
 
-                   {/* --- NEW PRODUCTS BUTTON --- */}
-                   <motion.button
+                  {/* NEW: Products Button */}
+                  <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => router.push(`/users/${o.id}/products`)}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 sm:flex-none"
-                    title="Manage Products"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 md:flex-none"
                   >
                     <ShoppingBag size={16} />
                     Products
                   </motion.button>
 
-                  {/* Manage Button */}
+                  {/* Users (Manage) Button */}
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => {
-                      showToast(`Loading ${o.name}...`);
+                      showToast(`Accessing Users for ${o.name}...`);
                       router.push(`/users/${o.id}`);
                     }}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-white shadow-lg shadow-emerald-500/20 transition-all hover:shadow-emerald-500/40 sm:flex-none"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-white shadow-lg shadow-emerald-500/20 transition-all hover:shadow-emerald-500/40 md:flex-none"
                   >
-                    Manage
+                    Users
                     <ChevronRight size={16} />
                   </motion.button>
                 </div>
@@ -177,7 +173,6 @@ export default function UsersOutletSelectPage() {
             ))}
           </AnimatePresence>
 
-          {/* Empty State */}
           {filteredOutlets.length === 0 && (
             <motion.div 
               initial={{ opacity: 0 }} 

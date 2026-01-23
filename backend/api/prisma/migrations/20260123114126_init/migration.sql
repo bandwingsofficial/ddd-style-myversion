@@ -211,6 +211,20 @@ CREATE TABLE "OutletUser" (
 );
 
 -- CreateTable
+CREATE TABLE "OutletProduct" (
+    "id" TEXT NOT NULL,
+    "outletId" TEXT NOT NULL,
+    "productId" TEXT NOT NULL,
+    "isAvailable" BOOLEAN NOT NULL DEFAULT true,
+    "priceOverride" DECIMAL(12,2),
+    "discountOverride" DECIMAL(12,2),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "OutletProduct_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "SuperAdmin" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
@@ -519,6 +533,15 @@ CREATE UNIQUE INDEX "OutletUser_email_key" ON "OutletUser"("email");
 CREATE INDEX "OutletUser_outletId_idx" ON "OutletUser"("outletId");
 
 -- CreateIndex
+CREATE INDEX "OutletProduct_outletId_idx" ON "OutletProduct"("outletId");
+
+-- CreateIndex
+CREATE INDEX "OutletProduct_productId_idx" ON "OutletProduct"("productId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "OutletProduct_outletId_productId_key" ON "OutletProduct"("outletId", "productId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "SuperAdmin_email_key" ON "SuperAdmin"("email");
 
 -- CreateIndex
@@ -646,6 +669,12 @@ ALTER TABLE "AuditLog" ADD CONSTRAINT "AuditLog_sessionId_fkey" FOREIGN KEY ("se
 
 -- AddForeignKey
 ALTER TABLE "OutletUser" ADD CONSTRAINT "OutletUser_outletId_fkey" FOREIGN KEY ("outletId") REFERENCES "Outlet"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "OutletProduct" ADD CONSTRAINT "OutletProduct_outletId_fkey" FOREIGN KEY ("outletId") REFERENCES "Outlet"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "OutletProduct" ADD CONSTRAINT "OutletProduct_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "CentralInventory" ADD CONSTRAINT "CentralInventory_stockItemId_fkey" FOREIGN KEY ("stockItemId") REFERENCES "StockItem"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

@@ -1,2 +1,0 @@
--- AlterEnum
-ALTER TYPE "AuditAction" ADD VALUE 'OUTLET_USER_ENABLED';
