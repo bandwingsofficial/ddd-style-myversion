@@ -15,11 +15,26 @@ export const getPublicProducts = async (): Promise<ProductListItem[]> => {
 
 /**
  * Fetch product by slug
- */
-export const getProductBySlug = async (
+ * export const getProductBySlug = async (
   slug: string
 ): Promise<ProductDetails> => {
   const res = await customerAxios.get(`/public/products/slug/${slug}`);
   // Assuming backend returns { success: true, data: { ...object } }
+  return res.data.data;
+};
+ */
+
+
+export const getProductsByOutlet = async (outletId: string): Promise<ProductListItem[]> => {
+  // Matches: https://admin.dev.local:4000/public/outlets/:id/products
+  const res = await customerAxios.get(`/public/outlets/${outletId}/products`);
+  return res.data.data;
+};
+
+/**
+ * Fetch product by slug (remains mostly same, but might need outlet context in future)
+ */
+export const getProductBySlug = async (slug: string): Promise<ProductDetails> => {
+  const res = await customerAxios.get(`/public/products/slug/${slug}`);
   return res.data.data;
 };

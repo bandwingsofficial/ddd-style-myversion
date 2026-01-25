@@ -1,19 +1,36 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getPublicProducts } from "../api/product.api";
+import { getProductsByOutlet } from "../api/product.api";
 import { ProductListItem } from "../types/product.types";
+import { useOutletStore } from "@/features/outlet/outlet.store";
 
 export function useProducts() {
   const [products, setProducts] = useState<ProductListItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  
+  // Get selected outlet from global store
+  const selectedOutlet = useOutletStore((state) => state.selectedOutlet);
 
   useEffect(() => {
-    getPublicProducts()
-      .then(setProducts)
-      .catch((err) => console.error("Failed to load products", err))
-      .finally(() => setLoading(false));
-  }, []);
+    // If no outlet is selected, we cannot fetch products
+    if (!selectedOutlet?.id) {
+      setProducts([]);
+      return;
+    }
 
-  return { products, loading };
+    setLoading(true);
+    getProductsByOutlet(selectedOutlet.id)
+      .then((data) => {
+        // Ensure data is an array before setting
+        setProducts(Array.isArray(data) ? data : []); 
+      })
+      .catch((err) => {
+        console.error("Failed to load products for outlet", err);
+        setProducts([]);
+      })
+      .finally(() => setLoading(false));
+  }, [selectedOutlet?.id]); // Re-run if outlet changes
+
+  return { products, loading, isOutletSelected: !!selectedOutlet };
 }
