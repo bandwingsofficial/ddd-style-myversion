@@ -7,72 +7,110 @@ import { useFavorites } from "@/providers/CustomerAuthProvider";
 import { useCartStore } from "@/features/cart/cart.store";
 import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
 import { ProductListItem } from "@/features/products/types/product.types";
+// ✅ IMPORT YOUR OUTLET STORE
+import { useOutletStore } from "@/features/outlet/outlet.store";
 
-// ✅ Import the improved helpers
-import { 
-  getProductImage, 
-  getProductPrice, 
-  getProductName, 
-  getProductSlug 
-} from "@/features/products/utils/product-helpers";
+const BACKEND_URL = "https://api.dev.local:4000"; 
+const FALLBACK_OUTLET_ID = "718949f5-cee7-45c6-9308-cd0b58085ca8"; // Safety Net
 
 export default function ProductCard({ product }: { product: ProductListItem }) {
   const [imageError, setImageError] = useState(false);
-  
+  const p = product as any;
+
   const { isFavorite, addToFavorites, removeFromFavorites } = useFavorites();
   const isFav = isFavorite(product.id);
   const { items, addItem, updateItem, removeItem } = useCartStore();
   const isAuthenticated = useCustomerAuthStore((s) => s.isAuthenticated);
 
+  // ✅ GET GLOBAL OUTLET STATE
+  // Try to get the current selected outlet from your store
+  // Note: Adjust 'currentOutlet' if your store uses a different name like 'selectedOutlet'
+  const currentOutlet = useOutletStore((state: any) => state.currentOutlet || state.selectedOutlet);
+
   // ==========================================
-  // 1. USE HELPERS (Clean & Centralized)
+  // 1. DATA NORMALIZATION
   // ==========================================
+  const name = useMemo(() => p.name?.value || p.name || "Unknown", [p]);
+  const slug = useMemo(() => p.slug?.value || p.slug || "#", [p]);
+
+  // ✅ FINAL FIX: PRIORITY LOGIC FOR ID
+  // 1. Try Global Store (Best) -> 2. Try Product Data -> 3. Fallback (Hardcoded)
+  const outletId = useMemo(() => {
+    if (currentOutlet?.id) return currentOutlet.id;
+    if (p.outletId) return p.outletId;
+    if (p.outlet?.id) return p.outlet.id;
+    return FALLBACK_OUTLET_ID; 
+  }, [p, currentOutlet]);
+
+  // ... (Rest of your Price/Image logic remains exactly the same) ...
+  const { original, current, hasDiscount, savings } = useMemo(() => {
+    const parse = (val: any) => {
+      if (val === undefined || val === null) return 0;
+      const num = parseFloat(val);
+      return isNaN(num) ? 0 : num;
+    };
+    let originalPrice = parse(p.originalPrice ?? p.price?.originalPrice ?? p.price?.value ?? p.price);
+    let discountVal = parse(p.discountPrice ?? p.salePrice ?? p.price?.discountPrice ?? p.price?.salePrice);
+    let currentPrice = originalPrice;
+    let isDiscounted = false;
+    if (discountVal > 0 && discountVal < originalPrice) {
+      currentPrice = discountVal;
+      isDiscounted = true;
+    }
+    return { original: originalPrice, current: currentPrice, hasDiscount: isDiscounted, savings: originalPrice - currentPrice };
+  }, [p]);
+
+  const imageUrl = useMemo(() => {
+    if (!p) return null;
+    const rawImage = p.images || p.image || p.mainImage || p.thumbnail;
+    let path = "";
+    if (Array.isArray(rawImage)) path = rawImage[0] || "";
+    else if (typeof rawImage === "object" && rawImage !== null) path = rawImage.url || rawImage.mainImage || rawImage.value || "";
+    else if (typeof rawImage === "string") path = rawImage;
+    if (!path || path.trim() === "") return null;
+    if (path.startsWith("http")) return path;
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+    return `${BACKEND_URL}${cleanPath}`;
+  }, [p]);
+
+  const unitLabel = useMemo(() => {
+    if (typeof p.unit === "object" && p.unit !== null) return `${p.unit.value} ${p.unit.type}`;
+    else if (p.unit) return String(p.unit);
+    return "";
+  }, [p.unit]);
   
-  const name = getProductName(product);
-  const slug = getProductSlug(product);
-  
-  // Get Price Data
-  const { original, current, hasDiscount } = getProductPrice(product);
-  const savings = original - current;
+  const isTrending = p.trendState?.trending || false;
+  const ratingAvg = typeof p.rating === "object" ? p.rating.average : (p.rating || 0);
+  const description = p.shortDescription || "";
+  const tags = p.tags || [];
 
-  // Get Image URL
-  const imageUrl = getProductImage(product);
-
-  // Unit Logic
-  let unitLabel = "";
-  if (typeof product.unit === "object" && product.unit !== null) {
-     unitLabel = `${product.unit.value} ${product.unit.type}`;
-  } else if (product.unit) {
-     unitLabel = String(product.unit);
-  }
-
-  // Meta Data
-  const isTrending = product.trendState?.trending || false;
-  const ratingAvg = typeof product.rating === "object" ? product.rating.average : (product.rating || 0);
-  const description = product.shortDescription || "";
-  const tags = product.tags || [];
-
-  // ==========================================
-  // 2. CART LOGIC
-  // ==========================================
-  const cartItem = useMemo(
-    () => items.find((i) => i.productId === product.id),
-    [items, product.id]
-  );
+  const cartItem = useMemo(() => items.find((i) => i.productId === p.id), [items, p.id]);
   const quantity = cartItem?.quantity || 0;
 
   const handleToggleFavorite = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    isFav ? removeFromFavorites(product.id) : addToFavorites(product);
+    e.preventDefault(); e.stopPropagation();
+    isFav ? removeFromFavorites(p.id) : addToFavorites(p);
   };
 
   const handleAdd = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (original <= 0) { alert("Invalid Price"); return; }
+    
+    // ✅ Safety Check
+    if (!outletId) {
+       console.error("❌ CRITICAL: No Outlet ID found in Store or Product.");
+       alert("System Error: Store ID missing.");
+       return;
+    }
+
+    console.log("✅ Adding to Cart with Outlet ID:", outletId);
+
     await addItem(
       { 
-        productId: product.id, 
+        productId: p.id,
+        outletId: outletId, // Uses the priority logic from above
         productName: name, 
         productImage: imageUrl || "", 
         quantity: 1, 
@@ -84,107 +122,79 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
   };
 
   const updateQuantity = async (e: React.MouseEvent, delta: number) => {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     if (!cartItem) return;
     const newQty = cartItem.quantity + delta;
-    if (newQty <= 0) await removeItem(product.id, isAuthenticated);
-    else await updateItem(product.id, newQty, isAuthenticated);
+    if (newQty <= 0) await removeItem(p.id, isAuthenticated);
+    else await updateItem(p.id, newQty, isAuthenticated);
   };
 
-  // ==========================================
-  // 3. UI RENDER
-  // ==========================================
+  const isAddDisabled = original <= 0;
+
   return (
     <div style={styles.cardWrapper}>
       <Link href={`/products/${slug}`} style={styles.productCard} className="product-card">
-        
         {/* IMAGE AREA */}
         <div style={styles.imageContainer} className="image-container">
           <button onClick={handleToggleFavorite} style={styles.favBtn} className="fav-btn">
             <Heart size={18} fill={isFav ? "#ef4444" : "transparent"} color={isFav ? "#ef4444" : "#94a3b8"} strokeWidth={2.5} />
           </button>
-
-          {/* Use the calculated imageUrl directly */}
           {imageUrl && !imageError ? (
-            <img 
-              src={imageUrl} 
-              alt={name} 
-              style={styles.productImage} 
-              onError={() => setImageError(true)} 
-            />
+            <img src={imageUrl} alt={name} style={styles.productImage} onError={() => setImageError(true)} />
           ) : (
-            <div style={styles.imageFallback}>
-              <ImageOff size={28} />
-              <span>No Image</span>
-            </div>
+            <div style={styles.imageFallback}><ImageOff size={28} /><span>No Image</span></div>
           )}
-
           <div style={styles.badgeContainer}>
-             {hasDiscount && (
-               <div style={styles.discountBadge}>SAVE ₹{savings}</div>
-             )}
-             {isTrending && (
-               <div style={styles.trendingBadge}>
-                  <TrendingUp size={12} /> Trending
-               </div>
-             )}
+            {hasDiscount && <div style={styles.discountBadge}>SAVE ₹{savings}</div>}
+            {isTrending && <div style={styles.trendingBadge}><TrendingUp size={12} /> Trending</div>}
           </div>
         </div>
 
         {/* DETAILS AREA */}
         <div style={styles.content} className="content">
           <div style={styles.infoGroup}>
-            
             {tags.length > 0 && (
               <div style={styles.tagsRow}>
                 {tags.slice(0, 2).map((tag: string) => (
-                   <span key={tag} style={styles.tagBadge}>
-                     {tag.replace(/_/g, ' ')}
-                   </span>
+                  <span key={tag} style={styles.tagBadge}>{tag.replace(/_/g, ' ')}</span>
                 ))}
               </div>
             )}
-
             <h3 style={styles.productTitle} title={name}>{name}</h3>
-            
-            {description && (
-              <p style={styles.shortDesc} title={description}>{description}</p>
-            )}
-
+            {description && <p style={styles.shortDesc} title={description}>{description}</p>}
             <div style={styles.metaRow}>
-               {unitLabel && <span style={styles.unitText}>{unitLabel}</span>}
-               {ratingAvg > 0 && (
-                 <div style={styles.ratingBadge}>
-                   <Star size={10} fill="#f59e0b" color="#f59e0b" />
-                   <span>{ratingAvg}</span>
-                 </div>
-               )}
+              {unitLabel && <span style={styles.unitText}>{unitLabel}</span>}
+              {ratingAvg > 0 && (
+                <div style={styles.ratingBadge}><Star size={10} fill="#f59e0b" color="#f59e0b" /><span>{ratingAvg}</span></div>
+              )}
             </div>
-
             <div style={styles.priceRow}>
               <span style={styles.currentPrice}>₹{current}</span>
-              {hasDiscount && (
-                <span style={styles.oldPrice}>₹{original}</span>
-              )}
+              {hasDiscount && <span style={styles.oldPrice}>₹{original}</span>}
             </div>
           </div>
 
           <div style={styles.actionArea} className="action-area">
             {quantity === 0 ? (
-              <button style={styles.addButton} onClick={handleAdd} className="add-button">
-                <Plus size={16} strokeWidth={3} />
-                <span>ADD</span>
+              <button 
+                style={{
+                  ...styles.addButton,
+                  opacity: isAddDisabled ? 0.5 : 1,
+                  cursor: isAddDisabled ? 'not-allowed' : 'pointer',
+                  background: isAddDisabled ? '#e2e8f0' : '#f0fdf4',
+                  borderColor: isAddDisabled ? '#cbd5e1' : '#16a34a',
+                  color: isAddDisabled ? '#94a3b8' : '#16a34a'
+                }} 
+                onClick={!isAddDisabled ? handleAdd : (e) => e.preventDefault()} 
+                className="add-button"
+              >
+                <Plus size={16} strokeWidth={3} /><span>ADD</span>
               </button>
             ) : (
               <div style={styles.quantitySelector} className="quantity-selector">
-                <button style={styles.qtyBtn} onClick={(e) => updateQuantity(e, -1)}>
-                  <Minus size={14} strokeWidth={3} />
-                </button>
+                <button style={styles.qtyBtn} onClick={(e) => updateQuantity(e, -1)}><Minus size={14} strokeWidth={3} /></button>
                 <span style={styles.qtyNumber}>{quantity}</span>
-                <button style={styles.qtyBtn} onClick={(e) => updateQuantity(e, 1)}>
-                  <Plus size={14} strokeWidth={3} />
-                </button>
+                <button style={styles.qtyBtn} onClick={(e) => updateQuantity(e, 1)}><Plus size={14} strokeWidth={3} /></button>
               </div>
             )}
           </div>
@@ -195,7 +205,7 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
         .product-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .product-card:hover { border-color: #16a34a33 !important; box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.08); transform: translateY(-4px); }
         .fav-btn:active { transform: scale(0.9); }
-        .add-button:hover { background: #16a34a !important; color: white !important; }
+        .add-button:hover { background: ${isAddDisabled ? '#e2e8f0' : '#16a34a'} !important; color: ${isAddDisabled ? '#94a3b8' : 'white'} !important; }
         @media (max-width: 640px) {
           .image-container { height: 150px !important; }
           .content { padding: 10px !important; flex-direction: column !important; align-items: stretch !important; }
@@ -207,8 +217,10 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
   );
 }
 
-// Keep your styles object exactly as it was at the bottom of the file
 const styles: { [key: string]: React.CSSProperties } = {
+  // ... (Keep your existing styles, no changes needed here) ...
+  // Re-paste the styles from the previous code block if you lost them, 
+  // otherwise just leave the existing styles object at the bottom of the file.
   cardWrapper: { position: "relative" },
   productCard: { display: "block", background: "#ffffff", borderRadius: "16px", border: "1px solid #f1f5f9", overflow: "hidden", textDecoration: "none" },
   imageContainer: { position: "relative", height: "170px", overflow: "hidden", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center" },

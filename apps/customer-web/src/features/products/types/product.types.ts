@@ -52,6 +52,16 @@ export interface ProductBase {
   
   // Status is usually a simple string from backend
   status?: "ACTIVE" | "INACTIVE"; 
+
+  /* ======================================================
+     ✅ FIX: ADD OUTLET PROPERTIES HERE
+     This fixes the "Property 'outletId' does not exist" error
+  ====================================================== */
+  outletId?: string;
+  outlet?: {
+    id: string;
+    name?: string;
+  };
 }
 
 // The shape of a product in the list

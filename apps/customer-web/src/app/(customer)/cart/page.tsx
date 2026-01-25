@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Header from "@/components/customer/Header";
@@ -9,8 +9,9 @@ import { useCartStore } from "@/features/cart/cart.store";
 import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
 
-// Helper for images
+// Backend URL configuration
 const BACKEND_URL = "https://api.dev.local:4000";
+
 const getImageUrl = (path?: string) => {
   if (!path || path.trim() === "") return null;
   if (path.startsWith("http")) return path;
@@ -20,16 +21,28 @@ const getImageUrl = (path?: string) => {
 
 export default function CartPage() {
   const router = useRouter();
-  const { items, updateItem, removeItem } = useCartStore();
-  const isAuthenticated = useCustomerAuthStore((s) => s.isAuthenticated);
+  
+  // Stores
+  const { items, updateItem, removeItem, hydrated, loadCart } = useCartStore();
+  const { isAuthenticated } = useCustomerAuthStore();
+  
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
 
+  // Initial Load (Safe to call here to ensure sync)
+  useEffect(() => {
+    if (!hydrated) {
+      loadCart(isAuthenticated);
+    }
+  }, [hydrated, isAuthenticated, loadCart]);
+
+  // Calculations
   const { subtotal, totalDiscount, grandTotal } = useMemo(() => {
     return items.reduce(
       (acc, item) => {
         const price = item.discountPrice || item.unitPrice;
         const lineTotal = price * item.quantity;
         const originalLineTotal = item.unitPrice * item.quantity;
+        
         acc.subtotal += originalLineTotal;
         acc.grandTotal += lineTotal;
         acc.totalDiscount += (originalLineTotal - lineTotal);
@@ -39,13 +52,18 @@ export default function CartPage() {
     );
   }, [items]);
 
+  // Handlers
   const handleQuantityChange = async (productId: string, currentQty: number, delta: number) => {
     if (isUpdating) return;
     const newQty = currentQty + delta;
+    
     setIsUpdating(productId);
     try {
-      if (newQty <= 0) await removeItem(productId, isAuthenticated);
-      else await updateItem(productId, newQty, isAuthenticated);
+      if (newQty <= 0) {
+        await removeItem(productId, isAuthenticated);
+      } else {
+        await updateItem(productId, newQty, isAuthenticated);
+      }
     } finally {
       setIsUpdating(null);
     }
@@ -57,17 +75,27 @@ export default function CartPage() {
     setIsUpdating(null);
   };
 
+  // Logic: If guest -> Login (w/ redirect), If Auth -> Checkout
   const handleCheckout = () => {
-    isAuthenticated ? router.push("/cart/checkout") : router.push("/login?redirect=/cart/checkout");
+    if (isAuthenticated) {
+      router.push("/cart/checkout");
+    } else {
+      router.push("/login?redirect=/cart/checkout");
+    }
   };
+
+  if (!hydrated) {
+     return (
+       <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+         <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+       </div>
+     );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-sans flex flex-col">
       <Header />
       
-      {/* FIX: Increased padding-top from pt-24 to pt-36 (approx 144px). 
-         This pushes the content down so it clears your fixed header.
-      */}
       <main className="flex-grow pt-36 pb-12 px-4 sm:px-6">
         <section className="max-w-6xl mx-auto">
           
@@ -90,7 +118,7 @@ export default function CartPage() {
               </div>
               <h2 className="text-xl font-bold text-slate-900 mb-2">Your cart is empty</h2>
               <p className="text-slate-500 mb-8 leading-relaxed">
-                Looks like you haven't added any refreshing juices yet.
+                Looks like you haven't added any products yet.
               </p>
               
               <Link 
@@ -102,7 +130,7 @@ export default function CartPage() {
               </Link>
             </div>
           ) : (
-            /* --- FILLED STATE (Grid Layout) --- */
+            /* --- FILLED STATE --- */
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               
               {/* Items List */}
@@ -121,11 +149,11 @@ export default function CartPage() {
                       )}
 
                       <div className="w-full sm:w-28 h-28 bg-slate-50 rounded-xl overflow-hidden flex-shrink-0 border border-slate-100">
-                         {imageUrl ? (
-                           <img src={imageUrl} alt={item.productName} className="w-full h-full object-cover" />
-                         ) : (
-                           <div className="w-full h-full flex items-center justify-center text-slate-300"><ShoppingBag size={24} /></div>
-                         )}
+                          {imageUrl ? (
+                            <img src={imageUrl} alt={item.productName} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-slate-300"><ShoppingBag size={24} /></div>
+                          )}
                       </div>
 
                       <div className="flex-1 flex flex-col justify-between">
@@ -144,7 +172,7 @@ export default function CartPage() {
 
                         <div className="flex items-end justify-between mt-4 sm:mt-0">
                           <div className="flex items-center gap-3 bg-slate-50 p-1 rounded-lg border border-slate-200">
-                            <button className="w-8 h-8 flex items-center justify-center bg-white text-slate-600 rounded-md shadow-sm hover:text-emerald-600 border border-transparent" onClick={() => handleQuantityChange(item.productId, item.quantity, -1)} disabled={isLoading}>
+                            <button className="w-8 h-8 flex items-center justify-center bg-white text-slate-600 rounded-md shadow-sm hover:text-emerald-600 border border-transparent" onClick={() => handleQuantityChange(item.productId, item.quantity, -1)} disabled={isLoading || item.quantity <= 0}>
                               <Minus size={14} strokeWidth={2.5} />
                             </button>
                             <span className="w-6 text-center text-sm font-bold text-slate-900 tabular-nums">{item.quantity}</span>
@@ -172,7 +200,11 @@ export default function CartPage() {
                      <div className="h-px bg-slate-100 my-4" />
                      <div className="flex justify-between items-end"><span className="text-base font-bold text-slate-800">Total</span><span className="text-2xl font-extrabold text-slate-900">₹{grandTotal}</span></div>
                    </div>
-                   <button onClick={handleCheckout} className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-emerald-600/20 transition-all">
+                   
+                   <button 
+                    onClick={handleCheckout} 
+                    className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-emerald-600/20 transition-all"
+                   >
                      Checkout <ArrowRight size={18} />
                    </button>
                    <p className="text-[10px] text-slate-400 text-center mt-4">Shipping & taxes calculated at next step</p>

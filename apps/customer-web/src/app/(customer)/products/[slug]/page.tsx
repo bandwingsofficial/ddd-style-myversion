@@ -9,6 +9,7 @@ import {
   Minus, Plus, Share2, Leaf, ChevronRight, Loader2 
 } from "lucide-react";
 import { useState } from "react";
+import { ProductListItem } from "@/features/products/types/product.types"
 
 // --- CONFIG ---
 const BACKEND_URL = "https://api.dev.local:4000";
