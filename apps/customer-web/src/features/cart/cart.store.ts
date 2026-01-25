@@ -11,6 +11,9 @@ interface CartState {
   items: CartItem[];
   hydrated: boolean;
   isLoading: boolean;
+  
+  // ✅ NEW: Checkout Loading State
+  isCheckingOut: boolean; 
 
   loadCart: (isLoggedIn: boolean) => Promise<void>;
   addItem: (item: CartItem, isLoggedIn: boolean) => Promise<void>;
@@ -18,12 +21,16 @@ interface CartState {
   removeItem: (productId: string, isLoggedIn: boolean) => Promise<void>;
   mergeAfterLogin: () => Promise<void>;
   clear: (isLoggedIn: boolean) => Promise<void>;
+  
+  // ✅ NEW: Checkout Action
+  checkoutCart: () => Promise<boolean>;
 }
 
 export const useCartStore = create<CartState>((set, get) => ({
   items: [],
   hydrated: false,
   isLoading: false,
+  isCheckingOut: false, // Initial state
 
   /* ======================================================
       LOAD CART
@@ -37,7 +44,6 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
     try {
       const backendCart = await cartApi.fetchCart();
-      // ✅ FIX: Optional chaining (?.) prevents crash
       set({ items: backendCart?.items || [], hydrated: true });
     } catch (error) {
       console.error("Failed to fetch cart", error);
@@ -94,7 +100,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   },
 
   /* ======================================================
-      REMOVE ITEM (Previously Crashing)
+      REMOVE ITEM
    ====================================================== */
   removeItem: async (productId, isLoggedIn) => {
     if (!isLoggedIn) {
@@ -107,12 +113,9 @@ export const useCartStore = create<CartState>((set, get) => ({
 
     try {
       const updatedCart = await cartApi.removeCartItem(productId);
-      // ✅ CRITICAL FIX: Handle potential null response safely
       set({ items: updatedCart?.items || [] });
     } catch (error) {
       console.error("Failed to remove item", error);
-      // Optional safety: If remove fails, re-fetch the real cart state
-      // get().loadCart(true); 
     }
   },
 
@@ -152,6 +155,32 @@ export const useCartStore = create<CartState>((set, get) => ({
       set({ items: [] });
     } catch (error) {
       console.error("Failed to clear cart", error);
+    }
+  },
+
+  /* ======================================================
+      ✅ NEW: CHECKOUT CART
+   ====================================================== */
+  checkoutCart: async () => {
+    set({ isCheckingOut: true });
+    try {
+      // 1. Call API
+      const lockedCart = await cartApi.checkout();
+      
+      // 2. If status is LOCKED, success!
+      if (lockedCart && lockedCart.status === "LOCKED") {
+        set({ items: [], isCheckingOut: false }); 
+        return true;
+      }
+      
+      // If status isn't locked, something weird happened
+      set({ isCheckingOut: false });
+      return false;
+
+    } catch (error) {
+      console.error("Checkout failed", error);
+      set({ isCheckingOut: false });
+      return false;
     }
   },
 }));

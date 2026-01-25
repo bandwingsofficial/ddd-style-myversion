@@ -1,6 +1,15 @@
 import customerAxios from "@/http/axios/customerAxios";
 import { Cart, CartItem } from "./cart.types";
 
+
+// ✅ FIX: Payload is now optional or empty since API doesn't require address
+export const checkout = async (): Promise<Cart> => {
+  // Matches POST /cart/checkout -> Returns CART_LOCKED response
+  const res = await customerAxios.post("/cart/checkout", {}); 
+  return res.data.data;
+};
+
+
 export const fetchCart = async (): Promise<Cart> => {
   const res = await customerAxios.get("/cart");
   // ✅ FIX: If data is null (empty cart), return empty items array
