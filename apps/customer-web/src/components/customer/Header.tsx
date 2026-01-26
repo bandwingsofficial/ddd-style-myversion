@@ -211,7 +211,7 @@ export default function Header() {
              <div className="marquee-container">
                <div className="marquee-content">
                   <ShinyText
-                    text="Fresh, Hygienic, Live Preparation. Experience Purity.   —   Order Fresh Now!"
+                    text="Fresh, Hygienic and Natural Experience Purity.   —   Order Fresh Now!"
                     color="#ffffff"      
                     shineColor="#4ade80"  
                     speed={3}            

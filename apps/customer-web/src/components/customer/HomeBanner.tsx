@@ -139,7 +139,7 @@
       alignItems: "center",
       position: "relative",
       overflow: "hidden",
-      marginTop: "100px",
+      marginTop: "1px",
     },
     backgroundBlob: {
       position: "absolute",

@@ -117,7 +117,7 @@ export default function ProductGrid() {
 
 // ... styles object (keep your existing styles, they are fine) ...
 const styles: { [key: string]: React.CSSProperties } = {
-  productSection: { padding: "40px 0", background: "#ffffff" },
+  productSection: { padding: "0px 0", background: "#ffffff" },
   sectionContainer: { maxWidth: "1350px", margin: "0 auto", padding: "0 1.5rem" },
   centeredHeader: { textAlign: "center", marginBottom: "40px", display: "flex", flexDirection: "column", alignItems: "center" },
   title: { fontSize: "2.2rem", fontWeight: 800, margin: 0, color: "#0f172a" }, // Simplified title for brevity
