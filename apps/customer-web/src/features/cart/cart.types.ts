@@ -1,7 +1,7 @@
 export interface CartItem {
   // Required for Backend API
   productId: string;
-  outletId?: string; // Made optional for display, but required for adding
+  outletId?: string; // Required for adding, optional for display
   
   // Product Details
   productName: string;

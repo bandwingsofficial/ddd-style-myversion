@@ -28,7 +28,7 @@ export default function CartPage() {
   
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
 
-  // Initial Load (Safe to call here to ensure sync)
+  // Initial Load (Sync cart when Auth status changes)
   useEffect(() => {
     if (!hydrated) {
       loadCart(isAuthenticated);
@@ -75,7 +75,7 @@ export default function CartPage() {
     setIsUpdating(null);
   };
 
-  // Logic: If guest -> Login (w/ redirect), If Auth -> Checkout
+  // ✅ LOGIC: Guest -> Login, Auth -> Checkout
   const handleCheckout = () => {
     if (isAuthenticated) {
       router.push("/cart/checkout");
