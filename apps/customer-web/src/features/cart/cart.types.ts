@@ -1,7 +1,8 @@
 export interface CartItem {
-  // Required for Backend API
+  id?: string; // Cart Item ID (from backend)
   productId: string;
-  outletId?: string; // Required for adding, optional for display
+  cartId?: string;
+  outletId?: string;
   
   // Product Details
   productName: string;
@@ -9,14 +10,26 @@ export interface CartItem {
   
   // Price & Qty
   quantity: number;
-  unitPrice: number;
-  discountPrice: number;
+  unitPrice: number;     // Converted to number in API
+  discountPrice: number; // Converted to number in API
+  lineTotal?: number;
+  
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Cart {
   id?: string;
   customerId?: string;
   outletId?: string;
+  
+  // Backend Totals (New)
+  subtotal?: number | string;
+  discount?: number | string;
+  deliveryFee?: number | string;
+  grandTotal?: number | string;
+  itemCount?: number;
+
   items: CartItem[];
   currency?: string;
   status?: string;

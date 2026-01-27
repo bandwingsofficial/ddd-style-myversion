@@ -1,3 +1,5 @@
+// src/modules/customer/services/saved-address-orchestrator.service.ts
+
 import { Injectable } from '@nestjs/common';
 
 import { SavedAddressService } from './saved-address.service';
@@ -25,6 +27,18 @@ export class SavedAddressOrchestratorService {
   }): Promise<SavedAddress[]> {
     return this.savedAddressService.getAllByCustomer(
       params.customerId,
+    );
+  }
+
+  /* ================================================= */
+  /* ⭐ NEW – PRIMARY ADDRESS (MOST USED)               */
+  /* ================================================= */
+
+  async getPrimarySavedAddress(
+    customerId: string,
+  ): Promise<SavedAddress | null> {
+    return this.savedAddressService.getPrimaryAddress(
+      customerId,
     );
   }
 

@@ -58,6 +58,61 @@ export class OutletService {
 async getAllOutlets(): Promise<Outlet[]> {
   return this.outletRepo.findAll();
 }
+/* ================================================= */
+/* ⭐ PUBLIC – NEARBY OUTLETS (GEO FILTER)            */
+/* ================================================= */
+
+async getNearbyOutlets(
+  lat: number,
+  lng: number,
+): Promise<Outlet[]> {
+
+  /* 🔒 SAFETY */
+  if (isNaN(lat) || isNaN(lng)) return [];
+
+  const outlets = await this.outletRepo.findAll();
+
+  const result: Outlet[] = [];
+
+  for (const outlet of outlets) {
+    /* --------------------------------------------- */
+    /* 1️⃣ ONLY ACTIVE                               */
+    /* --------------------------------------------- */
+    if (!outlet.isActive()) continue;
+
+    /* --------------------------------------------- */
+    /* 2️⃣ ONLY WORKING = OPEN                       */
+    /* --------------------------------------------- */
+    if (!outlet.workingState?.canAcceptOrders()) continue;
+
+    /* --------------------------------------------- */
+    /* 3️⃣ MUST HAVE LOCATION                        */
+    /* --------------------------------------------- */
+    const location = outlet.location?.getRaw();
+    if (!location) continue;
+
+    const { latitude: outletLat, longitude: outletLng } = location;
+
+    /* --------------------------------------------- */
+    /* 4️⃣ DISTANCE CHECK (Haversine)                */
+    /* --------------------------------------------- */
+    const distanceKm = this.calculateDistanceKm(
+      lat,
+      lng,
+      outletLat,
+      outletLng,
+    );
+
+    const radius = outlet.deliveryRadiusKm ?? 5;
+
+    if (distanceKm <= radius) {
+      result.push(outlet);
+    }
+  }
+
+  return result;
+}
+
 
   /* ================================================= */
   /* CREATE OUTLET (ADMIN)                              */
@@ -427,4 +482,34 @@ async getAllOutlets(): Promise<Outlet[]> {
       status: 'OFF',
     });
   }
+
+  /* ================================================= */
+/* INTERNAL – HAVERSINE DISTANCE                     */
+/* ================================================= */
+
+private calculateDistanceKm(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const toRad = (v: number) => (v * Math.PI) / 180;
+
+  const R = 6371; // earth radius km
+
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+}
+
 }

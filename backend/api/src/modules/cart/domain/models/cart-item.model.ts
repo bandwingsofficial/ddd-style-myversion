@@ -1,6 +1,5 @@
-// src/modules/cart/domain/models/cart-item.model.ts
-
 import { ValidationError } from '../../../../common/errors';
+import { Decimal } from '@prisma/client/runtime/library';
 
 /* ---------------------------------------------- */
 /* PROPS                                          */
@@ -14,8 +13,11 @@ export interface CartItemProps {
 
   quantity: number;
 
-  unitPrice: number;
-  discountPrice?: number;
+  unitPrice: Decimal;
+  discountPrice?: Decimal;
+
+  // 🔥 cached value (matches DB)
+  lineTotal: Decimal;
 
   productName: string;
   productImage: string;
@@ -36,8 +38,11 @@ export class CartItem {
 
   readonly quantity: number;
 
-  readonly unitPrice: number;
-  readonly discountPrice?: number;
+  readonly unitPrice: Decimal;
+  readonly discountPrice?: Decimal;
+
+  // 🔥 stored total
+  readonly lineTotal: Decimal;
 
   readonly productName: string;
   readonly productImage: string;
@@ -47,12 +52,14 @@ export class CartItem {
 
   private constructor(props: CartItemProps) {
     Object.assign(this, props);
+
     this.assertValidState();
+
     Object.freeze(this);
   }
 
   /* ---------------------------------------------- */
-  /* FACTORIES                                     */
+  /* FACTORIES                                      */
   /* ---------------------------------------------- */
 
   static createNew(params: {
@@ -60,23 +67,20 @@ export class CartItem {
     cartId: string;
     productId: string;
     quantity: number;
-    unitPrice: number;
-    discountPrice?: number;
+    unitPrice: Decimal;
+    discountPrice?: Decimal;
     productName: string;
     productImage: string;
     now?: Date;
   }): CartItem {
     const now = params.now ?? new Date();
 
+    const price = params.discountPrice ?? params.unitPrice;
+    const lineTotal = price.mul(new Decimal(params.quantity));
+
     return new CartItem({
-      id: params.id,
-      cartId: params.cartId,
-      productId: params.productId,
-      quantity: params.quantity,
-      unitPrice: params.unitPrice,
-      discountPrice: params.discountPrice,
-      productName: params.productName,
-      productImage: params.productImage,
+      ...params,
+      lineTotal,
       createdAt: now,
       updatedAt: now,
     });
@@ -90,44 +94,55 @@ export class CartItem {
   /* DOMAIN QUERIES                                 */
   /* ---------------------------------------------- */
 
-  getEffectivePrice(): number {
+  getEffectivePrice(): Decimal {
     return this.discountPrice ?? this.unitPrice;
   }
 
-  getTotalPrice(): number {
-    return this.getEffectivePrice() * this.quantity;
-  }
+  /**
+   * 🔥 Prefer stored lineTotal
+   * fallback for old rows/migrations
+   */
+  getLineTotal(): Decimal {
+  return this.lineTotal;
+}
 
   /* ---------------------------------------------- */
   /* DOMAIN TRANSITIONS                             */
   /* ---------------------------------------------- */
 
   increaseQuantity(by: number, now = new Date()): CartItem {
-    if (by <= 0) {
+    if (!Number.isInteger(by) || by <= 0) {
       throw new ValidationError(
         'CART_ITEM_INVALID_QUANTITY',
-        'Quantity increment must be greater than zero',
+        'Quantity increment must be a positive integer',
       );
     }
 
+    const newQty = this.quantity + by;
+    const newTotal = this.getEffectivePrice().mul(new Decimal(newQty));
+
     return new CartItem({
       ...this,
-      quantity: this.quantity + by,
+      quantity: newQty,
+      lineTotal: newTotal,
       updatedAt: now,
     });
   }
 
   updateQuantity(quantity: number, now = new Date()): CartItem {
-    if (quantity <= 0) {
+    if (!Number.isInteger(quantity) || quantity <= 0) {
       throw new ValidationError(
         'CART_ITEM_INVALID_QUANTITY',
-        'Quantity must be greater than zero',
+        'Quantity must be a positive integer',
       );
     }
+
+    const newTotal = this.getEffectivePrice().mul(new Decimal(quantity));
 
     return new CartItem({
       ...this,
       quantity,
+      lineTotal: newTotal,
       updatedAt: now,
     });
   }
@@ -137,25 +152,59 @@ export class CartItem {
   /* ---------------------------------------------- */
 
   private assertValidState(): void {
-    if (!this.productId) {
+  if (!this.cartId) {
+    throw new ValidationError('CART_ITEM_INVALID_CART', 'Cart is required');
+  }
+
+  if (!this.productId) {
+    throw new ValidationError('CART_ITEM_INVALID_PRODUCT', 'Product is required');
+  }
+
+  if (!Number.isInteger(this.quantity) || this.quantity <= 0) {
+    throw new ValidationError(
+      'CART_ITEM_INVALID_QUANTITY',
+      'Quantity must be a positive integer',
+    );
+  }
+
+  if (this.unitPrice.lessThan(0)) {
+    throw new ValidationError(
+      'CART_ITEM_INVALID_PRICE',
+      'Unit price cannot be negative',
+    );
+  }
+
+  if (this.discountPrice) {
+    if (this.discountPrice.lessThan(0)) {
       throw new ValidationError(
-        'CART_ITEM_INVALID_PRODUCT',
-        'Product is required for cart item',
+        'CART_ITEM_INVALID_DISCOUNT',
+        'Discount price cannot be negative',
       );
     }
 
-    if (this.quantity <= 0) {
+    if (this.discountPrice.greaterThan(this.unitPrice)) {
       throw new ValidationError(
-        'CART_ITEM_INVALID_QUANTITY',
-        'Quantity must be greater than zero',
-      );
-    }
-
-    if (this.unitPrice < 0) {
-      throw new ValidationError(
-        'CART_ITEM_INVALID_PRICE',
-        'Unit price cannot be negative',
+        'CART_ITEM_INVALID_DISCOUNT',
+        'Discount price cannot exceed unit price',
       );
     }
   }
+
+  if (this.lineTotal.lessThan(0)) {
+    throw new ValidationError(
+      'CART_ITEM_INVALID_TOTAL',
+      'Line total cannot be negative',
+    );
+  }
+
+  // 🔥 ADD HERE (final consistency check)
+  const expected = this.getEffectivePrice().mul(new Decimal(this.quantity));
+
+  if (!this.lineTotal.equals(expected)) {
+    throw new ValidationError(
+      'CART_ITEM_TOTAL_MISMATCH',
+      'Line total mismatch with price × quantity',
+    );
+  }
+}
 }

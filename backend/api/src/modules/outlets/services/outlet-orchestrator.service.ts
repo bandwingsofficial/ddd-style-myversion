@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 
 import { OutletUserService } from './outlet-user.service';
 import { OutletService } from './outlet.service';
-import { OutletProductService } from './outlet-product.service'; // 🔥 ADD
+import { OutletProductService } from './outlet-product.service';
 
 import { Outlet } from '../domain/models/outlet.model';
 
@@ -22,7 +22,7 @@ export class OutletOrchestratorService {
   constructor(
     private readonly outletUserService: OutletUserService,
     private readonly outletService: OutletService,
-    private readonly outletProductService: OutletProductService, // 🔥 ADD
+    private readonly outletProductService: OutletProductService,
   ) {}
 
   /* ================================================= */
@@ -35,6 +35,20 @@ export class OutletOrchestratorService {
 
   async getAllOutlets() {
     return this.outletService.getAllOutlets();
+  }
+
+  /* ================================================= */
+  /* ⭐ NEW – NEARBY OUTLETS (delegates only)           */
+  /* ================================================= */
+
+  async getNearbyOutlets(
+    lat: number,
+    lng: number,
+  ) {
+    return this.outletService.getNearbyOutlets(
+      lat,
+      lng,
+    );
   }
 
   /* ================================================= */
@@ -139,7 +153,7 @@ export class OutletOrchestratorService {
   }
 
   /* ================================================= */
-  /* OUTLET PRODUCT – READS 🔥 ADD                      */
+  /* OUTLET PRODUCT – READS                            */
   /* ================================================= */
 
   async getOutletProducts(outletId: string) {
@@ -150,15 +164,12 @@ export class OutletOrchestratorService {
     return this.outletProductService.getAvailableProducts(outletId);
   }
 
-    /**
-   * 🔥 NEW – for PUBLIC API (joins product details)
-   */
   async getAvailableOutletProductsWithDetails(outletId: string) {
     return this.outletProductService.getAvailableProductsWithDetails(outletId);
   }
 
   /* ================================================= */
-  /* OUTLET PRODUCT – ASSIGN / TOGGLE / PRICING 🔥 ADD */
+  /* OUTLET PRODUCT – ASSIGN / TOGGLE / PRICING        */
   /* ================================================= */
 
   async assignProductToOutlet(params: {

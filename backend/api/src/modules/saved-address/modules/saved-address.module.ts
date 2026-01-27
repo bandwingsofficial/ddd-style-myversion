@@ -1,6 +1,13 @@
+// src/modules/customer/saved-address.module.ts
+
 import { Module } from '@nestjs/common';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+
+/* ---------------------------------------------- */
+/* ⭐ IMPORT OUTLETS MODULE (REQUIRED)             */
+/* ---------------------------------------------- */
+import { OutletsModule } from '../../outlets/modules/outlets.module';
 
 /* ---------------------------------------------- */
 /* CONTROLLERS                                    */
@@ -26,27 +33,34 @@ import { SavedAddressPublicGateway } from '../gateways/saved-address-public.gate
 import { SavedAddressPublicListener } from '../listeners/saved-address-public.listener';
 
 @Module({
+  /* ================================================= */
+  /* ⭐ CRITICAL: IMPORT MODULE THAT EXPORTS SERVICE    */
+  /* ================================================= */
+  imports: [
+    OutletsModule, // ⭐⭐⭐ REQUIRED FOR OutletOrchestratorService ⭐⭐⭐
+  ],
+
   controllers: [
     SavedAddressManagementController,
   ],
+
   providers: [
-    // Infrastructure
+    /* Infrastructure */
     PrismaService,
 
-    // Orchestrator
+    /* Core */
     SavedAddressOrchestratorService,
-
-    // Core service
     SavedAddressService,
 
-    // Repository
+    /* Repository */
     SavedAddressRepository,
 
-    // 🔥 EVENTS / REALTIME
+    /* Events / Realtime */
     SavedAddressEventsService,
     SavedAddressPublicGateway,
     SavedAddressPublicListener,
   ],
+
   exports: [
     SavedAddressService,
     SavedAddressRepository,

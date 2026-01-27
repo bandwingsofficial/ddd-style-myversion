@@ -1,25 +1,26 @@
-// src/modules/cart/domain/models/cart.model.ts
-
 import { ValidationError } from '../../../../common/errors';
-
 import { CartStatus } from '../enums/cart-status.enum';
 import { CartItem } from './cart-item.model';
+import { Prisma } from '@prisma/client';
 
-/* ---------------------------------------------- */
-/* PROPS                                          */
-/* ---------------------------------------------- */
+type Decimal = Prisma.Decimal;
 
 export interface CartProps {
   id: string;
-
   customerId?: string;
+  sessionId?: string;
   outletId: string;
-
   status: CartStatus;
-
   items: CartItem[];
-
   currency: string;
+
+  // 🔥 summary fields (match DB)
+  subtotal: Decimal;
+  discount: Decimal;
+  afterDiscountTotal: Decimal;
+  deliveryFee: Decimal;
+  grandTotal: Decimal;
+  itemCount: number;
 
   createdAt: Date;
   updatedAt: Date;
@@ -27,21 +28,22 @@ export interface CartProps {
   expiresAt?: Date;
 }
 
-/* ---------------------------------------------- */
-/* ENTITY                                         */
-/* ---------------------------------------------- */
-
 export class Cart {
   readonly id: string;
-
   readonly customerId?: string;
+  readonly sessionId?: string;
   readonly outletId: string;
-
   readonly status: CartStatus;
-
-  readonly items: CartItem[];
-
+  readonly items: readonly CartItem[];
   readonly currency: string;
+
+  // 🔥 cached totals
+  readonly subtotal: Decimal;
+  readonly discount: Decimal;
+  readonly afterDiscountTotal: Decimal;
+  readonly deliveryFee: Decimal;
+  readonly grandTotal: Decimal;
+  readonly itemCount: number;
 
   readonly createdAt: Date;
   readonly updatedAt: Date;
@@ -50,17 +52,22 @@ export class Cart {
 
   private constructor(props: CartProps) {
     Object.assign(this, props);
+
+    this.items = Object.freeze([...props.items]);
+
     this.assertValidState();
+
     Object.freeze(this);
   }
 
   /* ---------------------------------------------- */
-  /* FACTORIES                                     */
+  /* FACTORIES                                      */
   /* ---------------------------------------------- */
 
   static createNew(params: {
     id: string;
     customerId?: string;
+    sessionId?: string;
     outletId: string;
     currency?: string;
     now?: Date;
@@ -70,10 +77,19 @@ export class Cart {
     return new Cart({
       id: params.id,
       customerId: params.customerId,
+      sessionId: params.sessionId,
       outletId: params.outletId,
       status: CartStatus.ACTIVE,
       items: [],
       currency: params.currency ?? 'INR',
+
+      subtotal: new Prisma.Decimal(0),
+      discount: new Prisma.Decimal(0),
+      afterDiscountTotal: new Prisma.Decimal(0),
+      deliveryFee: new Prisma.Decimal(0),
+      grandTotal: new Prisma.Decimal(0),
+      itemCount: 0,
+
       createdAt: now,
       updatedAt: now,
     });
@@ -84,95 +100,85 @@ export class Cart {
   }
 
   /* ---------------------------------------------- */
-  /* DOMAIN QUERIES                                 */
+  /* QUERIES (use cached totals, NOT recalc)        */
   /* ---------------------------------------------- */
 
-  isActive(): boolean {
-    return this.status === CartStatus.ACTIVE;
-  }
-
-  isLocked(): boolean {
-    return this.status === CartStatus.LOCKED;
+  hasItems(): boolean {
+    return this.itemCount > 0;
   }
 
   canBeModified(): boolean {
     return this.status === CartStatus.ACTIVE;
   }
 
-  hasItems(): boolean {
-    return this.items.length > 0;
+  getSubtotalAmount(): Decimal {
+    return this.subtotal;
+  }
+  getDiscountAmount(): Decimal {
+    return this.discount;
+  }
+  getAfterDiscountTotal(): Decimal {
+    return this.afterDiscountTotal;
+  }
+  getDeliveryFee(): Decimal {
+    return this.deliveryFee;
+  }
+  getGrandTotal(): Decimal {
+    return this.grandTotal;
   }
 
   /* ---------------------------------------------- */
-  /* DOMAIN TRANSITIONS                             */
+  /* TRANSITIONS                                    */
   /* ---------------------------------------------- */
-
-  addItem(item: CartItem, now = new Date()): Cart {
-    if (!this.canBeModified()) {
-      throw new ValidationError(
-        'CART_LOCKED',
-        'Cart cannot be modified once locked',
-      );
-    }
-
-    const existing = this.items.find(
-      i => i.productId === item.productId,
-    );
-
-    const updatedItems = existing
-      ? this.items.map(i =>
-          i.productId === item.productId
-            ? i.increaseQuantity(item.quantity, now)
-            : i,
-        )
-      : [...this.items, item];
-
-    return new Cart({
-      ...this,
-      items: updatedItems,
-      updatedAt: now,
-    });
-  }
-
-  removeItem(productId: string, now = new Date()): Cart {
-    if (!this.canBeModified()) {
-      throw new ValidationError(
-        'CART_LOCKED',
-        'Cart cannot be modified once locked',
-      );
-    }
-
-    return new Cart({
-      ...this,
-      items: this.items.filter(i => i.productId !== productId),
-      updatedAt: now,
-    });
-  }
 
   lock(now = new Date()): Cart {
-    if (!this.hasItems()) {
-      throw new ValidationError(
-        'CART_EMPTY',
-        'Cannot checkout an empty cart',
-      );
-    }
-
-    return new Cart({
-      ...this,
-      status: CartStatus.LOCKED,
-      lockedAt: now,
-      updatedAt: now,
-    });
+  if (!this.hasItems()) {
+    throw new ValidationError('CART_EMPTY', 'Cannot checkout empty cart');
   }
+
+  return new Cart({
+    ...this.toProps(),
+    status: CartStatus.LOCKED,
+    updatedAt: now,
+    lockedAt: now,
+  });
+}
 
   expire(now = new Date()): Cart {
-    return new Cart({
-      ...this,
-      status: CartStatus.EXPIRED,
-      expiresAt: now,
-      updatedAt: now,
-    });
-  }
+  return new Cart({
+    ...this.toProps(),
+    status: CartStatus.EXPIRED,
+    updatedAt: now,
+    expiresAt: now,
+  });
+}
+  /* ---------------------------------------------- */
+  /* private mapper                                */
+  /* ---------------------------------------------- */
+
+private toProps(): CartProps {
+  return {
+    id: this.id,
+    customerId: this.customerId,
+    sessionId: this.sessionId,
+    outletId: this.outletId,
+    status: this.status,
+    items: [...this.items],
+    currency: this.currency,
+
+    subtotal: this.subtotal,
+    discount: this.discount,
+    afterDiscountTotal: this.afterDiscountTotal,
+    deliveryFee: this.deliveryFee,
+    grandTotal: this.grandTotal,
+    itemCount: this.itemCount,
+
+    createdAt: this.createdAt,
+    updatedAt: this.updatedAt,
+    lockedAt: this.lockedAt,
+    expiresAt: this.expiresAt,
+  };
+}
 
   /* ---------------------------------------------- */
   /* INVARIANTS                                     */
@@ -180,16 +186,17 @@ export class Cart {
 
   private assertValidState(): void {
     if (!this.outletId) {
-      throw new ValidationError(
-        'CART_INVALID_OUTLET',
-        'Outlet is required for cart',
-      );
+      throw new ValidationError('CART_INVALID_OUTLET', 'Outlet required');
     }
 
     if (!this.currency) {
+      throw new ValidationError('CART_INVALID_CURRENCY', 'Currency required');
+    }
+
+    if (!this.customerId && !this.sessionId) {
       throw new ValidationError(
-        'CART_INVALID_CURRENCY',
-        'Currency is required for cart',
+        'CART_OWNER_REQUIRED',
+        'Either customerId or sessionId required',
       );
     }
   }

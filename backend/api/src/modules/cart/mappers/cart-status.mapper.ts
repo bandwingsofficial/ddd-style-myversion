@@ -4,43 +4,41 @@ import { CartStatus as PrismaCartStatus } from '@prisma/client';
 import { CartStatus } from '../domain/enums/cart-status.enum';
 
 export class CartStatusMapper {
-  static toDomain(
-    status: PrismaCartStatus,
-  ): CartStatus {
-    switch (status) {
-      case PrismaCartStatus.ACTIVE:
-        return CartStatus.ACTIVE;
+  private static prismaToDomainMap: Record<
+    PrismaCartStatus,
+    CartStatus
+  > = {
+    ACTIVE: CartStatus.ACTIVE,
+    LOCKED: CartStatus.LOCKED,
+    EXPIRED: CartStatus.EXPIRED,
+  };
 
-      case PrismaCartStatus.LOCKED:
-        return CartStatus.LOCKED;
+  private static domainToPrismaMap: Record<
+    CartStatus,
+    PrismaCartStatus
+  > = {
+    [CartStatus.ACTIVE]: PrismaCartStatus.ACTIVE,
+    [CartStatus.LOCKED]: PrismaCartStatus.LOCKED,
+    [CartStatus.EXPIRED]: PrismaCartStatus.EXPIRED,
+  };
 
-      case PrismaCartStatus.EXPIRED:
-        return CartStatus.EXPIRED;
+  static toDomain(status: PrismaCartStatus): CartStatus {
+    const mapped = this.prismaToDomainMap[status];
 
-      default:
-        throw new Error(
-          `Unknown Prisma CartStatus: ${status}`,
-        );
+    if (!mapped) {
+      throw new Error(`Unknown Prisma CartStatus: ${status}`);
     }
+
+    return mapped;
   }
 
-  static toPrisma(
-    status: CartStatus,
-  ): PrismaCartStatus {
-    switch (status) {
-      case CartStatus.ACTIVE:
-        return PrismaCartStatus.ACTIVE;
+  static toPrisma(status: CartStatus): PrismaCartStatus {
+    const mapped = this.domainToPrismaMap[status];
 
-      case CartStatus.LOCKED:
-        return PrismaCartStatus.LOCKED;
-
-      case CartStatus.EXPIRED:
-        return PrismaCartStatus.EXPIRED;
-
-      default:
-        throw new Error(
-          `Unknown Domain CartStatus: ${status}`,
-        );
+    if (!mapped) {
+      throw new Error(`Unknown Domain CartStatus: ${status}`);
     }
+
+    return mapped;
   }
 }

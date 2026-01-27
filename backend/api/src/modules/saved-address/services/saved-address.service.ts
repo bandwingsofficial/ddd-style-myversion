@@ -1,3 +1,5 @@
+// src/modules/customer/services/saved-address.service.ts
+
 import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
@@ -20,7 +22,7 @@ export class SavedAddressService {
   ) {}
 
   /* ================================================= */
-  /* READS                                            */
+  /* READS                                             */
   /* ================================================= */
 
   async getById(params: {
@@ -49,7 +51,20 @@ export class SavedAddressService {
   }
 
   /* ================================================= */
-  /* CREATE (OPTION B — RESTORE INSTEAD OF CREATE)     */
+  /* ⭐ NEW – PRIMARY / DEFAULT ADDRESS (VERY USEFUL)   */
+  /* ================================================= */
+
+  async getPrimaryAddress(
+    customerId: string,
+  ): Promise<SavedAddress | null> {
+    const addresses =
+      await this.savedAddressRepo.findAllByCustomer(customerId);
+
+    return addresses.find((a) => a.isActive()) ?? null;
+  }
+
+  /* ================================================= */
+  /* CREATE (RESTORE OR CREATE)                        */
   /* ================================================= */
 
   async createSavedAddress(
@@ -58,7 +73,7 @@ export class SavedAddressService {
     let result!: SavedAddress;
 
     await this.prisma.$transaction(async (tx) => {
-      // 1️⃣ Block duplicate ACTIVE address of same type
+      /* 1️⃣ Block duplicate ACTIVE */
       const active =
         await this.savedAddressRepo.findActiveByCustomerAndType(
           address.customerId,
@@ -73,7 +88,7 @@ export class SavedAddressService {
         );
       }
 
-      // 2️⃣ Restore DELETED address if exists
+      /* 2️⃣ Restore deleted */
       const deleted =
         await this.savedAddressRepo.findDeletedByCustomerAndType(
           address.customerId,
@@ -95,11 +110,11 @@ export class SavedAddressService {
         return;
       }
 
-      // 3️⃣ Else create NEW
+      /* 3️⃣ Create new */
       result = await this.savedAddressRepo.create(address, tx);
     });
 
-    /* 🔥 EVENTS AFTER DB SUCCESS */
+    /* 🔥 EVENTS */
     this.savedAddressEvents.emitSavedAddressCreated({
       savedAddressId: result.id,
       customerId: result.customerId,
@@ -109,7 +124,7 @@ export class SavedAddressService {
   }
 
   /* ================================================= */
-  /* UPDATE                                           */
+  /* UPDATE (SAFE PARTIAL UPDATE ⭐ FIXED)              */
   /* ================================================= */
 
   async updateSavedAddress(params: {
@@ -132,11 +147,20 @@ export class SavedAddressService {
       );
     }
 
+    /* ⭐ SAFE UPDATE (prevents undefined overwrite) */
     const updated = address.updateDetails({
-      label: params.label,
-      addressText: params.addressText,
-      latitude: params.latitude,
-      longitude: params.longitude,
+      ...(params.label !== undefined && {
+        label: params.label,
+      }),
+      ...(params.addressText !== undefined && {
+        addressText: params.addressText,
+      }),
+      ...(params.latitude !== undefined && {
+        latitude: params.latitude,
+      }),
+      ...(params.longitude !== undefined && {
+        longitude: params.longitude,
+      }),
     });
 
     await this.prisma.$transaction(async (tx) => {

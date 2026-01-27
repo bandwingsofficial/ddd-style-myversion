@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   Param,
+  Query,
 } from '@nestjs/common';
 
 import { OutletOrchestratorService } from '../services/outlet-orchestrator.service';
@@ -15,12 +16,40 @@ export class PublicOutletController {
   ) {}
 
   /* ================================================= */
-  /* PUBLIC – LIST OUTLETS                              */
+  /* PUBLIC – LIST NEARBY OUTLETS ⭐ UPDATED             */
   /* ================================================= */
 
   @Get()
-  async getPublicOutlets() {
-    const outlets = await this.orchestrator.getAllOutlets();
+  async getPublicOutlets(
+    @Query('lat') lat?: string,
+    @Query('lng') lng?: string,
+  ) {
+    let outlets;
+
+    /* ------------------------------------------------ */
+    /* IF LAT/LNG PROVIDED → NEARBY ONLY                */
+    /* ------------------------------------------------ */
+
+    if (lat !== undefined && lng !== undefined) {
+      const latitude = Number(lat);
+      const longitude = Number(lng);
+
+      // ✅ SAFETY (important)
+      if (!Number.isNaN(latitude) && !Number.isNaN(longitude)) {
+        outlets = await this.orchestrator.getNearbyOutlets(
+          latitude,
+          longitude,
+        );
+      }
+    }
+
+    /* ------------------------------------------------ */
+    /* FALLBACK → ALL                                   */
+    /* ------------------------------------------------ */
+
+    if (!outlets) {
+      outlets = await this.orchestrator.getAllOutlets();
+    }
 
     const data = outlets.filter((o) =>
       o.isPubliclyVisible(),
@@ -35,78 +64,96 @@ export class PublicOutletController {
   }
 
   /* ================================================= */
-  /* PUBLIC – OUTLET PRODUCTS (🔥 specific FIRST)       */
+  /* PUBLIC – OUTLET PRODUCTS (specific FIRST)         */
   /* ================================================= */
 
-  // 🔥 MUST be before ":outletId"
-  @Get(':outletId/products')
-  async getOutletProducts(
-    @Param('outletId') outletId: string,
-  ) {
-    const outlet =
-      await this.orchestrator.getOutletById(outletId);
+ /* ================================================= */
+/* PUBLIC – OUTLET PRODUCTS (specific FIRST)          */
+/* ================================================= */
 
-    // 🔥 defensive check
-    if (!outlet || !outlet.isPubliclyVisible()) {
-      return {
-        success: false,
-        code: 'OUTLET_NOT_AVAILABLE',
-        message: 'Outlet not available',
-        data: null,
-      };
-    }
+@Get(':outletId/products')
+async getOutletProducts(
+  @Param('outletId') outletId: string,
+) {
+  console.log('🟡 PRODUCTS API HIT → outletId =', outletId);
 
-    const rows =
-      await this.orchestrator.getAvailableOutletProductsWithDetails(
-        outletId,
-      );
+  const outlet =
+    await this.orchestrator.getOutletById(outletId);
 
-    const data = rows.map((r) => ({
-      /* CORE */
-      id: r.product.id,
-      name: r.product.productName,
-      slug: r.product.slug,
+  if (!outlet) {
+    console.log('❌ Outlet NOT FOUND');
+  }
 
-      /* PRICING */
-      price:
-        r.discountOverride ??
-        r.priceOverride ??
-        r.product.discountPrice ??
-        r.product.originalPrice,
+  if (!outlet?.isPubliclyVisible()) {
+    console.log('❌ Outlet not publicly visible');
+  }
 
-      /* IMAGES */
-      image: r.product.mainImage ?? null,
-      galleryImages:
-        r.product.galleryImages?.map((g) => g.imageUrl) ?? [],
-
-      /* DESCRIPTION */
-      shortDescription: r.product.shortDescription,
-      longDescription: r.product.longDescription,
-
-      /* META */
-      tags: r.product.tags ?? [],
-      isTrending: r.product.isTrending,
-      ratingAverage: r.product.ratingAverage,
-      ratingCount: r.product.ratingCount,
-
-      /* UNIT */
-      unitValue: r.product.unitValue,
-      unitType: r.product.unitType,
-
-      /* OUTLET STATE */
-      available: r.isAvailable,
-    }));
-
+  if (!outlet || !outlet.isPubliclyVisible()) {
     return {
-      success: true,
-      code: 'PUBLIC_OUTLET_PRODUCTS_FETCHED',
-      message: 'Products fetched successfully',
-      data,
+      success: false,
+      code: 'OUTLET_NOT_AVAILABLE',
+      message: 'Outlet not available',
+      data: null,
     };
   }
 
+  console.log('✅ Outlet OK → fetching products...');
+
+  const rows =
+    await this.orchestrator.getAvailableOutletProductsWithDetails(
+      outletId,
+    );
+
+  console.log(
+    '📦 DB rows returned =',
+    rows.length,
+  );
+
+  const data = rows.map((r) => ({
+    id: r.product.id,
+    name: r.product.productName,
+    slug: r.product.slug,
+
+    price:
+      r.discountOverride ??
+      r.priceOverride ??
+      r.product.discountPrice ??
+      r.product.originalPrice,
+
+    image: r.product.mainImage ?? null,
+    galleryImages:
+      r.product.galleryImages?.map((g) => g.imageUrl) ?? [],
+
+    shortDescription: r.product.shortDescription,
+    longDescription: r.product.longDescription,
+
+    tags: r.product.tags ?? [],
+    isTrending: r.product.isTrending,
+    ratingAverage: r.product.ratingAverage,
+    ratingCount: r.product.ratingCount,
+
+    unitValue: r.product.unitValue,
+    unitType: r.product.unitType,
+
+    available: r.isAvailable,
+  }));
+
+  console.log(
+    '📤 Sending products to client =',
+    data.length,
+  );
+
+  return {
+    success: true,
+    code: 'PUBLIC_OUTLET_PRODUCTS_FETCHED',
+    message: 'Products fetched successfully',
+    data,
+  };
+}
+
+
   /* ================================================= */
-  /* PUBLIC – OUTLET DETAILS (🔥 generic LAST)          */
+  /* PUBLIC – OUTLET DETAILS (generic LAST)            */
   /* ================================================= */
 
   @Get(':outletId')

@@ -7,11 +7,11 @@ import { useFavorites } from "@/providers/CustomerAuthProvider";
 import { useCartStore } from "@/features/cart/cart.store";
 import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
 import { ProductListItem } from "@/features/products/types/product.types";
-// ✅ IMPORT YOUR OUTLET STORE
 import { useOutletStore } from "@/features/outlet/outlet.store";
 
 const BACKEND_URL = "https://api.dev.local:4000"; 
-const FALLBACK_OUTLET_ID = "718949f5-cee7-45c6-9308-cd0b58085ca8"; // Safety Net
+// You can remove this fallback once your OutletStore is fully integrated
+const FALLBACK_OUTLET_ID = "718949f5-cee7-45c6-9308-cd0b58085ca8"; 
 
 export default function ProductCard({ product }: { product: ProductListItem }) {
   const [imageError, setImageError] = useState(false);
@@ -22,19 +22,14 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
   const { items, addItem, updateItem, removeItem } = useCartStore();
   const isAuthenticated = useCustomerAuthStore((s) => s.isAuthenticated);
 
-  // ✅ GET GLOBAL OUTLET STATE
-  // Try to get the current selected outlet from your store
-  // Note: Adjust 'currentOutlet' if your store uses a different name like 'selectedOutlet'
+  // 1. Get Global Outlet
   const currentOutlet = useOutletStore((state: any) => state.currentOutlet || state.selectedOutlet);
 
-  // ==========================================
-  // 1. DATA NORMALIZATION
-  // ==========================================
+  // 2. Data Normalization
   const name = useMemo(() => p.name?.value || p.name || "Unknown", [p]);
   const slug = useMemo(() => p.slug?.value || p.slug || "#", [p]);
 
-  // ✅ FINAL FIX: PRIORITY LOGIC FOR ID
-  // 1. Try Global Store (Best) -> 2. Try Product Data -> 3. Fallback (Hardcoded)
+  // 3. Outlet ID Logic
   const outletId = useMemo(() => {
     if (currentOutlet?.id) return currentOutlet.id;
     if (p.outletId) return p.outletId;
@@ -42,7 +37,7 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
     return FALLBACK_OUTLET_ID; 
   }, [p, currentOutlet]);
 
-  // ... (Rest of your Price/Image logic remains exactly the same) ...
+  // 4. Price Logic
   const { original, current, hasDiscount, savings } = useMemo(() => {
     const parse = (val: any) => {
       if (val === undefined || val === null) return 0;
@@ -60,6 +55,7 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
     return { original: originalPrice, current: currentPrice, hasDiscount: isDiscounted, savings: originalPrice - currentPrice };
   }, [p]);
 
+  // 5. Image Logic
   const imageUrl = useMemo(() => {
     if (!p) return null;
     const rawImage = p.images || p.image || p.mainImage || p.thumbnail;
@@ -73,6 +69,7 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
     return `${BACKEND_URL}${cleanPath}`;
   }, [p]);
 
+  // 6. Meta Data
   const unitLabel = useMemo(() => {
     if (typeof p.unit === "object" && p.unit !== null) return `${p.unit.value} ${p.unit.type}`;
     else if (p.unit) return String(p.unit);
@@ -84,6 +81,7 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
   const description = p.shortDescription || "";
   const tags = p.tags || [];
 
+  // 7. Cart Logic
   const cartItem = useMemo(() => items.find((i) => i.productId === p.id), [items, p.id]);
   const quantity = cartItem?.quantity || 0;
 
@@ -93,24 +91,20 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
   };
 
   const handleAdd = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
 
     if (original <= 0) { alert("Invalid Price"); return; }
     
-    // ✅ Safety Check
     if (!outletId) {
-       console.error("❌ CRITICAL: No Outlet ID found in Store or Product.");
+       console.error("❌ No Outlet ID found");
        alert("System Error: Store ID missing.");
        return;
     }
 
-    console.log("✅ Adding to Cart with Outlet ID:", outletId);
-
     await addItem(
       { 
         productId: p.id,
-        outletId: outletId, // Uses the priority logic from above
+        outletId: outletId,
         productName: name, 
         productImage: imageUrl || "", 
         quantity: 1, 
@@ -134,7 +128,7 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
   return (
     <div style={styles.cardWrapper}>
       <Link href={`/products/${slug}`} style={styles.productCard} className="product-card">
-        {/* IMAGE AREA */}
+        {/* IMAGE */}
         <div style={styles.imageContainer} className="image-container">
           <button onClick={handleToggleFavorite} style={styles.favBtn} className="fav-btn">
             <Heart size={18} fill={isFav ? "#ef4444" : "transparent"} color={isFav ? "#ef4444" : "#94a3b8"} strokeWidth={2.5} />
@@ -150,7 +144,7 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
           </div>
         </div>
 
-        {/* DETAILS AREA */}
+        {/* CONTENT */}
         <div style={styles.content} className="content">
           <div style={styles.infoGroup}>
             {tags.length > 0 && (
@@ -201,6 +195,7 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
         </div>
       </Link>
       
+      {/* STYLES */}
       <style jsx>{`
         .product-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .product-card:hover { border-color: #16a34a33 !important; box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.08); transform: translateY(-4px); }
@@ -217,10 +212,8 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
   );
 }
 
+// ... styles object (SAME AS BEFORE)
 const styles: { [key: string]: React.CSSProperties } = {
-  // ... (Keep your existing styles, no changes needed here) ...
-  // Re-paste the styles from the previous code block if you lost them, 
-  // otherwise just leave the existing styles object at the bottom of the file.
   cardWrapper: { position: "relative" },
   productCard: { display: "block", background: "#ffffff", borderRadius: "16px", border: "1px solid #f1f5f9", overflow: "hidden", textDecoration: "none" },
   imageContainer: { position: "relative", height: "170px", overflow: "hidden", background: "#f8fafc", display: "flex", alignItems: "center", justifyContent: "center" },

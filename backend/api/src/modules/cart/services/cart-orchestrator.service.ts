@@ -1,6 +1,6 @@
-// src/modules/cart/services/cart-orchestrator.service.ts
-
 import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
 
 import { CartService } from './cart.service';
 import { Cart } from '../domain/models/cart.model';
@@ -9,6 +9,7 @@ import { Cart } from '../domain/models/cart.model';
 export class CartOrchestratorService {
   constructor(
     private readonly cartService: CartService,
+    private readonly prisma: PrismaService,
   ) {}
 
   /* ================================================= */
@@ -16,70 +17,94 @@ export class CartOrchestratorService {
   /* ================================================= */
 
   async getActiveCart(
+    params: { customerId?: string; sessionId?: string },
+    tx?: PrismaTransaction,
+  ): Promise<Cart | null> {
+    return this.cartService.getActiveCart(params, tx);
+  }
+
+  /* ================================================= */
+  /* 🔥 AUTO MERGE (AFTER LOGIN)                        */
+  /* ================================================= */
+
+  async mergeGuestCartIntoCustomerCart(
+    sessionId: string,
     customerId: string,
   ): Promise<Cart | null> {
-    return this.cartService.getActiveCart(customerId);
+    return this.prisma.$transaction(async (tx) => {
+      const guestCart = await this.cartService.getActiveCart(
+        { sessionId },
+        tx,
+      );
+
+      const customerCart = await this.cartService.getActiveCart(
+        { customerId },
+        tx,
+      );
+
+      /* ------------------------------ */
+      /* nothing to merge               */
+      /* ------------------------------ */
+      if (!guestCart) return customerCart;
+
+      /* ------------------------------ */
+      /* only guest exists → transfer   */
+      /* ------------------------------ */
+      if (!customerCart) {
+        await tx.cart.update({
+          where: { id: guestCart.id },
+          data: {
+            customerId,
+            sessionId: null,
+          },
+        });
+
+        return this.cartService.getActiveCart({ customerId }, tx);
+      }
+
+      /* ------------------------------ */
+      /* both exist → merge items       */
+      /* ------------------------------ */
+      for (const item of guestCart.items) {
+        await this.cartService.addItem(
+          {
+            customerId,
+            outletId: guestCart.outletId,
+            product: { id: item.productId },
+            quantity: item.quantity,
+          },
+          tx, // 🔥 reuse SAME transaction
+        );
+      }
+
+      /* delete guest cart */
+      await this.cartService.clearCart({ sessionId }, tx);
+
+      return this.cartService.getActiveCart({ customerId }, tx);
+    });
   }
 
   /* ================================================= */
-  /* CART – ADD ITEM                                  */
+  /* CART WRAPPERS                                    */
   /* ================================================= */
 
-  async addItemToCart(params: {
-    customerId: string;
-    outletId: string;
-    product: {
-      id: string;
-      name: string;
-      image: string;
-      unitPrice: number;
-      discountPrice?: number;
-    };
-    quantity: number;
-  }): Promise<Cart> {
-    return this.cartService.addItem(params);
+  async addItemToCart(params: any, tx?: PrismaTransaction): Promise<Cart> {
+    return this.cartService.addItem(params, tx);
   }
 
-  /* ================================================= */
-  /* CART – UPDATE ITEM                               */
-  /* ================================================= */
-
-  async updateCartItemQuantity(params: {
-    customerId: string;
-    productId: string;
-    quantity: number;
-  }): Promise<Cart> {
-    return this.cartService.updateItemQuantity(params);
+  async updateCartItemQuantity(params: any, tx?: PrismaTransaction): Promise<Cart> {
+    return this.cartService.updateItemQuantity(params, tx);
   }
 
-  /* ================================================= */
-  /* CART – REMOVE ITEM                               */
-  /* ================================================= */
-
-  async removeCartItem(params: {
-    customerId: string;
-    productId: string;
-  }): Promise<Cart> {
-    return this.cartService.removeItem(params);
+  async removeCartItem(params: any, tx?: PrismaTransaction): Promise<Cart> {
+    return this.cartService.removeItem(params, tx);
   }
 
-  /* ================================================= */
-  /* CART – CLEAR                                    */
-  /* ================================================= */
-
-  async clearCart(
-    customerId: string,
-  ): Promise<void> {
-    return this.cartService.clearCart(customerId);
+  async clearCart(params: any, tx?: PrismaTransaction): Promise<Cart | null> {
+    return this.cartService.clearCart(params, tx);
   }
 
-  /* ================================================= */
-  /* CART – CHECKOUT (LOCK)                           */
-  /* ================================================= */
-
-  async lockCartForCheckout(
-    customerId: string,
-  ): Promise<Cart> {
-    return this.cartService.lockCart(customerId);
+  async lockCartForCheckout(params: any, tx?: PrismaTransaction): Promise<Cart> {
+    return this.cartService.lockCart(params, tx);
   }
 }

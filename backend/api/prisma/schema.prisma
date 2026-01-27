@@ -590,6 +590,7 @@ model Product {
 
   carts CartItem[]
   outlets OutletProduct[]
+  orderItems OrderItem[]
 }
 
 
@@ -620,16 +621,18 @@ model ProductImage {
 
 
 enum CartStatus {
-  ACTIVE      // normal shopping
-  LOCKED      // checkout started
-  EXPIRED     // abandoned / invalid
+  ACTIVE
+  LOCKED
+  EXPIRED
 }
 
 model Cart {
   id String @id @default(cuid())
 
   customerId String?
-  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  sessionId  String?
+
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   outletId String
   outlet   Outlet @relation(fields: [outletId], references: [id])
@@ -639,43 +642,54 @@ model Cart {
 
   currency String @default("INR")
 
+  //////////////////////////////////////////////////
+  // 🔥 ADD THESE (summary cache for frontend)
+  //////////////////////////////////////////////////
+  subtotal     Decimal @db.Decimal(12,2) @default(0)
+  discount     Decimal @db.Decimal(12,2) @default(0)
+  afterDiscountTotal Decimal @db.Decimal(12,2)  @default(0)
+  deliveryFee  Decimal @db.Decimal(12,2) @default(0)
+  grandTotal   Decimal @db.Decimal(12,2) @default(0)
+  itemCount    Int     @default(0)
+  //////////////////////////////////////////////////
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   lockedAt  DateTime?
   expiresAt DateTime?
 
   items CartItem[]
+  order Order?
 
   @@index([customerId])
   @@index([outletId])
   @@index([status])
+  @@index([sessionId])
+
+  @@unique([customerId, outletId, status])
 }
 
-
 model CartItem {
-  id            String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  cartId        String
-  cart          Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  cartId String
+  cart   Cart @relation(fields: [cartId], references: [id], onDelete: Cascade)
 
-  productId     String
-  product       Product  @relation(fields: [productId], references: [id])
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
 
-  // 📦 Quantity
-  quantity      Int
+  quantity Int @default(1)
+  lineTotal Decimal @db.Decimal(12,2) // 🔥 add
 
-  // 💰 PRICE SNAPSHOT (DO NOT REMOVE)
   unitPrice     Decimal  @db.Decimal(12, 2)
   discountPrice Decimal? @db.Decimal(12, 2)
 
-  // 🧾 Product snapshot (for safety)
-  productName   String
-  productImage  String
+  productName  String
+  productImage String
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  // 🚀 Constraints
   @@unique([cartId, productId])
   @@index([productId])
 }
@@ -717,69 +731,86 @@ model CustomerSavedAddress {
   @@index([customerId])
   @@index([type])
   @@index([isDeleted])
-  @@unique([customerId, type])
+  @@index([customerId, type])
 }
 
 
+//////////////////////////////////////////////////////
+// ORDER
+//////////////////////////////////////////////////////
 
-//////////////////////////////////////////////////////
-// ORDER DOMAIN (CAMERA VISIBILITY CONTROL)
-//////////////////////////////////////////////////////
 enum OrderStatus {
-  PENDING_PAYMENT
-  CONFIRMED
+  CREATED          // order created, before payment
+  PAYMENT_PENDING  // payment initiated
+  PAID             // payment success
+  CONFIRMED        // outlet accepted
   PREPARING
-  READY
-  COMPLETED
+  OUT_FOR_DELIVERY
+  DELIVERED
   CANCELLED
+  FAILED
 }
-
 
 model Order {
   id String @id @default(cuid())
 
-  // 🔗 OWNERSHIP
+  //////////////////////////////////////////////////
+  // RELATIONS
+  //////////////////////////////////////////////////
+
   customerId String
-  outletId   String
+  customer   Customer @relation(fields: [customerId], references: [id])
 
-  customer Customer @relation(fields: [customerId], references: [id])
-  outlet   Outlet   @relation(fields: [outletId], references: [id])
+  outletId String
+  outlet   Outlet @relation(fields: [outletId], references: [id])
 
-  // 🧠 CURRENT STATE
-  status OrderStatus @default(PENDING_PAYMENT)
-  showLiveCamera Boolean @default(false)
+  cartId String? @unique
+  cart   Cart? @relation(fields: [cartId], references: [id])
 
-  // 💰 FINAL PRICE SNAPSHOT
-  subtotal     Decimal @db.Decimal(12,2)
-  deliveryFee Decimal @db.Decimal(12,2)
-  platformFee Decimal @db.Decimal(12,2)
-  tax         Decimal @db.Decimal(12,2) @default(0)
-  totalAmount Decimal @db.Decimal(12,2)
-  currency    String @default("INR")
+  //////////////////////////////////////////////////
+  // ADDRESS SNAPSHOT
+  //////////////////////////////////////////////////
 
-  // 📍 ADDRESS SNAPSHOT (IMMUTABLE)
   addressLabel String
   addressText  String
   latitude     Float?
   longitude    Float?
 
-  // 🔗 TRACEABILITY
-  cartId String?
+  currency String @default("INR")
 
-  // 🕒 TIMESTAMPS
+//////////////////////////////////////////////////
+// 🔥 MONEY SNAPSHOT (CACHED LIKE CART)
+//////////////////////////////////////////////////
+
+subtotal           Decimal @db.Decimal(12,2)
+discount           Decimal @db.Decimal(12,2)
+afterDiscountTotal Decimal @db.Decimal(12,2)
+deliveryFee        Decimal @db.Decimal(12,2)
+grandTotal         Decimal @db.Decimal(12,2)
+itemCount          Int
+
+  status OrderStatus @default(CREATED)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // 🔁 RELATIONS
-  items      OrderItem[]
-  payments   Payment[]
-  statusLogs OrderStatusLog[]
-  tracking   OrderTrackingEvent[]
+  //////////////////////////////////////////////////
+
+  items    OrderItem[]
+  payments Payment[]
+
+  //////////////////////////////////////////////////
 
   @@index([customerId])
   @@index([outletId])
   @@index([status])
+  @@index([createdAt])
 }
+
+
+//////////////////////////////////////////////////////
+// ORDER ITEMS
+//////////////////////////////////////////////////////
 
 model OrderItem {
   id String @id @default(cuid())
@@ -788,119 +819,65 @@ model OrderItem {
   order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   productId String
+  product   Product @relation(fields: [productId], references: [id])
 
-  // 🧾 PRODUCT SNAPSHOT
+  // snapshot
   productName  String
   productImage String
 
-  // 📦 QUANTITY
   quantity Int
 
-  // 💰 PRICE SNAPSHOT
   unitPrice     Decimal @db.Decimal(12,2)
   discountPrice Decimal? @db.Decimal(12,2)
 
+  totalPrice Decimal @db.Decimal(12,2)
+
   createdAt DateTime @default(now())
 
   @@index([orderId])
 }
 
-model OrderStatusLog {
-  id String @id @default(cuid())
-
-  orderId String
-  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  fromStatus OrderStatus?
-  toStatus   OrderStatus
-
-  actorType ActorType
-  actorId   String?
-
-  reasonCode String?   // CUSTOMER_CANCELLED, OUT_OF_STOCK, PAYMENT_FAILED
-  reasonText String?
-  metadata   Json?
-
-  createdAt DateTime @default(now())
-
-  @@index([orderId])
-  @@index([toStatus])
-  @@index([createdAt])
-}
 
 //////////////////////////////////////////////////////
-// payment 
+// PAYMENT
 //////////////////////////////////////////////////////
 
-enum PaymentProvider {
-  RAZORPAY
-  STRIPE
+enum PaymentMethod {
+  ONLINE
+  COD
 }
 
 enum PaymentStatus {
-  PENDING
+  INITIATED
   SUCCESS
   FAILED
   REFUNDED
 }
+
 model Payment {
   id String @id @default(cuid())
 
   orderId String
   order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  provider PaymentProvider
+  method PaymentMethod
+  status PaymentStatus @default(INITIATED)
 
-  gatewayOrderId   String
-  gatewayPaymentId String?
-  signature        String?
+  provider        String?    // razorpay/stripe/phonepe
+  providerRefId   String? @unique
+  transactionId   String?
 
-  amount   Decimal @db.Decimal(12,2)
-  currency String @default("INR")
+  amount      Decimal @db.Decimal(12,2)
+  paidAmount  Decimal? @db.Decimal(12,2)   // 🔥 safer reconciliation
 
-  status PaymentStatus @default(PENDING)
-  attemptNumber Int
+  failureReason String?                   // 🔥 added for debugging
 
-  failureReason String?
-  refundedAt    DateTime?
+  paidAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([orderId])
   @@index([status])
-  @@index([gatewayOrderId])
-}
-
-
-//////////////////////////////////////////////////////
-// ORDER DOMAIN (CAMERA VISIBILITY CONTROL)
-//////////////////////////////////////////////////////
-
-enum TrackingEventType {
-  ORDER_CONFIRMED
-  PREPARATION_STARTED
-  READY
-  COMPLETED
-  CANCELLED
-}
-
-
-model OrderTrackingEvent {
-  id String @id @default(cuid())
-
-  orderId String
-  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  eventType TrackingEventType
-  message   String?
-
-  latitude  Float?
-  longitude Float?
-
-  createdAt DateTime @default(now())
-
-  @@index([orderId])
-  @@index([eventType])
-  @@index([createdAt])
+  @@index([providerRefId])
 }

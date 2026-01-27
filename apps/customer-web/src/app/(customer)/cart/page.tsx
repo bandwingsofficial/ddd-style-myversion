@@ -26,22 +26,28 @@ export default function CartPage() {
   const { items, updateItem, removeItem, hydrated, loadCart } = useCartStore();
   const { isAuthenticated } = useCustomerAuthStore();
   
+  // Local loading state for individual items
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
 
-  // Initial Load (Sync cart when Auth status changes)
+  // 1. Initial Load
   useEffect(() => {
     if (!hydrated) {
       loadCart(isAuthenticated);
     }
   }, [hydrated, isAuthenticated, loadCart]);
 
-  // Calculations
+  // 2. Calculations
   const { subtotal, totalDiscount, grandTotal } = useMemo(() => {
     return items.reduce(
       (acc, item) => {
-        const price = item.discountPrice || item.unitPrice;
-        const lineTotal = price * item.quantity;
-        const originalLineTotal = item.unitPrice * item.quantity;
+        // Ensure values are numbers (handled by API transformer, but safe to double check)
+        const unitPrice = Number(item.unitPrice || 0);
+        const discountPrice = Number(item.discountPrice || 0);
+        const quantity = Number(item.quantity || 0);
+
+        const price = discountPrice || unitPrice;
+        const lineTotal = price * quantity;
+        const originalLineTotal = unitPrice * quantity;
         
         acc.subtotal += originalLineTotal;
         acc.grandTotal += lineTotal;
@@ -52,7 +58,7 @@ export default function CartPage() {
     );
   }, [items]);
 
-  // Handlers
+  // 3. Handlers
   const handleQuantityChange = async (productId: string, currentQty: number, delta: number) => {
     if (isUpdating) return;
     const newQty = currentQty + delta;
@@ -64,18 +70,26 @@ export default function CartPage() {
       } else {
         await updateItem(productId, newQty, isAuthenticated);
       }
+    } catch (error) {
+      console.error("Update failed", error);
     } finally {
       setIsUpdating(null);
     }
   };
 
   const handleRemove = async (productId: string) => {
+    if (isUpdating) return;
     setIsUpdating(productId);
-    await removeItem(productId, isAuthenticated);
-    setIsUpdating(null);
+    try {
+      await removeItem(productId, isAuthenticated);
+    } catch (error) {
+      console.error("Remove failed", error);
+      alert("Could not remove item. Please try again.");
+    } finally {
+      setIsUpdating(null);
+    }
   };
 
-  // ✅ LOGIC: Guest -> Login, Auth -> Checkout
   const handleCheckout = () => {
     if (isAuthenticated) {
       router.push("/cart/checkout");
@@ -137,11 +151,13 @@ export default function CartPage() {
               <div className="lg:col-span-8 space-y-4">
                 {items.map((item) => {
                   const imageUrl = getImageUrl(item.productImage);
-                  const isDiscounted = item.discountPrice < item.unitPrice;
+                  const unitPrice = Number(item.unitPrice);
+                  const discountPrice = Number(item.discountPrice);
+                  const isDiscounted = discountPrice < unitPrice;
                   const isLoading = isUpdating === item.productId;
                   
                   return (
-                    <div key={item.productId} className={`group relative flex flex-col sm:flex-row gap-5 p-5 bg-white rounded-2xl border border-slate-100 shadow-sm transition-all hover:shadow-md hover:border-emerald-100 ${isLoading ? 'opacity-70' : ''}`}>
+                    <div key={item.productId} className={`group relative flex flex-col sm:flex-row gap-5 p-5 bg-white rounded-2xl border border-slate-100 shadow-sm transition-all hover:shadow-md hover:border-emerald-100 ${isLoading ? 'opacity-70 pointer-events-none' : ''}`}>
                       {isLoading && (
                         <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/50 backdrop-blur-[1px] rounded-2xl">
                           <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
@@ -161,27 +177,39 @@ export default function CartPage() {
                           <div>
                             <h3 className="text-lg font-bold text-slate-800 leading-tight mb-1">{item.productName}</h3>
                             <div className="text-sm font-medium text-slate-500">
-                              <span className="text-slate-900">₹{item.discountPrice}</span>
-                              {isDiscounted && <span className="ml-2 text-xs line-through text-slate-400">₹{item.unitPrice}</span>}
+                              <span className="text-slate-900">₹{discountPrice}</span>
+                              {isDiscounted && <span className="ml-2 text-xs line-through text-slate-400">₹{unitPrice}</span>}
                             </div>
                           </div>
-                          <button onClick={() => handleRemove(item.productId)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                          <button 
+                            onClick={() => handleRemove(item.productId)} 
+                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            disabled={isLoading}
+                          >
                             <Trash2 size={18} />
                           </button>
                         </div>
 
                         <div className="flex items-end justify-between mt-4 sm:mt-0">
                           <div className="flex items-center gap-3 bg-slate-50 p-1 rounded-lg border border-slate-200">
-                            <button className="w-8 h-8 flex items-center justify-center bg-white text-slate-600 rounded-md shadow-sm hover:text-emerald-600 border border-transparent" onClick={() => handleQuantityChange(item.productId, item.quantity, -1)} disabled={isLoading || item.quantity <= 0}>
+                            <button 
+                              className="w-8 h-8 flex items-center justify-center bg-white text-slate-600 rounded-md shadow-sm hover:text-emerald-600 border border-transparent disabled:opacity-50" 
+                              onClick={() => handleQuantityChange(item.productId, item.quantity, -1)} 
+                              disabled={isLoading || item.quantity <= 0}
+                            >
                               <Minus size={14} strokeWidth={2.5} />
                             </button>
                             <span className="w-6 text-center text-sm font-bold text-slate-900 tabular-nums">{item.quantity}</span>
-                            <button className="w-8 h-8 flex items-center justify-center bg-emerald-600 text-white rounded-md shadow-sm hover:bg-emerald-700" onClick={() => handleQuantityChange(item.productId, item.quantity, 1)} disabled={isLoading}>
+                            <button 
+                              className="w-8 h-8 flex items-center justify-center bg-emerald-600 text-white rounded-md shadow-sm hover:bg-emerald-700 disabled:opacity-50" 
+                              onClick={() => handleQuantityChange(item.productId, item.quantity, 1)} 
+                              disabled={isLoading}
+                            >
                               <Plus size={14} strokeWidth={2.5} />
                             </button>
                           </div>
                           <div className="text-right">
-                             <span className="text-lg font-extrabold text-slate-900">₹{item.discountPrice * item.quantity}</span>
+                             <span className="text-lg font-extrabold text-slate-900">₹{discountPrice * item.quantity}</span>
                           </div>
                         </div>
                       </div>

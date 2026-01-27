@@ -1,48 +1,63 @@
 import customerAxios from "@/http/axios/customerAxios";
 import { Cart, CartItem } from "./cart.types";
 
+// ✅ HELPER: Convert backend strings to numbers to prevent UI crashes
+// This is critical because your new backend returns "120" (string) instead of 120 (number)
+const transformCartResponse = (data: any): Cart => {
+  if (!data) return { items: [] };
+
+  return {
+    ...data,
+    grandTotal: Number(data.grandTotal || 0),
+    items: (data.items || []).map((item: any) => ({
+      ...item,
+      // Force conversion to numbers so math works in UI
+      unitPrice: Number(item.unitPrice),
+      discountPrice: Number(item.discountPrice),
+      quantity: Number(item.quantity),
+    }))
+  };
+};
+
 export const fetchCart = async (): Promise<Cart> => {
   const res = await customerAxios.get("/cart");
-  // ✅ FIX: Default to empty items if data is null
-  return res.data.data || { items: [] };
+  return transformCartResponse(res.data.data);
 };
 
 export const addToCart = async (item: CartItem): Promise<Cart> => {
+  // ✅ FIX: Send ONLY what the new backend expects
   const payload = {
-    outletId: item.outletId, 
     productId: item.productId,
-    productName: item.productName,
-    productImage: item.productImage,
-    unitPrice: item.unitPrice,
-    discountPrice: item.discountPrice,
-    quantity: item.quantity
+    quantity: item.quantity,
+    outletId: item.outletId
   };
   const res = await customerAxios.post("/cart/items", payload);
-  return res.data.data || { items: [] };
+  return transformCartResponse(res.data.data);
 };
 
 export const updateCartItem = async (productId: string, quantity: number): Promise<Cart> => {
-  const res = await customerAxios.post(`/cart/items/${productId}`, { quantity });
-  return res.data.data || { items: [] };
+  // ✅ FIX: Use PATCH for updates (as per your previous backend logs)
+  const res = await customerAxios.patch(`/cart/items/${productId}`, { quantity });
+  return transformCartResponse(res.data.data);
 };
 
 export const removeCartItem = async (productId: string): Promise<Cart> => {
-  const res = await customerAxios.post(`/cart/items/${productId}/remove`);
+  // ✅ CRITICAL FIX: Use DELETE method. 
+  // The 404 error happened because POST .../remove doesn't exist anymore.
+  const res = await customerAxios.delete(`/cart/items/${productId}`);
   
-  // ✅ CRITICAL FIX: Backend returns NULL when cart becomes empty.
+  // If backend returns null (empty cart), return safe empty object
   if (!res.data.data) {
     return { items: [] };
   }
-  
-  return res.data.data;
+  return transformCartResponse(res.data.data);
 };
 
 export const clearCart = async (): Promise<void> => {
   await customerAxios.post("/cart/clear");
 };
 
-// ✅ CHECKOUT: No payload required as per your latest backend response
 export const checkout = async (): Promise<Cart> => {
   const res = await customerAxios.post("/cart/checkout", {}); 
-  return res.data.data;
+  return transformCartResponse(res.data.data);
 };

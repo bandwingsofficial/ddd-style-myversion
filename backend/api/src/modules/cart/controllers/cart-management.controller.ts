@@ -1,10 +1,10 @@
-// src/modules/cart/controllers/cart-management.controller.ts
-
 import {
   Body,
   Controller,
   Get,
   Post,
+  Patch,
+  Delete,
   Param,
   UseGuards,
 } from '@nestjs/common';
@@ -18,24 +18,24 @@ import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 
 import { ActorType } from '../../auth/domain/enums/actor-type.enum';
 
+import { AddCartItemDto } from '../dtos/add-cart-item.dto';
+import { UpdateCartItemDto } from '../dtos/update-cart-item.dto';
+
 @Controller('cart')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(ActorType.CUSTOMER)
 export class CartManagementController {
-  constructor(
-    private readonly orchestrator: CartOrchestratorService,
-  ) {}
+  constructor(private readonly orchestrator: CartOrchestratorService) {}
 
   /* ================================================= */
-  /* CART – GET ACTIVE                                 */
+  /* GET ACTIVE CART                                   */
   /* ================================================= */
 
   @Get()
-  async getActiveCart(
-    @CurrentUser() user,
-  ) {
-    const data =
-      await this.orchestrator.getActiveCart(user.actorId);
+  async getActiveCart(@CurrentUser() user: { actorId: string }) {
+    const data = await this.orchestrator.getActiveCart({
+      customerId: user.actorId,
+    });
 
     return {
       success: true,
@@ -46,36 +46,20 @@ export class CartManagementController {
   }
 
   /* ================================================= */
-  /* CART – ADD ITEM                                   */
+  /* ADD ITEM                                          */
   /* ================================================= */
 
   @Post('items')
   async addItem(
-    @CurrentUser() user,
-    @Body()
-    body: {
-      outletId: string;
-      productId: string;
-      productName: string;
-      productImage: string;
-      unitPrice: number;
-      discountPrice?: number;
-      quantity: number;
-    },
+    @CurrentUser() user: { actorId: string },
+    @Body() dto: AddCartItemDto,
   ) {
-    const data =
-      await this.orchestrator.addItemToCart({
-        customerId: user.actorId,
-        outletId: body.outletId,
-        product: {
-          id: body.productId,
-          name: body.productName,
-          image: body.productImage,
-          unitPrice: body.unitPrice,
-          discountPrice: body.discountPrice,
-        },
-        quantity: body.quantity,
-      });
+    const data = await this.orchestrator.addItemToCart({
+      customerId: user.actorId,
+      outletId: dto.outletId,
+      product: { id: dto.productId },
+      quantity: dto.quantity,
+    });
 
     return {
       success: true,
@@ -86,21 +70,20 @@ export class CartManagementController {
   }
 
   /* ================================================= */
-  /* CART – UPDATE ITEM                                */
+  /* UPDATE ITEM QTY                                   */
   /* ================================================= */
 
-  @Post('items/:productId')
+  @Patch('items/:productId')
   async updateItem(
-    @CurrentUser() user,
+    @CurrentUser() user: { actorId: string },
     @Param('productId') productId: string,
-    @Body() body: { quantity: number },
+    @Body() dto: UpdateCartItemDto,
   ) {
-    const data =
-      await this.orchestrator.updateCartItemQuantity({
-        customerId: user.actorId,
-        productId,
-        quantity: body.quantity,
-      });
+    const data = await this.orchestrator.updateCartItemQuantity({
+      customerId: user.actorId,
+      productId,
+      quantity: dto.quantity,
+    });
 
     return {
       success: true,
@@ -111,19 +94,18 @@ export class CartManagementController {
   }
 
   /* ================================================= */
-  /* CART – REMOVE ITEM                                */
+  /* REMOVE ITEM                                       */
   /* ================================================= */
 
-  @Post('items/:productId/remove')
+  @Delete('items/:productId')
   async removeItem(
-    @CurrentUser() user,
+    @CurrentUser() user: { actorId: string },
     @Param('productId') productId: string,
   ) {
-    const data =
-      await this.orchestrator.removeCartItem({
-        customerId: user.actorId,
-        productId,
-      });
+    const data = await this.orchestrator.removeCartItem({
+      customerId: user.actorId,
+      productId,
+    });
 
     return {
       success: true,
@@ -134,35 +116,32 @@ export class CartManagementController {
   }
 
   /* ================================================= */
-  /* CART – CLEAR                                     */
+  /* CLEAR CART                                        */
   /* ================================================= */
 
-  @Post('clear')
-  async clearCart(
-    @CurrentUser() user,
-  ) {
-    await this.orchestrator.clearCart(user.actorId);
+  @Delete()
+  async clearCart(@CurrentUser() user: { actorId: string }) {
+    const data = await this.orchestrator.clearCart({
+      customerId: user.actorId,
+    });
 
     return {
       success: true,
       code: 'CART_CLEARED',
       message: 'Cart cleared successfully',
-      data: null,
+      data,
     };
   }
 
   /* ================================================= */
-  /* CART – CHECKOUT (LOCK)                            */
+  /* CHECKOUT (LOCK CART)                              */
   /* ================================================= */
 
   @Post('checkout')
-  async checkout(
-    @CurrentUser() user,
-  ) {
-    const data =
-      await this.orchestrator.lockCartForCheckout(
-        user.actorId,
-      );
+  async checkout(@CurrentUser() user: { actorId: string }) {
+    const data = await this.orchestrator.lockCartForCheckout({
+      customerId: user.actorId,
+    });
 
     return {
       success: true,
