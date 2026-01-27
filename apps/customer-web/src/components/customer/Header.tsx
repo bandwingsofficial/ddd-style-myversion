@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-// import ShinyText from '../styles/ShinyText'; // Uncomment if you have this file
+import ShinyText from '../styles/ShinyText'; 
 import {
   ShoppingCart,
   User,
@@ -13,7 +13,7 @@ import {
   Search,
   Package,
   MapPin,
-  ChevronDown
+  ChevronDown // ✅ Re-imported for the single, tight icon
 } from "lucide-react";
 import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
 import { useLogout } from "@/features/customer-auth/hooks/useLogout";
@@ -34,7 +34,7 @@ export default function Header() {
     { name: "Home", href: "/home" },
     { name: "Menu", href: "/menu" },
     { name: "Categories", href: "/categories" },
-    { name: "Orders", href: "/orders" }, // ✅ Changed Offers -> Orders
+    { name: "Orders", href: "/orders" }, 
   ];
 
   return (
@@ -60,6 +60,7 @@ export default function Header() {
           background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #fff; padding: 8px 28px;
           border-radius: 50px; font-size: 0.9rem; font-weight: 700; text-decoration: none;
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+          display: flex; align-items: center; justify-content: center;
         }
         .enhanced-login-btn:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 8px 20px rgba(34, 197, 94, 0.5); }
 
@@ -96,7 +97,10 @@ export default function Header() {
                 </Link>
                 <nav style={styles.navLinks}>
                   {navLinks.map((link) => (
-                    <Link key={link.name} href={link.href} className="main-nav-link">{link.name}</Link>
+                    <Link key={link.name} href={link.href} className="main-nav-link">
+                        {/* ✅ Applied ShinyText to nav links */}
+                        <ShinyText text={link.name} />
+                    </Link>
                   ))}
                 </nav>
             </div>
@@ -109,13 +113,15 @@ export default function Header() {
             </div>
 
             <div style={styles.rightGroup}>
+              {/* ✅ UPDATED LOCATION SECTION */}
               <div style={styles.locationContainer}>
                 <div style={styles.locationValueRow}>
-                    <MapPin size={16} color="#16a34a" style={{marginRight: '4px'}} />
+                    <MapPin size={16} color="#16a34a" style={{ flexShrink: 0 }} />
                     <div style={styles.locationTextWrapper} className="location-constraint">
                       <LocationSelector />
                     </div>
-                    <ChevronDown size={14} color="#64748b" style={{marginLeft: '4px'}} />
+                    {/* Added chevron back with tight spacing */}
+                    <ChevronDown size={14} color="#64748b" style={{ flexShrink: 0 }} />
                 </div>
               </div>
 
@@ -138,7 +144,7 @@ export default function Header() {
                       </div>
                       <hr style={styles.divider} />
                       <Link href="/profile" className="dropdown-item"><User size={16} /> Profile</Link>
-                      <Link href="/orders" className="dropdown-item"><Package size={16} /> My Orders</Link>
+                      <Link href="/my-orders" className="dropdown-item"><Package size={16} /> My Orders</Link>
                       <Link href="/settings" className="dropdown-item"><Settings size={16} /> Settings</Link>
                       <hr style={styles.divider} />
                       <button onClick={() => logout()} className="dropdown-item" style={{ width: "100%", border: "none", background: "none", cursor: "pointer", color: "#ef4444" }}>
@@ -147,7 +153,9 @@ export default function Header() {
                     </div>
                   </div>
                 ) : (
-                  <Link href="/login" className="enhanced-login-btn">Sign In</Link>
+                  <Link href="/login" className="enhanced-login-btn">
+                    <ShinyText text="Sign In" /> 
+                  </Link>
                 )}
               </div>
             </div>
@@ -171,9 +179,24 @@ const styles: { [key: string]: React.CSSProperties } = {
   searchBar: { background: "#f8fafc", borderRadius: "50px", padding: "8px 16px 8px 4px", display: "flex", alignItems: "center", width: "100%", transition: "all 0.2s ease", border: "1px solid #e2e8f0" },
   searchInput: { background: "transparent", border: "none", outline: "none", fontSize: "0.9rem", width: "100%", color: "#334155", fontWeight: 400, paddingLeft: "10px" },
   rightGroup: { display: 'flex', alignItems: 'center', gap: '20px' },
-  locationContainer: { display: 'flex', flexDirection: 'column', justifyContent: 'center', marginRight: '10px', maxWidth: '200px' },
-  locationValueRow: { display: 'flex', alignItems: 'center', cursor: 'pointer' },
-  locationTextWrapper: { overflow: 'hidden', fontSize: "0.85rem", fontWeight: 600, color: "#334155" },
+  locationContainer: { display: 'flex', flexDirection: 'column', justifyContent: 'center', marginRight: '10px', maxWidth: '180px' }, // Constrained width
+  // ✅ Updated Location Styles
+  locationValueRow: { 
+    display: 'flex', 
+    alignItems: 'center', 
+    cursor: 'pointer', 
+    gap: '4px', // Reduced gap for tighter icon
+    width: '100%' 
+  },
+  locationTextWrapper: { 
+    overflow: 'hidden', 
+    whiteSpace: 'nowrap', // Forces single line
+    textOverflow: 'ellipsis', // Adds ... if too long
+    fontSize: "0.85rem", 
+    fontWeight: 600, 
+    color: "#334155",
+    maxWidth: '140px' // Adjust based on preference
+  },
   actionRow: { display: "flex", alignItems: "center", gap: "12px" },
   cartLink: { textDecoration: "none", color: "inherit" },
   cartWrapper: { position: "relative", display: "flex", alignItems: "center" },
