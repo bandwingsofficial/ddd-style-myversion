@@ -10,7 +10,7 @@ export interface OutletLocation {
 export interface Outlet {
   id: string;
   name: string;
-  branch: string; // e.g., "Downtown"
+  branch: string;
   status: "ACTIVE" | "INACTIVE";
   workingState: OutletWorkingState;
   location: OutletLocation;

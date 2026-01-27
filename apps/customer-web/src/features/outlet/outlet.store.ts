@@ -1,10 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { Outlet } from "../outlet/outlet.type";
+import { Outlet } from "./outlet.type";
 
 interface OutletStore {
   selectedOutlet: Outlet | null;
-  setOutlet: (outlet: Outlet) => void;
+  // ✅ FIX: Allow 'null' so we can safely clear the selection
+  setOutlet: (outlet: Outlet | null) => void; 
   clearOutlet: () => void;
 }
 
@@ -16,7 +17,7 @@ export const useOutletStore = create<OutletStore>()(
       clearOutlet: () => set({ selectedOutlet: null }),
     }),
     {
-      name: "customer-outlet-storage", // unique name for localStorage
+      name: "customer-outlet-storage", // Unique name for localStorage
     }
   )
 );

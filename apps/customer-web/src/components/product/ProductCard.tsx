@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
-import { Plus, Minus, ImageOff, Heart, Star, TrendingUp } from "lucide-react"; 
+import { Plus, Minus, ImageOff, Heart, Star, TrendingUp, MapPinOff } from "lucide-react"; 
 import { useFavorites } from "@/providers/CustomerAuthProvider";
 import { useCartStore } from "@/features/cart/cart.store";
 import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
@@ -10,8 +10,6 @@ import { ProductListItem } from "@/features/products/types/product.types";
 import { useOutletStore } from "@/features/outlet/outlet.store";
 
 const BACKEND_URL = "https://api.dev.local:4000"; 
-// You can remove this fallback once your OutletStore is fully integrated
-const FALLBACK_OUTLET_ID = "718949f5-cee7-45c6-9308-cd0b58085ca8"; 
 
 export default function ProductCard({ product }: { product: ProductListItem }) {
   const [imageError, setImageError] = useState(false);
@@ -22,8 +20,9 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
   const { items, addItem, updateItem, removeItem } = useCartStore();
   const isAuthenticated = useCustomerAuthStore((s) => s.isAuthenticated);
 
-  // 1. Get Global Outlet
-  const currentOutlet = useOutletStore((state: any) => state.currentOutlet || state.selectedOutlet);
+  // 1. Get Selected Outlet from Store
+  const currentOutlet = useOutletStore((state) => state.selectedOutlet);
+  const isOutletSelected = !!currentOutlet; 
 
   // 2. Data Normalization
   const name = useMemo(() => p.name?.value || p.name || "Unknown", [p]);
@@ -33,8 +32,7 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
   const outletId = useMemo(() => {
     if (currentOutlet?.id) return currentOutlet.id;
     if (p.outletId) return p.outletId;
-    if (p.outlet?.id) return p.outlet.id;
-    return FALLBACK_OUTLET_ID; 
+    return null; 
   }, [p, currentOutlet]);
 
   // 4. Price Logic
@@ -93,11 +91,15 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
   const handleAdd = async (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
 
+    if (!isOutletSelected) {
+        alert("Please select a nearby outlet first.");
+        return;
+    }
+
     if (original <= 0) { alert("Invalid Price"); return; }
     
     if (!outletId) {
        console.error("❌ No Outlet ID found");
-       alert("System Error: Store ID missing.");
        return;
     }
 
@@ -123,7 +125,8 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
     else await updateItem(p.id, newQty, isAuthenticated);
   };
 
-  const isAddDisabled = original <= 0;
+  // ✅ STRICT DISABLE LOGIC: Disable if price is invalid OR No Outlet is selected
+  const isAddDisabled = original <= 0 || !isOutletSelected;
 
   return (
     <div style={styles.cardWrapper}>
@@ -173,16 +176,22 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
               <button 
                 style={{
                   ...styles.addButton,
-                  opacity: isAddDisabled ? 0.5 : 1,
+                  opacity: isAddDisabled ? 0.6 : 1,
                   cursor: isAddDisabled ? 'not-allowed' : 'pointer',
-                  background: isAddDisabled ? '#e2e8f0' : '#f0fdf4',
+                  background: isAddDisabled ? '#f1f5f9' : '#f0fdf4',
                   borderColor: isAddDisabled ? '#cbd5e1' : '#16a34a',
                   color: isAddDisabled ? '#94a3b8' : '#16a34a'
                 }} 
                 onClick={!isAddDisabled ? handleAdd : (e) => e.preventDefault()} 
                 className="add-button"
+                disabled={isAddDisabled}
               >
-                <Plus size={16} strokeWidth={3} /><span>ADD</span>
+                {!isOutletSelected ? (
+                    // Show "Unavailable" if no outlet
+                    <><MapPinOff size={16} strokeWidth={2} /><span>UNAVAILABLE</span></>
+                ) : (
+                    <><Plus size={16} strokeWidth={3} /><span>ADD</span></>
+                )}
               </button>
             ) : (
               <div style={styles.quantitySelector} className="quantity-selector">
@@ -200,7 +209,10 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
         .product-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .product-card:hover { border-color: #16a34a33 !important; box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.08); transform: translateY(-4px); }
         .fav-btn:active { transform: scale(0.9); }
-        .add-button:hover { background: ${isAddDisabled ? '#e2e8f0' : '#16a34a'} !important; color: ${isAddDisabled ? '#94a3b8' : 'white'} !important; }
+        .add-button:hover { 
+            background: ${isAddDisabled ? '#f1f5f9' : '#16a34a'} !important; 
+            color: ${isAddDisabled ? '#94a3b8' : 'white'} !important; 
+        }
         @media (max-width: 640px) {
           .image-container { height: 150px !important; }
           .content { padding: 10px !important; flex-direction: column !important; align-items: stretch !important; }
@@ -212,7 +224,6 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
   );
 }
 
-// ... styles object (SAME AS BEFORE)
 const styles: { [key: string]: React.CSSProperties } = {
   cardWrapper: { position: "relative" },
   productCard: { display: "block", background: "#ffffff", borderRadius: "16px", border: "1px solid #f1f5f9", overflow: "hidden", textDecoration: "none" },
