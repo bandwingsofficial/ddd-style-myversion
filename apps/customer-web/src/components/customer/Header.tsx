@@ -12,8 +12,6 @@ import {
   Heart,
   Search,
   Package,
-  MapPin,
-  ChevronDown // ✅ Re-imported for the single, tight icon
 } from "lucide-react";
 import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
 import { useLogout } from "@/features/customer-auth/hooks/useLogout";
@@ -41,27 +39,14 @@ export default function Header() {
     <>
       <style jsx global>{`
         /* MARQUEE & UTILITIES */
-        .marquee-container {
-          overflow: hidden; white-space: nowrap; position: relative; flex: 1; 
-          mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent); margin-right: 20px;
-        }
+        .marquee-container { overflow: hidden; white-space: nowrap; position: relative; flex: 1; mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent); margin-right: 20px; }
         .marquee-content { display: inline-block; animation: marquee 20s linear infinite; padding-left: 100%; }
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
 
-        .main-nav-link {
-          text-decoration: none; color: #334155; font-weight: 600; font-size: 0.95rem; padding: 8px 16px; 
-          border-radius: 30px; transition: all 0.3s ease; display: flex; align-items: center;
-        }
-        .main-nav-link:hover {
-          background-color: rgba(34, 197, 94, 0.15); color: #16a34a; transform: translateY(-1px);
-        }
+        .main-nav-link { text-decoration: none; color: #334155; font-weight: 600; font-size: 0.95rem; padding: 8px 16px; border-radius: 30px; transition: all 0.3s ease; display: flex; align-items: center; }
+        .main-nav-link:hover { background-color: rgba(34, 197, 94, 0.15); color: #16a34a; transform: translateY(-1px); }
 
-        .enhanced-login-btn {
-          background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #fff; padding: 8px 28px;
-          border-radius: 50px; font-size: 0.9rem; font-weight: 700; text-decoration: none;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
-          display: flex; align-items: center; justify-content: center;
-        }
+        .enhanced-login-btn { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #fff; padding: 8px 28px; border-radius: 50px; font-size: 0.9rem; font-weight: 700; text-decoration: none; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3); display: flex; align-items: center; justify-content: center; }
         .enhanced-login-btn:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 8px 20px rgba(34, 197, 94, 0.5); }
 
         .search-container { transition: all 0.3s ease; }
@@ -76,6 +61,7 @@ export default function Header() {
       `}</style>
 
       <header style={{ ...styles.headerWrapper, boxShadow: scrolled ? "0 4px 20px rgba(0,0,0,0.03)" : "none" }}>
+        
         {/* TOP BAR */}
         <div style={{ ...styles.topBar, height: scrolled ? "0px" : "36px", opacity: scrolled ? 0 : 1 }}>
           <div style={styles.topBarContainer}>
@@ -98,7 +84,6 @@ export default function Header() {
                 <nav style={styles.navLinks}>
                   {navLinks.map((link) => (
                     <Link key={link.name} href={link.href} className="main-nav-link">
-                        {/* ✅ Applied ShinyText to nav links */}
                         <ShinyText text={link.name} />
                     </Link>
                   ))}
@@ -113,16 +98,10 @@ export default function Header() {
             </div>
 
             <div style={styles.rightGroup}>
-              {/* ✅ UPDATED LOCATION SECTION */}
+              
+              {/* ✅ FIXED: Clean Location Container. Only contains the component. */}
               <div style={styles.locationContainer}>
-                <div style={styles.locationValueRow}>
-                    <MapPin size={16} color="#16a34a" style={{ flexShrink: 0 }} />
-                    <div style={styles.locationTextWrapper} className="location-constraint">
-                      <LocationSelector />
-                    </div>
-                    {/* Added chevron back with tight spacing */}
-                    <ChevronDown size={14} color="#64748b" style={{ flexShrink: 0 }} />
-                </div>
+                  <LocationSelector />
               </div>
 
               <div style={styles.actionRow}>
@@ -139,8 +118,8 @@ export default function Header() {
                     <div className="nav-icon-btn"><User size={22} /></div>
                     <div style={styles.dropdownPanel} className="dropdown-panel">
                       <div style={styles.dropdownHeader}>
-                        <p style={styles.userName}>Alex Johnson</p>
-                        <p style={styles.userEmail}>alex@example.com</p>
+                        <p style={styles.userName}>Hello!</p>
+                        <p style={styles.userEmail}>Welcome back</p>
                       </div>
                       <hr style={styles.divider} />
                       <Link href="/profile" className="dropdown-item"><User size={16} /> Profile</Link>
@@ -179,24 +158,15 @@ const styles: { [key: string]: React.CSSProperties } = {
   searchBar: { background: "#f8fafc", borderRadius: "50px", padding: "8px 16px 8px 4px", display: "flex", alignItems: "center", width: "100%", transition: "all 0.2s ease", border: "1px solid #e2e8f0" },
   searchInput: { background: "transparent", border: "none", outline: "none", fontSize: "0.9rem", width: "100%", color: "#334155", fontWeight: 400, paddingLeft: "10px" },
   rightGroup: { display: 'flex', alignItems: 'center', gap: '20px' },
-  locationContainer: { display: 'flex', flexDirection: 'column', justifyContent: 'center', marginRight: '10px', maxWidth: '180px' }, // Constrained width
-  // ✅ Updated Location Styles
-  locationValueRow: { 
+  
+  // ✅ Simplified this. Removed inner constraints that clipped dropdowns.
+  locationContainer: { 
     display: 'flex', 
     alignItems: 'center', 
-    cursor: 'pointer', 
-    gap: '4px', // Reduced gap for tighter icon
-    width: '100%' 
+    marginRight: '15px', 
+    position: 'relative' // Critical for dropdown positioning
   },
-  locationTextWrapper: { 
-    overflow: 'hidden', 
-    whiteSpace: 'nowrap', // Forces single line
-    textOverflow: 'ellipsis', // Adds ... if too long
-    fontSize: "0.85rem", 
-    fontWeight: 600, 
-    color: "#334155",
-    maxWidth: '140px' // Adjust based on preference
-  },
+  
   actionRow: { display: "flex", alignItems: "center", gap: "12px" },
   cartLink: { textDecoration: "none", color: "inherit" },
   cartWrapper: { position: "relative", display: "flex", alignItems: "center" },

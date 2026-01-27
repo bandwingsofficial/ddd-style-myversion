@@ -1,99 +1,166 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ChevronDown } from "lucide-react"; // Removed MapPin to avoid duplicate icons
+import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import { ChevronDown, MapPin, Home, Briefcase, Navigation, Settings, LogIn } from "lucide-react";
 import { useLiveLocation } from "@/features/location/hooks/useLiveLocation";
 import { reverseGeocode } from "@/features/location/utils/reverseGeocode";
+import { AddressService, Address } from "@/features/addresses/address.service";
+import { useLocationStore } from "@/features/location/location.store"; 
+import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store"; // ✅ Import Auth Store
 
 export default function LocationSelector() {
-  const { lat, lng, error } = useLiveLocation();
-  const [address, setAddress] = useState("Detecting location...");
+  // Local UI State
+  const [isOpen, setIsOpen] = useState(false);
+  const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Helper to get clean "Area, City" format
-  const formatLocation = (fullAddress: string) => {
-    if (!fullAddress) return "Unknown Location";
-    
-    const parts = fullAddress.split(",").map((p) => p.trim());
+  // Global State & Hooks
+  const { latitude, longitude, addressLabel, setLocation } = useLocationStore();
+  const { lat: liveLat, lng: liveLng } = useLiveLocation();
+  const { isAuthenticated } = useCustomerAuthStore(); // ✅ Check Login Status
 
-    // Logic: If address is long (contains street, area, city, state...), 
-    // try to grab the Area and City. 
-    // Usually standard geocoders return: [Street, Area, City, State, Country]
-    if (parts.length >= 3) {
-      // Find the city part (heuristic: look for Bengaluru/Bangalore or take 2nd/3rd items)
-      // This grabs the part before the City (usually Area) and the City itself.
-      const cityIndex = parts.findIndex(p => 
-        p.toLowerCase().includes("bengaluru") || 
-        p.toLowerCase().includes("bangalore") ||
-        p.toLowerCase().includes("city")
-      );
-
-      if (cityIndex > 0) {
-        // Return "Area, City"
-        return `${parts[cityIndex - 1]}, ${parts[cityIndex]}`;
-      }
-
-      // Fallback: Skip the first part (usually street) and show next two
-      return `${parts[1]}, ${parts[2]}`;
+  // 1. Initial Setup: Use Live Location if nothing is set in store
+  useEffect(() => {
+    if (!latitude && !longitude && liveLat && liveLng) {
+       handleSelectCurrentLocation();
     }
+  }, [liveLat, liveLng, latitude, longitude]);
 
-    return fullAddress;
+  // 2. Fetch Saved Addresses (ONLY if Logged In)
+  useEffect(() => {
+    if (isOpen && isAuthenticated) {
+      AddressService.getAll()
+        .then(data => setSavedAddresses(data.filter(a => !a.isDeleted)))
+        .catch(err => console.error(err));
+    }
+  }, [isOpen, isAuthenticated]); // ✅ Dependency added
+
+  // 3. Close on Outside Click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // --- Handlers ---
+
+  const handleSelectCurrentLocation = async () => {
+    if (liveLat && liveLng) {
+      let label = "Current Location";
+      const placeName = await reverseGeocode(liveLat, liveLng);
+      if (placeName) {
+         const parts = placeName.split(",");
+         // Smart formatting: "Area, City"
+         if (parts.length > 2) label = `${parts[parts.length-4] || parts[0]}, ${parts[parts.length-3] || parts[1]}`;
+         else label = placeName.substring(0, 25);
+      }
+      
+      setLocation(liveLat, liveLng, label);
+      setIsOpen(false);
+    } else {
+      alert("Location unavailable. Please check browser permissions.");
+    }
   };
 
-  useEffect(() => {
-    if (lat && lng) {
-      reverseGeocode(lat, lng).then((place) => {
-        if (place) {
-          // Format the address immediately when setting state
-          setAddress(formatLocation(place));
-        }
-      });
-    }
-  }, [lat, lng]);
+  const handleSelectSavedAddress = (addr: Address) => {
+    setLocation(addr.latitude, addr.longitude, addr.label);
+    setIsOpen(false);
+  };
 
   return (
-    <div style={styles.locationPicker}>
-      {/* Icon removed here because it's now in the Header parent component */}
+    <div className="relative z-50" ref={dropdownRef}>
       
-      <div style={styles.locationText}>
-        <span style={styles.locationLabel}>Deliver to</span>
-        <span style={styles.locationValue}>
-          {error ? "Location unavailable" : address}
-          <ChevronDown size={12} style={{ marginTop: '2px' }} />
-        </span>
+      {/* TRIGGER (Header Display) */}
+      <div 
+        className="flex items-center gap-2 cursor-pointer group p-1 rounded-lg hover:bg-slate-50 transition-colors"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <MapPin size={20} className="text-emerald-600 flex-shrink-0" />
+        <div className="flex flex-col">
+          <span className="text-[10px] font-bold text-slate-400 uppercase leading-none mb-0.5 group-hover:text-emerald-600">
+            Deliver to
+          </span>
+          <div className="flex items-center gap-1">
+            <span className="font-bold text-sm text-slate-700 max-w-[140px] truncate leading-none">
+              {addressLabel}
+            </span>
+            <ChevronDown size={14} className={`text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          </div>
+        </div>
       </div>
+
+      {/* DROPDOWN MENU */}
+      {isOpen && (
+        <div className="absolute top-12 left-0 w-72 bg-white rounded-xl shadow-xl border border-slate-100 p-2 animate-in fade-in slide-in-from-top-2 origin-top-left">
+          
+          {/* Option 1: Current Location (Always Available) */}
+          <button 
+            onClick={handleSelectCurrentLocation}
+            className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-emerald-50 transition-colors text-left group"
+          >
+            <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                <Navigation size={16} />
+            </div>
+            <div>
+              <div className="font-bold text-emerald-700 text-sm">Use Current Location</div>
+              <div className="text-[10px] text-slate-500">Using GPS</div>
+            </div>
+          </button>
+
+          <div className="h-px bg-slate-100 my-2" />
+
+          {/* Option 2: Saved Addresses (Only if Logged In) */}
+          {isAuthenticated ? (
+            <>
+              <div className="max-h-56 overflow-y-auto custom-scrollbar">
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-2">Saved Addresses</div>
+                
+                {savedAddresses.length > 0 ? savedAddresses.map((addr) => (
+                  <button 
+                    key={addr.id}
+                    onClick={() => handleSelectSavedAddress(addr)}
+                    className="w-full flex items-start gap-3 p-2 rounded-lg hover:bg-slate-50 transition-colors text-left mb-1"
+                  >
+                    <div className="mt-0.5 text-slate-400">
+                      {addr.type === "HOME" ? <Home size={16} /> : addr.type === "WORK" ? <Briefcase size={16} /> : <MapPin size={16} />}
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <div className="font-bold text-slate-700 text-sm truncate">{addr.label}</div>
+                      <div className="text-[10px] text-slate-500 truncate">{addr.addressText}</div>
+                    </div>
+                  </button>
+                )) : (
+                  <div className="text-center py-3 text-xs text-slate-400 italic">No saved addresses found</div>
+                )}
+              </div>
+
+              <div className="h-px bg-slate-100 my-2" />
+
+              {/* Manage Link */}
+              <Link 
+                href="/profile/addresses" 
+                onClick={() => setIsOpen(false)}
+                className="flex items-center justify-center gap-2 w-full p-2.5 text-xs font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <Settings size={14} /> Manage Addresses
+              </Link>
+            </>
+          ) : (
+            // Option 3: Guest User Prompt (Prevents 401 Error)
+            <Link 
+              href="/login"
+              className="flex items-center justify-center gap-2 w-full p-3 rounded-lg bg-slate-50 hover:bg-emerald-50 text-emerald-700 font-bold text-xs transition-colors"
+            >
+              <LogIn size={14} /> Sign in to see saved addresses
+            </Link>
+          )}
+        </div>
+      )}
     </div>
   );
 }
-
-const styles: { [key: string]: React.CSSProperties } = {
-  locationPicker: { 
-    display: "flex", 
-    alignItems: "center", 
-    gap: "0px", // Reduced gap since icon is gone
-    cursor: "pointer",
-    height: "100%"
-  },
-  // Removed locationIcon style as it is no longer used here
-  locationText: { 
-    display: "flex", 
-    flexDirection: "column",
-    justifyContent: "center"
-  },
-  locationLabel: { 
-    fontSize: "0.65rem", 
-    textTransform: "uppercase", 
-    fontWeight: 700, 
-    color: "#94a3b8", 
-    lineHeight: "1.1",
-    marginBottom: "1px"
-  },
-  locationValue: { 
-    fontSize: "0.9rem", 
-    fontWeight: 700, 
-    color: "#334155", 
-    display: "flex", 
-    alignItems: "center", 
-    gap: "4px",
-    lineHeight: "1.2"
-  }
-};
