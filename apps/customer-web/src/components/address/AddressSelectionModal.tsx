@@ -125,7 +125,7 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
       longitude: address.longitude,
     });
     
-    // Naive split for editing
+    // Naive split for editing: Attempt to extract pincode from the end
     const parts = address.addressText.split("-");
     const lastPart = parts[parts.length - 1]?.trim();
     const isPincode = /^\d{6}$/.test(lastPart);
@@ -141,7 +141,7 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
     setView("FORM");
   };
 
-  // ✅ SMART LOCATION HANDLER (Updated Parser)
+  // ✅ UPDATED: Intelligent Parsing for "Use Current Location"
   const handleUseCurrentLocation = async () => {
     if (!lat || !lng) {
       setPopup({ type: "error", message: "Location not available. Please allow browser permissions." });
@@ -154,17 +154,19 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
       const addressString = await reverseGeocode(lat, lng);
       
       if (addressString) {
+        // 1. Extract Pincode (Find 6 digits)
         let extractedPincode = "";
         const pincodeMatch = addressString.match(/\b\d{6}\b/);
         if (pincodeMatch) extractedPincode = pincodeMatch[0];
 
-        // Clean up the area string
+        // 2. Clean Area (Remove pincode and country)
         const cleanArea = addressString
             .replace(extractedPincode, "")
             .replace(/,\s*$/, "")
             .replace(/,\s*India$/, "")
             .trim();
 
+        // 3. Set details separately
         setDetails(prev => ({
             ...prev,
             area: cleanArea,
@@ -304,7 +306,7 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
               <button onClick={() => startAddMode()} className="w-full py-4 border-2 border-dashed border-slate-200 hover:border-emerald-500 rounded-xl text-slate-500 hover:text-emerald-600 font-semibold flex items-center justify-center gap-2 transition-all bg-slate-50/50 hover:bg-emerald-50/30"><Plus size={20} /> Add New Address</button>
             </div>
           ) : (
-            /* --- FORM VIEW --- */
+            /* --- FORM VIEW (SPLIT INPUTS) --- */
             <form onSubmit={handleSave} className="space-y-5">
               
               {/* 1. Label Type */}
@@ -329,7 +331,7 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
                 <input type="text" value={formData.label} onChange={e => setFormData({...formData, label: e.target.value})} className={`w-full p-3.5 rounded-xl border bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${formData.type !== "OTHER" ? "border-slate-100 text-slate-500" : "border-slate-200 text-slate-900"}`} placeholder="e.g. My Apartment" readOnly={formData.type !== "OTHER"} required />
               </div>
 
-              {/* ✅ 3. USE CURRENT LOCATION BUTTON (Moved Here) */}
+              {/* 3. USE CURRENT LOCATION (Moved Here) */}
               <button 
                 type="button" 
                 onClick={handleUseCurrentLocation} 
