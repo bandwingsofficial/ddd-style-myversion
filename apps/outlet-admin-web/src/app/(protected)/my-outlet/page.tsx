@@ -41,7 +41,7 @@ export default function MyOutletPage() {
 
 const styles: { [key: string]: React.CSSProperties } = {
   pageContainer: {
-    padding: '24px',
+    padding: '4px',
     maxWidth: '1024px',
     margin: '0 auto',
     fontFamily: 'sans-serif',
