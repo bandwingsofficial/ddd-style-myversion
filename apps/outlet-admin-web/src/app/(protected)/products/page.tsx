@@ -2,19 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { outletService } from "@/features/outlet/services/outletService";
-import { Outlet } from "@/features/outlet/types";
-import OutletControlCard from "@/features/outlet/components/OutletControlCard";
+import { OutletProduct } from "@/features/outlet/types";
+import ProductList from "@/features/outlet/components/ProductList";
 
-export default function MyOutletPage() {
-  const [outlet, setOutlet] = useState<Outlet | null>(null);
+export default function ProductsPage() {
+  const [products, setProducts] = useState<OutletProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
     try {
-      const outletData = await outletService.getOutlet();
-      setOutlet(outletData);
+      const productsData = await outletService.getProducts();
+      setProducts(productsData);
     } catch (error) {
-      console.error("Failed to load outlet data", error);
+      console.error("Failed to load products", error);
     } finally {
       setLoading(false);
     }
@@ -24,17 +24,16 @@ export default function MyOutletPage() {
     fetchData();
   }, []);
 
-  if (loading) return <div style={styles.loading}>Loading outlet details...</div>;
-  if (!outlet) return <div style={styles.error}>Failed to load outlet info.</div>;
+  if (loading) return <div style={styles.loading}>Loading products...</div>;
 
   return (
     <div style={styles.pageContainer}>
       <div style={styles.pageHeader}>
-        <h1 style={styles.pageTitle}>Outlet Controls</h1>
-        <p style={styles.pageSubtitle}>Manage your live store status and AI camera feed.</p>
+        <h1 style={styles.pageTitle}>Product Management</h1>
+        <p style={styles.pageSubtitle}>Enable or disable items for your outlet menu.</p>
       </div>
 
-      <OutletControlCard outlet={outlet} refreshData={fetchData} />
+      <ProductList initialProducts={products} />
     </div>
   );
 }
@@ -63,10 +62,5 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: '40px',
     textAlign: 'center',
     color: '#6b7280',
-  },
-  error: {
-    padding: '40px',
-    textAlign: 'center',
-    color: '#dc2626',
   }
 };

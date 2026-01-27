@@ -7,7 +7,8 @@ import {
   LayoutDashboard,
   Users,
   LogOut,
-  Store, // Imported Store icon for the outlet
+  Store,
+  Package, // New Icon for Products
 } from 'lucide-react';
 
 // Sidebar menu configuration
@@ -18,9 +19,14 @@ const menuItems = [
     icon: <LayoutDashboard size={20} />,
   },
   {
-    label: 'My Outlet', // New Menu Item
+    label: 'My Outlet', 
     href: '/my-outlet',
     icon: <Store size={20} />,
+  },
+  {
+    label: 'Products', // NEW MENU ITEM
+    href: '/products',
+    icon: <Package size={20} />,
   },
   {
     label: 'Users Details',
@@ -30,7 +36,7 @@ const menuItems = [
 ];
 
 export default function Sidebar() {
-  const pathname = usePathname(); // Hook to check current URL
+  const pathname = usePathname();
 
   return (
     <aside style={styles.sidebar}>
@@ -42,9 +48,7 @@ export default function Sidebar() {
       {/* Navigation */}
       <nav style={styles.nav}>
         {menuItems.map((item) => {
-          // Check if this link is currently active
           const isActive = pathname === item.href;
-          
           return (
             <Link 
               key={item.href} 
@@ -112,7 +116,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     transition: 'all 0.2s ease',
     gap: '12px',
   },
-  // This style is now applied dynamically when the link is active
   activeLink: {
     backgroundColor: '#1b5548',
     color: '#ffffff',

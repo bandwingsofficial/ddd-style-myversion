@@ -12,11 +12,24 @@ interface Props {
 export default function OutletControlCard({ outlet, refreshData }: Props) {
   const [loading, setLoading] = useState(false);
 
+  // Helper booleans for cleaner logic
+  const isStoreOpen = outlet.workingState.status === "OPEN";
+  const isCameraOn = outlet.cameraState.status === "ON";
+
   const handleStatusToggle = async () => {
     setLoading(true);
-    const newStatus = outlet.workingState.status === "OPEN" ? "CLOSED" : "OPEN";
+    const newStatus = isStoreOpen ? "CLOSED" : "OPEN";
+
     try {
+      // 1. If we are CLOSING the store, and Camera is ON -> Turn Camera OFF first
+      if (newStatus === "CLOSED" && isCameraOn) {
+        await outletService.toggleCamera("off");
+      }
+
+      // 2. Update the Store Status
       await outletService.updateWorkingStatus(newStatus);
+      
+      // 3. Refresh data to show new states
       refreshData();
     } catch (error) {
       console.error("Failed to update status", error);
@@ -26,8 +39,11 @@ export default function OutletControlCard({ outlet, refreshData }: Props) {
   };
 
   const handleCameraToggle = async () => {
+    // Prevent clicking if store is closed
+    if (!isStoreOpen) return;
+
     setLoading(true);
-    const action = outlet.cameraState.status === "ON" ? "off" : "on";
+    const action = isCameraOn ? "off" : "on";
     try {
       await outletService.toggleCamera(action, "http://stream.com");
       refreshData();
@@ -37,9 +53,6 @@ export default function OutletControlCard({ outlet, refreshData }: Props) {
       setLoading(false);
     }
   };
-
-  const isStoreOpen = outlet.workingState.status === "OPEN";
-  const isCameraOn = outlet.cameraState.status === "ON";
 
   return (
     <div style={styles.card}>
@@ -63,7 +76,7 @@ export default function OutletControlCard({ outlet, refreshData }: Props) {
         </span>
       </div>
 
-      {/* Action Cards Container */}
+      {/* Action Cards Grid */}
       <div style={styles.grid}>
         
         {/* Store Status Block */}
@@ -87,15 +100,20 @@ export default function OutletControlCard({ outlet, refreshData }: Props) {
                 ...styles.button,
                 backgroundColor: isStoreOpen ? '#dc2626' : '#16a34a',
                 color: 'white',
+                opacity: loading ? 0.7 : 1,
               }}
             >
-              {loading ? "Updating..." : (isStoreOpen ? "Close Store" : "Open Store")}
+              {loading ? "Processing..." : (isStoreOpen ? "Close Store" : "Open Store")}
             </button>
           </div>
         </div>
 
         {/* AI Camera Block */}
-        <div style={styles.actionBlock}>
+        <div style={{
+          ...styles.actionBlock,
+          // Optional: visually gray out the whole block if locked
+          backgroundColor: isStoreOpen ? '#f9fafb' : '#f3f4f6', 
+        }}>
           <div style={styles.blockHeader}>
             <span style={styles.label}>AI Camera</span>
             <div style={{
@@ -108,17 +126,30 @@ export default function OutletControlCard({ outlet, refreshData }: Props) {
             <span style={{...styles.value, color: isCameraOn ? '#111827' : '#9ca3af'}}>
               {outlet.cameraState.status}
             </span>
+            
+            {/* Camera Button Logic */}
             <button
               onClick={handleCameraToggle}
-              disabled={loading}
+              // DISABLED if loading OR Store is Closed
+              disabled={loading || !isStoreOpen} 
               style={{
                 ...styles.button,
-                backgroundColor: 'white',
-                border: isCameraOn ? '1px solid #fca5a5' : '1px solid #bfdbfe',
-                color: isCameraOn ? '#dc2626' : '#2563eb',
+                // If Store Closed: Gray/Disabled Style
+                // If Store Open: Normal Blue/Red Style
+                backgroundColor: !isStoreOpen ? '#e5e7eb' : 'white',
+                border: !isStoreOpen 
+                  ? '1px solid #d1d5db' 
+                  : (isCameraOn ? '1px solid #fca5a5' : '1px solid #bfdbfe'),
+                color: !isStoreOpen 
+                  ? '#9ca3af' 
+                  : (isCameraOn ? '#dc2626' : '#2563eb'),
+                cursor: !isStoreOpen ? 'not-allowed' : 'pointer',
               }}
             >
-              {loading ? "Processing..." : (isCameraOn ? "Turn Off" : "Turn On")}
+              {!isStoreOpen 
+                ? "Locked (Store Closed)" 
+                : (loading ? "..." : (isCameraOn ? "Turn Off" : "Turn On"))
+              }
             </button>
           </div>
         </div>
@@ -176,7 +207,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: '24px',
   },
   actionBlock: {
-    backgroundColor: '#f9fafb',
     padding: '20px',
     borderRadius: '12px',
     border: '1px solid #e5e7eb',
@@ -184,6 +214,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     flexDirection: 'column',
     justifyContent: 'space-between',
     height: '140px',
+    transition: 'background-color 0.2s',
   },
   blockHeader: {
     display: 'flex',
