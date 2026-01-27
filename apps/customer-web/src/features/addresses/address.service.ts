@@ -1,6 +1,5 @@
 import customerAxios from "@/http/axios/customerAxios";
 
-// ✅ Types matching your Backend JSON
 export interface Address {
   id: string;
   customerId: string;
@@ -19,7 +18,6 @@ export interface ApiResponse<T> {
   data: T;
 }
 
-// Payload for creating/updating
 export interface AddressPayload {
   label?: string;
   type?: "HOME" | "WORK" | "OTHER";
