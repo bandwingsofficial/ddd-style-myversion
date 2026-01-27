@@ -2,10 +2,12 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Users,
   LogOut,
+  Store, // Imported Store icon for the outlet
 } from 'lucide-react';
 
 // Sidebar menu configuration
@@ -16,14 +18,20 @@ const menuItems = [
     icon: <LayoutDashboard size={20} />,
   },
   {
+    label: 'My Outlet', // New Menu Item
+    href: '/my-outlet',
+    icon: <Store size={20} />,
+  },
+  {
     label: 'Users Details',
     href: '/users',
     icon: <Users size={20} />,
   },
- 
 ];
 
 export default function Sidebar() {
+  const pathname = usePathname(); // Hook to check current URL
+
   return (
     <aside style={styles.sidebar}>
       {/* Logo Area */}
@@ -33,12 +41,21 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav style={styles.nav}>
-        {menuItems.map((item) => (
-          <Link key={item.href} href={item.href} style={styles.link}>
-            <span style={styles.icon}>{item.icon}</span>
-            {item.label}
-          </Link>
-        ))}
+        {menuItems.map((item) => {
+          // Check if this link is currently active
+          const isActive = pathname === item.href;
+          
+          return (
+            <Link 
+              key={item.href} 
+              href={item.href} 
+              style={isActive ? { ...styles.link, ...styles.activeLink } : styles.link}
+            >
+              <span style={styles.icon}>{item.icon}</span>
+              {item.label}
+            </Link>
+          );
+        })}
       </nav>
 
       {/* Footer / Logout */}
@@ -95,6 +112,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     transition: 'all 0.2s ease',
     gap: '12px',
   },
+  // This style is now applied dynamically when the link is active
   activeLink: {
     backgroundColor: '#1b5548',
     color: '#ffffff',
