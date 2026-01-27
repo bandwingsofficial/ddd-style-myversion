@@ -2,130 +2,169 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { CheckoutApi } from "@/features/checkout/checkout.api";
+import { CheckoutSummary } from "@/features/checkout/checkout.types";
 import { useCartStore } from "@/features/cart/cart.store";
-import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
-import { AddressService, Address } from "@/features/addresses/address.service";
-import { ArrowLeft, ShieldCheck, Loader2, ShoppingBag, MapPin } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Loader2, MapPin, TicketPercent, Bike } from "lucide-react";
 import Header from "@/components/customer/Header";
 
-// Helper for images
 const BACKEND_URL = "https://api.dev.local:4000";
-const getImageUrl = (path?: string) => {
-  if (!path) return null;
-  if (path.startsWith("http")) return path;
-  return `${BACKEND_URL}${path.startsWith("/") ? path : `/${path}`}`;
-};
+const getImageUrl = (path?: string) => path?.startsWith("http") ? path : `${BACKEND_URL}/${path}`;
 
 export default function CheckoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const addressId = searchParams.get("addressId");
-
-  const { items, checkoutCart, isCheckingOut } = useCartStore();
-  const { isAuthenticated, isHydrated } = useCustomerAuthStore();
   
-  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
-  const [loadingAddress, setLoadingAddress] = useState(false);
+  const [summary, setSummary] = useState<CheckoutSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
+  
+  // ✅ FIX: Ensure we are using the store correctly
+  const clearCart = useCartStore((s) => s.clear);
 
-  // 1. Auth Guard
   useEffect(() => {
-    if (isHydrated && !isAuthenticated) router.replace("/login");
-    if (isHydrated && isAuthenticated && items.length === 0) router.replace("/menu");
-  }, [isHydrated, isAuthenticated, items, router]);
-
-  // 2. Fetch Selected Address
-  useEffect(() => {
-    const fetchAddr = async () => {
-      if (addressId) {
-        setLoadingAddress(true);
-        try {
-          const addr = await AddressService.getOne(addressId);
-          setSelectedAddress(addr);
-        } catch (e) {
-          console.error("Invalid address");
-        } finally {
-          setLoadingAddress(false);
-        }
-      }
-    };
-    fetchAddr();
-  }, [addressId]);
-
-  const totalAmount = items.reduce((sum, item) => sum + (item.discountPrice || item.unitPrice) * item.quantity, 0);
-
-  const handleConfirmOrder = async () => {
     if (!addressId) {
-      alert("Address missing. Please go back and select an address.");
+      router.replace("/cart");
       return;
     }
-    
-    // Pass addressId to checkout function
-    const success = await checkoutCart(addressId);
-    if (success) router.push("/orders/success");
-    else alert("Order failed. Please try again.");
+    loadSummary();
+  }, [addressId]);
+
+  const loadSummary = async () => {
+    try {
+      const data = await CheckoutApi.getSummary(addressId!);
+      setSummary(data);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to load checkout summary. Please try again.");
+      router.back();
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (!isHydrated || !isAuthenticated) return null;
+  const handlePay = async () => {
+    if (!addressId) return;
+    setProcessing(true);
+    try {
+      // 1. Start Checkout -> Get Order ID & Payment Details
+      const response = await CheckoutApi.startCheckout(addressId);
+      
+      // 2. Clear Local Cart
+      // ✅ FIX: Pass 'true' because the user is logged in during checkout
+      // This satisfies the TS error: Expected 1 arguments, but got 0
+      await clearCart(true); 
+
+      // 3. Redirect to Payment Processing
+      const params = new URLSearchParams({
+        orderId: response.orderId,
+        paymentId: response.paymentId,
+        amount: summary?.grandTotal.toString() || "0"
+      });
+      
+      router.push(`/payment/process?${params.toString()}`);
+
+    } catch (error) {
+      console.error(error);
+      alert("Could not initiate payment.");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  if (loading) return <div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-emerald-600" /></div>;
+  if (!summary) return null;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-sans">
+    <div className="min-h-screen bg-[#F8FAFC]">
       <Header />
-      <main className="pt-36 pb-12 px-4 max-w-3xl mx-auto">
-        <button onClick={() => router.back()} className="flex items-center text-slate-500 hover:text-emerald-600 mb-6 transition-colors font-medium">
-          <ArrowLeft size={18} className="mr-2" /> Back / Change Address
+      <main className="pt-36 pb-12 px-4 max-w-5xl mx-auto">
+        <button onClick={() => router.back()} className="flex items-center text-slate-500 hover:text-emerald-600 mb-6 font-medium">
+          <ArrowLeft size={18} className="mr-2" /> Back
         </button>
 
-        <h1 className="text-3xl font-bold text-slate-900 mb-6">Final Review</h1>
+        <h1 className="text-2xl font-bold text-slate-900 mb-6">Review & Pay</h1>
 
-        <div className="space-y-6">
-          {/* Address Card */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-            <h2 className="text-sm font-bold text-slate-400 uppercase mb-3 flex items-center gap-2">
-              <MapPin size={16} /> Delivering To
-            </h2>
-            {loadingAddress ? (
-              <div className="h-10 bg-slate-100 animate-pulse rounded-md" />
-            ) : selectedAddress ? (
-              <div>
-                <div className="text-lg font-bold text-slate-900">{selectedAddress.label}</div>
-                <div className="text-slate-500">{selectedAddress.addressText}</div>
-              </div>
-            ) : (
-              <div className="text-red-500">No Address Selected</div>
-            )}
-          </div>
-
-          {/* Items Card */}
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden p-6">
-            <h2 className="text-sm font-bold text-slate-400 uppercase mb-4 flex items-center gap-2">
-              <ShoppingBag size={16} /> Order Items
-            </h2>
-            <div className="divide-y divide-slate-100">
-              {items.map((item) => (
-                <div key={item.productId} className="py-3 flex justify-between items-center">
-                  <div className="flex items-center gap-4">
-                    <span className="font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded text-xs">{item.quantity}x</span>
-                    <span className="font-medium text-slate-700">{item.productName}</span>
-                  </div>
-                  <span className="font-bold text-slate-900">₹{(item.discountPrice || item.unitPrice) * item.quantity}</span>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* LEFT: Items & Address */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Address Card */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+              <div className="flex items-start gap-4">
+                <div className="bg-emerald-50 p-3 rounded-full text-emerald-600"><MapPin size={24} /></div>
+                <div>
+                  <h3 className="font-bold text-slate-900 uppercase tracking-wide text-xs mb-1">Delivery Address</h3>
+                  <p className="font-bold text-lg text-slate-800">{summary.address.label}</p>
+                  <p className="text-slate-500 leading-relaxed">{summary.address.addressText}</p>
                 </div>
-              ))}
+              </div>
+            </div>
+
+            {/* Items */}
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <div className="p-4 bg-slate-50 border-b border-slate-100 font-bold text-slate-700">
+                Items ({summary.itemCount})
+              </div>
+              <div className="divide-y divide-slate-100">
+                {summary.items.map((item) => (
+                  <div key={item.productId} className="p-4 flex gap-4">
+                    <img 
+                      src={getImageUrl(item.productImage)} 
+                      alt={item.productName}
+                      className="w-16 h-16 rounded-lg object-cover bg-slate-100" 
+                    />
+                    <div className="flex-1">
+                      <div className="flex justify-between">
+                        <h4 className="font-bold text-slate-800">{item.productName}</h4>
+                        <span className="font-bold text-slate-900">₹{item.lineTotal}</span>
+                      </div>
+                      <p className="text-sm text-slate-500 mt-1">
+                        {item.quantity} x ₹{item.discountPrice || item.unitPrice}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Pay Button */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-            <div className="flex justify-between items-center mb-6">
-              <span className="text-slate-600 font-medium">Grand Total</span>
-              <span className="text-2xl font-extrabold text-slate-900">₹{totalAmount}</span>
+          {/* RIGHT: Bill Summary */}
+          <div className="space-y-6">
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm sticky top-32">
+              <h3 className="font-bold text-slate-900 mb-4">Bill Details</h3>
+              
+              <div className="space-y-3 text-sm text-slate-600 pb-4 border-b border-slate-100">
+                <div className="flex justify-between"><span>Item Total</span> <span>₹{summary.subtotal}</span></div>
+                <div className="flex justify-between text-emerald-600">
+                  <span className="flex items-center gap-1"><TicketPercent size={14}/> Discount</span> 
+                  <span>- ₹{summary.discount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="flex items-center gap-1"><Bike size={14}/> Delivery Fee</span> 
+                  <span>₹{summary.deliveryFee}</span>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center py-4 font-extrabold text-xl text-slate-900">
+                <span>To Pay</span>
+                <span>₹{summary.grandTotal}</span>
+              </div>
+
+              <button 
+                onClick={handlePay}
+                disabled={processing}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {processing ? <Loader2 className="animate-spin" /> : <ShieldCheck />} 
+                {processing ? "Processing..." : `Pay ₹${summary.grandTotal}`}
+              </button>
+              
+              <div className="mt-4 flex justify-center gap-4 opacity-50 grayscale">
+                 <img src="/icons/visa.png" className="h-4" alt="visa" onError={(e) => e.currentTarget.style.display = 'none'} />
+                 <img src="/icons/upi.png" className="h-4" alt="upi" onError={(e) => e.currentTarget.style.display = 'none'} />
+              </div>
             </div>
-            <button 
-              onClick={handleConfirmOrder}
-              disabled={isCheckingOut || loadingAddress || !selectedAddress}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 text-lg"
-            >
-              {isCheckingOut ? <Loader2 className="animate-spin" size={24} /> : <><ShieldCheck size={24} /> Pay & Confirm Order</>}
-            </button>
           </div>
         </div>
       </main>

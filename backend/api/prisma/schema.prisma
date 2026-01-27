@@ -666,7 +666,6 @@ model Cart {
   @@index([status])
   @@index([sessionId])
 
-  @@unique([customerId, outletId, status])
 }
 
 model CartItem {

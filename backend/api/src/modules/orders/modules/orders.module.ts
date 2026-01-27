@@ -6,6 +6,7 @@ import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 /* CONTROLLERS                                    */
 /* ---------------------------------------------- */
 import { OrderController } from '../controllers/order.controller';
+import {MyOrdersController} from '../controllers/my-orders.controller'
 
 /* ---------------------------------------------- */
 /* SERVICES                                       */
@@ -26,7 +27,8 @@ import { OrderItemRepository } from '../repositories/order-item.repository';
 
 @Module({
   controllers: [
-    OrderController, // remove if you don’t have one yet
+    OrderController,
+    MyOrdersController // remove if you don’t have one yet
   ],
   providers: [
     /* Infrastructure */
