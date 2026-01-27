@@ -2,7 +2,6 @@ import customerAxios from "@/http/axios/customerAxios";
 import { Cart, CartItem } from "./cart.types";
 
 // ✅ HELPER: Convert backend strings to numbers to prevent UI crashes
-// This is critical because your new backend returns "120" (string) instead of 120 (number)
 const transformCartResponse = (data: any): Cart => {
   if (!data) return { items: [] };
 
@@ -36,14 +35,13 @@ export const addToCart = async (item: CartItem): Promise<Cart> => {
 };
 
 export const updateCartItem = async (productId: string, quantity: number): Promise<Cart> => {
-  // ✅ FIX: Use PATCH for updates (as per your previous backend logs)
+  // ✅ FIX: Use PATCH for updates
   const res = await customerAxios.patch(`/cart/items/${productId}`, { quantity });
   return transformCartResponse(res.data.data);
 };
 
 export const removeCartItem = async (productId: string): Promise<Cart> => {
-  // ✅ CRITICAL FIX: Use DELETE method. 
-  // The 404 error happened because POST .../remove doesn't exist anymore.
+  // ✅ FIX: Use DELETE method as per your new backend
   const res = await customerAxios.delete(`/cart/items/${productId}`);
   
   // If backend returns null (empty cart), return safe empty object
@@ -57,7 +55,12 @@ export const clearCart = async (): Promise<void> => {
   await customerAxios.post("/cart/clear");
 };
 
-export const checkout = async (): Promise<Cart> => {
-  const res = await customerAxios.post("/cart/checkout", {}); 
+// ✅ UPDATE: Accept addressId and send it in the body
+export const checkout = async (addressId?: string): Promise<Cart> => {
+  // If addressId is provided (from the new checkout flow), send it.
+  // Otherwise send empty object (backward compatibility).
+  const payload = addressId ? { addressId } : {};
+  
+  const res = await customerAxios.post("/cart/checkout", payload); 
   return transformCartResponse(res.data.data);
 };

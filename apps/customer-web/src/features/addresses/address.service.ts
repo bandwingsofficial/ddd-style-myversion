@@ -1,12 +1,14 @@
 import customerAxios from "@/http/axios/customerAxios";
 
-// --- Types based on your Backend JSON ---
+// ✅ Types matching your Backend JSON
 export interface Address {
   id: string;
   customerId: string;
   type: "HOME" | "WORK" | "OTHER";
   label: string;
   addressText: string;
+  latitude: number;
+  longitude: number;
   isDeleted: boolean;
 }
 
@@ -17,19 +19,32 @@ export interface ApiResponse<T> {
   data: T;
 }
 
-// --- Service Methods ---
+// Payload for creating/updating
+export interface AddressPayload {
+  label?: string;
+  type?: "HOME" | "WORK" | "OTHER";
+  addressText: string;
+  latitude: number;
+  longitude: number;
+}
+
 export const AddressService = {
   getAll: async () => {
     const { data } = await customerAxios.get<ApiResponse<Address[]>>("/saved-addresses");
     return data.data;
   },
 
-  create: async (payload: Pick<Address, "type" | "label" | "addressText">) => {
+  getOne: async (id: string) => {
+    const { data } = await customerAxios.get<ApiResponse<Address>>(`/saved-addresses/${id}`);
+    return data.data;
+  },
+
+  create: async (payload: AddressPayload) => {
     const { data } = await customerAxios.post<ApiResponse<Address>>("/saved-addresses", payload);
     return data.data;
   },
 
-  update: async (id: string, payload: Partial<Address>) => {
+  update: async (id: string, payload: Partial<AddressPayload>) => {
     const { data } = await customerAxios.post<ApiResponse<Address>>(`/saved-addresses/${id}/update`, payload);
     return data.data;
   },

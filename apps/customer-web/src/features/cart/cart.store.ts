@@ -19,7 +19,9 @@ interface CartState {
   removeItem: (productId: string, isLoggedIn: boolean) => Promise<void>;
   mergeAfterLogin: () => Promise<void>;
   clear: (isLoggedIn: boolean) => Promise<void>;
-  checkoutCart: () => Promise<boolean>;
+  
+  // ✅ UPDATE: Accept addressId for the final checkout step
+  checkoutCart: (addressId?: string) => Promise<boolean>;
 }
 
 export const useCartStore = create<CartState>((set, get) => ({
@@ -142,6 +144,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     set({ isLoading: true });
     try {
       for (const item of local.items) {
+        // API will extract outletId from the item object
         await cartApi.addToCart(item);
       }
       clearLocalCart();
@@ -171,14 +174,18 @@ export const useCartStore = create<CartState>((set, get) => ({
   /* ======================================================
       CHECKOUT
    ====================================================== */
-  checkoutCart: async () => {
+  checkoutCart: async (addressId) => {
     set({ isCheckingOut: true });
     try {
-      const lockedCart = await cartApi.checkout();
+      // ✅ Pass the addressId to the API (ensure your API function accepts this argument)
+      // Note: You might need to update your API signature to: checkout(addressId?: string)
+      const lockedCart = await cartApi.checkout(addressId);
+      
       if (lockedCart && lockedCart.status === "LOCKED") {
         set({ items: [], isCheckingOut: false }); 
         return true;
       }
+      
       set({ isCheckingOut: false });
       return false;
     } catch (error) {
