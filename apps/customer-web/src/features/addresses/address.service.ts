@@ -43,7 +43,11 @@ export const AddressService = {
   },
 
   update: async (id: string, payload: Partial<AddressPayload>) => {
-    const { data } = await customerAxios.post<ApiResponse<Address>>(`/saved-addresses/${id}/update`, payload);
+    // ✅ CRITICAL FIX: Backend throws 400 if 'type' is present in update.
+    // We must strip 'type' from the payload before sending it.
+    const { type, ...cleanPayload } = payload;
+    
+    const { data } = await customerAxios.post<ApiResponse<Address>>(`/saved-addresses/${id}/update`, cleanPayload);
     return data.data;
   },
 
