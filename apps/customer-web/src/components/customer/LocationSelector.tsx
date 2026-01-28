@@ -7,7 +7,7 @@ import { useLiveLocation } from "@/features/location/hooks/useLiveLocation";
 import { reverseGeocode } from "@/features/location/utils/reverseGeocode";
 import { AddressService, Address } from "@/features/addresses/address.service";
 import { useLocationStore } from "@/features/location/location.store"; 
-import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store"; // ✅ Import Auth Store
+import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store"; 
 
 export default function LocationSelector() {
   // Local UI State
@@ -18,7 +18,7 @@ export default function LocationSelector() {
   // Global State & Hooks
   const { latitude, longitude, addressLabel, setLocation } = useLocationStore();
   const { lat: liveLat, lng: liveLng } = useLiveLocation();
-  const { isAuthenticated } = useCustomerAuthStore(); // ✅ Check Login Status
+  const { isAuthenticated } = useCustomerAuthStore(); 
 
   // 1. Initial Setup: Use Live Location if nothing is set in store
   useEffect(() => {
@@ -34,7 +34,7 @@ export default function LocationSelector() {
         .then(data => setSavedAddresses(data.filter(a => !a.isDeleted)))
         .catch(err => console.error(err));
     }
-  }, [isOpen, isAuthenticated]); // ✅ Dependency added
+  }, [isOpen, isAuthenticated]); 
 
   // 3. Close on Outside Click
   useEffect(() => {
@@ -52,12 +52,31 @@ export default function LocationSelector() {
   const handleSelectCurrentLocation = async () => {
     if (liveLat && liveLng) {
       let label = "Current Location";
-      const placeName = await reverseGeocode(liveLat, liveLng);
-      if (placeName) {
-         const parts = placeName.split(",");
-         // Smart formatting: "Area, City"
-         if (parts.length > 2) label = `${parts[parts.length-4] || parts[0]}, ${parts[parts.length-3] || parts[1]}`;
-         else label = placeName.substring(0, 25);
+      try {
+        const placeName = await reverseGeocode(liveLat, liveLng);
+        if (placeName) {
+           const parts = placeName.split(",").map(p => p.trim());
+           
+           // 1. Filter out 'India' and Pincodes (6 digits) to clean the list
+           const cleanParts = parts.filter(p => 
+             p !== "India" && !/^\d{6}$/.test(p)
+           );
+
+           // Remove duplicates
+           const uniqueParts = [...new Set(cleanParts)];
+           
+           // ✅ FIX: Smart Slicing
+           // If address is long (e.g. "Street, Area, City, State"), we skip the first part (Street).
+           // We then take the next 2 parts (Area, City).
+           if (uniqueParts.length > 3) {
+             label = uniqueParts.slice(1, 3).join(", ");
+           } else {
+             // If short (e.g. "Area, City, State"), just take the first 2.
+             label = uniqueParts.slice(0, 2).join(", ");
+           }
+        }
+      } catch (error) {
+        console.error("Geocoding error:", error);
       }
       
       setLocation(liveLat, liveLng, label);
@@ -86,7 +105,7 @@ export default function LocationSelector() {
             Deliver to
           </span>
           <div className="flex items-center gap-1">
-            <span className="font-bold text-sm text-slate-700 max-w-[140px] truncate leading-none">
+            <span className="font-bold text-sm text-slate-700 max-w-[260px] truncate leading-none">
               {addressLabel}
             </span>
             <ChevronDown size={14} className={`text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -98,7 +117,7 @@ export default function LocationSelector() {
       {isOpen && (
         <div className="absolute top-12 left-0 w-72 bg-white rounded-xl shadow-xl border border-slate-100 p-2 animate-in fade-in slide-in-from-top-2 origin-top-left">
           
-          {/* Option 1: Current Location (Always Available) */}
+          {/* Option 1: Current Location */}
           <button 
             onClick={handleSelectCurrentLocation}
             className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-emerald-50 transition-colors text-left group"
@@ -114,7 +133,7 @@ export default function LocationSelector() {
 
           <div className="h-px bg-slate-100 my-2" />
 
-          {/* Option 2: Saved Addresses (Only if Logged In) */}
+          {/* Option 2: Saved Addresses */}
           {isAuthenticated ? (
             <>
               <div className="max-h-56 overflow-y-auto custom-scrollbar">
@@ -141,7 +160,6 @@ export default function LocationSelector() {
 
               <div className="h-px bg-slate-100 my-2" />
 
-              {/* Manage Link */}
               <Link 
                 href="/profile/addresses" 
                 onClick={() => setIsOpen(false)}
@@ -151,7 +169,6 @@ export default function LocationSelector() {
               </Link>
             </>
           ) : (
-            // Option 3: Guest User Prompt (Prevents 401 Error)
             <Link 
               href="/login"
               className="flex items-center justify-center gap-2 w-full p-3 rounded-lg bg-slate-50 hover:bg-emerald-50 text-emerald-700 font-bold text-xs transition-colors"

@@ -71,7 +71,7 @@ export default function ProductGrid() {
           ) : !isOutletSelected ? (
              // No Outlet Selected State (Though modal should cover this)
              <div className="col-span-full text-center py-20 text-slate-400">
-                Please select a branch to view the menu.
+                No Near by outlets find to selected destination.you can change the location in header.
              </div>
           ) : products.length === 0 ? (
              // Empty Products State

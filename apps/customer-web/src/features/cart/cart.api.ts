@@ -24,24 +24,28 @@ export const fetchCart = async (): Promise<Cart> => {
 };
 
 export const addToCart = async (item: CartItem): Promise<Cart> => {
-  // ✅ FIX: Send ONLY what the new backend expects
-  const payload = {
+  // ✅ FIX: Dynamic Payload Construction
+  // This prevents sending "outletId: undefined" which causes 500 Server Errors
+  const payload: Record<string, any> = {
     productId: item.productId,
     quantity: item.quantity,
-    outletId: item.outletId
   };
+
+  // Only attach outletId if it exists (Guest items usually have this)
+  if (item.outletId) {
+    payload.outletId = item.outletId;
+  }
+
   const res = await customerAxios.post("/cart/items", payload);
   return transformCartResponse(res.data.data);
 };
 
 export const updateCartItem = async (productId: string, quantity: number): Promise<Cart> => {
-  // ✅ FIX: Use PATCH for updates
   const res = await customerAxios.patch(`/cart/items/${productId}`, { quantity });
   return transformCartResponse(res.data.data);
 };
 
 export const removeCartItem = async (productId: string): Promise<Cart> => {
-  // ✅ FIX: Use DELETE method as per your new backend
   const res = await customerAxios.delete(`/cart/items/${productId}`);
   
   // If backend returns null (empty cart), return safe empty object
@@ -55,12 +59,8 @@ export const clearCart = async (): Promise<void> => {
   await customerAxios.post("/cart/clear");
 };
 
-// ✅ UPDATE: Accept addressId and send it in the body
 export const checkout = async (addressId?: string): Promise<Cart> => {
-  // If addressId is provided (from the new checkout flow), send it.
-  // Otherwise send empty object (backward compatibility).
   const payload = addressId ? { addressId } : {};
-  
   const res = await customerAxios.post("/cart/checkout", payload); 
   return transformCartResponse(res.data.data);
 };
