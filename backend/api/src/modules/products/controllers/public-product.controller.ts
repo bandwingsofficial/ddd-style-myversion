@@ -4,11 +4,13 @@ import {
   Controller,
   Get,
   Param,
+  Query,
 } from '@nestjs/common';
 
 import { ProductOrchestratorService } from '../services/product-orchestrator.service';
 import { ValidationError } from '../../../common/errors';
 import { PublicProductListDto } from '../dtos/public-product-list.dto';
+import { PublicProductQueryDto } from '../dtos/public-product-query.dto';
 
 @Controller('public/products')
 export class PublicProductController {
@@ -17,13 +19,15 @@ export class PublicProductController {
   ) {}
 
   /* ================================================= */
-  /* PRODUCT – PUBLIC CATALOG                          */
+  /* PRODUCT – PUBLIC CATALOG (WITH FILTERS)           */
   /* ================================================= */
 
   @Get()
-  async getPublicProducts() {
+  async getPublicProducts(
+    @Query() query: PublicProductQueryDto,
+  ) {
     const products =
-      await this.orchestrator.getPublicProducts();
+      await this.orchestrator.getPublicProducts(query);
 
     return {
       success: true,
@@ -46,6 +50,7 @@ export class PublicProductController {
     const result =
       await this.orchestrator.getPublicProductBySlug(slug);
 
+    // (optional: can move this to service later)
     if (!result.product.canBeShown()) {
       throw new ValidationError(
         'PRODUCT_NOT_FOUND',

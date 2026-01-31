@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Query,
   Param,
   Post,
   UseGuards,
@@ -26,6 +27,7 @@ import { CreateProductDto } from '../dtos/create-product.dto';
 import { UpdateProductDetailsDto } from '../dtos/update-product-details.dto';
 import { UpdateProductPriceDto } from '../dtos/update-product-price.dto';
 import { UpdateProductImagesDto } from '../dtos/update-product-images.dto';
+import { UpdateProductIngredientsDto } from '../dtos/update-product-ingredients.dto';
 import { DeleteProductImageDto } from '../dtos/delete-product-image.dto';
 
 /* Domain */
@@ -33,6 +35,7 @@ import { Product } from '../domain/models/product.model';
 
 /* Upload */
 import { productImageUploadOptions } from '../../../common/upload/product-image.upload';
+import { PublicProductQueryDto } from '../dtos/public-product-query.dto';
 
 @Controller('products')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -45,18 +48,20 @@ export class ProductManagementController {
   /* PRODUCT – LIST (SUPER ADMIN ONLY)                 */
   /* ================================================= */
 
-  @Get()
-  @Roles(ActorType.SUPER_ADMIN)
-  async getAllProducts() {
-    const data = await this.orchestrator.getAllProducts();
+@Get()
+@Roles(ActorType.SUPER_ADMIN)
+async getAllProducts(
+  @Query() query: PublicProductQueryDto, // ✅ add this only
+) {
+  const data = await this.orchestrator.getAllProducts(query);
 
-    return {
-      success: true,
-      code: 'PRODUCTS_FETCHED',
-      message: 'Products fetched successfully',
-      data,
-    };
-  }
+  return {
+    success: true,
+    code: 'PRODUCTS_FETCHED',
+    message: 'Products fetched successfully',
+    data,
+  };
+}
 
   /* ================================================= */
   /* PRODUCT – READ                                   */
@@ -203,8 +208,32 @@ export class ProductManagementController {
   }
 
   /* ================================================= */
-  /* PRODUCT – UPDATE IMAGES                          */
+  /* PRODUCT – UPDATE INGREDIENTS                     */
   /* ================================================= */
+  
+  @Post(':productId/ingredients')
+  @Roles(ActorType.SUPER_ADMIN)
+  async updateProductIngredients(
+    @Param('productId') productId: string,
+    @Body() dto: UpdateProductIngredientsDto,
+  ) {
+    const data =
+      await this.orchestrator.updateProductIngredients({
+        productId,
+        ingredients: dto.ingredients,
+        benefits: dto.benefits,
+        extraInfo1: dto.extraInfo1,
+        extraInfo2: dto.extraInfo2,
+      });
+
+    return {
+      success: true,
+      code: 'PRODUCT_INGREDIENTS_UPDATED',
+      message: 'Product ingredients updated successfully',
+      data,
+    };
+  }
+
 
 /* ================================================= */
 /* PRODUCT – UPDATE IMAGES                          */
@@ -352,4 +381,42 @@ async deleteProductImage(
       data: null,
     };
   }
+
+  /* ================================================= */
+  /* PRODUCT – FEATURED                               */
+  /* ================================================= */
+
+  @Post(':productId/featured/on')
+  @Roles(ActorType.SUPER_ADMIN)
+  async markFeatured(
+    @Param('productId') productId: string,
+  ) {
+    await this.orchestrator.markProductFeatured({
+      productId,
+    });
+
+    return {
+      success: true,
+      code: 'PRODUCT_MARKED_FEATURED',
+      message: 'Product marked as featured',
+      data: null,
+    };
+  }
+
+  @Post(':productId/featured/off')
+  @Roles(ActorType.SUPER_ADMIN)
+  async unmarkFeatured(
+    @Param('productId') productId: string,
+  ) {
+    await this.orchestrator.unmarkProductFeatured({
+      productId,
+    });
+
+    return {
+      success: true,
+      code: 'PRODUCT_UNMARKED_FEATURED',
+      message: 'Product removed from featured',
+      data: null,
+    };
+  } 
 }

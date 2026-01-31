@@ -29,28 +29,24 @@ export class OutletOrchestratorService {
   /* OUTLET – READS                                    */
   /* ================================================= */
 
-  async getOutletById(outletId: string) {
-    return this.outletService.getById(outletId);
-  }
+ async getOutletById(outletId: string): Promise<Outlet | null> {
+  return this.outletService.getById(outletId);
+}
 
-  async getAllOutlets() {
-    return this.outletService.getAllOutlets();
-  }
+  async getAllOutlets(): Promise<Outlet[]> {
+  return this.outletService.getAllOutlets();
+}
 
   /* ================================================= */
   /* ⭐ NEW – NEARBY OUTLETS (delegates only)           */
   /* ================================================= */
 
-  async getNearbyOutlets(
-    lat: number,
-    lng: number,
-  ) {
-    return this.outletService.getNearbyOutlets(
-      lat,
-      lng,
-    );
-  }
-
+async getNearbyOutlets(
+  lat: number,
+  lng: number,
+): Promise<{ outlet: Outlet; distanceKm: number }[]> {
+  return this.outletService.getNearbyOutlets(lat, lng);
+}
   /* ================================================= */
   /* OUTLET – CREATE / UPDATE / ENABLE / DISABLE        */
   /* ================================================= */

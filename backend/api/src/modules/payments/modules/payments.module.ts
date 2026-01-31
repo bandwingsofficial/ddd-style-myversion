@@ -19,6 +19,16 @@ import { PaymentGatewayService } from '../services/payment-gateway.service';
 /* ---------------------------------------------- */
 import { PaymentRepository } from '../repositories/payment.repository';
 
+/* ---------------------------------------------- */
+/* EVENTS / GATEWAYS / LISTENERS                  */
+/* ---------------------------------------------- */
+import { PaymentEventsService } from '../events/payment-events.service';
+
+import { PaymentPublicGateway } from '../gateways/payment-public.gateway';
+
+import { PaymentPublicListener } from '../listeners/payment.listener';
+
+
 
 /* ---------------------------------------------- */
 /* DEPENDENCY MODULES                             */
@@ -31,10 +41,10 @@ import { OrdersModule } from '../../orders/modules/orders.module';
 
 @Module({
   imports: [
-    OrdersModule, // 🔥 payment updates order status
+    OrdersModule, // 🔥 payment → order status updates
   ],
   controllers: [
-    PaymentController, // remove if not needed yet
+    PaymentController,
   ],
   providers: [
     /* Infrastructure */
@@ -47,9 +57,17 @@ import { OrdersModule } from '../../orders/modules/orders.module';
     PaymentGatewayService,
     PaymentService,
     PaymentOrchestratorService,
+
+    /* Events */
+    PaymentEventsService,
+
+    /* Gateways */
+    PaymentPublicGateway,
+
+    /* Listeners */
+    PaymentPublicListener,
   ],
   exports: [
-    // 👇 Checkout uses this
     PaymentOrchestratorService,
     PaymentService,
   ],

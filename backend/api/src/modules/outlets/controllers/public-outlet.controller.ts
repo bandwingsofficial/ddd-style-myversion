@@ -19,49 +19,47 @@ export class PublicOutletController {
   /* PUBLIC – LIST NEARBY OUTLETS ⭐ UPDATED             */
   /* ================================================= */
 
-  @Get()
-  async getPublicOutlets(
-    @Query('lat') lat?: string,
-    @Query('lng') lng?: string,
-  ) {
-    let outlets;
+@Get()
+async getPublicOutlets(
+  @Query('lat') lat?: string,
+  @Query('lng') lng?: string,
+) {
+  const latitude = Number(lat);
+  const longitude = Number(lng);
 
-    /* ------------------------------------------------ */
-    /* IF LAT/LNG PROVIDED → NEARBY ONLY                */
-    /* ------------------------------------------------ */
+  const hasValidCoords =
+    lat !== undefined &&
+    lng !== undefined &&
+    !Number.isNaN(latitude) &&
+    !Number.isNaN(longitude);
 
-    if (lat !== undefined && lng !== undefined) {
-      const latitude = Number(lat);
-      const longitude = Number(lng);
+  let data;
 
-      // ✅ SAFETY (important)
-      if (!Number.isNaN(latitude) && !Number.isNaN(longitude)) {
-        outlets = await this.orchestrator.getNearbyOutlets(
-          latitude,
-          longitude,
-        );
-      }
-    }
-
-    /* ------------------------------------------------ */
-    /* FALLBACK → ALL                                   */
-    /* ------------------------------------------------ */
-
-    if (!outlets) {
-      outlets = await this.orchestrator.getAllOutlets();
-    }
-
-    const data = outlets.filter((o) =>
-      o.isPubliclyVisible(),
+  if (hasValidCoords) {
+    const results = await this.orchestrator.getNearbyOutlets(
+      latitude,
+      longitude,
     );
 
-    return {
-      success: true,
-      code: 'PUBLIC_OUTLETS_FETCHED',
-      message: 'Outlets fetched successfully',
-      data,
-    };
+    data = results
+      .filter((r) => r.outlet.isPubliclyVisible())
+      .map((r) => ({
+        ...r.outlet,
+        distanceKm: r.distanceKm,
+      }));
+  } else {
+    const outlets = await this.orchestrator.getAllOutlets();
+
+    data = outlets.filter((o) => o.isPubliclyVisible());
   }
+
+  return {
+    success: true,
+    code: 'PUBLIC_OUTLETS_FETCHED',
+    message: 'Outlets fetched successfully',
+    data,
+  };
+}
 
   /* ================================================= */
   /* PUBLIC – OUTLET PRODUCTS (specific FIRST)         */

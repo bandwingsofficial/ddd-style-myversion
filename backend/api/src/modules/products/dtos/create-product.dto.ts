@@ -105,4 +105,32 @@ export class CreateProductDto {
   @IsBoolean()
   @Transform(({ value }) => value === 'true' || value === true)
   isTrending?: boolean;
+
+
+  /* ---------------------------------- */
+/* OPTIONAL CONTENT FIELDS            */
+/* ---------------------------------- */
+
+@IsOptional()
+@IsString()
+ingredients?: string;
+
+@IsOptional()
+@IsString()
+benefits?: string;
+
+@IsOptional()
+@IsString()
+@MaxLength(255)
+extraInfo1?: string;
+
+@IsOptional()
+@IsString()
+@MaxLength(255)
+extraInfo2?: string;
+
+@IsOptional()
+@IsBoolean()
+@Transform(({ value }) => value === 'true' || value === true)
+isFeatured?: boolean;
 }

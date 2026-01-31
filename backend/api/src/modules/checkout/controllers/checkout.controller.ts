@@ -61,7 +61,6 @@ export class CheckoutController {
     const data = await this.orchestrator.startCheckout({
       customerId: user.actorId,
       savedAddressId: body.savedAddressId,
-      deliveryFee: body.deliveryFee,
     });
 
     return {

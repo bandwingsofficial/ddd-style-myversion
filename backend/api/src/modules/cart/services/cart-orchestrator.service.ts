@@ -107,4 +107,7 @@ export class CartOrchestratorService {
   async lockCartForCheckout(params: any, tx?: PrismaTransaction): Promise<Cart> {
     return this.cartService.lockCart(params, tx);
   }
+  async unlockCart(params: any, tx?: PrismaTransaction): Promise<Cart> {
+    return this.cartService.unlockCart(params, tx);
+  }
 }

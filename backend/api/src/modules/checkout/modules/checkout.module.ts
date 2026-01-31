@@ -14,6 +14,9 @@ import { CheckoutService } from '../services/checkout.service';
 import { CheckoutOrchestratorService } from '../services/checkout-orchestrator.service';
 import { CheckoutPricingService } from '../services/checkout-pricing.service';
 
+/* 🔥 NEW */
+import { CheckoutEventsService } from '../events/checkout-events.service';
+
 /* ---------------------------------------------- */
 /* DEPENDENCY MODULES                             */
 /* ---------------------------------------------- */
@@ -35,13 +38,16 @@ import { PaymentsModule } from '../../payments/modules/payments.module';
   ],
   controllers: [CheckoutController],
   providers: [
-    // Infrastructure
+    /* Infrastructure */
     PrismaService,
 
-    // Core
+    /* Core */
     CheckoutService,
     CheckoutOrchestratorService,
     CheckoutPricingService,
+
+    /* 🔥 EVENTS */
+    CheckoutEventsService,
   ],
   exports: [
     CheckoutService,

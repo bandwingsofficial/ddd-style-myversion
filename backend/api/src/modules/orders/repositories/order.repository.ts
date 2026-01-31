@@ -61,6 +61,28 @@ export class OrderRepository {
     return row ? OrderMapper.toDomain(row) : null;
   }
 
+  
+  /* ================================================= */
+  /* READ (BY ID)                                     */
+  /* ================================================= */
+
+  async findByOutlet(
+    outletId: string,
+    tx?: PrismaTransaction,
+  ): Promise<Order[]> {
+    const rows = await (tx ?? this.prisma).order.findMany({
+      where: { outletId },
+      include: {
+        items: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return rows.map((row) => OrderMapper.toDomain(row));
+  }
+  
   /* ================================================= */
   /* READ (BY CUSTOMER)                               */
   /* ================================================= */
@@ -92,18 +114,23 @@ export class OrderRepository {
 ): Promise<Order> {
   const client = tx ?? this.prisma;
 
-  const row = await client.order.update({
-    where: { id: order.id },
+  const result = await client.order.updateMany({
+    where: {
+      id: { equals: order.id },
+      version: { equals: order.version - 1 },
+    },
     data: {
       status: OrderMapper.toPrismaStatus(order.status),
+      version: order.version,
       updatedAt: order.updatedAt,
-    },
-    include: {
-      items: true,
     },
   });
 
-  return OrderMapper.toDomain(row);
+  if (result.count === 0) {
+    throw new Error('ORDER_CONCURRENCY_CONFLICT');
+  }
+
+  return order;
 }
 
   /* ================================================= */

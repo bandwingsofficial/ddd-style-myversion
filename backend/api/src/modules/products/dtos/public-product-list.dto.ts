@@ -46,6 +46,15 @@ export class PublicProductListDto {
     trending: boolean;
   };
 
+  featuredState: {
+    featured: boolean;
+  };
+
+  ingredients: string | null;
+  benefits: string | null;
+  extraInfo1: string | null;
+  extraInfo2: string | null;
+
   /* ================================================= */
   /* FACTORY                                          */
   /* ================================================= */
@@ -98,6 +107,15 @@ export class PublicProductListDto {
       trendState: {
         trending: product.trendState.getRaw(),
       },
+      featuredState: {
+        featured: product.featuredState.getRaw(),
+      },
+
+      ingredients: product.ingredients ?? null,
+      benefits: product.benefits ?? null,
+      extraInfo1: product.extraInfo1 ?? null,
+      extraInfo2: product.extraInfo2 ?? null, 
     };
   }
 }
+  

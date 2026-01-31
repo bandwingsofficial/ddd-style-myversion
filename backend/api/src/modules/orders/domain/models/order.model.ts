@@ -30,6 +30,7 @@ export interface OrderProps {
   items: OrderItem[];
 
   status: OrderStatus;
+  version: number;
 
   createdAt: Date;
   updatedAt: Date;
@@ -59,6 +60,7 @@ export class Order {
   readonly items: OrderItem[];
 
   readonly status: OrderStatus;
+  readonly version: number;
 
   readonly createdAt: Date;
   readonly updatedAt: Date;
@@ -78,11 +80,7 @@ export class Order {
     Object.freeze(this);
   }
 
-  /* ---------------------------------------------- */
-  /* FACTORIES                                      */
-  /* ---------------------------------------------- */
-
-static createNew(params: {
+  static createNew(params: {
   id: string;
 
   customerId: string;
@@ -92,11 +90,13 @@ static createNew(params: {
 
   address: OrderAddress;
 
+  /* 🔥 SNAPSHOT FROM CART ONLY */
   subtotal: number;
   discount: number;
   afterDiscountTotal: number;
   deliveryFee: number;
   grandTotal: number;
+  itemCount: number;
 
   items: OrderItem[];
 
@@ -110,22 +110,22 @@ static createNew(params: {
 
     customerId: params.customerId,
     outletId: params.outletId,
-
     cartId: params.cartId,
 
     address: params.address,
 
+    /* 🔥 NO CALCULATIONS — JUST COPY */
     subtotal: Money.create(params.subtotal),
     discount: Money.create(params.discount),
     afterDiscountTotal: Money.create(params.afterDiscountTotal),
     deliveryFee: Money.create(params.deliveryFee),
     grandTotal: Money.create(params.grandTotal),
-
-    itemCount: params.items.reduce((sum, i) => sum + i.quantity, 0),
+    itemCount: params.itemCount,
 
     items: params.items,
 
     status: OrderStatus.CREATED,
+    version: 0,
 
     createdAt: now,
     updatedAt: now,
@@ -189,6 +189,7 @@ static createNew(params: {
     return new Order({
       ...this,
       status: OrderStatus.PAYMENT_PENDING,
+      version: this.version + 1,
       updatedAt: now,
     });
   }
@@ -201,6 +202,7 @@ static createNew(params: {
     return new Order({
       ...this,
       status: OrderStatus.PAID,
+      version: this.version + 1,
       updatedAt: now,
     });
   }
@@ -213,6 +215,7 @@ static createNew(params: {
     return new Order({
       ...this,
       status: OrderStatus.CONFIRMED,
+      version: this.version + 1,
       updatedAt: now,
     });
   }
@@ -225,6 +228,7 @@ static createNew(params: {
     return new Order({
       ...this,
       status: OrderStatus.PREPARING,
+      version: this.version + 1,
       updatedAt: now,
     });
   }
@@ -237,6 +241,7 @@ static createNew(params: {
     return new Order({
       ...this,
       status: OrderStatus.OUT_FOR_DELIVERY,
+      version: this.version + 1,
       updatedAt: now,
     });
   }
@@ -249,6 +254,7 @@ static createNew(params: {
     return new Order({
       ...this,
       status: OrderStatus.DELIVERED,
+      version: this.version + 1,
       updatedAt: now,
     });
   }
@@ -264,6 +270,7 @@ static createNew(params: {
     return new Order({
       ...this,
       status: OrderStatus.CANCELLED,
+      version: this.version + 1,
       updatedAt: now,
     });
   }
@@ -272,9 +279,12 @@ static createNew(params: {
     return new Order({
       ...this,
       status: OrderStatus.FAILED,
+      version: this.version + 1,
       updatedAt: now,
     });
   }
+
+  
 
   /* ---------------------------------------------- */
   /* INVARIANTS (CRITICAL BUSINESS RULES)            */
@@ -345,4 +355,6 @@ if (this.grandTotal.isZero()) {
     'Order grand total must be greater than zero',
   );
 }
+
+
   }}

@@ -236,6 +236,8 @@ model DeliveryPartner {
   approvedBy   String?
   tokenVersion Int @default(0)
   createdAt    DateTime @default(now())
+
+  deliveries Delivery[]
 }
 
 //////////////////////////////////////////////////////
@@ -563,11 +565,12 @@ model Product {
   originalPrice     Decimal       @db.Decimal(12, 2)
   discountPrice     Decimal?      @db.Decimal(12, 2)
 
-  mainImage         String        // images/products/*
+  mainImage         String
   galleryImages     ProductImage[]
 
   // 🏷 TAGS
   tags              ProductTag[]  @default([])
+  sortOrder         Int           @default(0)
 
   // 📏 UNIT
   unitValue         Int
@@ -576,23 +579,44 @@ model Product {
   ratingAverage     Decimal?      @db.Decimal(3, 2)
   ratingCount       Int           @default(0)
 
+  // 🔥 NEW (very useful)
+  isFeatured        Boolean       @default(false)
+
   isTrending        Boolean       @default(false)
+  isAvailable       Boolean       @default(true)
+
+
+  // 🔥 NEW CONTENT FIELDS (added)
+
+  ingredients       String?       @db.Text
+  benefits          String?       @db.Text
+
+  extraInfo1        String?       @db.VarChar(255) // flexible label/value
+  extraInfo2        String?       @db.VarChar(255)
 
   status            ProductStatus @default(ACTIVE)
   createdBy         String
 
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
+  deletedAt         DateTime?
 
-  @@index([categoryId])
+  //////////////////////////////////////////////////
+  // INDEXES (performance upgrades)
+  //////////////////////////////////////////////////
+
+  @@index([deletedAt]) // soft delete filter
+  @@index([slug, status, isAvailable]) // fast slug fetch
+  @@index([categoryId, status, isAvailable, sortOrder]) // public listing
+  @@index([isTrending])
+  @@index([isFeatured])
+  @@index([productName])
   @@index([stockItemId])
-  @@index([status])
 
   carts CartItem[]
   outlets OutletProduct[]
   orderItems OrderItem[]
 }
-
 
 //////////////////////////////////////////////////////
 // PRODUCT IMAGES
@@ -602,15 +626,15 @@ model ProductImage {
   id        String   @id @default(uuid())
 
   productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   imageUrl  String
-
   sortOrder Int      @default(0)
 
   createdAt DateTime @default(now())
 
-  @@index([productId])
+  // 🔥 faster gallery loading
+  @@index([productId, sortOrder])
 }
 
 
@@ -789,6 +813,7 @@ grandTotal         Decimal @db.Decimal(12,2)
 itemCount          Int
 
   status OrderStatus @default(CREATED)
+  version Int @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -797,6 +822,16 @@ itemCount          Int
 
   items    OrderItem[]
   payments Payment[]
+  events OrderEvent[]
+  delivery Delivery?
+
+  paidAt DateTime?
+confirmedAt DateTime?
+preparingAt DateTime?
+outForDeliveryAt DateTime?
+deliveredAt DateTime?
+cancelledAt DateTime?
+failedAt DateTime?
 
   //////////////////////////////////////////////////
 
@@ -804,6 +839,7 @@ itemCount          Int
   @@index([outletId])
   @@index([status])
   @@index([createdAt])
+  @@index([customerId, outletId, status])
 }
 
 
@@ -861,6 +897,7 @@ model Payment {
 
   method PaymentMethod
   status PaymentStatus @default(INITIATED)
+  attemptNo Int @default(1)
 
   provider        String?    // razorpay/stripe/phonepe
   providerRefId   String? @unique
@@ -870,6 +907,7 @@ model Payment {
   paidAmount  Decimal? @db.Decimal(12,2)   // 🔥 safer reconciliation
 
   failureReason String?                   // 🔥 added for debugging
+  idempotencyKey String? @unique
 
   paidAt DateTime?
 
@@ -879,4 +917,119 @@ model Payment {
   @@index([orderId])
   @@index([status])
   @@index([providerRefId])
+  @@index([createdAt])
+  @@unique([orderId, attemptNo])
+}
+
+enum DeliveryTripStatus {
+  ASSIGNED
+  PICKED_UP
+  IN_TRANSIT
+  DELIVERED
+  FAILED
+}
+
+model Delivery {
+  id String @id @default(cuid())
+
+  orderId String @unique
+  order   Order @relation(fields: [orderId], references: [id])
+
+  partnerId String
+  partner   DeliveryPartner @relation(fields: [partnerId], references: [id])
+
+  status DeliveryTripStatus @default(ASSIGNED)
+
+  assignedAt  DateTime @default(now())
+  pickedUpAt  DateTime?
+  deliveredAt DateTime?
+  failedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  locations DeliveryLocation[]
+  events DeliveryEvent[]
+
+  @@index([partnerId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+
+model DeliveryLocation {
+  id String @id @default(cuid())
+
+  deliveryId String
+  delivery   Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  lat Float
+  lng Float
+
+  createdAt DateTime @default(now())
+
+  @@index([deliveryId])
+  @@index([deliveryId, createdAt])
+}
+
+
+enum OrderEventType {
+  CREATED
+  PAYMENT_PENDING
+  PAID
+  CONFIRMED
+  PREPARING
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+  FAILED
+}
+model OrderEvent {
+  id String @id @default(cuid())
+
+  orderId String
+  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  type OrderEventType
+
+  // who triggered
+  actorType ActorType?
+  actorId   String?
+
+  // extra info
+  note      String?
+  metadata  Json?
+
+  // retry safety
+  idempotencyKey String? @unique
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId, createdAt])
+  @@index([type, createdAt])
+  @@index([orderId, type])
+}
+
+enum DeliveryEventType {
+  ASSIGNED
+  PICKED_UP
+  IN_TRANSIT
+  DELIVERED
+  FAILED
+  LOCATION_UPDATED
+}
+
+model DeliveryEvent {
+  id String @id @default(cuid())
+
+  deliveryId String
+  delivery   Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+
+  type DeliveryEventType
+  metadata Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([deliveryId, createdAt])
+  @@index([type, createdAt])
 }

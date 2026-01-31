@@ -19,6 +19,8 @@ import { CartModule } from './modules/cart/modules/cart.module';
 import { OrdersModule } from './modules/orders/modules/orders.module';
 import { PaymentsModule } from './modules/payments/modules/payments.module';
 import { CheckoutModule } from './modules/checkout/modules/checkout.module';
+import { DeliveryModule } from './modules/delivery/modules/delivery.module';
+
 
 import { OtpWorker } from './workers/otp.worker';
 import { SmsProvider } from './infrastructure/providers/sms.provider';
@@ -47,6 +49,7 @@ import { SmsProvider } from './infrastructure/providers/sms.provider';
     OrdersModule,
     PaymentsModule,
     CheckoutModule,
+    DeliveryModule,
   ],
   providers: [
     OtpWorker,

@@ -56,3 +56,26 @@ export interface ProductTrendingChangedEvent {
 
   isTrending: boolean;
 }
+
+/* ================================================= */
+/* FEATURED                                          */
+/* ================================================= */
+
+export interface ProductFeaturedChangedEvent {
+  productId: string;
+
+  isFeatured: boolean;
+}
+
+/* ================================================= */
+/* INGREDIENTS                                      */
+/* ================================================= */
+
+export interface ProductContentUpdatedEvent {
+  productId: string;
+
+  ingredients: string | null;
+  benefits: string | null;
+  extraInfo1: string | null;
+  extraInfo2: string | null;
+}

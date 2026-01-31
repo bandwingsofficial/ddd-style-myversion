@@ -95,14 +95,9 @@ private async recalcTotals(
 
   if (!cart) return null;
 
-  // 🔥 auto recalc if mismatch
-  if (cart.items.length > 0 && cart.itemCount === 0) {
-    return this.recalcTotals(cart.id, client);
-  }
-
-  return cart;
+  /* 🔥 ALWAYS refresh totals */
+  return this.recalcTotals(cart.id, client);
 }
-
   /* ================================================= */
   /* INTERNAL GET OR CREATE                            */
   /* ================================================= */
@@ -337,24 +332,71 @@ async lockCart(
     }
 
     if (cart.status !== CartStatus.ACTIVE) {
-      return cart; // already locked/expired
+      return cart;
     }
 
     if (!cart.hasItems()) {
       throw new ValidationError('CART_EMPTY', 'Cannot checkout empty cart');
     }
 
-    /* 🔥 1. recalc totals */
+    /* ============================= */
+    /* 🔥 PRICE + PRODUCT VALIDATION */
+    /* ============================= */
+
+    for (const item of cart.items) {
+      const product = await client.product.findUnique({
+        where: { id: item.productId },
+      });
+
+      if (!product || product.status !== 'ACTIVE') {
+        throw new ValidationError(
+          'PRODUCT_NOT_AVAILABLE',
+          `${item.productName} is unavailable`,
+        );
+      }
+
+      // optional strict price check
+      if (
+        !item.unitPrice.equals(product.originalPrice) ||
+        (item.discountPrice &&
+          !item.discountPrice.equals(product.discountPrice))
+      ) {
+        throw new ValidationError(
+          'PRICE_CHANGED',
+          `${item.productName} price changed. Please refresh cart`,
+        );
+      }
+    }
+
+    /* ============================= */
+    /* 🔥 SNAPSHOT TOTALS            */
+    /* ============================= */
+
     const fresh = await this.recalcTotals(cart.id, client);
 
-    /* 🔥 2. lock snapshot */
-    const locked = fresh.lock();
+    const locked = fresh.lock(); // freeze
 
-    /* 🔥 3. persist locked cart */
     return this.cartRepo.update(locked, client);
   };
 
-  // 🔥 atomic wrapper (MOST IMPORTANT)
   return tx ? run(tx) : this.prisma.$transaction(run);
 }
+
+async unlockCart(
+  params: { customerId?: string; sessionId?: string },
+  tx?: PrismaTransaction,
+): Promise<Cart | null> {
+  const run = async (client: PrismaTransaction) => {
+    const cart = await this.getActiveCart(params, client);
+    if (!cart) return null;
+
+    const unlocked = cart.unlock(); // implement in domain
+    return this.cartRepo.update(unlocked, client);
+  };
+
+  return tx ? run(tx) : this.prisma.$transaction(run);
+}
+
+
+
 }

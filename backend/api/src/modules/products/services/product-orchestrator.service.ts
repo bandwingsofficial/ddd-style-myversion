@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { ProductService } from './product.service';
 import { Product } from '../domain/models/product.model';
+import { PublicProductQueryDto } from '../dtos/public-product-query.dto';
 
 @Injectable()
 export class ProductOrchestratorService {
@@ -13,9 +14,9 @@ export class ProductOrchestratorService {
   /* PRODUCT – READS (ADMIN / INTERNAL)                */
   /* ================================================= */
 
-  async getAllProducts(): Promise<Product[]> {
-    return this.productService.getAllProducts();
-  }
+async getAllProducts(query?: PublicProductQueryDto) {
+  return this.productService.getAllProducts(query);
+}
 
   async getProductById(
     productId: string,
@@ -33,14 +34,9 @@ export class ProductOrchestratorService {
   /* PRODUCT – READS (PUBLIC)                          */
   /* ================================================= */
 
-  async getPublicProducts(): Promise<
-    {
-      product: Product;
-      category: { id: string; name: string };
-    }[]
-  > {
-    return this.productService.getPublicProductsWithCategory();
-  }
+async getPublicProducts(query: PublicProductQueryDto) {
+  return this.productService.getPublicProducts(query);
+}
 
   async getPublicProductById(
     productId: string,
@@ -91,6 +87,16 @@ export class ProductOrchestratorService {
     discountPrice?: number;
   }): Promise<Product> {
     return this.productService.updatePrice(params);
+  }
+
+  async updateProductIngredients(params: {
+    productId: string;
+    ingredients?: string;
+    benefits?: string;
+    extraInfo1?: string;
+    extraInfo2?: string;
+  }): Promise<Product> {
+    return this.productService.updateIngredients(params);
   }
 
  async updateProductImages(params: {
@@ -146,6 +152,26 @@ async deleteProductImage(params: {
     productId: string;
   }): Promise<void> {
     return this.productService.unmarkTrending(
+      params.productId,
+    );
+  }
+
+  /* ================================================= */
+  /* PRODUCT – FEATURED                               */
+  /* ================================================= */
+
+  async markProductFeatured(params: {
+    productId: string;
+  }): Promise<void> {
+    return this.productService.markFeatured(
+      params.productId,
+    );
+  }
+
+  async unmarkProductFeatured(params: {
+    productId: string;
+  }): Promise<void> {
+    return this.productService.unmarkFeatured(
       params.productId,
     );
   }

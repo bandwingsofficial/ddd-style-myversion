@@ -36,6 +36,7 @@ export interface CheckoutSummaryDto {
     longitude?: number;
   };
 
+  /* ✅ EXACT SAME FIELDS AS CART */
   items: CheckoutSummaryItemDto[];
 
   /* ✅ EXACT SAME FIELDS AS CART */

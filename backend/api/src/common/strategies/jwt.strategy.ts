@@ -6,50 +6,22 @@ import { ActorType } from '../../modules/auth/domain/enums/actor-type.enum';
 import { SessionService } from '../../modules/auth/services/session.service';
 import { AuthPayload } from '../../modules/auth/types/auth-payload.type';
 
+import { OutletUserRepository } from '../../modules/outlets/repositories/outlet-user.repository'; // ⭐ use repo
+
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     private readonly sessionService: SessionService,
+    private readonly outletUserRepo: OutletUserRepository, // ⭐ inject repo
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromExtractors([
-        /* ================================================= */
-        /* MOBILE: Authorization: Bearer <token>            */
-        /* ================================================= */
-        ExtractJwt.fromAuthHeaderAsBearerToken(),
-
-        /* ================================================= */
-        /* WEB: accessToken cookie                          */
-        /* ================================================= */
-        (req) => {
-          const token = req?.cookies?.accessToken;
-
-          console.log('🔑 [JWT STRATEGY] extracting token');
-          console.log(
-            '🔑 token present:',
-            Boolean(token),
-            '(from cookies)',
-          );
-
-          return token;
-        },
-      ]),
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       secretOrKey: process.env.JWT_ACCESS_SECRET,
       ignoreExpiration: false,
     });
   }
 
-  async validate(
-    payload: AuthPayload,
-  ): Promise<{
-    actorId: string;
-    actorType: ActorType;
-    sessionId: string;
-    tokenVersion: number;
-  }> {
-    console.log('🔐 [JWT STRATEGY] validate called');
-    console.log('🔐 payload:', payload);
-
+  async validate(payload: AuthPayload) {
     const session =
       await this.sessionService.findActiveSession({
         sessionId: payload.sid,
@@ -59,17 +31,29 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       });
 
     if (!session) {
-      console.log('❌ [JWT STRATEGY] session INVALID');
       throw new UnauthorizedException('SESSION_INVALID');
     }
 
-    console.log('✅ [JWT STRATEGY] session VALID');
+    /*
+    🔥 Fetch outlet user to get outletId
+    */
+
+    let outletId: string | undefined;
+
+    if (payload.at === ActorType.OUTLET_USER) {
+      const outletUser =
+        await this.outletUserRepo.findById(payload.sub);
+
+      outletId = outletUser?.outletId;
+    }
 
     return {
       actorId: payload.sub,
       actorType: payload.at,
       sessionId: payload.sid,
       tokenVersion: payload.tv,
+      outletId, // ✅ now available in @CurrentUser()
+      kind: 'access',
     };
   }
 }

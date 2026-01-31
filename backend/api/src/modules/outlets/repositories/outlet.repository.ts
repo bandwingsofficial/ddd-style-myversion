@@ -96,6 +96,22 @@ async findAll(
 }
 
   /* ================================================= */
+/* READ – OUTLETS WITH LOCATION ONLY                 */
+/* ================================================= */
+
+async findWithLocation(
+  tx?: PrismaTransaction,
+): Promise<Outlet[]> {
+  const rows = await (tx ?? this.prisma).outlet.findMany({
+    where: {
+      latitude: { not: null },
+      longitude: { not: null },
+    },
+  });
+
+  return rows.map(row => this.toDomain(row));
+}
+  /* ================================================= */
   /* UPDATE DETAILS (PARTIAL STRUCTURAL UPDATE)        */
   /* ================================================= */
 

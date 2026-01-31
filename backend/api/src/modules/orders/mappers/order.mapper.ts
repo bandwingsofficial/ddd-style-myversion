@@ -58,6 +58,7 @@ export class OrderMapper {
     itemCount: order.itemCount,
 
     status: this.toDomainStatus(order.status),
+    version: order.version,
 
     items: order.items.map((item) =>
       OrderItem.rehydrate({
@@ -123,6 +124,7 @@ static toPrismaCreate(order: Order): Prisma.OrderCreateInput {
     itemCount: order.itemCount,                // ✅ added
 
     status: this.toPrismaStatus(order.status),
+    version: order.version,
 
     /* -------- items snapshot -------- */
 

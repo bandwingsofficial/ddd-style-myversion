@@ -152,6 +152,15 @@ export class Cart {
     expiresAt: now,
   });
 }
+
+unlock(now = new Date()): Cart {
+  return new Cart({
+    ...this.toProps(),
+    status: CartStatus.ACTIVE,
+    updatedAt: now,
+    lockedAt: undefined,
+  });
+}
   /* ---------------------------------------------- */
   /* private mapper                                */
   /* ---------------------------------------------- */

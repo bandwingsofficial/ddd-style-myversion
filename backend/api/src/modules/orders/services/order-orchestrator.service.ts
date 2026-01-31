@@ -10,6 +10,8 @@ import { SavedAddress } from '../../saved-address/domain/models/saved-address.mo
 
 import { Order } from '../domain/models/order.model';
 
+import { ActorType } from '../../auth/domain/enums/actor-type.enum';
+
 @Injectable()
 export class OrderOrchestratorService {
   constructor(
@@ -37,7 +39,6 @@ export class OrderOrchestratorService {
     params: {
       cart: Cart;
       address: SavedAddress;
-      deliveryFee: number;
     },
     tx?: PrismaTransaction,
   ): Promise<Order> {
@@ -48,59 +49,51 @@ export class OrderOrchestratorService {
   /* STATUS TRANSITIONS (TX SAFE)                      */
   /* ================================================= */
 
-  async markPaymentPendingOrder(
-    orderId: string,
-    tx?: PrismaTransaction,
-  ): Promise<Order> {
+  async markPaymentPendingOrder(orderId: string, tx?: PrismaTransaction) {
     return this.orderStatusService.markPaymentPending(orderId, tx);
   }
 
-  async markPaidOrder(
-    orderId: string,
-    tx?: PrismaTransaction,
-  ): Promise<Order> {
+  async markPaidOrder(orderId: string, tx?: PrismaTransaction) {
     return this.orderStatusService.markPaid(orderId, tx);
   }
 
-  async confirmOrder(
-    orderId: string,
-    tx?: PrismaTransaction,
-  ): Promise<Order> {
+  async confirmOrder(orderId: string, tx?: PrismaTransaction) {
     return this.orderStatusService.confirm(orderId, tx);
   }
 
-  async startPreparingOrder(
-    orderId: string,
-    tx?: PrismaTransaction,
-  ): Promise<Order> {
+  async startPreparingOrder(orderId: string, tx?: PrismaTransaction) {
     return this.orderStatusService.startPreparing(orderId, tx);
   }
 
-  async outForDeliveryOrder(
-    orderId: string,
-    tx?: PrismaTransaction,
-  ): Promise<Order> {
+  async outForDeliveryOrder(orderId: string, tx?: PrismaTransaction) {
     return this.orderStatusService.outForDelivery(orderId, tx);
   }
 
-  async deliverOrder(
-    orderId: string,
-    tx?: PrismaTransaction,
-  ): Promise<Order> {
+  async deliverOrder(orderId: string, tx?: PrismaTransaction) {
     return this.orderStatusService.deliver(orderId, tx);
   }
 
+  /* ================================================= */
+  /* CANCEL WITH ACTOR TRACKING                        */
+  /* ================================================= */
+
   async cancelOrder(
     orderId: string,
+    actor: { actorType: ActorType; actorId: string },
     tx?: PrismaTransaction,
-  ): Promise<Order> {
-    return this.orderStatusService.cancel(orderId, tx);
+  ) {
+    return this.orderStatusService.cancel(orderId, actor, tx);
   }
 
-  async failOrder(
-    orderId: string,
-    tx?: PrismaTransaction,
-  ): Promise<Order> {
+  /* ================================================= */
+  /* FAILED                                            */
+  /* ================================================= */
+
+  async failOrder(orderId: string, tx?: PrismaTransaction) {
     return this.orderStatusService.fail(orderId, tx);
+  }
+
+  async getOutletOrders(outletId: string): Promise<Order[]> {
+    return this.orderService.getOutletOrders(outletId);
   }
 }

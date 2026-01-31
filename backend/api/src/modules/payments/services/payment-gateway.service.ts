@@ -21,33 +21,39 @@ export interface PaymentVerificationResult {
 /* ================================================= */
 /* GATEWAY SERVICE                                   */
 /* External integration ONLY                         */
+/* NEVER emits events / NEVER touches DB              */
 /* ================================================= */
 
 @Injectable()
 export class PaymentGatewayService {
+
   /* ================================================= */
-  /* INTERNAL: SAFE WRAPPER                            */
-  /* Prevent hanging / crashing calls                  */
+  /* INTERNAL: SAFE WRAPPER (no timer leak 🔥)         */
   /* ================================================= */
 
   private async withTimeout<T>(
     promise: Promise<T>,
     ms = 8000,
   ): Promise<T> {
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(
-        () =>
-          reject(
-            new ValidationError(
-              'PAYMENT_GATEWAY_TIMEOUT',
-              'Payment provider timeout',
-            ),
-          ),
-        ms,
-      ),
-    );
 
-    return Promise.race([promise, timeout]);
+    let timer: NodeJS.Timeout;
+
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        reject(
+          new ValidationError(
+            'PAYMENT_GATEWAY_TIMEOUT',
+            'Payment provider timeout',
+          ),
+        );
+      }, ms);
+    });
+
+    try {
+      return await Promise.race([promise, timeout]);
+    } finally {
+      clearTimeout(timer!); // 🔥 cleanup
+    }
   }
 
   /* ================================================= */
@@ -60,8 +66,6 @@ export class PaymentGatewayService {
     currency: string;
     metadata?: Record<string, string>;
   }): Promise<PaymentSession> {
-
-    /* ---------- validation ---------- */
 
     if (!params?.orderId) {
       throw new ValidationError(
@@ -85,18 +89,25 @@ export class PaymentGatewayService {
     }
 
     try {
-      /**
-       * 🔥 MOCK IMPLEMENTATION
-       * Replace with Stripe/Razorpay later
-       */
+      /* ---------------------------------------------- */
+      /* 🔥 MOCK PROVIDER (replace with Stripe/Razorpay) */
+      /* ---------------------------------------------- */
+
+      const providerPaymentId = `PAY_${uuid()}`;
 
       return await this.withTimeout(
         Promise.resolve({
-          providerPaymentId: `PAY_${uuid()}`,
-          checkoutUrl: `https://fake-payments.local/checkout/PAY_${uuid()}`,
+          providerPaymentId,
+          checkoutUrl: `https://fake-payments.local/checkout/${providerPaymentId}`,
         }),
       );
+
     } catch (err) {
+      console.error(
+        '[PAYMENT GATEWAY] createPaymentSession failed:',
+        err,
+      );
+
       throw new ValidationError(
         'PAYMENT_GATEWAY_FAILED',
         'Failed to create payment session',
@@ -120,9 +131,10 @@ export class PaymentGatewayService {
     }
 
     try {
-      /**
-       * 🔥 MOCK
-       */
+      /* ---------------------------------------------- */
+      /* 🔥 MOCK VERIFY                                 */
+      /* Replace with real provider API call             */
+      /* ---------------------------------------------- */
 
       return await this.withTimeout(
         Promise.resolve({
@@ -131,11 +143,37 @@ export class PaymentGatewayService {
           raw: {},
         }),
       );
-    } catch {
+
+    } catch (err) {
+      console.error(
+        '[PAYMENT GATEWAY] verifyPayment failed:',
+        err,
+      );
+
       return {
         success: false,
         providerPaymentId: params.providerPaymentId,
       };
     }
+  }
+
+  /* ================================================= */
+  /* WEBHOOK SIGNATURE VERIFY (future proof 🔥)        */
+  /* ================================================= */
+
+  verifyWebhookSignature(
+    signature?: string,
+    payload?: unknown,
+  ): void {
+
+    // 🔥 MOCK — always pass
+    // Later:
+    // Stripe → constructEvent(rawBody, signature, secret)
+    // Razorpay → crypto HMAC verify
+
+    if (!signature) return;
+
+    // example:
+    // if (!isValid(signature)) throw new ValidationError(...)
   }
 }

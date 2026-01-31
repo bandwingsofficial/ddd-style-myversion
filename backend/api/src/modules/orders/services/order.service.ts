@@ -5,6 +5,7 @@ import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
 import { Decimal } from '@prisma/client/runtime/library';
 
 import { OrderRepository } from '../repositories/order.repository';
+import { OrderEventRepository } from '../repositories/order-event.repository'; // ✅ NEW
 
 import { Cart } from '../../cart/domain/models/cart.model';
 import { SavedAddress } from '../../saved-address/domain/models/saved-address.model';
@@ -16,6 +17,7 @@ import { OrderAddress } from '../domain/value-objects/order-address.vo';
 import { Money } from '../domain/value-objects/money.vo';
 
 import { ValidationError } from '../../../common/errors';
+import { CartStatus } from '@/modules/cart/domain/enums/cart-status.enum';
 
 /* ================================================= */
 /* HELPERS                                           */
@@ -25,7 +27,10 @@ const toNumber = (d?: Decimal | null): number => (d == null ? 0 : Number(d));
 
 @Injectable()
 export class OrderService {
-  constructor(private readonly orderRepo: OrderRepository) {}
+  constructor(
+    private readonly orderRepo: OrderRepository,
+    private readonly orderEventRepo: OrderEventRepository, // ✅ NEW
+  ) {}
 
   /* ================================================= */
   /* READS                                            */
@@ -56,11 +61,6 @@ export class OrderService {
   },
   tx?: PrismaTransaction,
 ): Promise<Order> {
-
-  /* ================================================= */
-  /* PARAM VALIDATION                                  */
-  /* ================================================= */
-
   const { cart, address } = params ?? {};
 
   if (!cart) {
@@ -71,10 +71,6 @@ export class OrderService {
     throw new ValidationError('ADDRESS_REQUIRED', 'Address is required');
   }
 
-  /* ================================================= */
-  /* BUSINESS VALIDATION                               */
-  /* ================================================= */
-
   if (!cart.customerId) {
     throw new ValidationError(
       'CART_INVALID_CUSTOMER',
@@ -82,24 +78,19 @@ export class OrderService {
     );
   }
 
-  if (!cart.items.length) {
+  if (!cart.hasItems()) {
     throw new ValidationError(
       'EMPTY_CART',
       'Cannot create order from empty cart',
     );
   }
 
-  // 🔥 checkout must already lock cart
-  if (cart.status !== 'LOCKED') {
+  if (cart.status !== CartStatus.LOCKED) {
     throw new ValidationError(
       'CART_NOT_LOCKED',
       'Cart must be locked before creating order',
     );
   }
-
-  /* ================================================= */
-  /* SNAPSHOT ID + ADDRESS                             */
-  /* ================================================= */
 
   const orderId = uuid();
 
@@ -110,10 +101,7 @@ export class OrderService {
     longitude: address.longitude,
   });
 
-  /* ================================================= */
-  /* SNAPSHOT ITEMS                                    */
-  /* ================================================= */
-
+  /* 🔥 SNAPSHOT ITEMS */
   const items = cart.items.map((item) =>
     OrderItem.create({
       id: uuid(),
@@ -123,46 +111,49 @@ export class OrderService {
       productImage: item.productImage,
       quantity: item.quantity,
       unitPrice: toNumber(item.unitPrice),
-      discountPrice: toNumber(item.discountPrice),
+      discountPrice:
+        item.discountPrice != null
+          ? toNumber(item.discountPrice)
+          : undefined,
     }),
   );
 
-  /* ================================================= */
-  /* 🔥 COPY TOTALS FROM CART (SOURCE OF TRUTH)         */
-  /* ================================================= */
+  /* 🔥 SNAPSHOT TOTALS (NO RECALC EVER) */
+const order = Order.createNew({
+  id: orderId,
+  customerId: cart.customerId!,
+  outletId: cart.outletId,
+  cartId: cart.id,
+  address: orderAddress,
 
-  const {
-    subtotal,
-    discount,
-    afterDiscountTotal,
-    deliveryFee,
-    grandTotal,
-  } = cart;
+  subtotal: toNumber(cart.subtotal),
+  discount: toNumber(cart.discount),
+  afterDiscountTotal: toNumber(cart.afterDiscountTotal),
+  deliveryFee: toNumber(cart.deliveryFee),
+  grandTotal: toNumber(cart.grandTotal),
+  itemCount: cart.itemCount,
 
-  /* ================================================= */
-  /* CREATE AGGREGATE                                  */
-  /* ================================================= */
+  items,
+});
 
-  const order = Order.createNew({
-    id: orderId,
-    customerId: cart.customerId!,
-    outletId: cart.outletId,
-    cartId: cart.id,
-    address: orderAddress,
+  const saved = await this.orderRepo.create(order, tx);
 
-    subtotal: toNumber(subtotal),
-    discount: toNumber(discount),
-    afterDiscountTotal: toNumber(afterDiscountTotal),
-    deliveryFee: toNumber(deliveryFee),
-    grandTotal: toNumber(grandTotal),
+  await this.orderEventRepo.create(
+    {
+      orderId: saved.id,
+      type: 'CREATED',
+      metadata: { source: 'checkout' },
+    },
+    tx,
+  );
 
-    items,
-  });
-
-  /* ================================================= */
-  /* PERSIST                                           */
-  /* ================================================= */
-
-  return this.orderRepo.create(order, tx);
+  return saved;
 }
+
+  /* ================================================= */
+  /* GET OUTLET ORDERS                                 */
+  async getOutletOrders(outletId: string): Promise<Order[]> {
+    return this.orderRepo.findByOutlet(outletId);
+  }
+  /* ================================================= */
 }

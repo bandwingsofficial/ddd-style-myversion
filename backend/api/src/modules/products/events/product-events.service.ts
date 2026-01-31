@@ -8,6 +8,8 @@ import {
   ProductTrendingChangedEvent,
   ProductPriceChangedEvent,
   ProductImagesChangedEvent,
+  ProductFeaturedChangedEvent,
+  ProductContentUpdatedEvent,
 } from './product-events.types';
 
 @Injectable()
@@ -98,4 +100,30 @@ export class ProductEventsService {
       payload,
     );
   }
+
+  /* ================================================= */
+  /* FEATURED                                         */
+  /* ================================================= */
+
+  emitProductFeaturedChanged(
+    payload: ProductFeaturedChangedEvent,
+  ): void {
+    this.eventEmitter.emit(
+      ProductEvents.PRODUCT_FEATURED_CHANGED,
+      payload,
+    );
+  } 
+
+  /* ================================================= */
+  /* INGREDIENTS                                      */  
+  /* ================================================= */
+  
+  emitProductContentUpdated(
+  payload: ProductContentUpdatedEvent,
+): void {
+  this.eventEmitter.emit(
+    ProductEvents.PRODUCT_CONTENT_UPDATED,
+    payload,
+  );
+}
 }

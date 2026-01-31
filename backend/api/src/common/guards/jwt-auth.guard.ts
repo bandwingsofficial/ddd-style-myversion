@@ -68,12 +68,8 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
      * ✅ ACCESS TOKEN AUTH CONTEXT
      */
     req.auth = {
-      kind: 'access',
-      actorId: user.actorId,
-      actorType: user.actorType,
-      sessionId: user.sessionId,
-      tokenVersion: user.tokenVersion,
-    };
+  ...user,
+};
 
     console.log('✅ JWT VALID — auth context attached');
     console.log('✅ req.auth:', req.auth);

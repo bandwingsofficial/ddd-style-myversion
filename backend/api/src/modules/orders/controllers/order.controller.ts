@@ -68,7 +68,13 @@ export class OrderController {
   ) {
     await this.getOwnedOrder(orderId, user.actorId);
 
-    const data = await this.orchestrator.cancelOrder(orderId);
+    const data = await this.orchestrator.cancelOrder(
+      orderId,
+      {
+        actorType: ActorType.CUSTOMER,
+        actorId: user.actorId,
+      }, // ✅ PASS ACTOR FOR TRACKING
+    );
 
     return {
       success: true,

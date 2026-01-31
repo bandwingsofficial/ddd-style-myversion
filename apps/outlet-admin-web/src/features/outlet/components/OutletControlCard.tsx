@@ -10,7 +10,8 @@ import {
   Activity, 
   Power, 
   Lock,
-  CircleDot
+  CircleDot,
+  AlertCircle
 } from "lucide-react";
 
 interface Props {
@@ -22,10 +23,14 @@ export default function OutletControlCard({ outlet, refreshData }: Props) {
   const [loading, setLoading] = useState(false);
 
   // Helper booleans
+  const isOutletActive = outlet.status === "ACTIVE"; // Check Super Admin status
   const isStoreOpen = outlet.workingState.status === "OPEN";
   const isCameraOn = outlet.cameraState.status === "ON";
 
   const handleStatusToggle = async () => {
+    // PREVENT API CALL IF OUTLET IS INACTIVE
+    if (!isOutletActive) return;
+
     setLoading(true);
     const newStatus = isStoreOpen ? "CLOSED" : "OPEN";
 
@@ -82,9 +87,9 @@ export default function OutletControlCard({ outlet, refreshData }: Props) {
         
         <span style={{
           ...styles.badge,
-          backgroundColor: outlet.status === "ACTIVE" ? '#dcfce7' : '#fee2e2',
-          color: outlet.status === "ACTIVE" ? '#15803d' : '#991b1b',
-          border: outlet.status === "ACTIVE" ? '1px solid #bbf7d0' : '1px solid #fecaca',
+          backgroundColor: isOutletActive ? '#dcfce7' : '#fee2e2',
+          color: isOutletActive ? '#15803d' : '#991b1b',
+          border: isOutletActive ? '1px solid #bbf7d0' : '1px solid #fecaca',
         }}>
           <Activity size={12} />
           {outlet.status}
@@ -97,48 +102,73 @@ export default function OutletControlCard({ outlet, refreshData }: Props) {
         {/* --- Store Status Block --- */}
         <div style={{
            ...styles.actionBlock,
-           backgroundColor: isStoreOpen ? '#f0fdf4' : 'white',
-           borderColor: isStoreOpen ? '#bbf7d0' : '#e2e8f0',
+           // Grey out background if Outlet is INACTIVE (Super Admin disabled it)
+           backgroundColor: !isOutletActive ? '#f8fafc' : (isStoreOpen ? '#f0fdf4' : 'white'),
+           borderColor: !isOutletActive ? '#e2e8f0' : (isStoreOpen ? '#bbf7d0' : '#e2e8f0'),
+           backgroundImage: !isOutletActive ? 'repeating-linear-gradient(45deg, #f8fafc, #f8fafc 10px, #f1f5f9 10px, #f1f5f9 20px)' : 'none',
         }}>
           <div style={styles.blockHeader}>
             <div style={styles.labelGroup}>
-               <Store size={16} color={isStoreOpen ? '#15803d' : '#64748b'} />
-               <span style={{...styles.label, color: isStoreOpen ? '#15803d' : '#64748b'}}>Store Status</span>
+               {/* Change Icon to Lock if Inactive */}
+               {!isOutletActive ? (
+                 <Lock size={16} color="#94a3b8" />
+               ) : (
+                 <Store size={16} color={isStoreOpen ? '#15803d' : '#64748b'} />
+               )}
+               <span style={{
+                 ...styles.label, 
+                 color: !isOutletActive ? '#94a3b8' : (isStoreOpen ? '#15803d' : '#64748b')
+               }}>
+                 Store Status
+               </span>
             </div>
-            <div style={{
-              ...styles.statusDot,
-              backgroundColor: isStoreOpen ? '#22c55e' : '#cbd5e1',
-              boxShadow: isStoreOpen ? '0 0 0 4px #dcfce7' : 'none'
-            }} />
+            
+            {/* Status Dot */}
+            {isOutletActive && (
+              <div style={{
+                ...styles.statusDot,
+                backgroundColor: isStoreOpen ? '#22c55e' : '#cbd5e1',
+                boxShadow: isStoreOpen ? '0 0 0 4px #dcfce7' : 'none'
+              }} />
+            )}
           </div>
           
           <div style={styles.blockBody}>
              <span style={{
                ...styles.value, 
-               color: isStoreOpen ? '#166534' : '#1e293b'
+               color: !isOutletActive ? '#94a3b8' : (isStoreOpen ? '#166534' : '#1e293b')
              }}>
-               {outlet.workingState.status}
+               {/* Display specific text if inactive */}
+               {!isOutletActive ? "DISABLED" : outlet.workingState.status}
              </span>
              <p style={styles.helperText}>
-               {isStoreOpen ? "Accepting new orders" : "Currently not accepting orders"}
+               {!isOutletActive 
+                 ? "Contact Super Admin to activate" 
+                 : (isStoreOpen ? "Accepting new orders" : "Currently not accepting orders")
+               }
              </p>
           </div>
 
           <div style={styles.blockFooter}>
             <button
               onClick={handleStatusToggle}
-              disabled={loading}
+              disabled={loading || !isOutletActive} // DISABLE BUTTON HERE
               style={{
                 ...styles.button,
                 width: '100%',
-                backgroundColor: isStoreOpen ? 'white' : '#16a34a',
-                border: isStoreOpen ? '1px solid #fee2e2' : '1px solid #16a34a',
-                color: isStoreOpen ? '#ef4444' : 'white',
+                // Locked styling
+                backgroundColor: !isOutletActive ? '#e2e8f0' : (isStoreOpen ? 'white' : '#16a34a'),
+                border: !isOutletActive ? '1px solid #cbd5e1' : (isStoreOpen ? '1px solid #fee2e2' : '1px solid #16a34a'),
+                color: !isOutletActive ? '#94a3b8' : (isStoreOpen ? '#ef4444' : 'white'),
                 opacity: loading ? 0.7 : 1,
+                cursor: !isOutletActive ? 'not-allowed' : 'pointer',
               }}
             >
-              <Power size={16} />
-              {loading ? "Processing..." : (isStoreOpen ? "Close Store" : "Open Store")}
+              {!isOutletActive ? <Lock size={14} /> : <Power size={16} />}
+              {loading 
+                ? "Processing..." 
+                : (!isOutletActive ? "Locked by Admin" : (isStoreOpen ? "Close Store" : "Open Store"))
+              }
             </button>
           </div>
         </div>
@@ -148,7 +178,6 @@ export default function OutletControlCard({ outlet, refreshData }: Props) {
           ...styles.actionBlock,
           backgroundColor: !isStoreOpen ? '#f8fafc' : (isCameraOn ? '#eff6ff' : 'white'), 
           borderColor: !isStoreOpen ? '#e2e8f0' : (isCameraOn ? '#bfdbfe' : '#e2e8f0'),
-          // Striped background for locked state
           backgroundImage: !isStoreOpen ? 'repeating-linear-gradient(45deg, #f8fafc, #f8fafc 10px, #f1f5f9 10px, #f1f5f9 20px)' : 'none',
         }}>
           <div style={styles.blockHeader}>
@@ -215,7 +244,7 @@ export default function OutletControlCard({ outlet, refreshData }: Props) {
   );
 }
 
-// 🎨 Professional Design System
+// 🎨 Professional Design System (Unchanged)
 const styles: { [key: string]: React.CSSProperties } = {
   card: {
     backgroundColor: 'white',
@@ -298,7 +327,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     borderStyle: 'solid',
     display: 'flex',
     flexDirection: 'column',
-    height: '180px', // Slightly taller for better spacing
+    height: '180px', 
     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
   },
   blockHeader: {

@@ -9,6 +9,8 @@ import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
 
 import { Product } from '../domain/models/product.model';
+import { PublicProductQuery } from '../types/public-product-query.type';
+import { PublicProductQueryDto } from '../dtos/public-product-query.dto';
 
 import { ProductStatus } from '../domain/enums/product-status.enum';
 import { ProductStatusMapper } from '../mappers/product-status.mapper';
@@ -20,6 +22,7 @@ import { ProductSlug } from '../domain/value-objects/product-slug.vo';
 import { ProductPrice } from '../domain/value-objects/product-price.vo';
 import { ProductImages } from '../domain/value-objects/product-images.vo';
 import { ProductTrendState } from '../domain/value-objects/product-trend-state.vo';
+import { ProductFeaturedState } from '../domain/value-objects/product-featured-state.vo';
 
 @Injectable()
 export class ProductRepository {
@@ -29,43 +32,111 @@ export class ProductRepository {
   /* READ – LIST                                      */
   /* ================================================= */
 
-  async findAll(
+async findAll(
   context: 'admin' | 'public' = 'public',
+  query?: PublicProductQueryDto,
   tx?: PrismaTransaction,
-): Promise<Product[]> {
+): Promise<{
+  product: Product;
+  category: { id: string; name: string };
+}[]> {
   const client = tx ?? this.prisma;
 
-  const where =
-    context === 'admin'
-      ? {}
-      : {
-          status: ProductStatusMapper.toPrisma(
-            ProductStatus.ACTIVE,
-          ),
-        };
+  const page = query?.page ?? 1;
+  const limit = query?.limit ?? 20;
+  const skip = (page - 1) * limit;
+
+  const where: Prisma.ProductWhereInput = {
+    ...(context === 'public' && {
+      status: ProductStatusMapper.toPrisma(ProductStatus.ACTIVE),
+      isAvailable: true,
+    }),
+
+    ...(query?.categoryId && {
+      categoryId: query.categoryId,
+    }),
+
+    ...(query?.search && {
+      name: {
+        contains: query.search,
+        mode: 'insensitive',
+      },
+    }),
+
+    ...(query?.trending && {
+      isTrending: true, // adjust if your field name differs
+    }),
+  };
 
   const rows = await client.product.findMany({
     where,
-    orderBy: { createdAt: 'desc' },
-    include: { galleryImages: true },
+    skip,
+    take: limit,
+    orderBy: [
+      { sortOrder: 'asc' },
+      { createdAt: 'desc' },
+    ],
+    include: {
+      galleryImages: true,
+      category: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
   });
 
-  return rows.map((row) => this.toDomain(row));
+  return rows.map((row) => ({
+    product: this.toDomain(row),
+    category: row.category,
+  }));
 }
-
-  async findAllWithCategory(): Promise<
+  async findAllWithCategory(
+  query: PublicProductQuery = {},
+): Promise<
   {
     product: Product;
     category: { id: string; name: string };
   }[]
 > {
+  const {
+    categoryId,
+    search,
+    trending,
+    page = 1,
+    limit = 20,
+  } = query;
+
+  const where: Prisma.ProductWhereInput = {
+    status: ProductStatusMapper.toPrisma(ProductStatus.ACTIVE),
+    isAvailable: true,
+
+    ...(categoryId && { categoryId }),
+
+    ...(typeof trending === 'boolean' && {
+      isTrending: trending,
+    }),
+
+    ...(search && {
+      productName: {
+        contains: search,
+        mode: 'insensitive',
+      },
+    }),
+  };
+
   const rows = await this.prisma.product.findMany({
-    where: {
-      status: ProductStatusMapper.toPrisma(
-        ProductStatus.ACTIVE,
-      ),
-    },
-    orderBy: { createdAt: 'desc' },
+    where,
+
+    orderBy: [
+      { sortOrder: 'asc' },
+      { createdAt: 'desc' },
+    ],
+
+    skip: (page - 1) * limit,
+    take: limit,
+
     include: {
       galleryImages: true,
       category: {
@@ -201,8 +272,17 @@ async findByIdWithCategory(
         ratingCount: product.ratingCount ?? 0,
 
         tags: ProductTagMapper.toPrisma(product.tags),
+        isAvailable: product.isAvailable,
+        sortOrder: product.sortOrder,
 
         isTrending: product.trendState.getRaw(),
+        isFeatured: product.featuredState.getRaw(),
+
+        ingredients: product.ingredients,
+        benefits: product.benefits,
+
+        extraInfo1: product.extraInfo1,
+        extraInfo2: product.extraInfo2,
         status: ProductStatusMapper.toPrisma(product.status),
 
         createdBy: product.createdBy,
@@ -272,6 +352,27 @@ async findByIdWithCategory(
     return this.toDomain(row);
   }
 
+  async updateIngredients(
+    product: Product,
+    tx?: PrismaTransaction,
+  ): Promise<Product> { 
+    const client = tx ?? this.prisma;
+    const row = await client.product.update({
+      where: { id: product.id },
+      data: {
+        ingredients: product.ingredients,
+        benefits: product.benefits,
+        extraInfo1: product.extraInfo1,
+        extraInfo2: product.extraInfo2,
+        updatedAt: product.updatedAt,
+      },
+      include: { galleryImages: true },
+    });
+
+    return this.toDomain(row);
+  }
+
+
   /* ================================================= */
   /* UPDATE – IMAGES (UPDATE ONLY, NO AUTO TX)         */
   /* ================================================= */
@@ -303,7 +404,7 @@ async updateImages(
 
   return this.toDomain(row);
 }
-
+ 
 
   /* ================================================= */
   /* STATUS / TRENDING                                */
@@ -345,6 +446,60 @@ async updateImages(
     return this.toDomain(row);
   }
 
+  async updateFeatured(
+    product: Product,
+    tx?: PrismaTransaction,
+  ): Promise<Product> {
+    const client = tx ?? this.prisma;
+
+    const row = await client.product.update({
+      where: { id: product.id },
+      data: {
+        isFeatured: product.featuredState.getRaw(),
+        updatedAt: product.updatedAt,
+      },
+      include: { galleryImages: true },
+    });
+
+    return this.toDomain(row);
+  } 
+
+  async updateAvailability(
+  product: Product,
+  tx?: PrismaTransaction,
+): Promise<Product> {
+  const client = tx ?? this.prisma;
+
+  const row = await client.product.update({
+    where: { id: product.id },
+    data: {
+      isAvailable: product.isAvailable,
+      updatedAt: product.updatedAt,
+    },
+    include: { galleryImages: true },
+  });
+
+  return this.toDomain(row);
+}
+
+async updateSortOrder(
+  product: Product,
+  tx?: PrismaTransaction,
+): Promise<Product> {
+  const client = tx ?? this.prisma;
+
+  const row = await client.product.update({
+    where: { id: product.id },
+    data: {
+      sortOrder: product.sortOrder,
+      updatedAt: product.updatedAt,
+    },
+    include: { galleryImages: true },
+  });
+
+  return this.toDomain(row);
+}
+
   /* ================================================= */
   /* PRIVATE MAPPER                                   */
   /* ================================================= */
@@ -372,8 +527,17 @@ async updateImages(
     ratingCount: number;
 
     tags: PrismaProductTag[];
+    isAvailable: boolean;
+    sortOrder: number;
 
     isTrending: boolean;
+    isFeatured: boolean;
+
+    ingredients: string | null;
+    benefits: string | null;
+
+    extraInfo1: string | null;
+    extraInfo2: string | null;
     status: any;
 
     createdAt: Date;
@@ -419,11 +583,20 @@ async updateImages(
 
       ratingCount: row.ratingCount ?? 0,
 
+      isAvailable: row.isAvailable,
+      sortOrder: row.sortOrder,
+
       shortDescription: row.shortDescription ?? undefined,
       longDescription: row.longDescription ?? undefined,
 
       status: ProductStatusMapper.toDomain(row.status),
       trendState: ProductTrendState.from(row.isTrending),
+      featuredState: ProductFeaturedState.from(row.isFeatured), // adjust if your field exists
+
+      ingredients: row.ingredients ?? undefined,
+      benefits: row.benefits ?? undefined,
+      extraInfo1: row.extraInfo1 ?? undefined,
+      extraInfo2: row.extraInfo2 ?? undefined,
 
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,

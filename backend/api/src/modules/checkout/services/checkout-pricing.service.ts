@@ -24,39 +24,27 @@ export interface CheckoutPricingResult {
 
 /* ================================================= */
 /* PRICING SERVICE                                   */
-/* Snapshot only — NO calculations                   */
+/* PURE SNAPSHOT ONLY (NO CALCULATIONS EVER)          */
 /* ================================================= */
 
 @Injectable()
 export class CheckoutPricingService {
-  calculate(params: {
-    cart: Cart;
-    deliveryFee?: number;
-  }): CheckoutPricingResult {
-
-    const { cart } = params;
-
-    /* ---------------------------------- */
-    /* PURE SNAPSHOT COPY (NO MATH EVER)  */
-    /* ---------------------------------- */
-
-    const deliveryFee =
-      params.deliveryFee !== undefined
-        ? Math.max(0, params.deliveryFee)
-        : toNumber(cart.deliveryFee);
-
+  /**
+   * Copies already-calculated totals from Cart.
+   *
+   * IMPORTANT:
+   * - NO math
+   * - NO overrides
+   * - NO client inputs
+   * - Cart is the single source of truth
+   */
+  calculate(cart: Cart): CheckoutPricingResult {
     return {
       subtotal: toNumber(cart.subtotal),
       discount: toNumber(cart.discount),
       afterDiscountTotal: toNumber(cart.afterDiscountTotal),
-
-      deliveryFee,
-
-      // ✅ ALWAYS trust cart snapshot
-      grandTotal:
-        deliveryFee === toNumber(cart.deliveryFee)
-          ? toNumber(cart.grandTotal)
-          : toNumber(cart.afterDiscountTotal) + deliveryFee,
+      deliveryFee: toNumber(cart.deliveryFee),
+      grandTotal: toNumber(cart.grandTotal),
     };
   }
 }

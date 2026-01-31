@@ -11,6 +11,7 @@ import { OutletController } from './../controllers/outlet.controller';
 import { OutletManagementController } from './../controllers/outlet-management.controller';
 import { PublicOutletController } from './../controllers/public-outlet.controller';
 import { MyOutletController } from './../controllers/my-outlet.controller';
+import { OutletOrderController } from './../controllers/outlet-order.controller';
 
 /* ---------------------------------------------- */
 /* SERVICES                                       */
@@ -19,6 +20,8 @@ import { OutletOrchestratorService } from './../services/outlet-orchestrator.ser
 import { OutletUserService } from './../services/outlet-user.service';
 import { OutletService } from './../services/outlet.service';
 import { OutletProductService } from './../services/outlet-product.service';
+
+
 
 
 /* ---------------------------------------------- */
@@ -49,8 +52,14 @@ import { OutletEventsService } from './../events/outlet-events.service';
 import { OutletPublicGateway } from './../gateways/outlet-public.gateway';
 import { OutletPublicListener } from './../listeners/outlet-public.listener';
 
+/* ---------------------------------------------- */
+/* MODULE                                         */
+/* ---------------------------------------------- */  
+import { OrdersModule } from '../../orders/modules/orders.module';
+
+
 @Module({
-  controllers: [OutletController, OutletManagementController, PublicOutletController, MyOutletController],
+  controllers: [OutletController, OutletManagementController, PublicOutletController, MyOutletController, OutletOrderController],
   providers: [
     // Infrastructure
     PrismaService,
@@ -81,6 +90,9 @@ import { OutletPublicListener } from './../listeners/outlet-public.listener';
     OutletEventsService,
     OutletPublicGateway,
     OutletPublicListener,
+  ],
+  imports: [
+    OrdersModule, // 👈 ADD THIS
   ],
   exports: [
     OutletUserService,

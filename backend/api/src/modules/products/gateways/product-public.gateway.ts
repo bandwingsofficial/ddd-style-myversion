@@ -42,7 +42,7 @@ export class ProductPublicGateway
 
   async emitFullProducts(client?: Socket): Promise<void> {
     const products =
-      await this.orchestrator.getPublicProducts();
+      await this.orchestrator.getPublicProducts({});
 
     const payload = products.map(({ product, category }) =>
       PublicProductListDto.fromDomain(product, category),

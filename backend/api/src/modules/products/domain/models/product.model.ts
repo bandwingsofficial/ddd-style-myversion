@@ -12,6 +12,7 @@ import { ProductSlug } from '../value-objects/product-slug.vo';
 import { ProductPrice } from '../value-objects/product-price.vo';
 import { ProductImages } from '../value-objects/product-images.vo';
 import { ProductTrendState } from '../value-objects/product-trend-state.vo';
+import { ProductFeaturedState } from '../value-objects/product-featured-state.vo';
 
 /* ---------------------------------------------- */
 /* PROPS                                          */
@@ -29,6 +30,8 @@ export interface ProductProps {
   images: ProductImages;
 
   tags: ProductTag[];
+  sortOrder: number;
+  isAvailable: boolean;
 
   unitValue: number;
   unitType: UnitType;
@@ -42,6 +45,13 @@ export interface ProductProps {
 
   status: ProductStatus;
   trendState: ProductTrendState;
+  featuredState: ProductFeaturedState;
+
+  ingredients?: string;
+  benefits?: string;
+
+  extraInfo1?: string;
+  extraInfo2?: string;
 
   createdAt: Date;
   updatedAt: Date;
@@ -64,6 +74,8 @@ export class Product {
   readonly images: ProductImages;
 
   readonly tags: ProductTag[];
+  readonly isAvailable: boolean;
+  readonly sortOrder: number;
 
   readonly unitValue: number;
   readonly unitType: UnitType;
@@ -77,6 +89,13 @@ export class Product {
 
   readonly status: ProductStatus;
   readonly trendState: ProductTrendState;
+  readonly featuredState: ProductFeaturedState;
+
+  readonly ingredients?: string;
+  readonly benefits?: string;
+
+  readonly extraInfo1?: string;
+  readonly extraInfo2?: string;
 
   readonly createdAt: Date;
   readonly updatedAt: Date;
@@ -116,6 +135,14 @@ export class Product {
     longDescription?: string;
 
     isTrending?: boolean;
+    isFeatured?: boolean;
+
+    ingredients?: string;
+    benefits?: string;
+
+    extraInfo1?: string;
+    extraInfo2?: string;
+
     createdBy: string;
     now?: Date;
   }): Product {
@@ -143,6 +170,8 @@ export class Product {
       images,
 
       tags: params.tags ?? [],
+      sortOrder: 0,
+      isAvailable: true,
 
       unitValue: params.unitValue,
       unitType: params.unitType,
@@ -155,6 +184,13 @@ export class Product {
 
       status: ProductStatus.ACTIVE,
       trendState: ProductTrendState.from(params.isTrending),
+      featuredState: ProductFeaturedState.from(params.isFeatured),
+
+      ingredients: params.ingredients,
+      benefits: params.benefits,
+
+      extraInfo1: params.extraInfo1,
+      extraInfo2: params.extraInfo2,
 
       createdAt: now,
       updatedAt: now,
@@ -179,11 +215,15 @@ export class Product {
   }
 
   canBePurchased(): boolean {
-    return this.isActive();
-  }
+  return this.isActive() && this.isAvailable;
+}
 
   isTrending(): boolean {
     return this.trendState.isTrending();
+  }
+
+  isFeatured(): boolean {
+    return this.featuredState.isFeatured();
   }
 
   /* ---------------------------------------------- */
@@ -231,6 +271,23 @@ export class Product {
     });
   }
 
+  updateIngredients(params: {
+    ingredients?: string;
+    benefits?: string;
+    extraInfo1?: string;
+    extraInfo2?: string;
+    now?: Date;
+  }): Product {
+    return new Product({
+      ...this,
+      ingredients: params.ingredients,
+      benefits: params.benefits,
+      extraInfo1: params.extraInfo1,
+      extraInfo2: params.extraInfo2,
+      updatedAt: params.now ?? new Date(),
+    });
+  }
+
   updateImages(params: {
     mainImage: string;
     galleryImages?: string[];
@@ -262,6 +319,70 @@ export class Product {
     });
   }
 
+  markFeatured(now = new Date()): Product {
+    return new Product({
+      ...this,
+      featuredState: ProductFeaturedState.featured(),
+      updatedAt: now,
+    });
+  }
+
+  unmarkFeatured(now = new Date()): Product {
+    return new Product({
+      ...this,
+      featuredState: ProductFeaturedState.normal(),
+      updatedAt: now,
+    });
+  }
+
+  setAvailability(available: boolean, now = new Date()): Product {
+  return new Product({
+    ...this,
+    isAvailable: available,
+    updatedAt: now,
+  });
+}
+
+updateSortOrder(sortOrder: number, now = new Date()): Product {
+  if (sortOrder < 0) {
+    throw new ValidationError(
+      'PRODUCT_INVALID_SORT_ORDER',
+      'Sort order must be >= 0',
+    );
+  }
+
+  return new Product({
+    ...this,
+    sortOrder,
+    updatedAt: now,
+  });
+}
+
+addRating(newRating: number, now = new Date()): Product {
+  if (newRating < 1 || newRating > 5) {
+    throw new ValidationError(
+      'PRODUCT_INVALID_RATING',
+      'Rating must be between 1 and 5',
+    );
+  }
+
+  const count = this.ratingCount + 1;
+
+  const avg =
+    ((this.ratingAverage ?? 0) * this.ratingCount + newRating) /
+    count;
+
+  return new Product({
+    ...this,
+    ratingCount: count,
+    ratingAverage: Number(avg.toFixed(2)),
+    updatedAt: now,
+  });
+}
+
+
+
+
   disable(now = new Date()): Product {
     if (this.status === ProductStatus.INACTIVE) {
       return this;
@@ -273,6 +394,14 @@ export class Product {
       updatedAt: now,
     });
   }
+
+  enable(now = new Date()): Product {
+  return new Product({
+    ...this,
+    status: ProductStatus.ACTIVE,
+    updatedAt: now,
+  });
+}
 
   /* ---------------------------------------------- */
   /* INVARIANTS                                     */

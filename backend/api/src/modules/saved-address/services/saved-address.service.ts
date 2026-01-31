@@ -3,6 +3,8 @@
 import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
+
 
 import { SavedAddress } from '../domain/models/saved-address.model';
 import { SavedAddressRepository } from '../repositories/saved-address.repository';
@@ -25,13 +27,17 @@ export class SavedAddressService {
   /* READS                                             */
   /* ================================================= */
 
-  async getById(params: {
+async getById(
+  params: {
     customerId: string;
     savedAddressId: string;
-  }): Promise<SavedAddress> {
+  },
+  tx?: PrismaTransaction, // 🔥 add
+): Promise<SavedAddress>{
     const address = await this.savedAddressRepo.findById(
       params.savedAddressId,
       params.customerId,
+      tx, // 🔥 pass
     );
 
     if (!address) {

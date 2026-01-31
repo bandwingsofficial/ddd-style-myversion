@@ -27,7 +27,6 @@ export class CheckoutOrchestratorService {
   async startCheckout(params: {
     customerId: string;
     savedAddressId: string;
-    deliveryFee?: number;
   }): Promise<{
     orderId: string;
     paymentId: string;

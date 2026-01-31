@@ -17,6 +17,9 @@ export const ProductEvents = {
 
   PRODUCT_PRICE_CHANGED: 'product.price.changed',
   PRODUCT_TRENDING_CHANGED: 'product.trending.changed',
+  PRODUCT_FEATURED_CHANGED: 'product.featured.changed',
+
+PRODUCT_CONTENT_UPDATED: 'product.content.updated',
 
   /* ================================================= */
   /* MEDIA                                            */

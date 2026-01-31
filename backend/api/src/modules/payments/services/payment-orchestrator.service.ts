@@ -12,7 +12,7 @@ export class PaymentOrchestratorService {
   ) {}
 
   /* ================================================= */
-  /* PAYMENT – CREATE                                 */
+  /* PAYMENT – CREATE                                  */
   /* ================================================= */
 
   async createPayment(params: {
@@ -21,48 +21,53 @@ export class PaymentOrchestratorService {
     payment: Payment;
     checkoutUrl: string;
   }> {
-    if (!params?.orderId) {
+
+    const { orderId } = params;
+
+    if (!orderId) {
       throw new ValidationError(
         'ORDER_ID_REQUIRED',
         'Order id is required',
       );
     }
 
-    return this.paymentService.createPayment(params);
+    return this.paymentService.createPayment({ orderId });
   }
 
   /* ================================================= */
-  /* PAYMENT – CONFIRM (MANUAL VERIFY)                 */
+  /* PAYMENT – CONFIRM                                 */
   /* ================================================= */
 
   async confirmPayment(params: {
     paymentId: string;
   }): Promise<Payment> {
-    if (!params?.paymentId) {
+
+    const { paymentId } = params;
+
+    if (!paymentId) {
       throw new ValidationError(
         'PAYMENT_ID_REQUIRED',
         'Payment id is required',
       );
     }
 
-    return this.paymentService.confirmPayment(params);
+    return this.paymentService.confirmPayment({ paymentId });
   }
 
   /* ================================================= */
-  /* PAYMENT – WEBHOOK (AUTO VERIFY)                   */
+  /* PAYMENT – WEBHOOK                                 */
   /* ================================================= */
 
   async handleWebhook(params: {
     payload: unknown;
     signature?: string;
   }): Promise<void> {
-    if (!params?.payload) return;
-
+    // 🔥 keep orchestrator dumb — just forward
     return this.paymentService.handleWebhook(params);
   }
 
   /* ================================================= */
-  /* PAYMENT – READS                                  */
+  /* READS                                             */
   /* ================================================= */
 
   async getPaymentById(paymentId: string): Promise<Payment> {
@@ -76,10 +81,10 @@ export class PaymentOrchestratorService {
     return this.paymentService.getById(paymentId);
   }
 
-  async getPaymentsByOrderId(
-    orderId: string,
-  ): Promise<Payment[]> {
-    if (!orderId) return [];
+  async getPaymentsByOrderId(orderId: string): Promise<Payment[]> {
+    if (!orderId) {
+      return []; // read → safe default
+    }
 
     return this.paymentService.getByOrderId(orderId);
   }

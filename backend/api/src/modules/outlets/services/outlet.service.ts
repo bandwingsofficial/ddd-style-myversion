@@ -65,54 +65,36 @@ async getAllOutlets(): Promise<Outlet[]> {
 async getNearbyOutlets(
   lat: number,
   lng: number,
-): Promise<Outlet[]> {
-
-  /* 🔒 SAFETY */
+): Promise<{ outlet: Outlet; distanceKm: number }[]> {
   if (isNaN(lat) || isNaN(lng)) return [];
 
-  const outlets = await this.outletRepo.findAll();
+  const outlets = await this.outletRepo.findWithLocation();
 
-  const result: Outlet[] = [];
+  return outlets
+    .map((outlet) => {
+      if (!outlet.isActive()) return null;
+      if (!outlet.workingState?.canAcceptOrders()) return null;
 
-  for (const outlet of outlets) {
-    /* --------------------------------------------- */
-    /* 1️⃣ ONLY ACTIVE                               */
-    /* --------------------------------------------- */
-    if (!outlet.isActive()) continue;
+      const location = outlet.location?.getRaw();
+      if (!location) return null;
 
-    /* --------------------------------------------- */
-    /* 2️⃣ ONLY WORKING = OPEN                       */
-    /* --------------------------------------------- */
-    if (!outlet.workingState?.canAcceptOrders()) continue;
+      const distanceKm = this.calculateDistanceKm(
+        lat,
+        lng,
+        location.latitude,
+        location.longitude,
+      );
 
-    /* --------------------------------------------- */
-    /* 3️⃣ MUST HAVE LOCATION                        */
-    /* --------------------------------------------- */
-    const location = outlet.location?.getRaw();
-    if (!location) continue;
+      if (distanceKm > (outlet.deliveryRadiusKm ?? 5)) return null;
 
-    const { latitude: outletLat, longitude: outletLng } = location;
-
-    /* --------------------------------------------- */
-    /* 4️⃣ DISTANCE CHECK (Haversine)                */
-    /* --------------------------------------------- */
-    const distanceKm = this.calculateDistanceKm(
-      lat,
-      lng,
-      outletLat,
-      outletLng,
-    );
-
-    const radius = outlet.deliveryRadiusKm ?? 5;
-
-    if (distanceKm <= radius) {
-      result.push(outlet);
-    }
-  }
-
-  return result;
+      return {
+        outlet,
+        distanceKm: Number(distanceKm.toFixed(2)),
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a!.distanceKm - b!.distanceKm);
 }
-
 
   /* ================================================= */
   /* CREATE OUTLET (ADMIN)                              */
@@ -172,14 +154,27 @@ async getNearbyOutlets(
 
     OutletActivePolicy.enforce(outlet);
 
-    const updatedLocation =
-      params.updates.latitude !== undefined ||
-      params.updates.longitude !== undefined
-        ? GeoLocation.create(
-            params.updates.latitude ?? outlet.location?.getRaw().latitude ?? 0,
-            params.updates.longitude ?? outlet.location?.getRaw().longitude ?? 0,
-          )
-        : outlet.location;
+    let updatedLocation = outlet.location;
+
+if (
+  params.updates.latitude !== undefined ||
+  params.updates.longitude !== undefined
+) {
+  if (
+    params.updates.latitude === undefined ||
+    params.updates.longitude === undefined
+  ) {
+    throw new ValidationError(
+      'INVALID_LOCATION',
+      'Both latitude and longitude are required',
+    );
+  }
+
+  updatedLocation = GeoLocation.create(
+    params.updates.latitude,
+    params.updates.longitude,
+  );
+}
 
     const updatedOutlet = outlet.updateDetails({
       name: params.updates.name,
@@ -511,5 +506,6 @@ private calculateDistanceKm(
 
   return R * c;
 }
+
 
 }
