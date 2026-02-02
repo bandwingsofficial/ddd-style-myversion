@@ -4,6 +4,9 @@ export class StartCheckoutDto {
   @IsUUID()
   savedAddressId: string;
 
+  @IsUUID()
+  outletId: string;
+
   @IsOptional()
   @IsNumber()
   @Min(0)

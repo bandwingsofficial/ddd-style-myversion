@@ -21,9 +21,7 @@ import { CartStatus } from '@/modules/cart/domain/enums/cart-status.enum';
 
 import { OrderStatus } from '@/modules/orders/domain/enums/order-status.enum';
 
-
-
-  /* ============================================= */
+/* ============================================= */
 /* ACTIVE ORDER GUARD                             */
 /* Only 1 active order per outlet allowed          */
 /* ============================================= */
@@ -51,8 +49,6 @@ export class CheckoutService {
     private readonly checkoutEvents: CheckoutEventsService,
   ) {}
 
-
-
   /* ================================================= */
   /* 🔒 COMMON VALIDATION                              */
   /* ================================================= */
@@ -63,11 +59,17 @@ export class CheckoutService {
     deliveryFee?: number;
   }) {
     if (!params?.customerId) {
-      throw new ValidationError('CUSTOMER_ID_REQUIRED', 'Customer id is required');
+      throw new ValidationError(
+        'CUSTOMER_ID_REQUIRED',
+        'Customer id is required',
+      );
     }
 
     if (!params?.savedAddressId) {
-      throw new ValidationError('ADDRESS_ID_REQUIRED', 'Saved address id is required');
+      throw new ValidationError(
+        'ADDRESS_ID_REQUIRED',
+        'Saved address id is required',
+      );
     }
 
     if ((params.deliveryFee ?? 0) < 0) {
@@ -82,15 +84,17 @@ export class CheckoutService {
   /* GET CHECKOUT SUMMARY                              */
   /* ================================================= */
 
-  async getCheckoutSummary(params: {
+async getCheckoutSummary(params: {
   customerId: string;
+  outletId: string; // 🔥 REQUIRED
   savedAddressId: string;
 }) {
   this.validateParams(params);
 
-  /* 🔥 getActiveCart now always fresh */
+  /* 🔥 outlet-aware cart fetch */
   const cart = await this.cartService.getActiveCart({
     customerId: params.customerId,
+    outletId: params.outletId,
   });
 
   if (!cart || !cart.hasItems()) {
@@ -112,21 +116,27 @@ export class CheckoutService {
   /* START CHECKOUT (TX SAFE + PRODUCTION READY)        */
   /* ================================================= */
 
-async startCheckout(params: {
+  async startCheckout(params: {
   customerId: string;
+  outletId: string; // 🔥 REQUIRED
   savedAddressId: string;
 }): Promise<{
   orderId: string;
   paymentId: string;
   checkoutUrl: string;
 }> {
+
   this.validateParams(params);
 
   const order = await this.prisma.$transaction(
     async (tx: PrismaTransaction) => {
 
+      /* 🔥 outlet-aware cart fetch */
       const cart = await this.cartService.getActiveCart(
-        { customerId: params.customerId },
+        {
+          customerId: params.customerId,
+          outletId: params.outletId,
+        },
         tx,
       );
 
@@ -134,10 +144,10 @@ async startCheckout(params: {
         throw new ValidationError('EMPTY_CART', 'Cart is empty');
       }
 
-      /* 🔥 BLOCK MULTIPLE ORDERS (NEW LOGIC) */
+      /* 🔥 BLOCK MULTIPLE ORDERS (per outlet) */
       await this.ensureNoActiveOrder(
         params.customerId,
-        cart.outletId,
+        params.outletId,
         tx,
       );
 
@@ -151,7 +161,10 @@ async startCheckout(params: {
 
       /* 🔥 LOCK (validates prices + freezes snapshot) */
       const lockedCart = await this.cartService.lockCart(
-        { customerId: params.customerId },
+        {
+          customerId: params.customerId,
+          outletId: params.outletId,
+        },
         tx,
       );
 
@@ -174,18 +187,18 @@ async startCheckout(params: {
   );
 
   try {
-    const paymentResult =
-      await this.paymentOrchestrator.createPayment({
-        orderId: order.id,
-      });
+
+    const paymentResult = await this.paymentOrchestrator.createPayment({
+      orderId: order.id,
+    });
 
     this.checkoutEvents.emitCheckoutStarted({
-      checkoutId: order.id,
-      orderId: order.id,
-      paymentId: paymentResult.payment.id,
-      customerId: params.customerId,
-      grandTotal: Number(order.grandTotal),
-    });
+  checkoutId: order.id,
+  orderId: order.id,
+  paymentId: paymentResult.payment.id,
+  customerId: params.customerId,
+  grandTotal: order.grandTotal.toNumber(), // ✅
+});
 
     return {
       orderId: order.id,
@@ -194,8 +207,11 @@ async startCheckout(params: {
     };
 
   } catch (err) {
+
+    /* 🔥 unlock same outlet cart */
     await this.cartService.unlockCart({
       customerId: params.customerId,
+      outletId: params.outletId,
     });
 
     this.checkoutEvents.emitCheckoutFailed({
@@ -206,33 +222,33 @@ async startCheckout(params: {
     throw err;
   }
 }
+  private async ensureNoActiveOrder(
+    customerId: string,
+    outletId: string,
+    tx?: PrismaTransaction,
+  ) {
+    const prisma = tx ?? this.prisma;
 
-private async ensureNoActiveOrder(
-  customerId: string,
-  outletId: string,
-  tx?: PrismaTransaction,
-) {
-  const prisma = tx ?? this.prisma;
-
-  const activeOrder = await prisma.order.findFirst({
-    where: {
-      customerId,
-      outletId,
-      status: { in: ACTIVE_ORDER_STATUSES },
-    },
-    select: {
-      id: true,
-    },
-  });
-
-  if (activeOrder) {
-    throw new ValidationError(
-      'ORDER_ALREADY_IN_PROGRESS',
-      'You already have an order in progress.',
-      {
-        orderId: activeOrder.id, // ⭐ frontend uses this
+    const activeOrder = await prisma.order.findFirst({
+      where: {
+        customerId,
+        outletId,
+        status: { in: ACTIVE_ORDER_STATUSES },
       },
-    );
+      select: {
+        id: true,
+      },
+    });
+
+    if (activeOrder) {
+      throw new ValidationError(
+        'ORDER_ALREADY_IN_PROGRESS',
+        'You already have an order in progress.',
+        {
+          orderId: activeOrder.id, // ⭐ frontend uses this
+        },
+      );
+    }
   }
-}
+
 }

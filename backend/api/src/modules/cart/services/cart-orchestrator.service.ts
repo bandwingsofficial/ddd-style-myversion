@@ -3,21 +3,27 @@ import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
 
 import { CartService } from './cart.service';
+import { CartRepository } from '../repositories/cart.repository';
 import { Cart } from '../domain/models/cart.model';
 
 @Injectable()
 export class CartOrchestratorService {
   constructor(
     private readonly cartService: CartService,
+    private readonly cartRepo: CartRepository, // ✅ use repo (clean architecture)
     private readonly prisma: PrismaService,
   ) {}
 
   /* ================================================= */
-  /* CART – READS                                     */
+  /* CART – READS                                      */
   /* ================================================= */
 
   async getActiveCart(
-    params: { customerId?: string; sessionId?: string },
+    params: {
+      customerId?: string;
+      sessionId?: string;
+      outletId: string; // 🔥 REQUIRED
+    },
     tx?: PrismaTransaction,
   ): Promise<Cart | null> {
     return this.cartService.getActiveCart(params, tx);
@@ -32,24 +38,38 @@ export class CartOrchestratorService {
     customerId: string,
   ): Promise<Cart | null> {
     return this.prisma.$transaction(async (tx) => {
-      const guestCart = await this.cartService.getActiveCart(
-        { sessionId },
-        tx,
-      );
+
+      /* ===================================== */
+      /* 🔥 Step 1 — get guest cart            */
+      /* ===================================== */
+
+      const guestRow = await tx.cart.findFirst({
+        where: {
+          sessionId,
+          status: 'ACTIVE',
+        },
+        include: { items: true },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (!guestRow) return null;
+
+      const guestCart = this.cartRepo.mapToDomain(guestRow);
+      const outletId = guestCart.outletId;
+
+      /* ===================================== */
+      /* 🔥 Step 2 — get customer cart (same outlet) */
+      /* ===================================== */
 
       const customerCart = await this.cartService.getActiveCart(
-        { customerId },
+        { customerId, outletId },
         tx,
       );
 
-      /* ------------------------------ */
-      /* nothing to merge               */
-      /* ------------------------------ */
-      if (!guestCart) return customerCart;
+      /* ===================================== */
+      /* 🔥 Step 3 — only guest exists → transfer */
+      /* ===================================== */
 
-      /* ------------------------------ */
-      /* only guest exists → transfer   */
-      /* ------------------------------ */
       if (!customerCart) {
         await tx.cart.update({
           where: { id: guestCart.id },
@@ -59,33 +79,49 @@ export class CartOrchestratorService {
           },
         });
 
-        return this.cartService.getActiveCart({ customerId }, tx);
-      }
-
-      /* ------------------------------ */
-      /* both exist → merge items       */
-      /* ------------------------------ */
-      for (const item of guestCart.items) {
-        await this.cartService.addItem(
-          {
-            customerId,
-            outletId: guestCart.outletId,
-            product: { id: item.productId },
-            quantity: item.quantity,
-          },
-          tx, // 🔥 reuse SAME transaction
+        return this.cartService.getActiveCart(
+          { customerId, outletId },
+          tx,
         );
       }
 
-      /* delete guest cart */
-      await this.cartService.clearCart({ sessionId }, tx);
+      /* ===================================== */
+      /* 🔥 Step 4 — merge items (FAST)         */
+      /* ===================================== */
 
-      return this.cartService.getActiveCart({ customerId }, tx);
+      await Promise.all(
+        guestCart.items.map((item) =>
+          this.cartService.addItem(
+            {
+              customerId,
+              outletId,
+              product: { id: item.productId },
+              quantity: item.quantity,
+              forceReplace: false,
+            },
+            tx,
+          ),
+        ),
+      );
+
+      /* ===================================== */
+      /* 🔥 Step 5 — clear guest cart           */
+      /* ===================================== */
+
+      await this.cartService.clearCart(
+        { sessionId, outletId },
+        tx,
+      );
+
+      return this.cartService.getActiveCart(
+        { customerId, outletId },
+        tx,
+      );
     });
   }
 
   /* ================================================= */
-  /* CART WRAPPERS                                    */
+  /* CART WRAPPERS (thin pass-throughs)                */
   /* ================================================= */
 
   async addItemToCart(params: any, tx?: PrismaTransaction): Promise<Cart> {
@@ -100,14 +136,15 @@ export class CartOrchestratorService {
     return this.cartService.removeItem(params, tx);
   }
 
-  async clearCart(params: any, tx?: PrismaTransaction): Promise<Cart | null> {
+  async clearCart(params: any, tx?: PrismaTransaction): Promise<Cart> {
     return this.cartService.clearCart(params, tx);
   }
 
   async lockCartForCheckout(params: any, tx?: PrismaTransaction): Promise<Cart> {
     return this.cartService.lockCart(params, tx);
   }
-  async unlockCart(params: any, tx?: PrismaTransaction): Promise<Cart> {
+
+  async unlockCart(params: any, tx?: PrismaTransaction): Promise<Cart | null> {
     return this.cartService.unlockCart(params, tx);
   }
 }

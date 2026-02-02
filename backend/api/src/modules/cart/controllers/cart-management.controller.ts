@@ -7,8 +7,10 @@ import {
   Delete,
   Param,
   UseGuards,
+  Query,
 } from '@nestjs/common';
 
+import { ValidationError } from '../../../common/errors';
 import { CartOrchestratorService } from '../services/cart-orchestrator.service';
 
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
@@ -32,9 +34,17 @@ export class CartManagementController {
   /* ================================================= */
 
   @Get()
-  async getActiveCart(@CurrentUser() user: { actorId: string }) {
+  async getActiveCart(
+    @CurrentUser() user: { actorId: string },
+    @Query('outletId') outletId: string,
+  ) {
+    if (!outletId) {
+      throw new ValidationError('OUTLET_ID_REQUIRED', 'Outlet id is required');
+    }
+
     const data = await this.orchestrator.getActiveCart({
       customerId: user.actorId,
+      outletId,
     });
 
     return {
@@ -56,9 +66,8 @@ export class CartManagementController {
   ) {
     const data = await this.orchestrator.addItemToCart({
       customerId: user.actorId,
-      outletId: dto.outletId,
+      ...dto, // 🔥 pass forceReplace automatically
       product: { id: dto.productId },
-      quantity: dto.quantity,
     });
 
     return {
@@ -78,9 +87,15 @@ export class CartManagementController {
     @CurrentUser() user: { actorId: string },
     @Param('productId') productId: string,
     @Body() dto: UpdateCartItemDto,
+    @Query('outletId') outletId: string,
   ) {
+    if (!outletId) {
+      throw new ValidationError('OUTLET_ID_REQUIRED', 'Outlet id is required');
+    }
+
     const data = await this.orchestrator.updateCartItemQuantity({
       customerId: user.actorId,
+      outletId,
       productId,
       quantity: dto.quantity,
     });
@@ -101,9 +116,15 @@ export class CartManagementController {
   async removeItem(
     @CurrentUser() user: { actorId: string },
     @Param('productId') productId: string,
+    @Query('outletId') outletId: string,
   ) {
+    if (!outletId) {
+      throw new ValidationError('OUTLET_ID_REQUIRED', 'Outlet id is required');
+    }
+
     const data = await this.orchestrator.removeCartItem({
       customerId: user.actorId,
+      outletId,
       productId,
     });
 
@@ -120,9 +141,17 @@ export class CartManagementController {
   /* ================================================= */
 
   @Delete()
-  async clearCart(@CurrentUser() user: { actorId: string }) {
+  async clearCart(
+    @CurrentUser() user: { actorId: string },
+    @Query('outletId') outletId: string,
+  ) {
+    if (!outletId) {
+      throw new ValidationError('OUTLET_ID_REQUIRED', 'Outlet id is required');
+    }
+
     const data = await this.orchestrator.clearCart({
       customerId: user.actorId,
+      outletId,
     });
 
     return {
@@ -138,9 +167,17 @@ export class CartManagementController {
   /* ================================================= */
 
   @Post('checkout')
-  async checkout(@CurrentUser() user: { actorId: string }) {
+  async checkout(
+    @CurrentUser() user: { actorId: string },
+    @Query('outletId') outletId: string,
+  ) {
+    if (!outletId) {
+      throw new ValidationError('OUTLET_ID_REQUIRED', 'Outlet id is required');
+    }
+
     const data = await this.orchestrator.lockCartForCheckout({
       customerId: user.actorId,
+      outletId,
     });
 
     return {

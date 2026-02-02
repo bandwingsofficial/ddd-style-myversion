@@ -50,42 +50,49 @@ export class CartRepository {
   /* READS                                             */
   /* ================================================= */
 
-  async findActiveByCustomerId(
-    customerId: string,
-    tx?: PrismaTransaction,
-  ): Promise<Cart | null> {
-    const client = tx ?? this.prisma;
+  async findActiveByCustomerAndOutlet(
+  customerId: string,
+  outletId: string,
+  tx?: PrismaTransaction,
+): Promise<Cart | null> {
+  const client = tx ?? this.prisma;
 
-    const row = await client.cart.findFirst({
-      where: {
-        customerId,
-        status: CartStatusMapper.toPrisma(CartStatus.ACTIVE),
-      },
-      orderBy: { createdAt: 'desc' },
-      include: { items: true },
-    });
+  const row = await client.cart.findFirst({
+    where: {
+      customerId,
+      outletId,
+      status: CartStatusMapper.toPrisma(CartStatus.ACTIVE),
+    },
+    orderBy: {
+      createdAt: 'desc', // 🔥 always pick latest cart
+    },
+    include: { items: true },
+  });
 
-    return row ? this.toDomain(row) : null;
-  }
+  return row ? this.toDomain(row) : null;
+}
 
-  async findActiveBySessionId(
-    sessionId: string,
-    tx?: PrismaTransaction,
-  ): Promise<Cart | null> {
-    const client = tx ?? this.prisma;
+  async findActiveBySessionAndOutlet(
+  sessionId: string,
+  outletId: string,
+  tx?: PrismaTransaction,
+): Promise<Cart | null> {
+  const client = tx ?? this.prisma;
 
-    const row = await client.cart.findFirst({
-      where: {
-        sessionId,
-        status: CartStatusMapper.toPrisma(CartStatus.ACTIVE),
-      },
-      orderBy: { createdAt: 'desc' },
-      include: { items: true },
-    });
+  const row = await client.cart.findFirst({
+    where: {
+      sessionId,
+      outletId, // 🔥 REQUIRED (same fix as customer)
+      status: CartStatusMapper.toPrisma(CartStatus.ACTIVE),
+    },
+    orderBy: {
+      createdAt: 'desc', // 🔥 always latest
+    },
+    include: { items: true },
+  });
 
-    return row ? this.toDomain(row) : null;
-  }
-
+  return row ? this.toDomain(row) : null;
+}
   async findById(id: string, tx?: PrismaTransaction): Promise<Cart | null> {
     const client = tx ?? this.prisma;
 
@@ -137,6 +144,10 @@ export class CartRepository {
 
     await client.cart.delete({ where: { id } });
   }
+
+  public mapToDomain(row: any): Cart {
+  return this.toDomain(row);
+}
 
   /* ================================================= */
   /* CART ITEM CRUD                                    */

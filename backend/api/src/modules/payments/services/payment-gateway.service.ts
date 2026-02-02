@@ -1,15 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { v4 as uuid } from 'uuid';
-
 import { ValidationError } from '../../../common/errors';
+
+import {
+  createRazorpayOrder,
+  fetchRazorpayPayment,
+  verifyRazorpaySignature,
+} from '../../../infrastructure/providers/razorpay/razorpay.client';
 
 /* ================================================= */
 /* TYPES                                             */
 /* ================================================= */
 
 export interface PaymentSession {
-  providerPaymentId: string;
-  checkoutUrl: string;
+  providerPaymentId: string; // razorpay order id
+  checkoutUrl: string | null;
 }
 
 export interface PaymentVerificationResult {
@@ -19,43 +23,11 @@ export interface PaymentVerificationResult {
 }
 
 /* ================================================= */
-/* GATEWAY SERVICE                                   */
-/* External integration ONLY                         */
-/* NEVER emits events / NEVER touches DB              */
+/* GATEWAY SERVICE (REAL RAZORPAY)                   */
 /* ================================================= */
 
 @Injectable()
 export class PaymentGatewayService {
-
-  /* ================================================= */
-  /* INTERNAL: SAFE WRAPPER (no timer leak 🔥)         */
-  /* ================================================= */
-
-  private async withTimeout<T>(
-    promise: Promise<T>,
-    ms = 8000,
-  ): Promise<T> {
-
-    let timer: NodeJS.Timeout;
-
-    const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => {
-        reject(
-          new ValidationError(
-            'PAYMENT_GATEWAY_TIMEOUT',
-            'Payment provider timeout',
-          ),
-        );
-      }, ms);
-    });
-
-    try {
-      return await Promise.race([promise, timeout]);
-    } finally {
-      clearTimeout(timer!); // 🔥 cleanup
-    }
-  }
-
   /* ================================================= */
   /* CREATE PAYMENT SESSION                            */
   /* ================================================= */
@@ -64,8 +36,9 @@ export class PaymentGatewayService {
     orderId: string;
     amount: number;
     currency: string;
-    metadata?: Record<string, string>;
   }): Promise<PaymentSession> {
+
+
 
     if (!params?.orderId) {
       throw new ValidationError(
@@ -81,32 +54,23 @@ export class PaymentGatewayService {
       );
     }
 
-    if (!params.currency) {
-      throw new ValidationError(
-        'CURRENCY_REQUIRED',
-        'Currency is required',
-      );
-    }
-
     try {
       /* ---------------------------------------------- */
-      /* 🔥 MOCK PROVIDER (replace with Stripe/Razorpay) */
+      /* 🔥 REAL RAZORPAY ORDER                         */
       /* ---------------------------------------------- */
 
-      const providerPaymentId = `PAY_${uuid()}`;
+      const razorpayOrder = await createRazorpayOrder({
+        receipt: params.orderId,
+        amount: params.amount,
+        currency: params.currency,
+      });
 
-      return await this.withTimeout(
-        Promise.resolve({
-          providerPaymentId,
-          checkoutUrl: `https://fake-payments.local/checkout/${providerPaymentId}`,
-        }),
-      );
-
+      return {
+        providerPaymentId: razorpayOrder.id, // 👈 important
+        checkoutUrl: null, // Razorpay uses frontend SDK
+      };
     } catch (err) {
-      console.error(
-        '[PAYMENT GATEWAY] createPaymentSession failed:',
-        err,
-      );
+      console.error('[PAYMENT GATEWAY] Razorpay order failed:', err);
 
       throw new ValidationError(
         'PAYMENT_GATEWAY_FAILED',
@@ -122,7 +86,6 @@ export class PaymentGatewayService {
   async verifyPayment(params: {
     providerPaymentId: string;
   }): Promise<PaymentVerificationResult> {
-
     if (!params?.providerPaymentId) {
       throw new ValidationError(
         'PROVIDER_PAYMENT_ID_REQUIRED',
@@ -131,24 +94,17 @@ export class PaymentGatewayService {
     }
 
     try {
-      /* ---------------------------------------------- */
-      /* 🔥 MOCK VERIFY                                 */
-      /* Replace with real provider API call             */
-      /* ---------------------------------------------- */
-
-      return await this.withTimeout(
-        Promise.resolve({
-          success: true,
-          providerPaymentId: params.providerPaymentId,
-          raw: {},
-        }),
+      const payment = await fetchRazorpayPayment(
+        params.providerPaymentId,
       );
 
+      return {
+        success: payment.status === 'captured',
+        providerPaymentId: params.providerPaymentId,
+        raw: payment,
+      };
     } catch (err) {
-      console.error(
-        '[PAYMENT GATEWAY] verifyPayment failed:',
-        err,
-      );
+      console.error('[PAYMENT GATEWAY] verify failed:', err);
 
       return {
         success: false,
@@ -158,22 +114,16 @@ export class PaymentGatewayService {
   }
 
   /* ================================================= */
-  /* WEBHOOK SIGNATURE VERIFY (future proof 🔥)        */
+  /* WEBHOOK VERIFY                                    */
   /* ================================================= */
 
   verifyWebhookSignature(
     signature?: string,
-    payload?: unknown,
+    payload?: string | Buffer,
   ): void {
-
-    // 🔥 MOCK — always pass
-    // Later:
-    // Stripe → constructEvent(rawBody, signature, secret)
-    // Razorpay → crypto HMAC verify
-
-    if (!signature) return;
-
-    // example:
-    // if (!isValid(signature)) throw new ValidationError(...)
+    verifyRazorpaySignature({
+      signature,
+      payload: payload ?? '',
+    });
   }
 }

@@ -223,8 +223,30 @@ model Customer {
 
   orders Order[]
   carts Cart[]
+  profile CustomerProfile?
   
   savedAddresses CustomerSavedAddress[]
+}
+
+model CustomerProfile {
+  id String @id @default(cuid())
+
+  customerId String @unique
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  fullName   String?
+  email      String?  @unique
+  avatarUrl  String?
+
+  gender     String?
+  dob        DateTime?
+
+  referralCode String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
 }
 
 model DeliveryPartner {
@@ -278,6 +300,7 @@ model Outlet {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   createdBy String?
+  profile   OutletProfile?
 
   users  OutletUser[]
   outletStocks OutletStock[]
@@ -304,6 +327,30 @@ model OutletUser {
   updatedAt DateTime @updatedAt
 
   outlet Outlet @relation(fields: [outletId], references: [id])
+
+  @@index([outletId])
+}
+
+model OutletProfile {
+  id String @id @default(cuid())
+
+  outletId String @unique
+  outlet   Outlet @relation(fields: [outletId], references: [id], onDelete: Cascade)
+
+  logoUrl   String?
+  bannerUrl String?
+
+  contactPhone String?
+  contactEmail String?
+
+  ownerName String?
+  description String?
+
+  gstNumber    String?
+  fssaiNumber  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([outletId])
 }
@@ -344,6 +391,27 @@ model SuperAdmin {
   isActive     Boolean @default(true)
   tokenVersion Int @default(0)
   createdAt    DateTime @default(now())
+
+  profile SuperAdminProfile?
+}
+
+model SuperAdminProfile {
+  id String @id @default(cuid())
+
+  superAdminId String @unique
+  superAdmin   SuperAdmin @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+
+  fullName  String
+  avatarUrl String?
+  title     String? // e.g. Ops Head, Tech Lead
+
+  phone     String?
+  notes     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([superAdminId])
 }
 
 //////////////////////////////////////////////////////

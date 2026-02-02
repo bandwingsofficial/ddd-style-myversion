@@ -68,7 +68,7 @@ async createPayment(params: {
         );
       }
 
-      const amount = order.grandTotal.toNumber();
+      const amount = order.grandTotal.toCents();
 
       const payment = Payment.createNew({
         id: uuid(),

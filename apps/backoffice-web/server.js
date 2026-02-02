@@ -8,8 +8,8 @@ const app = next({ dev, hostname: 'admin.dev.local', port: 3001});
 const handle = app.getRequestHandler();
 
 const httpsOptions = {
-  key: fs.readFileSync('./certs/admin.dev.local+1-key.pem'),
-  cert: fs.readFileSync('./certs/admin.dev.local+1.pem'),
+  key: fs.readFileSync('../../certs/admin.dev.local+1-key.pem'),
+  cert: fs.readFileSync('../../certs/admin.dev.local+1.pem'),
 };
 
 app.prepare().then(() => {

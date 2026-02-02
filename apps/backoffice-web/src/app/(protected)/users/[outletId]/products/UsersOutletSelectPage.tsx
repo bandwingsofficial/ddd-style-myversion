@@ -1,42 +1,70 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, ChevronRight, MapPin, Loader2, Info, Store, Package, ShoppingBag } from 'lucide-react';
+import { 
+  Search, ChevronRight, MapPin, Loader2, Store, 
+  Package, ShoppingBag, CheckCircle2, AlertTriangle, XCircle 
+} from 'lucide-react';
 import { useOutletStore } from '@/features/outlets/outlet.store';
 
-// --- Components ---
-const Toast = ({ message, visible }: { message: string; visible: boolean }) => (
-  <AnimatePresence>
-    {visible && (
-      <motion.div
-        initial={{ opacity: 0, y: -20, x: '-50%' }}
-        animate={{ opacity: 1, y: 0, x: '-50%' }}
-        exit={{ opacity: 0, y: -20, x: '-50%' }}
-        className="fixed top-8 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-xl shadow-slate-900/10"
+// --- FLASH MESSAGE COMPONENT ---
+function FlashMessage({ title, text, type, onClose }: any) {
+  return createPortal(
+    <div className="fixed top-6 right-6 z-[200] flex w-full max-w-sm flex-col gap-2">
+      <motion.div 
+        initial={{ opacity: 0, x: 50 }} 
+        animate={{ opacity: 1, x: 0 }} 
+        exit={{ opacity: 0, x: 50 }} 
+        className="flex items-start gap-4 rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-slate-200"
       >
-        <Info size={16} className="text-emerald-400" />
-        {message}
+        <div className={`mt-0.5 rounded-full p-2 ${type === 'success' ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'}`}>
+          {type === 'success' ? <CheckCircle2 size={20} /> : <Store size={20} />}
+        </div>
+        <div className="flex-1">
+          <h4 className={`text-sm font-bold ${type === 'success' ? 'text-emerald-900' : 'text-blue-900'}`}>
+            {title}
+          </h4>
+          <p className="mt-1 text-xs font-medium text-slate-500 leading-relaxed">
+            {text}
+          </p>
+        </div>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+          <XCircle size={18} />
+        </button>
       </motion.div>
-    )}
-  </AnimatePresence>
-);
+    </div>,
+    document.body
+  );
+}
+
+// --- MAIN PAGE ---
 
 export default function UsersOutletSelectPage() {
   const router = useRouter();
   const { outlets, fetchOutlets, loading } = useOutletStore();
   const [search, setSearch] = useState('');
-  const [toast, setToast] = useState({ show: false, msg: '' });
+  
+  // Flash Message State
+  const [flashMessage, setFlashMessage] = useState<{ 
+    title: string; 
+    text: string; 
+    type: 'success' | 'info' 
+  } | null>(null);
 
   useEffect(() => {
     fetchOutlets();
   }, [fetchOutlets]);
 
-  const showToast = (msg: string) => {
-    setToast({ show: true, msg });
-    setTimeout(() => setToast({ show: false, msg: '' }), 2500);
-  };
+  // Auto-hide flash message
+  useEffect(() => {
+    if (flashMessage) {
+      const timer = setTimeout(() => setFlashMessage(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [flashMessage]);
 
   const filteredOutlets = useMemo(() => {
     return outlets.filter((o) =>
@@ -62,7 +90,18 @@ export default function UsersOutletSelectPage() {
   return (
     <div className="min-h-screen bg-slate-50 p-6 font-sans md:p-10">
       <div className="mx-auto max-w-5xl">
-        <Toast message={toast.msg} visible={toast.show} />
+        
+        {/* FLASH MESSAGE PORTAL */}
+        <AnimatePresence>
+          {flashMessage && (
+            <FlashMessage 
+              title={flashMessage.title} 
+              text={flashMessage.text} 
+              type={flashMessage.type} 
+              onClose={() => setFlashMessage(null)} 
+            />
+          )}
+        </AnimatePresence>
 
         {/* HEADER */}
         <header className="mb-8">
@@ -159,8 +198,12 @@ export default function UsersOutletSelectPage() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => {
-                      showToast(`Accessing Users for ${o.name}...`);
-                      router.push(`/users/${o.id}`);
+                      setFlashMessage({
+                        type: 'info',
+                        title: 'Navigating...',
+                        text: `Accessing user management for ${o.name}`
+                      });
+                      setTimeout(() => router.push(`/users/${o.id}`), 500);
                     }}
                     className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-white shadow-lg shadow-emerald-500/20 transition-all hover:shadow-emerald-500/40 md:flex-none"
                   >

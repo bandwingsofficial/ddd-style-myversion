@@ -13,19 +13,20 @@ export class CheckoutOrchestratorService {
   /* CHECKOUT – SUMMARY (PREVIEW PAGE)                 */
   /* ================================================= */
 
-  async getCheckoutSummary(params: {
-    customerId: string;
-    savedAddressId: string;
-  }): Promise<CheckoutSummaryDto> {
-    return this.checkoutService.getCheckoutSummary(params);
-  }
-
+async getCheckoutSummary(params: {
+  customerId: string;
+  outletId: string; // 🔥 REQUIRED
+  savedAddressId: string;
+}): Promise<CheckoutSummaryDto> {
+  return this.checkoutService.getCheckoutSummary(params);
+}
   /* ================================================= */
   /* CHECKOUT – START PAYMENT                          */
   /* ================================================= */
 
   async startCheckout(params: {
     customerId: string;
+    outletId: string; // 🔥 REQUIRED
     savedAddressId: string;
   }): Promise<{
     orderId: string;

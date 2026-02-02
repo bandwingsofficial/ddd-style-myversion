@@ -1,9 +1,9 @@
-import { Processor, Process } from '@nestjs/bull';
-import { Job } from 'bull';
+import { Process, Processor } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
+import { Job } from 'bull';
 
-import { OTP_QUEUE, OTP_JOBS } from '../infrastructure/queue/queues/otp.queue';
-import { SmsProvider } from '../infrastructure/providers/sms.provider';
+import { SmsProvider } from '../infrastructure/providers/sms/sms.provider';
+import { OTP_JOBS, OTP_QUEUE } from '../infrastructure/queue/queues/otp.queue';
 
 interface SendOtpJob {
   phone: string;
@@ -22,9 +22,7 @@ export class OtpWorker {
   async handleSendOtp(job: Job<SendOtpJob>): Promise<void> {
     const { phone, otp, actorType, purpose } = job.data;
 
-    this.logger.debug(
-      `Sending OTP to ${phone} [${actorType}/${purpose}]`,
-    );
+    this.logger.debug(`Sending OTP to ${phone} [${actorType}/${purpose}]`);
 
     try {
       await this.sms.sendOtp(phone, otp);

@@ -11,6 +11,7 @@ import { AuthOtpController } from '../controllers/otp.controller';
 import { OutletAuthController } from '../controllers/outlet-auth.controller';
 import { SessionController } from '../controllers/session.controller';
 import { SuperAdminAuthController } from '../controllers/super-admin-auth.controller';
+import { SuperAdminProfileController } from '../controllers/super-admin-profile.controller';
 
 /* ================= SERVICES ================= */
 
@@ -21,6 +22,7 @@ import { OtpService } from '../services/otp.service';
 import { RefreshTokenService } from '../services/refresh-token.service';
 import { SessionService } from '../services/session.service';
 import { TokenService } from '../services/token.service';
+import { SuperAdminProfileService } from '../services/super-admin-profile.service';
 
 /* ================= STRATEGIES & GUARDS ================= */
 
@@ -34,6 +36,7 @@ import { CustomerRepository } from '../repositories/customer.repository';
 import { DeliveryPartnerRepository } from '../repositories/delivery-partner.repository';
 import { OutletUserRepository } from '../repositories/outlet-user.repository';
 import { SuperAdminRepository } from '../repositories/super-admin.repository';
+import { SuperAdminProfileRepository } from '../repositories/super-admin-profile.repository';
 
 import { AuditLogRepository } from '../repositories/audit-log.repository';
 import { AuthSessionRepository } from '../repositories/auth-session.repository';
@@ -83,6 +86,7 @@ import { OutletsModule } from '../../outlets/modules/outlets.module';
     OutletAuthController,
     SuperAdminAuthController,
     SessionController,
+    SuperAdminProfileController,
   ],
 
   /* ================= PROVIDERS ================= */
@@ -103,6 +107,7 @@ import { OutletsModule } from '../../outlets/modules/outlets.module';
     SessionService,
     TokenService,
     RefreshTokenService,
+    SuperAdminProfileService,
 
     /* ---- REPOSITORIES ---- */
     CustomerRepository,
@@ -115,6 +120,7 @@ import { OutletsModule } from '../../outlets/modules/outlets.module';
     OtpRequestRepository,
     MfaChallengeRepository,
     AuditLogRepository,
+    SuperAdminProfileRepository,
   ],
 
   /* ================= EXPORTS ================= */

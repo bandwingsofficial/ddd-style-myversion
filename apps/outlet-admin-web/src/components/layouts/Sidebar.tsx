@@ -8,7 +8,8 @@ import {
   Users,
   LogOut,
   Store,
-  Package, // New Icon for Products
+  Package,
+  ShoppingBag, // New Icon for Products
 } from 'lucide-react';
 
 // Sidebar menu configuration
@@ -24,7 +25,7 @@ const menuItems = [
     icon: <Store size={20} />,
   },
   {
-    label: 'Products', // NEW MENU ITEM
+    label: 'Products',
     href: '/products',
     icon: <Package size={20} />,
   },
@@ -33,6 +34,11 @@ const menuItems = [
     href: '/users',
     icon: <Users size={20} />,
   },
+  {
+    label: 'Orders',
+    href: '/orders',
+    icon: <ShoppingBag size={20} />,
+  }
 ];
 
 export default function Sidebar() {

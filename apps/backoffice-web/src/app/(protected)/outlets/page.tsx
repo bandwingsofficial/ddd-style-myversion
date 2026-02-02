@@ -112,12 +112,21 @@ export default function OutletsPage() {
     }
     setIsSaving(true);
     try {
-      await OutletService.create({
+      // Prepare the payload
+      const payload: any = {
         ...createForm,
         latitude: Number(createForm.latitude),
         longitude: Number(createForm.longitude),
         deliveryRadiusKm: Number(createForm.deliveryRadiusKm),
-      });
+      };
+
+      // FIX: If camera is enabled, enforce shop OPEN status automatically
+      if (createForm.cameraEnabled) {
+        payload.workingState = { status: "OPEN" };
+      }
+
+      await OutletService.create(payload);
+      
       setIsCreateModalOpen(false);
       setCreateForm({ name: "", branch: "", latitude: "", longitude: "", deliveryRadiusKm: "", cameraEnabled: false, isCentral: false });
       fetchOutlets();

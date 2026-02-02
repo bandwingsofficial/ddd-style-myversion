@@ -21,7 +21,12 @@ import { OutletUserService } from './../services/outlet-user.service';
 import { OutletService } from './../services/outlet.service';
 import { OutletProductService } from './../services/outlet-product.service';
 
-
+/* ---------------------------------------------- */
+/* PROFILE                                        */
+/* ---------------------------------------------- */
+import { OutletProfileController } from './../controllers/outlet-profile.controller';
+import { OutletProfileService } from './../services/outlet-profile.service';
+import { OutletProfileRepository } from './../repositories/outlet-profile.repository';
 
 
 /* ---------------------------------------------- */
@@ -59,7 +64,7 @@ import { OrdersModule } from '../../orders/modules/orders.module';
 
 
 @Module({
-  controllers: [OutletController, OutletManagementController, PublicOutletController, MyOutletController, OutletOrderController],
+  controllers: [OutletController, OutletManagementController, PublicOutletController, MyOutletController, OutletOrderController, OutletProfileController],
   providers: [
     // Infrastructure
     PrismaService,
@@ -71,12 +76,14 @@ import { OrdersModule } from '../../orders/modules/orders.module';
     OutletUserService,
     OutletService,
     OutletProductService,
+    OutletProfileService,
 
     // Repositories
     OutletUserRepository,
     OutletRepository,
     AuditLogRepository,
     OutletProductRepository,
+    OutletProfileRepository,
 
 
     // Policies
@@ -103,6 +110,7 @@ import { OrdersModule } from '../../orders/modules/orders.module';
     OutletProductRepository,
     OutletOrchestratorService,
     OutletEventsService,
+    OutletProfileService,
   ],
 })
 export class OutletsModule {}

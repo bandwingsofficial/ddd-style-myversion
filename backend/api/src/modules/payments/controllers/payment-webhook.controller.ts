@@ -18,17 +18,15 @@ export class PaymentWebhookController {
   /* WEBHOOK CALLBACK                                 */
   /* ================================================= */
 
-  @Post()
-  async handleWebhook(
-    @Body() dto: PaymentWebhookDto,
-    @Headers('x-provider-signature') signature?: string,
-  ) {
-    await this.orchestrator.handleWebhook({
-      payload: dto.payload,
-      signature,
-    });
+@Post()
+async handleWebhook(
+  @Body() dto: PaymentWebhookDto,
+  @Headers('x-razorpay-signature') signature?: string,
+) {
+  await this.orchestrator.handleWebhook({
+    payload: dto.payload,
+    signature,
+  });
 
-    // gateway expects 200
-    return { received: true };
-  }
-}
+  return { received: true };
+}}

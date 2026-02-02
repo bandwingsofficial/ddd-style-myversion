@@ -4,12 +4,14 @@ import { Injectable } from '@nestjs/common';
 
 import { ActorType } from '../domain/enums/actor-type.enum';
 import { OtpPurpose } from '../domain/enums/otp-purpose.enum';
+import { SuperAdminProfile } from '../domain/models/super-admin-profile.model';
 
 import { CredentialService } from './credential.service';
 import { IdentityService } from './identity.service';
 import { OtpService } from './otp.service';
 import { SessionService } from './session.service';
 import { TokenService } from './token.service';
+import { SuperAdminProfileService } from './super-admin-profile.service';
 
 import { MfaChallengeRepository } from '../repositories/mfa-challenge.repository';
 
@@ -27,6 +29,7 @@ export class AuthOrchestratorService {
     private readonly sessionService: SessionService,
     private readonly tokenService: TokenService,
     private readonly mfaRepo: MfaChallengeRepository,
+    private readonly superAdminProfileService: SuperAdminProfileService,
   ) {}
 
   /* ================================================= */
@@ -350,4 +353,56 @@ export class AuthOrchestratorService {
   }): Promise<{ revokedCount: number }> {
     return this.sessionService.revokeAllSessions(params);
   }
+
+  /* ================================================= */
+/* SUPER ADMIN PROFILE (delegation only)              */
+/* ================================================= */
+
+async getSuperAdminProfile(
+  superAdminId: string,
+): Promise<SuperAdminProfile | null> {
+  return this.superAdminProfileService.getProfile(superAdminId);
+}
+
+async createSuperAdminProfile(params: {
+  superAdminId: string;
+  fullName: string;
+  avatarUrl?: string;
+  title?: string;
+  phone?: string;
+  notes?: string;
+}): Promise<SuperAdminProfile> {
+  return this.superAdminProfileService.createProfile(params);
+}
+
+async updateSuperAdminProfile(params: {
+  superAdminId: string;
+  updates: {
+    fullName?: string;
+    avatarUrl?: string;
+    title?: string;
+    phone?: string;
+    notes?: string;
+  };
+}): Promise<SuperAdminProfile> {
+  return this.superAdminProfileService.updateProfile(params);
+}
+
+async upsertSuperAdminProfile(params: {
+  superAdminId: string;
+  fullName?: string;
+  avatarUrl?: string;
+  title?: string;
+  phone?: string;
+  notes?: string;
+}): Promise<SuperAdminProfile> {
+  return this.superAdminProfileService.upsertProfile(params);
+}
+
+async deleteSuperAdminProfile(
+  superAdminId: string,
+): Promise<void> {
+  return this.superAdminProfileService.deleteProfile(superAdminId);
+}
+
 }

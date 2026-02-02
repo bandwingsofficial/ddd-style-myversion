@@ -5,7 +5,10 @@ import {
   Param,
   Body,
   UseGuards,
+  Query,
 } from '@nestjs/common';
+import { ValidationError,
+} from '../../../common/errors';
 
 import { CheckoutOrchestratorService } from '../services/checkout-orchestrator.service';
 
@@ -32,42 +35,48 @@ export class CheckoutController {
   /* ================================================= */
 
   @Get('summary/:savedAddressId')
-  async getCheckoutSummary(
-    @Param() params: CheckoutSummaryParamsDto,
-    @CurrentUser() user: { actorId: string },
-  ) {
-    const data = await this.orchestrator.getCheckoutSummary({
-      customerId: user.actorId,
-      savedAddressId: params.savedAddressId,
-    });
-
-    return {
-      success: true,
-      code: 'CHECKOUT_SUMMARY_FETCHED',
-      message: 'Checkout summary fetched successfully',
-      data,
-    };
+async getCheckoutSummary(
+  @Param() params: CheckoutSummaryParamsDto,
+  @Query('outletId') outletId: string,
+  @CurrentUser() user: { actorId: string },
+) {
+  if (!outletId) {
+    throw new ValidationError('OUTLET_ID_REQUIRED', 'Outlet id is required');
   }
 
+  const data = await this.orchestrator.getCheckoutSummary({
+    customerId: user.actorId,
+    outletId,
+    savedAddressId: params.savedAddressId,
+  });
+
+  return {
+    success: true,
+    code: 'CHECKOUT_SUMMARY_FETCHED',
+    message: 'Checkout summary fetched successfully',
+    data,
+  };
+}
   /* ================================================= */
   /* START CHECKOUT                                   */
   /* ================================================= */
 
-  @Post('start')
-  async startCheckout(
-    @CurrentUser() user: { actorId: string },
-    @Body() body: StartCheckoutDto,
-  ) {
-    const data = await this.orchestrator.startCheckout({
-      customerId: user.actorId,
-      savedAddressId: body.savedAddressId,
-    });
+@Post('start')
+async startCheckout(
+  @CurrentUser() user: { actorId: string },
+  @Body() body: StartCheckoutDto,
+) {
+  const data = await this.orchestrator.startCheckout({
+    customerId: user.actorId,
+    outletId: body.outletId, // 🔥 REQUIRED
+    savedAddressId: body.savedAddressId,
+  });
 
-    return {
-      success: true,
-      code: 'CHECKOUT_STARTED',
-      message: 'Checkout started successfully',
-      data,
-    };
-  }
+  return {
+    success: true,
+    code: 'CHECKOUT_STARTED',
+    message: 'Checkout started successfully',
+    data,
+  };
+}
 }

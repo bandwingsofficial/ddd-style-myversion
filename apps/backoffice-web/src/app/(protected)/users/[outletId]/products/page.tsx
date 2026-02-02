@@ -1,14 +1,17 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom'; // Added for FlashMessage
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, Plus, Search, Trash2, Edit2, CheckCircle2, 
-  XCircle, IndianRupee, Tag, ShoppingBag, Loader2 
+  XCircle, IndianRupee, Tag, ShoppingBag, Loader2, Store,
+  AlertTriangle 
 } from 'lucide-react';
 import { UsersService } from '@/features/users/users.service';
 import { OutletProduct } from '@/features/users/users.types';
+import { axiosInstance } from '@/http/axios';
 
 // --- HELPER COMPONENTS ---
 
@@ -44,11 +47,22 @@ export default function OutletProductsPage() {
 
   const [products, setProducts] = useState<OutletProduct[]>([]);
   const [masterProducts, setMasterProducts] = useState<any[]>([]); 
+  const [outletName, setOutletName] = useState('');
   const [loading, setLoading] = useState(true);
   
   // Modal States
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showPriceModal, setShowPriceModal] = useState<OutletProduct | null>(null);
+  
+  // Delete Confirmation State
+  const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+
+  // Flash Message State
+  const [flashMessage, setFlashMessage] = useState<{ 
+    title: string; 
+    text: string; 
+    type: 'success' | 'error' 
+  } | null>(null);
 
   // Form Data
   const [selectedProductId, setSelectedProductId] = useState('');
@@ -62,15 +76,19 @@ export default function OutletProductsPage() {
     if (outletId) loadData();
   }, [outletId]);
 
+  // Auto-hide flash message
+  useEffect(() => {
+    if (flashMessage) {
+      const timer = setTimeout(() => setFlashMessage(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [flashMessage]);
+
   // --- SAFE NAME EXTRACTOR ---
-  // This function fixes the crash by handling both strings and objects
   const getSafeName = (product: any) => {
     if (!product) return 'Unknown Product';
-    // If name is just "Burger"
     if (typeof product.name === 'string') return product.name;
-    // If name is { value: "Burger" } (The cause of your error)
     if (typeof product.name === 'object' && product.name?.value) return product.name.value;
-    // Fallback
     return 'Unnamed Product';
   };
 
@@ -78,18 +96,20 @@ export default function OutletProductsPage() {
     try {
       setLoading(true);
 
-      const [outletRes, masterRes] = await Promise.all([
+      const [outletRes, masterRes, outletDetailsRes] = await Promise.all([
         UsersService.getOutletProducts(outletId),
-        UsersService.getMasterProducts()
+        UsersService.getMasterProducts(),
+        axiosInstance.get(`/outlets/${outletId}`)
       ]);
 
       const outletData = outletRes.data.data || [];
       const masterData = masterRes.data.data || [];
+      const outletDetails = outletDetailsRes.data.data || outletDetailsRes.data;
 
       setProducts(outletData);
       setMasterProducts(masterData);
+      setOutletName(outletDetails.name || 'Unknown Outlet');
 
-      // Build Map using the safe name extractor
       const map: Record<string, string> = {};
       masterData.forEach((p: any) => { 
         map[p.id] = getSafeName(p); 
@@ -112,8 +132,17 @@ export default function OutletProductsPage() {
       setShowCreateModal(false);
       setSelectedProductId('');
       loadData(); 
+      setFlashMessage({
+        type: 'success',
+        title: 'Product Added',
+        text: 'The product has been successfully added to this outlet.'
+      });
     } catch (error) {
-      alert("Failed to create product for this outlet.");
+      setFlashMessage({
+        type: 'error',
+        title: 'Creation Failed',
+        text: 'Failed to assign product to this outlet. Please try again.'
+      });
     }
   };
 
@@ -127,16 +156,38 @@ export default function OutletProductsPage() {
       loadData();
     } catch (error) {
       console.error(error);
+      setFlashMessage({
+        type: 'error',
+        title: 'Update Failed',
+        text: 'Could not change product status.'
+      });
     }
   };
 
-  const handleDelete = async (productId: string) => {
-    if (!confirm("Remove this product?")) return;
+  // Trigger Delete Confirmation
+  const handleDeleteClick = (productId: string) => {
+    setItemToDelete(productId);
+  };
+
+  // Execute Delete
+  const confirmDelete = async () => {
+    if (!itemToDelete) return;
     try {
-      await UsersService.removeProductFromOutlet(outletId, productId);
+      await UsersService.removeProductFromOutlet(outletId, itemToDelete);
+      setItemToDelete(null);
       loadData();
+      setFlashMessage({
+        type: 'success',
+        title: 'Product Removed',
+        text: 'The product has been removed from this outlet.'
+      });
     } catch (error) {
       console.error(error);
+      setFlashMessage({
+        type: 'error',
+        title: 'Removal Failed',
+        text: 'Could not remove the product.'
+      });
     }
   };
 
@@ -151,8 +202,17 @@ export default function OutletProductsPage() {
       );
       setShowPriceModal(null);
       loadData();
+      setFlashMessage({
+        type: 'success',
+        title: 'Pricing Updated',
+        text: 'Price and discount overrides saved successfully.'
+      });
     } catch (error) {
-      alert("Failed to update pricing.");
+      setFlashMessage({
+        type: 'error',
+        title: 'Update Failed',
+        text: 'Failed to update pricing details.'
+      });
     }
   };
 
@@ -165,26 +225,36 @@ export default function OutletProductsPage() {
       <div className="mx-auto max-w-6xl">
         
         {/* HEADER */}
-        <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
-          <div>
+        <div className="mb-8">
             <button 
               onClick={() => router.back()}
-              className="mb-4 flex items-center gap-2 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900"
+              className="mb-6 flex items-center gap-2 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900"
             >
               <ArrowLeft size={16} /> Back to Directory
             </button>
-            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Outlet Products</h1>
-            <p className="mt-1 text-sm font-medium text-slate-500">
-              Manage catalog availability for this location
-            </p>
-          </div>
-          
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-200 transition-all hover:bg-emerald-700 active:scale-95"
-          >
-            <Plus size={18} strokeWidth={2.5} /> Create Product
-          </button>
+
+            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+                <div className="flex items-center gap-5">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 shadow-sm border border-emerald-100">
+                        <Store size={28} />
+                    </div>
+                    <div>
+                        <h1 className="text-2xl font-extrabold text-slate-900">
+                            {loading ? 'Loading...' : outletName}
+                        </h1>
+                        <p className="text-sm font-medium text-slate-500">
+                            Manage catalog availability for this location
+                        </p>
+                    </div>
+                </div>
+              
+                <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-200 transition-all hover:bg-emerald-700 active:scale-95"
+                >
+                    <Plus size={18} strokeWidth={2.5} /> Create Product
+                </button>
+            </div>
         </div>
 
         {/* LIST TABLE */}
@@ -219,7 +289,6 @@ export default function OutletProductsPage() {
                             <ShoppingBag size={20} />
                           </div>
                           <div>
-                            {/* Uses the Map (which now has safe strings) */}
                             <p className="font-semibold text-slate-700">
                               {productMap[item.productId] || 'Unknown Product'}
                             </p>
@@ -228,17 +297,17 @@ export default function OutletProductsPage() {
                       </td>
 
                       <td className="px-6 py-4">
-                         <button 
+                          <button 
                            onClick={() => handleToggleStatus(item)}
                            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide transition-all ${
                              item.isAvailable 
                                ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' 
                                : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                            }`}
-                         >
+                          >
                            {item.isAvailable ? <CheckCircle2 size={14}/> : <XCircle size={14}/>}
                            {item.isAvailable ? 'Active' : 'Inactive'}
-                         </button>
+                          </button>
                       </td>
 
                       <td className="px-6 py-4">
@@ -273,7 +342,7 @@ export default function OutletProductsPage() {
                             <Edit2 size={16} />
                           </button>
                           <button 
-                            onClick={() => handleDelete(item.productId)}
+                            onClick={() => handleDeleteClick(item.productId)}
                             className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-red-50 hover:text-red-600"
                           >
                             <Trash2 size={16} />
@@ -317,7 +386,6 @@ export default function OutletProductsPage() {
                   >
                     <option value="">-- Choose Product --</option>
                     {availableToAdd.map(p => (
-                      // SAFE NAME RENDER HERE
                       <option key={p.id} value={p.id}>{getSafeName(p)}</option>
                     ))}
                   </select>
@@ -353,19 +421,19 @@ export default function OutletProductsPage() {
                  <div>
                    <label className="mb-1.5 block text-xs font-bold text-slate-500">New Price</label>
                    <input 
-                      type="number" 
-                      value={priceOverride}
-                      onChange={e => setPriceOverride(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-emerald-500"
+                     type="number" 
+                     value={priceOverride}
+                     onChange={e => setPriceOverride(e.target.value)}
+                     className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-emerald-500"
                    />
                  </div>
                  <div>
                    <label className="mb-1.5 block text-xs font-bold text-slate-500">Discount %</label>
                    <input 
-                      type="number" 
-                      value={discountOverride}
-                      onChange={e => setDiscountOverride(e.target.value)}
-                      className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-emerald-500"
+                     type="number" 
+                     value={discountOverride}
+                     onChange={e => setDiscountOverride(e.target.value)}
+                     className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-emerald-500"
                    />
                  </div>
                </div>
@@ -381,6 +449,80 @@ export default function OutletProductsPage() {
         )}
       </AnimatePresence>
 
+      {/* --- DELETE CONFIRMATION MODAL --- */}
+      <AnimatePresence>
+        {itemToDelete && (
+          <Modal title="Confirm Removal" onClose={() => setItemToDelete(null)}>
+            <div className="text-center">
+              <div className="mb-4 flex justify-center">
+                <div className="rounded-full bg-red-100 p-3 text-red-500">
+                  <AlertTriangle size={32} />
+                </div>
+              </div>
+              <p className="mb-6 text-sm text-slate-600">
+                Are you sure you want to remove this product from the outlet? This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setItemToDelete(null)}
+                  className="flex-1 rounded-xl bg-slate-100 py-3 text-sm font-bold text-slate-600 transition-colors hover:bg-slate-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 rounded-xl bg-red-500 py-3 text-sm font-bold text-white shadow-md shadow-red-200 transition-colors hover:bg-red-600"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
+
+      {/* --- FLASH MESSAGE --- */}
+      <AnimatePresence>
+        {flashMessage && (
+          <FlashMessage 
+            title={flashMessage.title} 
+            text={flashMessage.text} 
+            type={flashMessage.type} 
+            onClose={() => setFlashMessage(null)} 
+          />
+        )}
+      </AnimatePresence>
+
     </div>
+  );
+}
+
+// --- FLASH MESSAGE COMPONENT ---
+function FlashMessage({ title, text, type, onClose }: any) {
+  return createPortal(
+    <div className="fixed top-6 right-6 z-[200] flex w-full max-w-sm flex-col gap-2">
+      <motion.div 
+        initial={{ opacity: 0, x: 50 }} 
+        animate={{ opacity: 1, x: 0 }} 
+        exit={{ opacity: 0, x: 50 }} 
+        className="flex items-start gap-4 rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-slate-200"
+      >
+        <div className={`mt-0.5 rounded-full p-2 ${type === 'success' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+          {type === 'success' ? <CheckCircle2 size={20} /> : <AlertTriangle size={20} />}
+        </div>
+        <div className="flex-1">
+          <h4 className={`text-sm font-bold ${type === 'success' ? 'text-emerald-900' : 'text-rose-900'}`}>
+            {title}
+          </h4>
+          <p className="mt-1 text-xs font-medium text-slate-500 leading-relaxed">
+            {text}
+          </p>
+        </div>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+          <XCircle size={18} />
+        </button>
+      </motion.div>
+    </div>,
+    document.body
   );
 }

@@ -5,8 +5,10 @@ import { Injectable } from '@nestjs/common';
 import { OutletUserService } from './outlet-user.service';
 import { OutletService } from './outlet.service';
 import { OutletProductService } from './outlet-product.service';
+import { OutletProfileService } from './outlet-profile.service';
 
 import { Outlet } from '../domain/models/outlet.model';
+import { OutletProfile } from '../domain/models/outlet-profile.model';
 
 /**
  * Orchestrator = controller-facing layer
@@ -23,6 +25,7 @@ export class OutletOrchestratorService {
     private readonly outletUserService: OutletUserService,
     private readonly outletService: OutletService,
     private readonly outletProductService: OutletProductService,
+    private readonly outletProfileService: OutletProfileService,
   ) {}
 
   /* ================================================= */
@@ -269,5 +272,84 @@ async getNearbyOutlets(
     userAgent?: string;
   }) {
     return this.outletUserService.enableUser(params);
+  }
+
+  /* ================================================= */
+  /* OUTLET PROFILE – READS                            */
+  /* ================================================= */
+
+  async getOutletProfile(
+    outletId: string,
+  ): Promise<OutletProfile | null> {
+    return this.outletProfileService.getProfile(outletId);
+  }
+
+  async getOutletProfileOrThrow(
+    outletId: string,
+  ): Promise<OutletProfile> {
+    return this.outletProfileService.getProfileOrThrow(outletId);
+  }
+
+  /* ================================================= */
+  /* OUTLET PROFILE – CREATE / UPDATE / UPSERT / DELETE */
+  /* ================================================= */
+
+  async createOutletProfile(params: {
+    outletId: string;
+
+    logoUrl?: string;
+    bannerUrl?: string;
+
+    contactPhone?: string;
+    contactEmail?: string;
+
+    ownerName?: string;
+    description?: string;
+
+    gstNumber?: string;
+    fssaiNumber?: string;
+  }) {
+    return this.outletProfileService.createProfile(params);
+  }
+
+  async updateOutletProfile(params: {
+    outletId: string;
+    updates: {
+      logoUrl?: string;
+      bannerUrl?: string;
+
+      contactPhone?: string;
+      contactEmail?: string;
+
+      ownerName?: string;
+      description?: string;
+
+      gstNumber?: string;
+      fssaiNumber?: string;
+    };
+  }) {
+    return this.outletProfileService.updateProfile(params);
+  }
+
+  async upsertOutletProfile(params: {
+    outletId: string;
+
+    logoUrl?: string;
+    bannerUrl?: string;
+
+    contactPhone?: string;
+    contactEmail?: string;
+
+    ownerName?: string;
+    description?: string;
+
+    gstNumber?: string;
+    fssaiNumber?: string;
+  }) {
+    return this.outletProfileService.upsertProfile(params);
+  }
+
+  async deleteOutletProfile(outletId: string) {
+    return this.outletProfileService.deleteProfile(outletId);
   }
 }
