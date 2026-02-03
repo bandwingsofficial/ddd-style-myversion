@@ -81,7 +81,7 @@ export default function ProductGrid() {
           ) : (
              // Actual Products
              products.slice(0, 10).map((product) => (
-               <motion.div key={product.id} variants={itemVariants}>
+               <motion.div key={product.id} variants={itemVariants} style={{ height: '100%' }}>
                  <ProductCard product={product} />
                </motion.div>
              ))
@@ -105,24 +105,52 @@ export default function ProductGrid() {
 
       {/* Styles for Grid Responsiveness */}
       <style jsx>{`
-        .products-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1.5rem; }
-        @media (max-width: 1280px) { .products-grid { grid-template-columns: repeat(4, 1fr); } }
-        @media (max-width: 1024px) { .products-grid { grid-template-columns: repeat(3, 1fr); } }
-        @media (max-width: 768px) { .products-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 480px) { .products-grid { grid-template-columns: 1fr; } }
+        /* Default: 5 items per row for large screens */
+        .products-grid { 
+            display: grid; 
+            grid-template-columns: repeat(5, 1fr); 
+            gap: 1.5rem; 
+        }
+        
+        /* 1400px down: still 5, but maybe tighter */
+        @media (max-width: 1400px) { 
+            .products-grid { grid-template-columns: repeat(5, 1fr); gap: 1rem; } 
+        }
+
+        /* 1200px down: switch to 4 */
+        @media (max-width: 1200px) { 
+            .products-grid { grid-template-columns: repeat(4, 1fr); } 
+        }
+
+        /* 992px down: switch to 3 */
+        @media (max-width: 992px) { 
+            .products-grid { grid-template-columns: repeat(3, 1fr); } 
+        }
+
+        /* 768px down: switch to 2 */
+        @media (max-width: 768px) { 
+            .products-grid { grid-template-columns: repeat(2, 1fr); } 
+        }
+
+        /* 480px down: switch to 1 */
+        @media (max-width: 480px) { 
+            .products-grid { grid-template-columns: 1fr; } 
+        }
       `}</style>
     </section>
   );
 }
 
-// ... styles object (keep your existing styles, they are fine) ...
 const styles: { [key: string]: React.CSSProperties } = {
   productSection: { padding: "0px 0", background: "#ffffff" },
-  sectionContainer: { maxWidth: "1350px", margin: "0 auto", padding: "0 1.5rem" },
+  sectionContainer: { maxWidth: "1400px", margin: "0 auto", padding: "0 1.5rem" }, // Increased width slightly to fit 5 cards better
   centeredHeader: { textAlign: "center", marginBottom: "40px", display: "flex", flexDirection: "column", alignItems: "center" },
-  title: { fontSize: "2.2rem", fontWeight: 800, margin: 0, color: "#0f172a" }, // Simplified title for brevity
+  title: { fontSize: "2.2rem", fontWeight: 800, margin: 0, color: "#0f172a" }, 
   titleUnderline: { width: "50px", height: "3px", background: "#22c55e", borderRadius: "2px", marginTop: "16px" },
+  
+  // Inline fallback (CSS class overrides this)
   productsGrid: { display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "1.5rem" },
+  
   footerRow: { marginTop: "50px", display: "flex", justifyContent: "center" },
   viewAllButton: { display: "flex", alignItems: "center", gap: "8px", color: "#15803d", fontWeight: 700, fontSize: "0.95rem", padding: "12px 24px", borderRadius: "50px", background: "#f0fdf4", border: "1px solid #bbf7d0", cursor: "pointer" },
 };

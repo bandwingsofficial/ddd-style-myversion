@@ -3,19 +3,19 @@ import { persist, createJSONStorage } from "zustand/middleware";
 
 interface CustomerAuthState {
   isAuthenticated: boolean;
-  isHydrated: boolean; // We use this to know when localStorage has loaded
+  isHydrated: boolean;
   actorId?: string;
   sessionId?: string;
   setSession: (data: any) => void;
   clearSession: () => void;
-  setHydrated: () => void; // Helper to mark store as ready
+  setHydrated: () => void;
 }
 
 export const useCustomerAuthStore = create<CustomerAuthState>()(
   persist(
     (set) => ({
       isAuthenticated: false,
-      isHydrated: false, // Starts false, becomes true after storage loads
+      isHydrated: false,
       actorId: undefined,
       sessionId: undefined,
 
@@ -32,14 +32,12 @@ export const useCustomerAuthStore = create<CustomerAuthState>()(
           actorId: undefined,
           sessionId: undefined,
         }),
-      
+
       setHydrated: () => set({ isHydrated: true }),
     }),
     {
-      name: "customer-auth-storage", // Unique name for localStorage key
-      storage: createJSONStorage(() => localStorage), // Use local storage
-      
-      // ✅ This is crucial: specific logic to handle hydration (loading from storage)
+      name: "customer-auth-storage",
+      storage: createJSONStorage(() => localStorage),
       onRehydrateStorage: () => (state) => {
         state?.setHydrated();
       },
