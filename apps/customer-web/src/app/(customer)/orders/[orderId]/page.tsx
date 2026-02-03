@@ -1,29 +1,22 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import Script from "next/script"; 
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckoutApi } from "@/features/checkout/checkout.api";
-import { OrderDetails, CheckoutErrorResponse } from "@/features/checkout/checkout.types";
-import { CheckCircle, Clock, MapPin, Package, Home, Loader2, AlertCircle, Truck, CreditCard } from "lucide-react";
+import { OrderDetails } from "@/features/checkout/checkout.types";
+import { CheckCircle, Clock, MapPin, Package, Home, Loader2, AlertCircle, Truck, XCircle } from "lucide-react";
 import Header from "@/components/customer/Header";
 
 const BACKEND_URL = "https://api.dev.local:4000";
 const getImageUrl = (path?: string) => path?.startsWith("http") ? path : `${BACKEND_URL}/${path}`;
-
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
 
 export default function OrderDetailsPage() {
   const { orderId } = useParams();
   const router = useRouter();
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [loading, setLoading] = useState(true);
-  const [retrying, setRetrying] = useState(false);
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     if (orderId) fetchOrder();
@@ -41,62 +34,25 @@ export default function OrderDetailsPage() {
     }
   };
 
-  // ✅ LOGIC: Reuse the address from the current order to retry payment
-  const handleCompletePayment = async () => {
-    if (!order) return;
-    
-    // Safety Check: Ensure Address ID exists (Backend must return it!)
-    if (!order.address?.id) {
-        alert("Cannot retry: Address ID is missing from order details. Please contact support.");
+  // ✅ LOGIC: Cancel the stuck order
+  const handleCancelOrder = async () => {
+    if (!confirm("Are you sure you want to cancel this pending order? You can place a new one immediately after.")) {
         return;
     }
-
-    setRetrying(true);
+    
+    setProcessing(true);
     try {
-      // 1. Restart Checkout with the SAME address ID from the order
-      const data = await CheckoutApi.startCheckout({
-        savedAddressId: order.address.id, 
-        outletId: order.outletId
-      });
-
-      // 2. Open Razorpay
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, 
-        amount: data.amount,
-        currency: data.currency,
-        name: "Cane & Tender",
-        description: `Payment for Order #${order.id.slice(0, 8)}`,
-        order_id: data.razorpayOrderId,
-        handler: async function (response: any) {
-           const params = new URLSearchParams({
-             orderId: data.orderId,
-             paymentId: data.paymentId,
-             rzp_payment_id: response.razorpay_payment_id,
-             rzp_order_id: response.razorpay_order_id,
-             rzp_signature: response.razorpay_signature,
-             amount: order.grandTotal.toString()
-           });
-           router.replace(`/payment/process?${params.toString()}`);
-        },
-        theme: { color: "#ea580c" }, // Matches 'Pending' color
-        modal: {
-          ondismiss: function() { setRetrying(false); }
-        }
-      };
-
-      const rzp1 = new window.Razorpay(options);
-      rzp1.open();
-
+      await CheckoutApi.cancelOrder(orderId as string);
+      alert("Order cancelled successfully.");
+      
+      // Refresh order details to show new status
+      fetchOrder(); 
     } catch (error: any) {
-      const errData = error.response?.data as CheckoutErrorResponse;
-      
-      // If backend says "Order Already Exists", it usually returns the ID. 
-      // In this case, we ARE the existing order, so we might need a dedicated /resume endpoint
-      // But usually, startCheckout handles this or we ignore the error if it returns valid Razorpay data.
-      
-      console.error("Retry failed", error);
-      alert(errData?.message || "Could not restart payment.");
-      setRetrying(false);
+      console.error("Cancellation failed", error);
+      // Fallback: If backend lacks specific cancel route, guide user
+      alert("Could not cancel automatically. Please contact support or try creating a new cart.");
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -135,7 +91,6 @@ export default function OrderDetailsPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
-      <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       <Header />
       <main className="pt-32 pb-12 px-4 max-w-4xl mx-auto">
         
@@ -147,18 +102,18 @@ export default function OrderDetailsPage() {
           <h1 className="text-3xl font-extrabold mb-2">{bannerTitle}</h1>
           <p className="opacity-90 text-lg">Order ID: #{order.id.slice(0, 8).toUpperCase()}</p>
 
-          {/* ✅ COMPLETE PAYMENT BUTTON */}
+          {/* ✅ CANCEL BUTTON (The only way out of the loop) */}
           {isPending && (
              <div className="mt-6 flex flex-col items-center gap-3">
                  <button 
-                    onClick={handleCompletePayment}
-                    disabled={retrying}
-                    className="bg-white text-amber-600 px-8 py-3 rounded-full font-bold shadow-lg hover:bg-amber-50 hover:scale-105 transition-all flex items-center gap-2 disabled:opacity-70 disabled:hover:scale-100"
+                    onClick={handleCancelOrder}
+                    disabled={processing}
+                    className="bg-white text-red-600 px-8 py-3 rounded-full font-bold shadow-lg hover:bg-red-50 hover:scale-105 transition-all flex items-center gap-2 disabled:opacity-70 disabled:hover:scale-100"
                  >
-                    {retrying ? <Loader2 className="animate-spin" size={20}/> : <CreditCard size={20}/>}
-                    {retrying ? "Processing..." : "Complete Payment"}
+                    {processing ? <Loader2 className="animate-spin" size={20}/> : <XCircle size={20}/>}
+                    {processing ? "Cancelling..." : "Cancel Order"}
                  </button>
-                 <p className="text-white/80 text-sm">You must complete this payment to place new orders.</p>
+                 <p className="text-white/80 text-sm">Cancel this order to start a new one.</p>
              </div>
           )}
         </div>

@@ -6,7 +6,6 @@ import {
   setLocalCart,
   clearLocalCart,
 } from "@/features/cart/cart.local";
-// ✅ IMPORT OUTLET STORE to get current context
 import { useOutletStore } from "@/features/outlet/outlet.store";
 
 interface CartState {
@@ -44,6 +43,7 @@ export const useCartStore = create<CartState>((set, get) => ({
 
     try {
       const local = getLocalCart();
+      const currentOutletId = useOutletStore.getState().selectedOutlet?.id;
 
       // Sync Logic
       if (local.items && local.items.length > 0) {
@@ -53,7 +53,8 @@ export const useCartStore = create<CartState>((set, get) => ({
         const itemsToSync = [...local.items];
         clearLocalCart();
 
-        try { await cartApi.clearCart(); } catch (e) { console.warn("Could not clear old cart"); }
+        // Pass outletId to clearCart
+        try { await cartApi.clearCart(currentOutletId); } catch (e) { console.warn("Could not clear old cart"); }
 
         for (const item of itemsToSync) {
           if (!item.outletId) continue;
@@ -65,9 +66,6 @@ export const useCartStore = create<CartState>((set, get) => ({
         }
         set({ isMerging: false });
       }
-
-      // ✅ Get selected outlet ID
-      const currentOutletId = useOutletStore.getState().selectedOutlet?.id;
 
       // Fetch
       const backendCart = await cartApi.fetchCart(currentOutletId);
@@ -133,7 +131,6 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
   },
 
-  // ✅ UPDATED: Pass OutletID to Update
   updateItem: async (productId, quantity, isLoggedIn) => {
     if (!isLoggedIn) {
       const local = getLocalCart();
@@ -146,10 +143,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       return;
     }
     try {
-      // Get the correct outletId from store state
       const currentOutletId = useOutletStore.getState().selectedOutlet?.id;
-      
-      // Call the API (now fixed to handle params correctly)
       const updatedCart = await cartApi.updateCartItem(productId, quantity, currentOutletId);
       set({ items: updatedCart?.items || [] });
     } catch (error) {
@@ -157,7 +151,6 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
   },
 
-  // ✅ UPDATED: Pass OutletID to Remove
   removeItem: async (productId, isLoggedIn) => {
     if (!isLoggedIn) {
       const local = getLocalCart();
@@ -175,6 +168,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
   },
 
+  // 🔥 FIXED: Now passes outletId to the API
   clear: async (isLoggedIn) => {
     if (!isLoggedIn) {
       clearLocalCart();
@@ -182,7 +176,8 @@ export const useCartStore = create<CartState>((set, get) => ({
       return;
     }
     try {
-      await cartApi.clearCart();
+      const currentOutletId = useOutletStore.getState().selectedOutlet?.id;
+      await cartApi.clearCart(currentOutletId);
       set({ items: [] });
     } catch (error) {
       console.error("Failed to clear cart", error);
@@ -192,7 +187,10 @@ export const useCartStore = create<CartState>((set, get) => ({
   checkoutCart: async (addressId) => {
     set({ isCheckingOut: true });
     try {
-      const lockedCart = await cartApi.checkout(addressId);
+      // 🔥 UPDATED: Pass outletId to checkout 
+      const currentOutletId = useOutletStore.getState().selectedOutlet?.id;
+      const lockedCart = await cartApi.checkout(addressId, currentOutletId);
+      
       if (lockedCart && lockedCart.status === "LOCKED") {
         set({ items: [], isCheckingOut: false }); 
         return true;

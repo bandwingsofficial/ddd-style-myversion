@@ -118,8 +118,10 @@ export default function CheckoutPage() {
         description: "Order Payment",
         order_id: data.razorpayOrderId,
         handler: async function (response: any) {
-           // ✅ 3. ON SUCCESS: Clear Cart & Redirect
-           await clear(true); 
+            
+           // ✅ FIXED: Pass 'false' to clear only the frontend UI
+           // This prevents the 400 Error because we don't call the Backend API
+           await clear(false); 
            
            const params = new URLSearchParams({
              orderId: data.orderId,

@@ -49,7 +49,6 @@ export const addToCart = async (item: CartItem, forceReplace: boolean = false): 
   return transformCartResponse(res.data.data);
 };
 
-// ✅ FIXED: outletId is now passed in 'params', not 'body'
 export const updateCartItem = async (productId: string, quantity: number, outletId?: string): Promise<Cart> => {
   const payload = { quantity };
   
@@ -61,7 +60,6 @@ export const updateCartItem = async (productId: string, quantity: number, outlet
   return transformCartResponse(res.data.data);
 };
 
-// ✅ UPDATED: Now accepts outletId (passed in query params)
 export const removeCartItem = async (productId: string, outletId?: string): Promise<Cart> => {
   const config = outletId ? { params: { outletId } } : {};
   const res = await customerAxios.delete(`/cart/items/${productId}`, config);
@@ -72,12 +70,17 @@ export const removeCartItem = async (productId: string, outletId?: string): Prom
   return transformCartResponse(res.data.data);
 };
 
-export const clearCart = async (): Promise<void> => {
-  await customerAxios.post("/cart/clear");
+// 🔥 FIXED: Changed method to DELETE, URL to /cart, and added outletId param
+export const clearCart = async (outletId?: string): Promise<void> => {
+  const config = outletId ? { params: { outletId } } : {};
+  await customerAxios.delete("/cart", config);
 };
 
-export const checkout = async (addressId?: string): Promise<Cart> => {
+export const checkout = async (addressId?: string, outletId?: string): Promise<Cart> => {
+  // 🔥 UPDATED: Pass outletId to checkout as well if backend needs it (Backend Controller requires it!)
+  const params = outletId ? { outletId } : {}; 
   const payload = addressId ? { addressId } : {};
-  const res = await customerAxios.post("/cart/checkout", payload); 
+  
+  const res = await customerAxios.post("/cart/checkout", payload, { params }); 
   return transformCartResponse(res.data.data);
 };
