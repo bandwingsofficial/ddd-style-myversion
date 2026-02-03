@@ -13,7 +13,7 @@ export interface CheckoutSummary {
     quantity: number;
     unitPrice: number;
     discountPrice: number;
-    lineTotal: number; // API uses 'lineTotal' here
+    lineTotal: number;
   }[];
   subtotal: number;
   discount: number;
@@ -24,10 +24,37 @@ export interface CheckoutSummary {
   currency: string;
 }
 
+export interface CheckoutStartRequest {
+  outletId: string;
+  savedAddressId: string;
+}
+
+// ✅ UPDATED: Includes Razorpay Order Details
 export interface CheckoutStartResponse {
   orderId: string;
   paymentId: string;
-  checkoutUrl: string;
+  razorpayOrderId: string; // "order_..." from Razorpay
+  amount: number;          // Amount in paisa
+  currency: string;
+  key?: string;            // Backend might send key
+}
+
+// ✅ NEW: Payload to verify the signature on backend
+export interface PaymentVerificationRequest {
+  orderId: string;
+  paymentId: string;
+  razorpayPaymentId: string;
+  razorpayOrderId: string;
+  razorpaySignature: string;
+}
+
+export interface CheckoutErrorResponse {
+  success: boolean;
+  code: string;
+  message: string;
+  metadata?: {
+    orderId?: string;
+  };
 }
 
 export interface OrderDetails {
@@ -35,8 +62,9 @@ export interface OrderDetails {
   customerId: string;
   outletId: string;
   cartId: string;
-  status: "PAYMENT_PENDING" | "PAID" | "FAILED" | "CANCELLED";
+  status: "PAYMENT_PENDING" | "PAID" | "FAILED" | "CANCELLED" | "Delivered";
   address: {
+    id: string;
     label: string;
     addressText: string;
     latitude: number;
@@ -48,18 +76,6 @@ export interface OrderDetails {
   deliveryFee: number;
   grandTotal: number;
   itemCount: number;
+  items: any[];
   createdAt: string;
-  updatedAt: string;
-  items: {
-    id: string;
-    orderId: string;
-    productId: string;
-    productName: string;
-    productImage: string;
-    quantity: number;
-    unitPrice: number;
-    discountPrice: number;
-    totalPrice: number; // API uses 'totalPrice' here (different from summary)
-    createdAt: string;
-  }[];
 }

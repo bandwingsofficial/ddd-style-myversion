@@ -6,13 +6,15 @@ import {
   setLocalCart,
   clearLocalCart,
 } from "@/features/cart/cart.local";
+// ✅ IMPORT OUTLET STORE to get current context
+import { useOutletStore } from "@/features/outlet/outlet.store";
 
 interface CartState {
   items: CartItem[];
   hydrated: boolean;
   isLoading: boolean;
   isCheckingOut: boolean;
-  isMerging: boolean; // ✅ Added flag to prevent double merging
+  isMerging: boolean;
 
   loadCart: (isLoggedIn: boolean) => Promise<void>;
   addItem: (item: CartItem, isLoggedIn: boolean) => Promise<void>;
@@ -27,80 +29,77 @@ export const useCartStore = create<CartState>((set, get) => ({
   hydrated: false,
   isLoading: false,
   isCheckingOut: false,
-  isMerging: false, 
+  isMerging: false,
 
-  /* ======================================================
-      LOAD CART (Fixes Double Merging Issue)
-     ====================================================== */
   loadCart: async (isLoggedIn) => {
-    // Prevent multiple calls from running at the same time
-    if (get().isLoading || get().isMerging) return; 
+    if (get().isLoading || get().isMerging) return;
 
     set({ isLoading: true });
-    
-    // 1. Guest -> Load from Local Storage
+
     if (!isLoggedIn) {
       const local = getLocalCart();
       set({ items: local.items || [], hydrated: true, isLoading: false });
       return;
     }
 
-    // 2. Auth -> Sync Logic
     try {
       const local = getLocalCart();
-      
-      // ✅ Check if there are guest items to sync
+
+      // Sync Logic
       if (local.items && local.items.length > 0) {
-        set({ isMerging: true }); // Lock the process
+        set({ isMerging: true });
         console.log("Syncing guest cart...");
 
-        // ⚡ CRITICAL FIX: Save items to memory, then DELETE from Local Storage IMMEDIATELY.
-        // This prevents a second function call from finding them and duplicating the merge.
         const itemsToSync = [...local.items];
-        clearLocalCart(); 
+        clearLocalCart();
 
-        // Step A: Clear backend cart (Override rule)
-        try {
-            await cartApi.clearCart(); 
-        } catch (e) {
-            console.warn("Could not clear old cart, proceeding...");
-        }
+        try { await cartApi.clearCart(); } catch (e) { console.warn("Could not clear old cart"); }
 
-        // Step B: Upload the items we saved in memory
         for (const item of itemsToSync) {
-           // Skip bad items to prevent crashes
-           if (!item.outletId) continue; 
-
-           try {
-             await cartApi.addToCart(item);
-           } catch (err) {
-             console.error(`Failed to sync item: ${item.productName}`);
-           }
+          if (!item.outletId) continue;
+          try {
+            await cartApi.addToCart(item, true); 
+          } catch (err) {
+            console.error(`Failed to sync item: ${item.productName}`);
+          }
         }
-        
-        set({ isMerging: false }); // Unlock
+        set({ isMerging: false });
       }
 
-      // 3. Fetch final authoritative state from backend
-      const backendCart = await cartApi.fetchCart();
+      // ✅ Get selected outlet ID
+      const currentOutletId = useOutletStore.getState().selectedOutlet?.id;
+
+      // Fetch
+      const backendCart = await cartApi.fetchCart(currentOutletId);
       set({ items: backendCart?.items || [], hydrated: true });
 
-    } catch (error) {
-      console.error("Failed to load cart", error);
-      set({ items: [], hydrated: true, isMerging: false });
+    } catch (error: any) {
+      if (error.response && error.response.status === 401) {
+        console.warn("Session expired (401). Clearing cart view.");
+        set({ items: [], hydrated: true, isMerging: false });
+      } else {
+        console.error("Failed to load cart", error);
+        set({ items: [], hydrated: true, isMerging: false });
+      }
     } finally {
       set({ isLoading: false });
     }
   },
 
-  /* ======================================================
-      ADD ITEM
-     ====================================================== */
   addItem: async (item, isLoggedIn) => {
     if (!isLoggedIn) {
       const local = getLocalCart();
+      const firstItem = local.items[0];
+      if (firstItem && firstItem.outletId !== item.outletId) {
+         if (typeof window !== "undefined" && window.confirm("Your cart has items from another outlet. Clear cart to add this item?")) {
+             local.items = [item];
+             setLocalCart(local);
+             set({ items: local.items });
+         }
+         return;
+      }
+
       const existing = local.items.find((i: CartItem) => i.productId === item.productId);
-      
       if (existing) {
         existing.quantity += item.quantity;
       } else {
@@ -112,21 +111,33 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
 
     try {
-      const updatedCart = await cartApi.addToCart(item);
+      const updatedCart = await cartApi.addToCart(item, false);
       set({ items: updatedCart?.items || [] });
-    } catch (error) {
-      console.error("Failed to add item", error);
+    } catch (error: any) {
+      const isMismatch = error.code === "OUTLET_MISMATCH" || 
+                         (error.response?.data?.code === "OUTLET_MISMATCH");
+
+      if (isMismatch) {
+        const shouldReplace = typeof window !== "undefined" && window.confirm("Your cart contains items from another outlet. Would you like to clear your cart and add this item?");
+        if (shouldReplace) {
+           try {
+             const forcedCart = await cartApi.addToCart(item, true);
+             set({ items: forcedCart?.items || [] });
+           } catch (retryError) {
+             console.error("Failed to force add item", retryError);
+           }
+        }
+      } else {
+        console.error("Failed to add item", error);
+      }
     }
   },
 
-  /* ======================================================
-      UPDATE ITEM
-     ====================================================== */
+  // ✅ UPDATED: Pass OutletID to Update
   updateItem: async (productId, quantity, isLoggedIn) => {
     if (!isLoggedIn) {
       const local = getLocalCart();
       const item = local.items.find((i: CartItem) => i.productId === productId);
-      
       if (item) {
         item.quantity = quantity;
         setLocalCart(local);
@@ -134,18 +145,19 @@ export const useCartStore = create<CartState>((set, get) => ({
       }
       return;
     }
-
     try {
-      const updatedCart = await cartApi.updateCartItem(productId, quantity);
+      // Get the correct outletId from store state
+      const currentOutletId = useOutletStore.getState().selectedOutlet?.id;
+      
+      // Call the API (now fixed to handle params correctly)
+      const updatedCart = await cartApi.updateCartItem(productId, quantity, currentOutletId);
       set({ items: updatedCart?.items || [] });
     } catch (error) {
       console.error("Failed to update item", error);
     }
   },
 
-  /* ======================================================
-      REMOVE ITEM
-     ====================================================== */
+  // ✅ UPDATED: Pass OutletID to Remove
   removeItem: async (productId, isLoggedIn) => {
     if (!isLoggedIn) {
       const local = getLocalCart();
@@ -154,18 +166,15 @@ export const useCartStore = create<CartState>((set, get) => ({
       set({ items: local.items });
       return;
     }
-
     try {
-      const updatedCart = await cartApi.removeCartItem(productId);
+      const currentOutletId = useOutletStore.getState().selectedOutlet?.id;
+      const updatedCart = await cartApi.removeCartItem(productId, currentOutletId);
       set({ items: updatedCart?.items || [] });
     } catch (error) {
       console.error("Failed to remove item", error);
     }
   },
 
-  /* ======================================================
-      CLEAR
-     ====================================================== */
   clear: async (isLoggedIn) => {
     if (!isLoggedIn) {
       clearLocalCart();
@@ -180,19 +189,14 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
   },
 
-  /* ======================================================
-      CHECKOUT
-     ====================================================== */
   checkoutCart: async (addressId) => {
     set({ isCheckingOut: true });
     try {
       const lockedCart = await cartApi.checkout(addressId);
-      
       if (lockedCart && lockedCart.status === "LOCKED") {
         set({ items: [], isCheckingOut: false }); 
         return true;
       }
-      
       set({ isCheckingOut: false });
       return false;
     } catch (error) {

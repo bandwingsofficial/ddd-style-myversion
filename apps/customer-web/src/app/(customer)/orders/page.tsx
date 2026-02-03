@@ -18,10 +18,16 @@ const getImageUrl = (path?: string) => {
 // Helper for status badge
 const getStatusBadge = (status: string) => {
   switch (status) {
-    case "PAID": return <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><CheckCircle size={12}/> Confirmed</span>;
-    case "PAYMENT_PENDING": return <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><Clock size={12}/> Pending</span>;
-    case "FAILED": return <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><XCircle size={12}/> Failed</span>;
-    default: return <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold">{status}</span>;
+    case "PAID": 
+    case "Delivered":
+      return <span className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><CheckCircle size={12}/> Confirmed</span>;
+    case "PAYMENT_PENDING": 
+      return <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><Clock size={12}/> Pending</span>;
+    case "FAILED": 
+    case "CANCELLED":
+      return <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><XCircle size={12}/> Failed</span>;
+    default: 
+      return <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold">{status}</span>;
   }
 };
 
@@ -81,7 +87,7 @@ export default function OrdersPage() {
                 className="block bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all group relative overflow-hidden"
               >
                 {/* Decorative status bar */}
-                <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${order.status === 'PAID' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${order.status === 'PAID' || order.status === 'Delivered' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
 
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pl-2">
                   <div>
@@ -106,7 +112,7 @@ export default function OrdersPage() {
                 {/* Items Preview */}
                 <div className="bg-slate-50 rounded-xl p-4 mb-4 pl-4 ml-2">
                   <div className="space-y-3">
-                    {order.items.slice(0, 2).map((item) => { 
+                    {order.items.slice(0, 2).map((item: any) => { 
                       const img = getImageUrl(item.productImage);
                       return (
                         <div key={item.productId || item.id} className="flex items-center gap-3">
@@ -117,6 +123,7 @@ export default function OrdersPage() {
                             <p className="text-sm font-semibold text-slate-700 truncate">{item.productName}</p>
                             <p className="text-xs text-slate-500">{item.quantity} x ₹{item.unitPrice}</p>
                           </div>
+                          {/* Use totalPrice for Orders, lineTotal for Cart */}
                           <span className="text-sm font-bold text-slate-900">₹{item.totalPrice}</span>
                         </div>
                       );

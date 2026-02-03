@@ -8,37 +8,48 @@ import { Loader2, CheckCircle, XCircle } from "lucide-react";
 function PaymentProcessor() {
   const router = useRouter();
   const params = useSearchParams();
+  
+  // Params from Checkout Page (Razorpay + Internal)
   const orderId = params.get("orderId");
   const paymentId = params.get("paymentId");
-  const amount = params.get("amount");
+  const rzpPaymentId = params.get("rzp_payment_id");
+  const rzpOrderId = params.get("rzp_order_id");
+  const rzpSignature = params.get("rzp_signature");
 
   const [status, setStatus] = useState<"PROCESSING" | "SUCCESS" | "FAILED">("PROCESSING");
 
   useEffect(() => {
-    if (!paymentId || !orderId) {
+    // Basic Validation
+    if (!paymentId || !orderId || !rzpPaymentId || !rzpSignature) {
+      console.error("Missing payment parameters");
       setStatus("FAILED");
       return;
     }
 
-    // Simulate Network Delay like a real gateway
-    const timer = setTimeout(() => {
-      confirmPayment();
-    }, 2000);
+    verifyPayment();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    return () => clearTimeout(timer);
-  }, [paymentId, orderId]);
-
-  const confirmPayment = async () => {
+  const verifyPayment = async () => {
     try {
-      await CheckoutApi.confirmPayment(paymentId!);
+      // ✅ Call Backend to Confirm
+      await CheckoutApi.confirmPayment({
+        orderId: orderId!,
+        paymentId: paymentId!,
+        razorpayPaymentId: rzpPaymentId!,
+        razorpayOrderId: rzpOrderId!,
+        razorpaySignature: rzpSignature!
+      });
+
       setStatus("SUCCESS");
       
-      // Redirect to Order Receipt after 1.5 seconds
+      // Redirect to Order Receipt
       setTimeout(() => {
         router.replace(`/orders/${orderId}`);
-      }, 1500);
+      }, 2000);
+
     } catch (error) {
-      console.error("Payment Confirmation Failed", error);
+      console.error("Payment Verification Failed", error);
       setStatus("FAILED");
     }
   };
@@ -51,8 +62,8 @@ function PaymentProcessor() {
           <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <Loader2 className="w-10 h-10 text-emerald-600 animate-spin" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">Processing Payment</h2>
-          <p className="text-slate-500">Please wait while we secure your payment of ₹{amount}...</p>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">Verifying Payment</h2>
+          <p className="text-slate-500">Please do not close this window...</p>
         </div>
       )}
 
@@ -61,8 +72,8 @@ function PaymentProcessor() {
           <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="w-10 h-10 text-emerald-600" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">Payment Successful!</h2>
-          <p className="text-slate-500">Redirecting to your order...</p>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">Payment Confirmed!</h2>
+          <p className="text-slate-500">Redirecting to your order receipt...</p>
         </div>
       )}
 
@@ -71,13 +82,13 @@ function PaymentProcessor() {
           <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <XCircle className="w-10 h-10 text-red-600" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-800 mb-2">Payment Failed</h2>
-          <p className="text-slate-500 mb-6">Something went wrong with the transaction.</p>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">Verification Failed</h2>
+          <p className="text-slate-500 mb-6">We could not verify the payment. Please check your order status.</p>
           <button 
-            onClick={() => router.back()}
+            onClick={() => router.replace(`/orders/${orderId}`)}
             className="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold"
           >
-            Try Again
+            Check Order
           </button>
         </div>
       )}

@@ -1,36 +1,41 @@
 import customerAxios from "@/http/axios/customerAxios";
-import { CheckoutSummary, CheckoutStartResponse, OrderDetails } from "./checkout.types";
+import { 
+  CheckoutSummary, 
+  CheckoutStartResponse, 
+  OrderDetails, 
+  CheckoutStartRequest,
+  PaymentVerificationRequest 
+} from "./checkout.types";
 
 export const CheckoutApi = {
-  // 1. Get Preview/Summary
-  getSummary: async (addressId: string) => {
-    // Matches GET https://admin.dev.local:4000/checkout/summary/:id
-    const { data } = await customerAxios.get<{ data: CheckoutSummary }>(`/checkout/summary/${addressId}`);
+  getSummary: async (addressId: string, outletId?: string) => {
+    const config = outletId ? { params: { outletId } } : {};
+    const { data } = await customerAxios.get<{ data: CheckoutSummary }>(
+        `/checkout/summary/${addressId}`, 
+        config
+    );
     return data.data;
   },
 
-  // 2. Start Order (Lock Cart)
-  startCheckout: async (savedAddressId: string) => {
-    // Matches POST https://admin.dev.local:4000/checkout/start
-    const { data } = await customerAxios.post<{ data: CheckoutStartResponse }>("/checkout/start", { savedAddressId });
+  startCheckout: async (payload: CheckoutStartRequest) => {
+    const { data } = await customerAxios.post<{ data: CheckoutStartResponse }>("/checkout/start", payload);
     return data.data;
   },
 
-  // 3. Confirm Payment
-  confirmPayment: async (paymentId: string) => {
-    // Matches POST https://admin.dev.local:4000/payments/:id/confirm
-    const { data } = await customerAxios.post<{ data: any }>(`/payments/${paymentId}/confirm`);
+  // ✅ FIXED: Matches your backend log: POST /payments/:paymentId/confirm
+  confirmPayment: async (payload: PaymentVerificationRequest) => {
+    const { data } = await customerAxios.post<{ data: any }>(
+        `/payments/${payload.paymentId}/confirm`, 
+        payload // Sending signature details in body for verification
+    );
     return data.data;
   },
 
-  // 4. Get Final Order (Single)
   getOrder: async (orderId: string) => {
-    // Matches GET https://admin.dev.local:4000/orders/:id
     const { data } = await customerAxios.get<{ data: OrderDetails }>(`/orders/${orderId}`);
     return data.data;
   },
 
-  // 5. Get All Orders (List)
   getMyOrders: async () => {
     const { data } = await customerAxios.get<{ data: OrderDetails[] }>("/my-orders");
     return data.data;
