@@ -118,7 +118,7 @@ async getCheckoutSummary(params: {
 
   async startCheckout(params: {
   customerId: string;
-  outletId: string; // 🔥 REQUIRED
+  outletId: string;
   savedAddressId: string;
 }): Promise<{
   orderId: string;
@@ -126,12 +126,18 @@ async getCheckoutSummary(params: {
   checkoutUrl: string;
 }> {
 
+  console.log('\n==============================');
+  console.log('🚀 CHECKOUT STARTED');
+  console.log(params);
+  console.log('==============================\n');
+
   this.validateParams(params);
 
   const order = await this.prisma.$transaction(
     async (tx: PrismaTransaction) => {
 
-      /* 🔥 outlet-aware cart fetch */
+      console.log('🛒 Fetching active cart...');
+
       const cart = await this.cartService.getActiveCart(
         {
           customerId: params.customerId,
@@ -141,25 +147,28 @@ async getCheckoutSummary(params: {
       );
 
       if (!cart || !cart.hasItems()) {
+        console.log('❌ Cart empty');
         throw new ValidationError('EMPTY_CART', 'Cart is empty');
       }
 
-      /* 🔥 BLOCK MULTIPLE ORDERS (per outlet) */
+      console.log('✅ Cart found with items');
+
       await this.ensureNoActiveOrder(
         params.customerId,
         params.outletId,
         tx,
       );
 
-      /* 🔥 DOUBLE CHECKOUT PROTECTION */
       if (cart.status === CartStatus.LOCKED) {
+        console.log('❌ Cart already locked');
         throw new ValidationError(
           'CHECKOUT_ALREADY_IN_PROGRESS',
           'Checkout already started for this cart',
         );
       }
 
-      /* 🔥 LOCK (validates prices + freezes snapshot) */
+      console.log('🔒 Locking cart...');
+
       const lockedCart = await this.cartService.lockCart(
         {
           customerId: params.customerId,
@@ -176,29 +185,46 @@ async getCheckoutSummary(params: {
         tx,
       );
 
-      return this.orderOrchestrator.createOrderFromCart(
-        {
-          cart: lockedCart,
-          address,
-        },
-        tx,
-      );
+      console.log('📦 Creating order from cart...');
+
+      const createdOrder =
+        await this.orderOrchestrator.createOrderFromCart(
+          {
+            cart: lockedCart,
+            address,
+          },
+          tx,
+        );
+
+      console.log('✅ ORDER CREATED:', createdOrder.id);
+
+      return createdOrder;
     },
   );
 
   try {
 
+    console.log('\n💳 Creating payment session...');
+
     const paymentResult = await this.paymentOrchestrator.createPayment({
       orderId: order.id,
     });
 
+    console.log('🟡 PAYMENT SESSION CREATED (ORDER → PAYMENT_PENDING)');
+    console.log({
+      orderId: order.id,
+      paymentId: paymentResult.payment.id,
+    });
+
     this.checkoutEvents.emitCheckoutStarted({
-  checkoutId: order.id,
-  orderId: order.id,
-  paymentId: paymentResult.payment.id,
-  customerId: params.customerId,
-  grandTotal: order.grandTotal.toNumber(), // ✅
-});
+      checkoutId: order.id,
+      orderId: order.id,
+      paymentId: paymentResult.payment.id,
+      customerId: params.customerId,
+      grandTotal: order.grandTotal.toNumber(),
+    });
+
+    console.log('✅ Checkout ready\n');
 
     return {
       orderId: order.id,
@@ -208,7 +234,9 @@ async getCheckoutSummary(params: {
 
   } catch (err) {
 
-    /* 🔥 unlock same outlet cart */
+    console.log('❌ PAYMENT CREATION FAILED → unlocking cart');
+    console.error(err);
+
     await this.cartService.unlockCart({
       customerId: params.customerId,
       outletId: params.outletId,

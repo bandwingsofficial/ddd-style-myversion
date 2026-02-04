@@ -61,9 +61,6 @@ async getPublicOutlets(
   };
 }
 
-  /* ================================================= */
-  /* PUBLIC – OUTLET PRODUCTS (specific FIRST)         */
-  /* ================================================= */
 
  /* ================================================= */
 /* PUBLIC – OUTLET PRODUCTS (specific FIRST)          */
@@ -133,6 +130,12 @@ async getOutletProducts(
     unitValue: r.product.unitValue,
     unitType: r.product.unitType,
 
+    ingredients: r.product.ingredients,
+    benefits: r.product.benefits,
+    extraInfo1: r.product.extraInfo1,
+    extraInfo2: r.product.extraInfo2,
+
+    isFeatured: r.product.isFeatured,
     available: r.isAvailable,
   }));
 

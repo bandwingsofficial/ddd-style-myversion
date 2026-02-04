@@ -15,6 +15,7 @@ import { ValidationError } from '../../../common/errors';
 
 import { PaymentEventsService } from '../events/payment-events.service';
 
+
 @Injectable()
 export class PaymentService {
   constructor(
@@ -29,16 +30,17 @@ export class PaymentService {
 /* CREATE PAYMENT SESSION (SAFE)                     */
 /* ================================================= */
 
-/* ================================================= */
-/* CREATE PAYMENT SESSION (SAFE)                     */
-/* ================================================= */
-
 async createPayment(params: {
   orderId: string;
 }): Promise<{
   payment: Payment;
   checkoutUrl: string;
 }> {
+
+  console.log('\n💳 ==============================');
+  console.log('CREATE PAYMENT SESSION START');
+  console.log('orderId:', params.orderId);
+  console.log('==============================\n');
 
   if (!params?.orderId) {
     throw new ValidationError(
@@ -54,21 +56,26 @@ async createPayment(params: {
   const { payment, amount } = await this.prisma.$transaction(
     async (tx) => {
 
+      console.log('🛢️  [DB] Fetching order...');
+
       const order = await this.orderRepo.findById(params.orderId, tx);
 
       if (!order) {
         throw new ValidationError('ORDER_NOT_FOUND', 'Order not found');
       }
 
-      /* 🔥 prevent duplicate payments */
       if (!order.isCreated()) {
+        console.log('❌ Order not payable');
         throw new ValidationError(
           'ORDER_NOT_PAYABLE',
           'Payment already initiated for this order',
         );
       }
 
-      const amount = order.grandTotal.toCents();
+      const amount = order.grandTotal.toNumber();
+
+      console.log('🟡 Creating payment record...');
+      console.log({ amount });
 
       const payment = Payment.createNew({
         id: uuid(),
@@ -80,6 +87,8 @@ async createPayment(params: {
 
       const saved = await this.paymentRepo.create(payment, tx);
 
+      console.log('🔄 Marking order → PAYMENT_PENDING');
+
       const pendingOrder = order.markPaymentPending();
       await this.orderRepo.update(pendingOrder, tx);
 
@@ -87,29 +96,43 @@ async createPayment(params: {
     },
   );
 
+  console.log('✅ DB COMMIT COMPLETE');
+  console.log({
+    paymentId: payment.id,
+    orderId: payment.orderId,
+    status: 'PAYMENT_PENDING',
+  });
+
   /* ================================================= */
-  /* 🔥 EMIT AFTER COMMIT (CORRECT SPOT)                */
+  /* 🔥 EMIT AFTER COMMIT                               */
   /* ================================================= */
 
   this.paymentEvents.emitPaymentInitiated({
     paymentId: payment.id,
     orderId: payment.orderId,
-    amount,
+    amount: payment.amount.toNumber(),
     occurredAt: new Date(),
   });
 
   /* ================================================= */
-  /* PHASE 2 — EXTERNAL (NO TX 🔥)                     */
+  /* PHASE 2 — EXTERNAL (Razorpay)                     */
   /* ================================================= */
+
+  console.log('🌐 Calling Razorpay → create order...');
 
   const session = await this.gateway.createPaymentSession({
     orderId: payment.orderId,
     amount,
-    currency: 'INR', // 🔥 system currency (simple + safe)
+    currency: 'INR',
+  });
+
+  console.log('✅ Razorpay order created');
+  console.log({
+    providerOrderId: session.providerPaymentId,
   });
 
   /* ================================================= */
-  /* PHASE 3 — SAVE PROVIDER REF (atomic)               */
+  /* PHASE 3 — SAVE PROVIDER REF                        */
   /* ================================================= */
 
   const updated = payment.attachProviderRef(
@@ -119,6 +142,14 @@ async createPayment(params: {
   await this.prisma.$transaction(async (tx) => {
     await this.paymentRepo.update(updated, tx);
   });
+
+  console.log('🔗 Provider reference saved to DB');
+  console.log({
+    paymentId: updated.id,
+    providerRef: updated.providerRefId,
+  });
+
+  console.log('💳 CREATE PAYMENT SESSION END\n');
 
   return {
     payment: updated,
@@ -134,12 +165,19 @@ async confirmPayment(params: {
   paymentId: string;
 }): Promise<Payment> {
 
+  console.log('\n💰 ==============================');
+  console.log('CONFIRM PAYMENT START');
+  console.log('paymentId:', params.paymentId);
+  console.log('==============================\n');
+
   if (!params?.paymentId) {
     throw new ValidationError(
       'PAYMENT_ID_REQUIRED',
       'Payment id is required',
     );
   }
+
+  console.log('🛢️  Fetching payment from DB...');
 
   const payment = await this.paymentRepo.findById(params.paymentId);
 
@@ -150,7 +188,18 @@ async confirmPayment(params: {
     );
   }
 
-  /* 🔥 provider ref must exist */
+  console.log('✅ Payment found');
+  console.log({
+    providerRefId: payment.providerRefId,
+    currentStatus: payment.status,
+  });
+
+  /* 🔥 HARD IDEMPOTENCY EXIT */
+  if (payment.isSuccess()) {
+    console.log('🟡 Already SUCCESS — skipping confirm completely\n');
+    return payment;
+  }
+
   if (!payment.providerRefId) {
     throw new ValidationError(
       'PROVIDER_REF_MISSING',
@@ -159,15 +208,20 @@ async confirmPayment(params: {
   }
 
   /* ================================================= */
-  /* EXTERNAL FIRST (provider verification) 🔥          */
+  /* EXTERNAL VERIFY                                   */
   /* ================================================= */
+
+  console.log('🌐 Verifying payment with gateway...');
 
   const verification = await this.gateway.verifyPayment({
     providerPaymentId: payment.providerRefId,
   });
 
+  console.log('📡 Gateway verification result →');
+  console.log(verification);
+
   /* ================================================= */
-  /* DB UPDATE — PAYMENT ONLY (atomic + idempotent)    */
+  /* DB UPDATE (atomic)                                */
   /* ================================================= */
 
   const updatedPayment = await this.prisma.$transaction(async (tx) => {
@@ -178,24 +232,18 @@ async confirmPayment(params: {
     );
 
     if (!freshPayment) {
-      throw new ValidationError(
-        'PAYMENT_INVALID',
-        'Invalid payment',
-      );
-    }
-
-    /* 🔥 atomic idempotency */
-    if (freshPayment.isCompleted()) {
-      return freshPayment;
+      throw new ValidationError('PAYMENT_INVALID', 'Invalid payment');
     }
 
     let newPayment: Payment;
 
     if (verification.success) {
+      console.log('🟢 SUCCESS → marking PAID');
       newPayment = freshPayment.markSuccess({
         transactionId: verification.providerPaymentId,
       });
     } else {
+      console.log('🔴 FAILED → marking FAILED');
       newPayment = freshPayment.markFailed();
     }
 
@@ -205,10 +253,12 @@ async confirmPayment(params: {
   });
 
   /* ================================================= */
-  /* 🔥 EMIT EVENTS (Order reacts separately)           */
+  /* EMIT EVENTS ONLY WHEN STATE CHANGED                */
   /* ================================================= */
 
   if (updatedPayment.isSuccess()) {
+    console.log('🎉 Emitting PaymentSuccess event');
+
     this.paymentEvents.emitPaymentSuccess({
       paymentId: updatedPayment.id,
       orderId: updatedPayment.orderId,
@@ -217,6 +267,8 @@ async confirmPayment(params: {
       occurredAt: new Date(),
     });
   } else {
+    console.log('⚠️ Emitting PaymentFailed event');
+
     this.paymentEvents.emitPaymentFailed({
       paymentId: updatedPayment.id,
       orderId: updatedPayment.orderId,
@@ -225,8 +277,11 @@ async confirmPayment(params: {
     });
   }
 
+  console.log('💰 CONFIRM PAYMENT END\n');
+
   return updatedPayment;
 }
+
   /* ================================================= */
 /* WEBHOOK (FAST + SAFE)                             */
 /* ================================================= */
@@ -236,36 +291,61 @@ async handleWebhook(params: {
   signature?: string;
 }): Promise<void> {
 
+  console.log('\n📩 ==============================');
+  console.log('WEBHOOK RECEIVED');
+  console.log('==============================');
+
   try {
-    /* ---------------------------------------------- */
-    /* 🔥 optional: verify signature                   */
-    /* ---------------------------------------------- */
-
-    // TODO: implement real provider signature verification
-    // this.gateway.verifyWebhookSignature(params.signature, params.payload);
 
     /* ---------------------------------------------- */
-    /* safe payload parsing                            */
+    /* 🔐 signature verify (optional)                  */
     /* ---------------------------------------------- */
 
-    const payload = params.payload as {
-      providerPaymentId?: string;
-    };
+    // this.gateway.verifyWebhookSignature(
+    //   params.signature,
+    //   params.payload,
+    // );
 
-    const providerPaymentId = payload?.providerPaymentId;
-
-    if (!providerPaymentId) return;
+    console.log('📦 Raw payload →');
+    console.log(JSON.stringify(params.payload, null, 2));
 
     /* ---------------------------------------------- */
-    /* find payment                                    */
+    /* ✅ Razorpay correct parsing                     */
     /* ---------------------------------------------- */
+
+    const body = params.payload as any;
+
+    const providerPaymentId =
+      body?.payload?.payment?.entity?.id;
+
+    console.log('🔍 Extracted providerPaymentId:', providerPaymentId);
+
+    if (!providerPaymentId) {
+      console.log('⚠️ No providerPaymentId found → ignoring');
+      return;
+    }
+
+    /* ---------------------------------------------- */
+    /* find payment                                   */
+    /* ---------------------------------------------- */
+
+    console.log('🛢️ Looking up payment in DB...');
 
     const payment =
       await this.paymentRepo.findByProviderRefId(
         providerPaymentId,
       );
 
-    if (!payment) return;
+    if (!payment) {
+      console.log('⚠️ Payment not found for providerRef');
+      return;
+    }
+
+    console.log('✅ Payment found → confirming...');
+    console.log({
+      paymentId: payment.id,
+      orderId: payment.orderId,
+    });
 
     /* ---------------------------------------------- */
     /* idempotent confirm                              */
@@ -275,11 +355,16 @@ async handleWebhook(params: {
       paymentId: payment.id,
     });
 
+    console.log('🎉 Webhook processing complete\n');
+
   } catch (err) {
+
     /* 🔥 NEVER throw in webhook */
-    console.error('[PAYMENT WEBHOOK ERROR]', err);
+    console.error('❌ [PAYMENT WEBHOOK ERROR]');
+    console.error(err);
   }
 }
+
   /* ================================================= */
   /* READS                                             */
   /* ================================================= */

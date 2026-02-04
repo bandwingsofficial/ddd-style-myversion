@@ -26,7 +26,7 @@ import { UpdateOutletProfileDto } from '../dtos/update-outlet-profile.dto';
 
 @Controller('outlets/:outletId/profile')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(ActorType.SUPER_ADMIN)
+@Roles(ActorType.OUTLET_USER)
 export class OutletProfileController {
   constructor(
     private readonly orchestrator: OutletOrchestratorService,

@@ -70,30 +70,25 @@ async getNearbyOutlets(
 
   const outlets = await this.outletRepo.findWithLocation();
 
-  return outlets
-    .map((outlet) => {
-      if (!outlet.isActive()) return null;
-      if (!outlet.workingState?.canAcceptOrders()) return null;
+return outlets
+  .filter(o =>
+    o.isActive() &&
+    o.workingState?.canAcceptOrders() &&
+    o.location
+  )
+  .map(o => {
+    const location = o.location.getRaw();
+    const distanceKm = this.calculateDistanceKm(lat, lng, location.latitude, location.longitude);
 
-      const location = outlet.location?.getRaw();
-      if (!location) return null;
+    if (distanceKm > (o.deliveryRadiusKm ?? 5)) return null;
 
-      const distanceKm = this.calculateDistanceKm(
-        lat,
-        lng,
-        location.latitude,
-        location.longitude,
-      );
-
-      if (distanceKm > (outlet.deliveryRadiusKm ?? 5)) return null;
-
-      return {
-        outlet,
-        distanceKm: Number(distanceKm.toFixed(2)),
-      };
-    })
-    .filter(Boolean)
-    .sort((a, b) => a!.distanceKm - b!.distanceKm);
+    return {
+      outlet: o,
+      distanceKm: Number(distanceKm.toFixed(2)),
+    };
+  })
+  .filter(Boolean)
+  .sort((a, b) => a!.distanceKm - b!.distanceKm);
 }
 
   /* ================================================= */

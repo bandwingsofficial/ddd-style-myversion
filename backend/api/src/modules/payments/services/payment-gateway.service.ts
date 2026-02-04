@@ -84,34 +84,64 @@ export class PaymentGatewayService {
   /* ================================================= */
 
   async verifyPayment(params: {
-    providerPaymentId: string;
-  }): Promise<PaymentVerificationResult> {
-    if (!params?.providerPaymentId) {
-      throw new ValidationError(
-        'PROVIDER_PAYMENT_ID_REQUIRED',
-        'Provider payment id is required',
-      );
-    }
+  providerPaymentId: string;
+}): Promise<PaymentVerificationResult> {
 
-    try {
-      const payment = await fetchRazorpayPayment(
-        params.providerPaymentId,
-      );
+  console.log('\n🔍 VERIFY PAYMENT CALLED');
 
-      return {
-        success: payment.status === 'captured',
-        providerPaymentId: params.providerPaymentId,
-        raw: payment,
-      };
-    } catch (err) {
-      console.error('[PAYMENT GATEWAY] verify failed:', err);
-
-      return {
-        success: false,
-        providerPaymentId: params.providerPaymentId,
-      };
-    }
+  if (!params?.providerPaymentId) {
+    throw new ValidationError(
+      'PROVIDER_PAYMENT_ID_REQUIRED',
+      'Provider payment id is required',
+    );
   }
+
+  const env = process.env.NODE_ENV;
+  console.log('ENV =', env);
+
+  /* ================================================= */
+  /* 🔥 LOCAL / DEV → ALWAYS SUCCESS                   */
+  /* ================================================= */
+
+  if (env !== 'production') {
+    console.log('⚡ MOCK GATEWAY → auto success (skipping Razorpay)');
+
+    return {
+      success: true,
+      providerPaymentId: params.providerPaymentId,
+      raw: { mocked: true },
+    };
+  }
+
+  /* ================================================= */
+  /* 🔴 PRODUCTION → REAL RAZORPAY ONLY                */
+  /* ================================================= */
+
+  try {
+    console.log('🌐 Calling Razorpay verify...');
+
+    const payment = await fetchRazorpayPayment(
+      params.providerPaymentId,
+    );
+
+    console.log('📡 Razorpay status →', payment.status);
+
+    return {
+      success: payment.status === 'captured',
+      providerPaymentId: params.providerPaymentId,
+      raw: payment,
+    };
+
+  } catch (err) {
+    console.error('❌ Razorpay verify failed:', err);
+
+    return {
+      success: false,
+      providerPaymentId: params.providerPaymentId,
+    };
+  }
+}
+
 
   /* ================================================= */
   /* WEBHOOK VERIFY                                    */

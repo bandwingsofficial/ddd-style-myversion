@@ -45,19 +45,29 @@ async handlePaymentSuccess(payload: {
     payload.orderId,
   );
 
-  /* 1️⃣ mark paid */
-  const order = await this.orderStatusService.markPaid(payload.orderId);
+  let order;
 
-  /* 2️⃣ clear cart (safe) */
+  try {
+    order = await this.orderStatusService.markPaid(payload.orderId);
+  } catch (err: any) {
+
+    // ✅ idempotent protection
+    if (err?.message?.includes('Cannot mark paid')) {
+      console.log('🟡 Order already paid — skipping');
+      return;
+    }
+
+    throw err;
+  }
+
   try {
     await this.cartOrchestrator.clearCart({
       customerId: order.customerId,
     });
   } catch (err) {
-    console.error('[AUTO CLEAR CART FAILED]', err);
+    console.log('🟡 Cart already cleared — skipping');
   }
 }
-
   /* ================================================= */
   /* PAYMENT FAILED → ORDER FAILED                      */
   /* ================================================= */

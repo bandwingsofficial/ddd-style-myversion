@@ -21,7 +21,7 @@ export class UpdateSuperAdminProfileDto {
   title?: string;
 
   @IsOptional()
-  @IsPhoneNumber()
+  @IsPhoneNumber('IN')
   phone?: string;
 
   @IsOptional()

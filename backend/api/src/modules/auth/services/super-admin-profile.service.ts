@@ -63,6 +63,7 @@ export class SuperAdminProfileService {
     const profile = SuperAdminProfile.createNew({
       id: randomUUID(),
       ...params,
+      phone: this.normalizePhone(params.phone),
     });
 
     let created!: SuperAdminProfile;
@@ -99,7 +100,10 @@ export class SuperAdminProfileService {
       );
     }
 
-    const updated = existing.update(params.updates);
+    const updated = existing.update({
+  ...params.updates,
+  phone: this.normalizePhone(params.updates.phone),
+});
 
     let saved!: SuperAdminProfile;
 
@@ -135,11 +139,14 @@ export class SuperAdminProfileService {
         fullName: params.fullName ?? 'Super Admin',
         avatarUrl: params.avatarUrl,
         title: params.title,
-        phone: params.phone,
+        phone: this.normalizePhone(params.phone),
         notes: params.notes,
       });
     } else {
-      profile = existing.update(params);
+      profile = existing.update({
+  ...params,
+  phone: this.normalizePhone(params.phone),
+});
     }
 
     let saved!: SuperAdminProfile;
@@ -168,4 +175,17 @@ export class SuperAdminProfileService {
       await this.repo.deleteBySuperAdminId(superAdminId, tx);
     });
   }
+
+private normalizePhone(phone?: string): string | undefined {
+  if (!phone?.trim()) return undefined;
+
+  const digits = phone.replace(/[^\d+]/g, '');
+
+  if (digits.startsWith('+')) return digits;
+  if (digits.startsWith('91')) return `+${digits}`;
+  if (digits.length === 10) return `+91${digits}`;
+
+  return digits;
+}
+
 }
