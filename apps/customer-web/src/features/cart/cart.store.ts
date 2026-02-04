@@ -6,6 +6,7 @@ import {
   setLocalCart,
   clearLocalCart,
 } from "@/features/cart/cart.local";
+// ✅ IMPORT OUTLET STORE
 import { useOutletStore } from "@/features/outlet/outlet.store";
 
 interface CartState {
@@ -43,7 +44,7 @@ export const useCartStore = create<CartState>((set, get) => ({
 
     try {
       const local = getLocalCart();
-      const currentOutletId = useOutletStore.getState().selectedOutlet?.id;
+      const currentOutletId = useOutletStore.getState().selectedOutlet?.id; // Get ID
 
       // Sync Logic
       if (local.items && local.items.length > 0) {
@@ -53,7 +54,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         const itemsToSync = [...local.items];
         clearLocalCart();
 
-        // Pass outletId to clearCart
+        // Pass outletId to clearCart during sync too
         try { await cartApi.clearCart(currentOutletId); } catch (e) { console.warn("Could not clear old cart"); }
 
         for (const item of itemsToSync) {
@@ -168,7 +169,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
   },
 
-  // 🔥 FIXED: Now passes outletId to the API
+  // 🔥 FIXED: Now passes outletId to the API to fix 400 Error
   clear: async (isLoggedIn) => {
     if (!isLoggedIn) {
       clearLocalCart();
@@ -177,7 +178,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
     try {
       const currentOutletId = useOutletStore.getState().selectedOutlet?.id;
-      await cartApi.clearCart(currentOutletId);
+      await cartApi.clearCart(currentOutletId); // ✅ Added currentOutletId
       set({ items: [] });
     } catch (error) {
       console.error("Failed to clear cart", error);
