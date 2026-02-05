@@ -1,4 +1,4 @@
-import { Store, MapPin, MoreHorizontal, Edit3, Trash2 } from "lucide-react";
+import { Store, MapPin, Edit3, Trash2, Video, Settings, Power } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface OutletTableProps {
@@ -17,23 +17,19 @@ export const OutletTable = ({
   setDeleteConfirm 
 }: OutletTableProps) => {
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }} 
-      animate={{ opacity: 1, y: 0 }} 
-      className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-    >
+    <div className="w-full">
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-left">
-          <thead className="bg-slate-50/80">
-            <tr>
-              <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Outlet Details</th>
-              <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
-              <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Operation</th>
-              <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Live Camera</th>
-              <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Actions</th>
+        <table className="w-full border-separate border-spacing-y-3 text-left">
+          <thead>
+            <tr className="text-slate-500 uppercase text-[11px] font-bold tracking-widest">
+              <th className="px-6 pb-2">Outlet Details</th>
+              <th className="px-6 pb-2">Status</th>
+              <th className="px-6 pb-2">Operation</th>
+              <th className="px-6 pb-2 text-center">Live Camera</th>
+              <th className="px-6 pb-2 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody>
             <AnimatePresence mode="popLayout">
               {outlets.map((o) => {
                 const isDeactivated = o.status !== "ACTIVE";
@@ -43,117 +39,114 @@ export const OutletTable = ({
                 return (
                   <motion.tr 
                     layout
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
                     key={o.id} 
-                    className={`
-                      transition-colors hover:bg-slate-50/50 
-                      ${isDeactivated ? "bg-slate-50/80 grayscale opacity-75" : "bg-white"}
-                    `}
+                    className={`group transition-all duration-200 ${isDeactivated ? "bg-slate-50/50" : ""}`}
                   >
-                    {/* Name Group */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-                           <Store size={18} />
+                    {/* Outlet Details */}
+                    <td className="bg-white px-6 py-4 first:rounded-l-2xl shadow-sm border-y border-l border-slate-100 group-hover:border-emerald-200 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-inner transition-colors ${isDeactivated ? 'bg-slate-100 text-slate-400' : 'bg-emerald-50 text-emerald-600'}`}>
+                          <Store size={22} />
                         </div>
                         <div>
-                          <div className="text-sm font-bold text-slate-800">{o.name}</div>
-                          <div className="flex items-center gap-1 text-xs text-slate-500 font-medium">
-                            <MapPin size={10} /> {o.branch ?? "Main"}
+                          <div className={`text-[15px] font-bold ${isDeactivated ? 'text-slate-400' : 'text-slate-800'}`}>{o.name}</div>
+                          <div className="flex items-center gap-1 text-xs text-slate-400 font-medium">
+                            <MapPin size={12} className={isDeactivated ? 'text-slate-300' : 'text-emerald-500'} /> @ {o.branch ?? "Main"}
                           </div>
                         </div>
                       </div>
                     </td>
 
                     {/* Status Badge */}
-                    <td className="px-6 py-4">
+                    <td className="bg-white px-6 py-4 border-y border-slate-100 group-hover:border-emerald-200 transition-colors">
                       <div className={`
-                        inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold tracking-wide border
+                        inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-black tracking-tighter border-2
                         ${!isDeactivated 
-                          ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
+                          ? "bg-emerald-50 text-emerald-600 border-emerald-100/50" 
                           : "bg-slate-100 text-slate-500 border-slate-200"
                         }
                       `}>
-                        <div className={`h-1.5 w-1.5 rounded-full ${!isDeactivated ? "bg-emerald-500" : "bg-slate-400"}`} />
+                        <span className={`h-2 w-2 rounded-full ${!isDeactivated ? "bg-emerald-500 animate-pulse" : "bg-slate-400"}`} />
                         {o.status}
                       </div>
                     </td>
 
-                    {/* Operation Select */}
-                    <td className="px-6 py-4">
-                      <div className="relative">
-                        <select 
-                          disabled={isDeactivated} 
-                          value={o.workingState.status} 
-                          onChange={(e) => updateWorkingStatus(o.id, e.target.value as any)}
-                          className="w-full min-w-[140px] appearance-none rounded-lg border border-slate-200 bg-white py-2 pl-3 pr-8 text-xs font-bold text-slate-700 shadow-sm transition-all hover:border-slate-300 focus:border-emerald-500 focus:outline-none disabled:bg-slate-50 disabled:text-slate-400 cursor-pointer"
-                        >
-                          <option value="OPEN">🟢 OPEN</option>
-                          <option value="CLOSED">🔴 CLOSED</option>
-                          <option value="TEMPORARILY_CLOSED">🟡 TEMP CLOSED</option>
-                        </select>
-                        <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
-                          <MoreHorizontal size={14} />
+                    {/* Operation Select - Updated Dropdown UI */}
+                    <td className="bg-white px-6 py-4 border-y border-slate-100 group-hover:border-emerald-200 transition-colors">
+                      <div className="flex flex-col gap-1">
+                        <div className="relative w-fit">
+                            <select 
+                                disabled={isDeactivated} 
+                                value={o.workingState.status} 
+                                onChange={(e) => updateWorkingStatus(o.id, e.target.value as any)}
+                                className={`
+                                    appearance-none rounded-full border-2 px-4 py-1.5 pr-8 text-[11px] font-black cursor-pointer transition-all outline-none
+                                    ${o.workingState.status === 'OPEN' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 
+                                      o.workingState.status === 'CLOSED' ? 'bg-rose-50 border-rose-100 text-rose-600' : 
+                                      'bg-amber-50 border-amber-100 text-amber-600'}
+                                    ${isDeactivated ? 'opacity-50 grayscale cursor-not-allowed' : 'hover:scale-105'}
+                                `}
+                            >
+                                <option value="OPEN">● OPEN</option>
+                                <option value="CLOSED">● CLOSED</option>
+                                <option value="TEMPORARILY_CLOSED">● TEMP CLOSED</option>
+                            </select>
+                            <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+                                <div className={`h-1.5 w-1.5 rounded-full ${o.workingState.status === 'OPEN' ? 'bg-emerald-400' : 'bg-slate-400'}`} />
+                            </div>
                         </div>
+                        <span className="text-[9px] text-slate-400 font-medium pl-1">
+                          Time, {new Date().toLocaleDateString()}
+                        </span>
                       </div>
                     </td>
 
                     {/* Camera Toggle */}
-                    <td className="px-6 py-4">
-                      <div 
-                        onClick={() => handleCameraToggle(o)} 
-                        className={`
-                          relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2
-                          ${o.cameraState.status === "ON" && !isDeactivated && !isNotOpen ? 'bg-emerald-500' : 'bg-slate-200'}
-                          ${(isDeactivated || isNotOpen) ? 'cursor-not-allowed opacity-60' : ''}
-                        `}
-                        title={cameraTooltip}
-                      >
-                        <span className="sr-only">Use setting</span>
-                        <span
-                          aria-hidden="true"
+                    <td className="bg-white px-6 py-4 border-y border-slate-100 group-hover:border-emerald-200 transition-colors">
+                      <div className="flex items-center justify-center gap-3">
+                         <div 
+                          onClick={() => !isDeactivated && !isNotOpen && handleCameraToggle(o)} 
                           className={`
-                            pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out
-                            ${o.cameraState.status === "ON" && !isDeactivated && !isNotOpen ? 'translate-x-5' : 'translate-x-0'}
+                            relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-all duration-300
+                            ${o.cameraState.status === "ON" && !isDeactivated && !isNotOpen ? 'bg-emerald-500 shadow-lg shadow-emerald-200' : 'bg-slate-200'}
+                            ${(isDeactivated || isNotOpen) ? 'cursor-not-allowed opacity-40' : ''}
                           `}
-                        />
+                          title={cameraTooltip}
+                        >
+                          <span className={`
+                              pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition duration-300 ease-in-out
+                              ${o.cameraState.status === "ON" && !isDeactivated && !isNotOpen ? 'translate-x-5' : 'translate-x-0'}
+                            `}
+                          />
+                        </div>
                       </div>
                     </td>
 
-                    {/* Actions */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
+                    {/* Actions - Updated with Icons only */}
+                    <td className="bg-white px-6 py-4 last:rounded-r-2xl shadow-sm border-y border-r border-slate-100 group-hover:border-emerald-200 transition-colors text-right">
+                      <div className="flex items-center justify-end gap-1">
                         <button 
-                           onClick={() => setEditingOutlet({ 
-                             ...o, 
-                             latitude: o.location?.latitude || "", 
-                             longitude: o.location?.longitude || "", 
-                             deliveryRadiusKm: o.deliveryRadiusKm || "" 
-                           })}
-                           className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-blue-600 transition-colors"
+                           onClick={() => setEditingOutlet({ ...o, latitude: o.location?.latitude || "", longitude: o.location?.longitude || "", deliveryRadiusKm: o.deliveryRadiusKm || "" })}
+                           className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all active:scale-90"
+                           title="Edit"
                         >
-                          <Edit3 size={16} />
+                          <Edit3 size={18} />
                         </button>
-                        
-                        {isDeactivated ? (
-                          <motion.button 
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
+
+                        <button 
                             onClick={() => setDeleteConfirm(o)}
-                            className="rounded-lg bg-emerald-500 px-3 py-1.5 text-[10px] font-bold text-white shadow-sm shadow-emerald-200 hover:bg-emerald-600"
-                          >
-                            ACTIVATE
-                          </motion.button>
-                        ) : (
-                          <button 
-                            onClick={() => setDeleteConfirm(o)}
-                            className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-500 transition-colors"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        )}
+                            className={`rounded-xl p-2 transition-all active:scale-90 ${
+                                isDeactivated 
+                                ? 'text-emerald-500 hover:bg-emerald-50' 
+                                : 'text-slate-400 hover:bg-rose-50 hover:text-rose-500'
+                            }`}
+                            title={isDeactivated ? "Activate" : "Deactivate"}
+                        >
+                          {isDeactivated ? <Power size={18} /> : <Trash2 size={18} />}
+                        </button>
                       </div>
                     </td>
                   </motion.tr>
@@ -163,6 +156,6 @@ export const OutletTable = ({
           </tbody>
         </table>
       </div>
-    </motion.div>
+    </div>
   );
-};
+};  
