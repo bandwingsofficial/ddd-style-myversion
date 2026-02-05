@@ -11,9 +11,8 @@ export const OutletHeader = ({ search, setSearch, onCreateClick }: OutletHeaderP
   return (
     <div className="mb-8 flex flex-col justify-between gap-6 md:flex-row md:items-center">
       <div>
-        <h1 className="text-4xl font-black text-slate-900 tracking-tight">Outlets Management</h1>
-        <p className="text-sm text-slate-400 font-bold uppercase tracking-widest mt-1">Super Admin Control Panel</p>
-      </div>
+        <h1 className="text-4xl font-black text-slate-800 tracking-tight">Outlets Management</h1>
+        </div>
       
       <div className="flex items-center gap-3">
         {/* Search */}
