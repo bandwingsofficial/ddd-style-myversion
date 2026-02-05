@@ -80,6 +80,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   const handleNavigate = (path: string) => {
     router.push(path);
     setIsSearchFocused(false);
+    setIsDropdownOpen(false); // Added to close dropdown on navigation
     setSearchQuery('');
   };
 
@@ -93,12 +94,10 @@ export function Header({ onToggleSidebar }: HeaderProps) {
     <motion.header 
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      // REDUCED HEIGHT: Changed from h-24 to h-20 (approx 16px reduction)
       className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-emerald-500/10 bg-white/70 px-10 backdrop-blur-xl shadow-sm"
     >
       {/* LEFT SECTION */}
       <div className="flex items-center gap-8">
-        {/* Toggle Button - Reduced size slightly */}
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -121,7 +120,6 @@ export function Header({ onToggleSidebar }: HeaderProps) {
               onChange={handleSearch}
               onKeyDown={handleKeyDown}
               onFocus={() => setIsSearchFocused(true)}
-              // REDUCED WIDTH: Focused width changed from w-96 to w-80 to avoid conflict
               className={`
                 h-11 w-64 rounded-2xl border bg-gray-50/50 py-2 pl-12 pr-12 text-sm text-gray-700 outline-none transition-all duration-300
                 placeholder:text-gray-400
@@ -174,8 +172,6 @@ export function Header({ onToggleSidebar }: HeaderProps) {
 
       {/* RIGHT SECTION */}
       <div className="flex items-center gap-5">
-        
-        {/* Date Display - Slightly reduced padding */}
         {dateString && (
           <div className="hidden lg:flex items-center gap-2 rounded-2xl bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-600 border border-emerald-500/10 shadow-sm shadow-emerald-500/5">
             <CalendarDays size={16} />
@@ -183,7 +179,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
           </div>
         )}
 
-        {/* Notifications - Reduced size */}
+        {/* Notifications */}
         <motion.button 
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
@@ -205,8 +201,8 @@ export function Header({ onToggleSidebar }: HeaderProps) {
             className="group flex items-center gap-3 outline-none"
           >
             <div className="hidden text-right md:block">
-              <div className="text-sm font-black text-gray-800 leading-tight">Super Admin</div>
-              <div className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-widest">{actorType || 'ADMIN'}</div>
+              <div className="text-sm font-black text-gray-800 leading-tight">John Doe</div>
+              <div className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-widest">{actorType || 'SUPER ADMIN'}</div>
             </div>
 
             <div className="relative">
@@ -214,7 +210,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                 whileHover={{ scale: 1.05 }}
                 className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#10a353] text-lg font-black text-white shadow-lg shadow-emerald-500/20 transition-transform group-hover:rotate-3"
               >
-                S
+                J
               </motion.div>
               <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-400 shadow-sm" />
             </div>
@@ -233,15 +229,22 @@ export function Header({ onToggleSidebar }: HeaderProps) {
               >
                 <div className="px-5 py-3 border-b border-gray-50 mb-1">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Account</p>
-                  <p className="text-xs font-black text-gray-800 truncate mt-0.5">admin@example.com</p>
+                  <p className="text-xs font-black text-gray-800 truncate mt-0.5">john.doe@platform.com</p>
                 </div>
 
                 <div className="space-y-0.5">
-                  <button className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-500 transition-all hover:bg-emerald-50 hover:text-emerald-700">
+                  {/* LINKED PROFILE BUTTON */}
+                  <button 
+                    onClick={() => handleNavigate('/profile')}
+                    className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-500 transition-all hover:bg-emerald-50 hover:text-emerald-700"
+                  >
                     <User size={16} /> My Profile
                   </button>
 
-                  <button className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-500 transition-all hover:bg-emerald-50 hover:text-emerald-700">
+                  <button 
+                    onClick={() => handleNavigate('/settings')}
+                    className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-500 transition-all hover:bg-emerald-50 hover:text-emerald-700"
+                  >
                     <SettingsIcon size={16} /> Settings
                   </button>
 
