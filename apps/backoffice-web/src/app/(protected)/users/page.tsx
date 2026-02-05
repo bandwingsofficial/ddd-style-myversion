@@ -3,8 +3,16 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-// Added ShoppingBag to imports
-import { Search, ChevronRight, MapPin, Loader2, Info, Store, Package, ShoppingBag } from 'lucide-react';
+import {
+  Search,
+  ChevronRight,
+  MapPin,
+  Loader2,
+  Info,
+  Store,
+  Package,
+  ShoppingBag,
+} from 'lucide-react';
 import { useOutletStore } from '@/features/outlets/outlet.store';
 
 // --- Components ---
@@ -16,9 +24,9 @@ const Toast = ({ message, visible }: { message: string; visible: boolean }) => (
         initial={{ opacity: 0, y: -20, x: '-50%' }}
         animate={{ opacity: 1, y: 0, x: '-50%' }}
         exit={{ opacity: 0, y: -20, x: '-50%' }}
-        className="fixed top-8 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-xl shadow-slate-900/10"
+        className="fixed top-8 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-xs font-semibold text-white shadow-xl"
       >
-        <Info size={16} className="text-emerald-400" />
+        <Info size={14} className="text-emerald-400" />
         {message}
       </motion.div>
     )}
@@ -41,154 +49,134 @@ export default function UsersOutletSelectPage() {
   };
 
   const filteredOutlets = useMemo(() => {
-    return outlets.filter((o) =>
-      o.name.toLowerCase().includes(search.toLowerCase()) ||
-      (o.branch && o.branch.toLowerCase().includes(search.toLowerCase()))
+    return outlets.filter(
+      (o) =>
+        o.name.toLowerCase().includes(search.toLowerCase()) ||
+        (o.branch && o.branch.toLowerCase().includes(search.toLowerCase()))
     );
   }, [outlets, search]);
 
   if (loading) {
     return (
       <div className="flex h-screen flex-col items-center justify-center bg-slate-50">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-        >
+        <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}>
           <Loader2 size={40} className="text-emerald-500" />
         </motion.div>
-        <p className="mt-4 font-medium text-slate-500 animate-pulse">Loading Directory...</p>
+        <p className="mt-4 text-sm font-medium text-slate-500 animate-pulse">
+          Loading Directory...
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 font-sans md:p-10">
-      <div className="mx-auto max-w-4xl">
+    <div className="min-h-screen bg-slate-50 px-3 py-4 md:px-10">
+      <div className="mx-auto max-w-6xl">
         <Toast message={toast.msg} visible={toast.show} />
 
-        {/* HEADER */}
-        <header className="mb-8">
-          <motion.div 
-            initial={{ x: -20, opacity: 0 }} 
-            animate={{ x: 0, opacity: 1 }}
-            className="flex flex-col gap-1"
-          >
-            <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">
-              Staff Directory
+        {/* HEADER + SEARCH */}
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
+              Outlet Management
             </h1>
-            <p className="text-sm font-medium text-slate-500">
-              Select an outlet to manage users, products, or view stock
-            </p>
-          </motion.div>
-        </header>
+            
+          </div>
 
-        {/* SEARCH BAR */}
-        <div className="mb-8">
-          <div className="relative group">
-            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-              <Search size={18} className="text-slate-400 transition-colors group-focus-within:text-emerald-500" />
-            </div>
+          {/* SEARCH (beside title) */}
+          <div className="relative w-full max-w-sm">
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            />
             <input
               type="text"
               placeholder="Search by name or branch..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-white py-4 pl-11 pr-4 text-base font-medium text-slate-900 shadow-sm transition-all placeholder:text-slate-400 focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
+              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm font-medium text-slate-900 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-4 focus:ring-emerald-500/10"
             />
           </div>
-        </div>
+        </motion.div>
 
-        {/* LIST SECTION */}
-        <motion.div 
-          layout
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col gap-4"
-        >
-          <AnimatePresence mode='popLayout'>
+        {/* LIST */}
+        <motion.div layout className="flex flex-col gap-3">
+          <AnimatePresence mode="popLayout">
             {filteredOutlets.map((o) => (
               <motion.div
                 key={o.id}
                 layout
-                initial={{ opacity: 0, scale: 0.98 }}
+                initial={{ opacity: 0, scale: 0.97 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 whileHover={{ y: -2 }}
-                className="group relative flex flex-col items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-emerald-500/30 hover:shadow-md sm:flex-row sm:items-center"
+                className="group flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-emerald-500/30 hover:shadow-md sm:flex-row sm:items-center sm:justify-between"
               >
-                
-                {/* Card Info */}
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition-colors group-hover:bg-emerald-100 group-hover:text-emerald-700">
-                    <Store size={22} />
+                {/* INFO */}
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                    <Store size={20} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-slate-800">{o.name}</h3>
-                    <div className="mt-0.5 flex items-center gap-1.5 text-xs font-medium text-slate-500">
-                      <MapPin size={12} />
-                      <span>{o.branch ?? 'Main Branch'}</span>
+                    <h3 className="text-base font-bold text-slate-800">{o.name}</h3>
+                    <div className="mt-0.5 flex items-center gap-1 text-xs font-medium text-slate-500">
+                      <MapPin size={11} />
+                      {o.branch ?? 'Main Branch'}
                     </div>
                   </div>
                 </div>
 
-                {/* Actions */}
-                <div className="flex w-full gap-3 sm:w-auto flex-wrap sm:flex-nowrap">
-                  
-                  {/* Stock Button */}
+                {/* ACTIONS */}
+                <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap">
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
+                    whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => router.push(`/users/${o.id}/stock`)}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 sm:flex-none"
-                    title="View Stock"
+                    className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold uppercase text-slate-600 hover:bg-slate-50"
                   >
-                    <Package size={16} />
+                    <Package size={14} />
                     Stock
                   </motion.button>
 
-                   {/* --- NEW PRODUCTS BUTTON --- */}
-                   <motion.button
-                    whileHover={{ scale: 1.02 }}
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => router.push(`/users/${o.id}/products`)}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 sm:flex-none"
-                    title="Manage Products"
+                    className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold uppercase text-slate-600 hover:bg-slate-50"
                   >
-                    <ShoppingBag size={16} />
+                    <ShoppingBag size={14} />
                     Products
                   </motion.button>
 
-                  {/* Manage Button */}
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
+                    whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => {
                       showToast(`Loading ${o.name}...`);
                       router.push(`/users/${o.id}`);
                     }}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-white shadow-lg shadow-emerald-500/20 transition-all hover:shadow-emerald-500/40 sm:flex-none"
+                    className="flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 px-4 py-2 text-[11px] font-bold uppercase text-white shadow-md shadow-emerald-500/20"
                   >
                     Manage
-                    <ChevronRight size={16} />
+                    <ChevronRight size={14} />
                   </motion.button>
                 </div>
-
               </motion.div>
             ))}
           </AnimatePresence>
 
-          {/* Empty State */}
+          {/* EMPTY */}
           {filteredOutlets.length === 0 && (
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              className="py-12 text-center"
-            >
-              <div className="mb-3 flex justify-center text-slate-300">
-                <Store size={48} />
-              </div>
-              <p className="text-base font-medium text-slate-500">No outlets match your search.</p>
-            </motion.div>
+            <div className="py-10 text-center">
+              <Store size={40} className="mx-auto text-slate-300" />
+              <p className="mt-2 text-sm font-medium text-slate-500">
+                No outlets match your search.
+              </p>
+            </div>
           )}
         </motion.div>
       </div>

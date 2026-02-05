@@ -42,19 +42,13 @@ export default function StockItemsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 md:p-8 font-sans">
+    <div className="min-h-screen bg-slate-50 p-2 md:p-4 font-sans">
       
       {/* --- HEADER SECTION --- */}
       <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
-             <Box size={24} />
-          </div>
           <div>
             <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Stock Items</h1>
-            <p className="mt-1 text-sm font-medium text-slate-500">
-              Super Admin Control Panel | Manage raw materials
-            </p>
           </div>
         </div>
         

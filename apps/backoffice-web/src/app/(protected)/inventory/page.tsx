@@ -33,8 +33,7 @@ export default function InventoryPage() {
           </div>
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">Inventory</h1>
-            <p className="text-sm text-muted-foreground">Super Admin Panel</p>
-          </div>
+            </div>
         </div>
 
         {/* Actions Group (Search + Button) */}

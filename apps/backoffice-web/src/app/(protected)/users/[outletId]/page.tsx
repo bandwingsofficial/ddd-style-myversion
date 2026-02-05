@@ -1,15 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, Mail, ShieldCheck, Key, Plus, X, 
-  Loader2, RefreshCw, Eye, EyeOff, CheckCircle2, AlertCircle 
+  Loader2, RefreshCw, Eye, EyeOff, CheckCircle2, AlertCircle, ArrowLeft 
 } from 'lucide-react';
 import { UsersService } from '@/features/users/users.service';
 
 export default function OutletUsersPage() {
+  const router = useRouter();
   const { outletId } = useParams<{ outletId: string }>();
 
   const [users, setUsers] = useState<any[]>([]);
@@ -118,7 +119,7 @@ export default function OutletUsersPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 md:p-8 font-sans">
+    <div className="min-h-screen bg-slate-50 p-1 md:p-4 font-sans">
       
       {/* --- SUCCESS TOAST --- */}
       <AnimatePresence>
@@ -139,6 +140,18 @@ export default function OutletUsersPage() {
       {/* --- HEADER --- */}
       <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
         <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }}>
+          
+          {/* Back Button */}
+          <button 
+            onClick={() => router.back()}
+            className="group mb-3 flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200 transition-all group-hover:bg-slate-50 group-hover:ring-slate-300">
+               <ArrowLeft size={14} className="transition-transform group-hover:-translate-x-0.5" />
+            </div>
+            Back to Directory
+          </button>
+
           <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">Outlet Users</h1>
           <p className="mt-1 text-sm font-medium text-slate-500">Manage accounts created under this location</p>
         </motion.div>
@@ -264,16 +277,10 @@ export default function OutletUsersPage() {
                 <input 
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10" 
                   placeholder="Password" 
-                  type={showPass ? "text" : "password"} 
+                  type="password"
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)} 
                 />
-                <button 
-                  onClick={() => setShowPass(!showPass)} 
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
               </div>
               <PrimaryButton onClick={createUser}>Create Account</PrimaryButton>
             </div>

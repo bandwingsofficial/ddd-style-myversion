@@ -12,7 +12,7 @@ export default function CategoriesPage() {
 
   return (
     // 1. PAGE CONTAINER
-    <div className="min-h-screen bg-background p-6 md:p-8 font-sans">
+    <div className="min-h-screen bg-background p-3 md:p-4 font-sans">
       
       {/* 2. PAGE HEADER SECTION */}
       <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -20,9 +20,6 @@ export default function CategoriesPage() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Categories
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Super Admin Control Panel | Manage product categories
-          </p>
         </div>
 
         {/* 3. ACTION BUTTON */}

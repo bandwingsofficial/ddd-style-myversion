@@ -88,7 +88,7 @@ export default function OutletStockPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 font-sans md:p-10">
+    <div className="min-h-screen bg-slate-50 p-2 font-sans md:p-4">
       <div className="mx-auto max-w-5xl">
         
         {/* HEADER */}

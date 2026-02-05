@@ -18,7 +18,7 @@ export default function ProductsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 px-8 py-5">
+    <div className="min-h-screen bg-slate-50 px-4 py-2">
       {/* HEADER */}
       <div className="mb-6 flex items-center justify-between">
         {/* Left: Title Group */}
@@ -28,8 +28,7 @@ export default function ProductsPage() {
           </div>
           <div>
             <h1 className="m-0 text-2xl font-extrabold text-slate-900">Products Management</h1>
-            <p className="m-0 text-sm font-medium text-slate-500">Super Admin Control Panel</p>
-          </div>
+           </div>
         </div>
 
         {/* Right: Actions */}
