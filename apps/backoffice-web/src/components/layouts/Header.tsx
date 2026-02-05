@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// Define the searchable items
 const SEARCH_ITEMS = [
   { label: 'Dashboard', path: '/', icon: LayoutDashboard },
   { label: 'Outlets', path: '/outlets', icon: Store },
@@ -35,7 +34,6 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   
-  // Search States
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredItems, setFilteredItems] = useState(SEARCH_ITEMS);
   
@@ -95,16 +93,17 @@ export function Header({ onToggleSidebar }: HeaderProps) {
     <motion.header 
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-border bg-background/80 px-8 backdrop-blur-md"
+      // REDUCED HEIGHT: Changed from h-24 to h-20 (approx 16px reduction)
+      className="sticky top-0 z-40 flex h-20 items-center justify-between border-b border-emerald-500/10 bg-white/70 px-10 backdrop-blur-xl shadow-sm"
     >
       {/* LEFT SECTION */}
-      <div className="flex items-center gap-6">
-        {/* Toggle Button */}
+      <div className="flex items-center gap-8">
+        {/* Toggle Button - Reduced size slightly */}
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={onToggleSidebar}
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-input bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="flex h-10 w-10 items-center justify-center rounded-2xl border border-emerald-500/20 bg-white text-emerald-600 shadow-sm transition-all hover:bg-emerald-50 hover:border-emerald-500/40"
         >
           <Menu size={20} />
         </motion.button>
@@ -114,7 +113,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
           <div className="relative flex items-center">
             <Search 
               size={18} 
-              className={`absolute left-3.5 transition-colors ${isSearchFocused ? 'text-primary' : 'text-muted-foreground'}`}
+              className={`absolute left-4 transition-colors duration-300 ${isSearchFocused ? 'text-emerald-500' : 'text-gray-400'}`}
             />
             <input
               placeholder="Quick Search..."
@@ -122,37 +121,39 @@ export function Header({ onToggleSidebar }: HeaderProps) {
               onChange={handleSearch}
               onKeyDown={handleKeyDown}
               onFocus={() => setIsSearchFocused(true)}
+              // REDUCED WIDTH: Focused width changed from w-96 to w-80 to avoid conflict
               className={`
-                h-11 w-64 rounded-xl border bg-muted/50 py-2 pl-10 pr-12 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground
-                focus:w-80 focus:border-primary/50 focus:bg-background focus:ring-4 focus:ring-primary/10
-                ${isSearchFocused ? 'border-primary/50 bg-background' : 'border-transparent'}
+                h-11 w-64 rounded-2xl border bg-gray-50/50 py-2 pl-12 pr-12 text-sm text-gray-700 outline-none transition-all duration-300
+                placeholder:text-gray-400
+                ${isSearchFocused 
+                  ? 'w-80 border-emerald-400/50 bg-white ring-8 ring-emerald-500/5 shadow-lg shadow-emerald-500/5' 
+                  : 'border-emerald-500/10 hover:border-emerald-500/20'}
               `}
             />
-            <div className={`absolute right-3 flex items-center gap-1 rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground transition-opacity ${isSearchFocused ? 'opacity-0' : 'opacity-100'}`}>
+            <div className={`absolute right-4 flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] font-bold text-gray-400 transition-opacity duration-300 ${isSearchFocused ? 'opacity-0' : 'opacity-100'}`}>
               <Command size={10} /> K
             </div>
           </div>
 
-          {/* SEARCH RESULTS DROPDOWN */}
           <AnimatePresence>
             {isSearchFocused && searchQuery && (
               <motion.div
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 8 }}
-                className="absolute left-0 top-full mt-2 w-full min-w-[320px] overflow-hidden rounded-xl border border-border bg-popover p-1.5 shadow-xl"
+                initial={{ opacity: 0, y: 10, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.98 }}
+                className="absolute left-0 top-full mt-3 w-full min-w-[320px] overflow-hidden rounded-2xl border border-emerald-500/10 bg-white p-2 shadow-2xl shadow-emerald-900/10"
               >
                 {filteredItems.length > 0 ? (
-                  <div className="flex flex-col gap-0.5">
-                    {filteredItems.map((item, index) => {
+                  <div className="flex flex-col gap-1">
+                    {filteredItems.map((item) => {
                       const Icon = item.icon;
                       return (
                         <button
                           key={item.path}
                           onClick={() => handleNavigate(item.path)}
-                          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                          className="flex items-center gap-4 rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-600 transition-all hover:bg-emerald-50 hover:text-emerald-700 group"
                         >
-                          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
                             <Icon size={16} />
                           </div>
                           {item.label}
@@ -161,8 +162,8 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                     })}
                   </div>
                 ) : (
-                  <div className="py-8 text-center text-sm text-muted-foreground">
-                    No results found for "{searchQuery}"
+                  <div className="py-8 text-center text-sm text-gray-400">
+                    No results for <span className="font-bold text-gray-600">"{searchQuery}"</span>
                   </div>
                 )}
               </motion.div>
@@ -172,85 +173,87 @@ export function Header({ onToggleSidebar }: HeaderProps) {
       </div>
 
       {/* RIGHT SECTION */}
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-5">
         
-        {/* Date Display */}
+        {/* Date Display - Slightly reduced padding */}
         {dateString && (
-          <div className="hidden lg:flex items-center gap-2 rounded-xl bg-primary/5 px-4 py-2 text-xs font-bold text-primary border border-primary/10">
+          <div className="hidden lg:flex items-center gap-2 rounded-2xl bg-emerald-50 px-4 py-2 text-xs font-black text-emerald-600 border border-emerald-500/10 shadow-sm shadow-emerald-500/5">
             <CalendarDays size={16} />
-            <span>{dateString}</span>
+            <span className="tracking-tight">{dateString}</span>
           </div>
         )}
 
-        {/* Notifications */}
+        {/* Notifications - Reduced size */}
         <motion.button 
           whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-          className="relative text-muted-foreground transition-colors hover:text-foreground"
+          whileTap={{ scale: 0.9 }}
+          className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-50/50 text-emerald-600 transition-colors hover:bg-emerald-100 hover:text-emerald-700"
         >
-          <Bell size={22} />
-          <span className="absolute right-0 top-0 flex h-2.5 w-2.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-destructive opacity-75"></span>
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-destructive border-2 border-background"></span>
+          <Bell size={20} />
+          <span className="absolute right-2 top-2 flex h-2.5 w-2.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 border-2 border-white"></span>
           </span>
         </motion.button>
 
-        <div className="h-8 w-px bg-border" />
+        <div className="h-8 w-px bg-gray-100" />
 
         {/* USER DROPDOWN */}
         <div ref={dropdownRef} className="relative">
           <button 
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="flex items-center gap-3 outline-none"
+            className="group flex items-center gap-3 outline-none"
           >
             <div className="hidden text-right md:block">
-              <div className="text-sm font-bold text-foreground">Super Admin</div>
-              <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{actorType || 'ADMIN'}</div>
+              <div className="text-sm font-black text-gray-800 leading-tight">Super Admin</div>
+              <div className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-widest">{actorType || 'ADMIN'}</div>
             </div>
 
             <div className="relative">
               <motion.div 
                 whileHover={{ scale: 1.05 }}
-                className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-emerald-400 text-lg font-bold text-white shadow-lg shadow-primary/20"
+                className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#10a353] text-lg font-black text-white shadow-lg shadow-emerald-500/20 transition-transform group-hover:rotate-3"
               >
                 S
               </motion.div>
-              <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-background bg-green-500" />
+              <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-400 shadow-sm" />
             </div>
             
-            <ChevronDown size={16} className={`text-muted-foreground transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+            <ChevronDown size={16} className={`text-gray-400 transition-transform duration-300 ${isDropdownOpen ? 'rotate-180 text-emerald-500' : ''}`} />
           </button>
 
           <AnimatePresence>
             {isDropdownOpen && (
               <motion.div
-                initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                initial={{ opacity: 0, y: 12, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                transition={{ duration: 0.15 }}
-                className="absolute right-0 top-full mt-2 w-56 overflow-hidden rounded-xl border border-border bg-popover p-1.5 shadow-xl"
+                exit={{ opacity: 0, y: 12, scale: 0.95 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className="absolute right-0 top-full mt-3 w-60 overflow-hidden rounded-[2rem] border border-emerald-500/10 bg-white p-2 shadow-2xl shadow-emerald-900/10"
               >
-                <div className="px-3 py-2.5 border-b border-border mb-1">
-                  <p className="text-xs text-muted-foreground">Signed in as</p>
-                  <p className="text-sm font-bold text-foreground truncate">admin@example.com</p>
+                <div className="px-5 py-3 border-b border-gray-50 mb-1">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Account</p>
+                  <p className="text-xs font-black text-gray-800 truncate mt-0.5">admin@example.com</p>
                 </div>
 
-                <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                  <User size={16} /> My Profile
-                </button>
+                <div className="space-y-0.5">
+                  <button className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-500 transition-all hover:bg-emerald-50 hover:text-emerald-700">
+                    <User size={16} /> My Profile
+                  </button>
 
-                <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                  <SettingsIcon size={16} /> Settings
-                </button>
+                  <button className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-500 transition-all hover:bg-emerald-50 hover:text-emerald-700">
+                    <SettingsIcon size={16} /> Settings
+                  </button>
 
-                <div className="my-1 h-px bg-border" />
+                  <div className="mx-4 my-1.5 h-px bg-gray-50" />
 
-                <button 
-                  onClick={logout}
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
-                >
-                  <LogOut size={16} /> Log Out
-                </button>
+                  <button 
+                    onClick={logout}
+                    className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-black text-red-500 transition-all hover:bg-red-50"
+                  >
+                    <LogOut size={16} /> Log Out
+                  </button>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

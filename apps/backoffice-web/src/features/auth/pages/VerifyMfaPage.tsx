@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMfa } from '../hooks/useMfa';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 
 export function VerifyMfaPage() {
   const router = useRouter();
@@ -37,42 +38,51 @@ export function VerifyMfaPage() {
   }
 
   return (
-    // 1. PAGE CONTAINER
-    <div className="min-h-screen w-full flex items-center justify-center bg-background p-4 font-sans text-foreground">
+    <div className="min-h-screen w-full flex items-center justify-center p-4 font-sans">
       
-      {/* 2. ANIMATED CARD WRAPPER */}
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: "easeOut" }}
-        className="w-full max-w-[380px] overflow-hidden rounded-3xl border border-border bg-card shadow-2xl"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4 }}
+        // Using the same compact dimensions as your updated Login page
+        className="flex w-full max-w-[850px] max-h-[550px] overflow-hidden rounded-[1.5rem] bg-white shadow-2xl"
       >
         
-        {/* 3. DECORATIVE HEADER */}
-        <div className="relative flex h-28 flex-col items-center justify-center bg-gradient-to-br from-primary to-primary/80 text-primary-foreground">
-          <div className="flex flex-col items-center z-10">
-            <span className="mb-1 text-[11px] font-bold uppercase tracking-[2px] opacity-80">
-              Identity Check
-            </span>
-            <h2 className="text-lg font-bold tracking-tight">
-              TWO-FACTOR AUTH
-            </h2>
-          </div>
+        {/* LEFT SIDE: IMAGE SECTION */}
+        <div className="hidden md:block w-1/2 relative bg-[#d4f3e5]">
+          <Image 
+            src="/login2.jpg" 
+            alt="Sugarcane and Coconut" 
+            fill
+            className="object-cover" 
+            priority
+          />
         </div>
 
-        {/* 4. FORM SECTION */}
-        <div className="px-8 py-8">
-          <div className="mb-6 text-center">
-            <h1 className="text-2xl font-bold text-foreground">Verify it's you</h1>
-            <p className="text-sm text-muted-foreground mt-1">
+        {/* RIGHT SIDE: FORM SECTION */}
+        <div className="w-full md:w-1/2 px-8 py-10 lg:px-14 flex flex-col justify-center bg-white relative">
+          
+          {/* LOGO & TITLE */}
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-6">
+              <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-[#10a353]">
+                 <span className="text-white font-black text-xl">S</span>
+              </div>
+              <div>
+                <h2 className="text-xl font-black leading-none text-[#10a353] tracking-tight">Cane & Tender</h2>
+                <p className="text-[9px] font-bold tracking-[0.2em] text-gray-400 uppercase">Super Admin</p>
+              </div>
+            </div>
+            
+            <h1 className="text-3xl font-black text-gray-900 leading-tight">Verify it's you</h1>
+            <p className="text-sm font-medium text-gray-500 mt-2">
               Enter the 6-digit code from your app.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-            
-            {/* MFA CODE INPUT (Special Styling) */}
-            <div className="space-y-1">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* MFA CODE INPUT */}
+            <div className="relative">
               <input
                 type="text"
                 inputMode="numeric"
@@ -82,48 +92,49 @@ export function VerifyMfaPage() {
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 required
-                className="w-full rounded-2xl border border-input bg-input/30 px-4 py-4 text-center text-2xl font-bold tracking-[0.5em] transition-all placeholder:tracking-normal placeholder:text-muted-foreground/50 focus:border-primary focus:bg-background focus:outline-none focus:ring-4 focus:ring-primary/10"
+                className="w-full rounded-xl border border-gray-100 bg-gray-50/50 px-4 py-4 text-center text-2xl font-black tracking-[0.3em] outline-none transition-all focus:border-[#10a353] focus:bg-white focus:ring-4 focus:ring-[#10a353]/10"
               />
             </div>
 
             {/* VERIFY BUTTON */}
-            <motion.button
-              whileTap={{ scale: 0.98 }}
-              whileHover={{ scale: 1.01 }}
+            <button
               type="submit"
               disabled={loading || !challengeId}
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 hover:shadow-primary/40 disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full mt-2 rounded-xl bg-[#10a353] py-4 text-sm font-bold text-white shadow-lg shadow-[#10a353]/20 transition-all hover:bg-[#0d8a45] active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2"
             >
-              {loading ? (
-                <span className="animate-pulse">VERIFYING...</span>
-              ) : (
-                <>
-                  VERIFY ACCESS
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7"/></svg>
-                </>
+              {loading ? "VERIFYING..." : "VERIFY ACCESS"}
+              {!loading && (
+                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7"/></svg>
               )}
-            </motion.button>
+            </button>
 
             {/* ERROR MESSAGE */}
             {error && (
-              <motion.div 
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                className="rounded-lg bg-destructive/10 p-3 text-center text-xs font-medium text-destructive"
+              <motion.p 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }}
+                className="text-center text-xs font-bold text-red-500 mt-2"
               >
                 {error.message}
-              </motion.div>
+              </motion.p>
             )}
 
-            {/* BACK TO LOGIN LINK */}
-            <button 
-              type="button" 
-              onClick={() => router.replace('/auth/login')}
-              className="mx-auto text-xs font-medium text-muted-foreground transition-colors hover:text-foreground hover:underline underline-offset-4"
-            >
-              Back to Login
-            </button>
+            {/* BACK TO LOGIN */}
+            <div className="text-center mt-4">
+                <button 
+                  type="button" 
+                  onClick={() => router.replace('/auth/login')}
+                  className="text-[10px] font-bold text-[#10a353] hover:text-[#0d8a45] transition-colors uppercase tracking-widest"
+                >
+                  Back to Login
+                </button>
+            </div>
           </form>
+
+          {/* INTERNAL FOOTER */}
+          <div className="absolute bottom-4 left-0 w-full text-center text-[10px] font-medium text-gray-400">
+            &copy; 2026 Cane & Tender Admin. All rights reserved.
+          </div>
         </div>
       </motion.div>
     </div>
