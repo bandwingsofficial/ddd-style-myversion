@@ -145,7 +145,7 @@ export default function OutletsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] p-6 md:p-8 font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] p-2 md:p-2 font-sans">
       <AnimatePresence>
         {cameraWarning && (
           <div className="fixed top-10 left-1/2 z-[100] -translate-x-1/2">

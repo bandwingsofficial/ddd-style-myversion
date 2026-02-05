@@ -47,7 +47,7 @@ export const OutletTable = ({
                     className={`group transition-all duration-200 ${isDeactivated ? "bg-slate-50/50" : ""}`}
                   >
                     {/* Outlet Details */}
-                    <td className="bg-white px-6 py-4 first:rounded-l-2xl shadow-sm border-y border-l border-slate-100 group-hover:border-emerald-200 transition-colors">
+                    <td className="bg-white px-5 py-3 first:rounded-l-2xl shadow-sm border-y border-l border-slate-100 group-hover:border-emerald-200 transition-colors">
                       <div className="flex items-center gap-4">
                         <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-inner transition-colors ${isDeactivated ? 'bg-slate-100 text-slate-400' : 'bg-emerald-50 text-emerald-600'}`}>
                           <Store size={22} />
@@ -62,7 +62,7 @@ export const OutletTable = ({
                     </td>
 
                     {/* New Address/Location Cell */}
-                    <td className="bg-white px-6 py-4 border-y border-slate-100 group-hover:border-emerald-200 transition-colors">
+                    <td className="bg-white px-4 py-3 border-y border-slate-100 group-hover:border-emerald-200 transition-colors">
                       <div className="flex flex-col max-w-[200px]">
                         <div className={`text-[12px] font-bold truncate ${isDeactivated ? 'text-slate-400' : 'text-slate-600'}`}>
                           {o.address || "No Address Added"}
@@ -74,7 +74,7 @@ export const OutletTable = ({
                     </td>
 
                     {/* Status Badge */}
-                    <td className="bg-white px-6 py-4 border-y border-slate-100 group-hover:border-emerald-200 transition-colors">
+                    <td className="bg-white px-4 py-3 border-y border-slate-100 group-hover:border-emerald-200 transition-colors">
                       <div className={`
                         inline-flex items-center gap-2 rounded-full px-3 py-1 text-[10px] font-black tracking-tighter border-2
                         ${!isDeactivated 
@@ -88,7 +88,7 @@ export const OutletTable = ({
                     </td>
 
                     {/* Operation Select */}
-                    <td className="bg-white px-6 py-4 border-y border-slate-100 group-hover:border-emerald-200 transition-colors">
+                    <td className="bg-white px-4 py-3 border-y border-slate-100 group-hover:border-emerald-200 transition-colors">
                       <div className="flex flex-col gap-1">
                         <div className="relative w-fit">
                             <select 
@@ -96,7 +96,7 @@ export const OutletTable = ({
                                 value={o.workingState.status} 
                                 onChange={(e) => updateWorkingStatus(o.id, e.target.value as any)}
                                 className={`
-                                    appearance-none rounded-full border-2 px-4 py-1.5 pr-8 text-[11px] font-black cursor-pointer transition-all outline-none
+                                    appearance-none rounded-full border-2 px-3 py-1.5 pr-8 text-[11px] font-black cursor-pointer transition-all outline-none
                                     ${o.workingState.status === 'OPEN' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 
                                       o.workingState.status === 'CLOSED' ? 'bg-rose-50 border-rose-100 text-rose-600' : 
                                       'bg-amber-50 border-amber-100 text-amber-600'}
@@ -111,14 +111,12 @@ export const OutletTable = ({
                                 <div className={`h-1.5 w-1.5 rounded-full ${o.workingState.status === 'OPEN' ? 'bg-emerald-400' : 'bg-slate-400'}`} />
                             </div>
                         </div>
-                        <span className="text-[9px] text-slate-400 font-medium pl-1">
-                          Time, {new Date().toLocaleDateString()}
-                        </span>
+                        
                       </div>
                     </td>
 
                     {/* Camera Toggle */}
-                    <td className="bg-white px-6 py-4 border-y border-slate-100 group-hover:border-emerald-200 transition-colors">
+                    <td className="bg-white px-4 py-3 border-y border-slate-100 group-hover:border-emerald-200 transition-colors">
                       <div className="flex items-center justify-center gap-3">
                          <div 
                           onClick={() => !isDeactivated && !isNotOpen && handleCameraToggle(o)} 
@@ -139,7 +137,7 @@ export const OutletTable = ({
                     </td>
 
                     {/* Actions */}
-                    <td className="bg-white px-6 py-4 last:rounded-r-2xl shadow-sm border-y border-r border-slate-100 group-hover:border-emerald-200 transition-colors text-right">
+                    <td className="bg-white px-4 py-3 last:rounded-r-2xl shadow-sm border-y border-r border-slate-100 group-hover:border-emerald-200 transition-colors text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button 
                            onClick={() => setEditingOutlet({ 
