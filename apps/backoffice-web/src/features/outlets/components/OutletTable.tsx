@@ -1,4 +1,4 @@
-import { Store, MapPin, Edit3, Trash2, Video, Settings, Power } from "lucide-react";
+import { Store, MapPin, Edit3, Trash2, Video, Settings, Power, Home } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface OutletTableProps {
@@ -23,6 +23,7 @@ export const OutletTable = ({
           <thead>
             <tr className="text-slate-500 uppercase text-[11px] font-bold tracking-widest">
               <th className="px-6 pb-2">Outlet Details</th>
+              <th className="px-6 pb-2">Location</th>
               <th className="px-6 pb-2">Status</th>
               <th className="px-6 pb-2">Operation</th>
               <th className="px-6 pb-2 text-center">Live Camera</th>
@@ -60,6 +61,18 @@ export const OutletTable = ({
                       </div>
                     </td>
 
+                    {/* New Address/Location Cell */}
+                    <td className="bg-white px-6 py-4 border-y border-slate-100 group-hover:border-emerald-200 transition-colors">
+                      <div className="flex flex-col max-w-[200px]">
+                        <div className={`text-[12px] font-bold truncate ${isDeactivated ? 'text-slate-400' : 'text-slate-600'}`}>
+                          {o.address || "No Address Added"}
+                        </div>
+                        <div className="text-[10px] font-medium text-slate-400">
+                          PIN: {o.pincode || "N/A"}
+                        </div>
+                      </div>
+                    </td>
+
                     {/* Status Badge */}
                     <td className="bg-white px-6 py-4 border-y border-slate-100 group-hover:border-emerald-200 transition-colors">
                       <div className={`
@@ -74,7 +87,7 @@ export const OutletTable = ({
                       </div>
                     </td>
 
-                    {/* Operation Select - Updated Dropdown UI */}
+                    {/* Operation Select */}
                     <td className="bg-white px-6 py-4 border-y border-slate-100 group-hover:border-emerald-200 transition-colors">
                       <div className="flex flex-col gap-1">
                         <div className="relative w-fit">
@@ -125,11 +138,18 @@ export const OutletTable = ({
                       </div>
                     </td>
 
-                    {/* Actions - Updated with Icons only */}
+                    {/* Actions */}
                     <td className="bg-white px-6 py-4 last:rounded-r-2xl shadow-sm border-y border-r border-slate-100 group-hover:border-emerald-200 transition-colors text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button 
-                           onClick={() => setEditingOutlet({ ...o, latitude: o.location?.latitude || "", longitude: o.location?.longitude || "", deliveryRadiusKm: o.deliveryRadiusKm || "" })}
+                           onClick={() => setEditingOutlet({ 
+                              ...o, 
+                              latitude: o.location?.latitude || "", 
+                              longitude: o.location?.longitude || "", 
+                              deliveryRadiusKm: o.deliveryRadiusKm || "",
+                              address: o.address || "",
+                              pincode: o.pincode || ""
+                           })}
                            className="rounded-xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all active:scale-90"
                            title="Edit"
                         >
@@ -158,4 +178,4 @@ export const OutletTable = ({
       </div>
     </div>
   );
-};  
+};

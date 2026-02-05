@@ -30,8 +30,17 @@ export default function OutletsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [cameraWarning, setCameraWarning] = useState<string | null>(null);
 
+  // UPDATED: Added address and pincode to initial state
   const [createForm, setCreateForm] = useState({
-    name: "", branch: "", latitude: "", longitude: "", deliveryRadiusKm: "", cameraEnabled: false, isCentral: false,
+    name: "", 
+    branch: "", 
+    address: "", 
+    pincode: "", 
+    latitude: "", 
+    longitude: "", 
+    deliveryRadiusKm: "", 
+    cameraEnabled: false, 
+    isCentral: false,
   });
 
   useEffect(() => { fetchOutlets(); }, [fetchOutlets]);
@@ -46,7 +55,8 @@ export default function OutletsPage() {
   const filteredOutlets = useMemo(() => {
     return outlets.filter(o => 
       o.name.toLowerCase().includes(search.toLowerCase()) || 
-      (o.branch && o.branch.toLowerCase().includes(search.toLowerCase()))
+      (o.branch && o.branch.toLowerCase().includes(search.toLowerCase())) ||
+      (o.address && o.address.toLowerCase().includes(search.toLowerCase()))
     );
   }, [outlets, search]);
 
@@ -66,32 +76,64 @@ export default function OutletsPage() {
   const handleEditSave = async () => {
     if (!editingOutlet) return;
     setFormError(null);
+    
+    // UPDATED: Added address and pincode to update payload
     const payload = {
       name: editingOutlet.name.trim(),
       branch: editingOutlet.branch?.trim() || undefined,
+      address: editingOutlet.address?.trim(),
+      pincode: editingOutlet.pincode?.trim(),
       latitude: Number(editingOutlet.latitude),
       longitude: Number(editingOutlet.longitude),
       deliveryRadiusKm: Number(editingOutlet.deliveryRadiusKm),
     };
+
     setIsSaving(true);
     try {
       await OutletService.update(editingOutlet.id, payload);
       setEditingOutlet(null);
       fetchOutlets();
-    } catch (err: any) { setFormError("Failed to update outlet."); } finally { setIsSaving(false); }
+    } catch (err: any) { 
+        setFormError(err.response?.data?.message?.[0] || "Failed to update outlet."); 
+    } finally { setIsSaving(false); }
   };
 
   const handleCreateSubmit = async () => {
     setFormError(null);
     setIsSaving(true);
     try {
-      const payload: any = { ...createForm, latitude: Number(createForm.latitude), longitude: Number(createForm.longitude), deliveryRadiusKm: Number(createForm.deliveryRadiusKm) };
+      // UPDATED: Ensuring address and pincode are in the spread
+      const payload: any = { 
+        ...createForm, 
+        latitude: Number(createForm.latitude), 
+        longitude: Number(createForm.longitude), 
+        deliveryRadiusKm: Number(createForm.deliveryRadiusKm) 
+      };
+
       if (createForm.cameraEnabled) payload.workingState = { status: "OPEN" };
+      
       await OutletService.create(payload);
       setIsCreateModalOpen(false);
-      setCreateForm({ name: "", branch: "", latitude: "", longitude: "", deliveryRadiusKm: "", cameraEnabled: false, isCentral: false });
+      
+      // RESET FORM: Including new fields
+      setCreateForm({ 
+        name: "", 
+        branch: "", 
+        address: "", 
+        pincode: "", 
+        latitude: "", 
+        longitude: "", 
+        deliveryRadiusKm: "", 
+        cameraEnabled: false, 
+        isCentral: false 
+      });
+      
       fetchOutlets();
-    } catch (err: any) { setFormError("Failed to create outlet."); } finally { setIsSaving(false); }
+    } catch (err: any) { 
+        // Better error logging to see why backend rejected (400)
+        const errorMsg = err.response?.data?.message;
+        setFormError(Array.isArray(errorMsg) ? errorMsg[0] : "Failed to create outlet. Check all fields."); 
+    } finally { setIsSaving(false); }
   };
 
   if (loading) return (
@@ -114,7 +156,6 @@ export default function OutletsPage() {
         )}
       </AnimatePresence>
       
-      {/* --- REDUCED SIZE STATS GRID (Matching Image 2) --- */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {[
           { label: "Total Outlets", val: stats.total, icon: Store, color: "text-emerald-600", bg: "bg-emerald-50" },
@@ -132,7 +173,6 @@ export default function OutletsPage() {
                   <h3 className="text-2xl font-black text-slate-800 leading-tight">{s.val}</h3>
                 </div>
              </div>
-             {/* Sparkline Visual Placeholder from image 2 */}
              <div className="text-emerald-400 opacity-60">
                 <TrendingUp size={24} />
              </div>
@@ -150,7 +190,6 @@ export default function OutletsPage() {
         setDeleteConfirm={setDeleteConfirm}
       />
 
-      {/* Modals remain the same */}
       <OutletFormModal 
         isOpen={isCreateModalOpen || !!editingOutlet}
         onClose={() => { setIsCreateModalOpen(false); setEditingOutlet(null); setFormError(null); }}

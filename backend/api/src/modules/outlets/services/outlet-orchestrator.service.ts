@@ -68,6 +68,8 @@ async getNearbyOutlets(
     updates: {
       name?: string;
       branch?: string;
+      address?: string;
+      pincode?: string;
       latitude?: number;
       longitude?: number;
       deliveryRadiusKm?: number;

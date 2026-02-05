@@ -89,16 +89,18 @@ async getAllOutlets() {
         ? GeoLocation.create(dto.latitude, dto.longitude)
         : undefined;
 
-    const outlet = Outlet.createNew({
-      id: randomUUID(),
-      name: dto.name,
-      branch: dto.branch,
-      location,
-      deliveryRadiusKm: dto.deliveryRadiusKm,
-      cameraEnabled: dto.cameraEnabled,
-      isCentral: dto.isCentral,
-      createdBy: user.actorId,
-    });
+const outlet = Outlet.createNew({
+  id: randomUUID(),
+  name: dto.name,
+  branch: dto.branch,
+  address: dto.address,
+  pincode: dto.pincode,
+  location,
+  deliveryRadiusKm: dto.deliveryRadiusKm,
+  cameraEnabled: dto.cameraEnabled,
+  isCentral: dto.isCentral,
+  createdBy: user.actorId,
+});
 
     const data = await this.orchestrator.createOutlet({
       outlet,
@@ -129,6 +131,8 @@ async getAllOutlets() {
       updates: {
         name: dto.name,
         branch: dto.branch,
+        address: dto.address,
+        pincode: dto.pincode,
         latitude: dto.latitude,
         longitude: dto.longitude,
         deliveryRadiusKm: dto.deliveryRadiusKm,

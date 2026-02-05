@@ -55,7 +55,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     /**
-     * ✅ This object becomes `user` in JwtAuthGuard
+     * ✅ This object becomes user in JwtAuthGuard
      */
     return {
       actorId: payload.sub,
@@ -67,4 +67,3 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     };
   }
 }
-// jwt-strategy.ts

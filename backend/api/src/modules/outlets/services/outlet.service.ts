@@ -134,6 +134,8 @@ return outlets
     updates: {
       name?: string;
       branch?: string;
+      address?: string;
+      pincode?: string;
       latitude?: number;
       longitude?: number;
       deliveryRadiusKm?: number;
@@ -174,6 +176,8 @@ if (
     const updatedOutlet = outlet.updateDetails({
       name: params.updates.name,
       branch: params.updates.branch,
+      address: params.updates.address,
+      pincode: params.updates.pincode,
       location: updatedLocation,
       deliveryRadiusKm: params.updates.deliveryRadiusKm,
     });
@@ -501,6 +505,4 @@ private calculateDistanceKm(
 
   return R * c;
 }
-
-
 }

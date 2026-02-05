@@ -5,6 +5,8 @@ export interface Outlet {
   id: string;
   name: string;
   branch?: string;
+  address?: string;  // Added
+  pincode?: string;  // Added
   status: "ACTIVE" | "INACTIVE";
   workingState: {
     status: WorkingStatus;
@@ -16,6 +18,7 @@ export interface Outlet {
   deliveryRadiusKm?: number;
   isCentral: boolean;
 }
+
 export interface OutletUser {
   id: string;
   outletId: string;
@@ -26,4 +29,3 @@ export interface OutletUser {
   createdAt: string;
   updatedAt: string;
 }
-

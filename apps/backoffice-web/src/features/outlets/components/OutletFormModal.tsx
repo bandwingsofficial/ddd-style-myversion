@@ -85,6 +85,38 @@ export const OutletFormModal = ({
                          onChange={(e) => isCreateMode ? setCreateForm({...createForm, branch: e.target.value}) : setEditingOutlet({...editingOutlet, branch: e.target.value})} 
                       />
                    </div>
+
+                   {/* Address - Full Width */}
+                   <div className="col-span-2 space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Address</label>
+                      <input 
+                         className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10" 
+                         placeholder="Full street address" 
+                         value={isCreateMode ? createForm.address : editingOutlet?.address || ""} 
+                         onChange={(e) => isCreateMode ? setCreateForm({...createForm, address: e.target.value}) : setEditingOutlet({...editingOutlet, address: e.target.value})} 
+                      />
+                   </div>
+
+                   <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Pincode</label>
+                      <input 
+                         className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10" 
+                         placeholder="6-digit PIN" 
+                         value={isCreateMode ? createForm.pincode : editingOutlet?.pincode || ""} 
+                         onChange={(e) => isCreateMode ? setCreateForm({...createForm, pincode: e.target.value}) : setEditingOutlet({...editingOutlet, pincode: e.target.value})} 
+                      />
+                   </div>
+
+                   <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Delivery Radius (km)</label>
+                      <input 
+                         type="number"
+                         className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10" 
+                         value={isCreateMode ? createForm.deliveryRadiusKm : editingOutlet?.deliveryRadiusKm || ""} 
+                         onChange={(e) => isCreateMode ? setCreateForm({...createForm, deliveryRadiusKm: e.target.value}) : setEditingOutlet({...editingOutlet, deliveryRadiusKm: e.target.value})} 
+                      />
+                   </div>
+
                    <div className="space-y-1.5">
                       <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Latitude</label>
                       <input 
@@ -101,15 +133,6 @@ export const OutletFormModal = ({
                          className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10" 
                          value={isCreateMode ? createForm.longitude : editingOutlet?.longitude || ""} 
                          onChange={(e) => isCreateMode ? setCreateForm({...createForm, longitude: e.target.value}) : setEditingOutlet({...editingOutlet, longitude: e.target.value})} 
-                      />
-                   </div>
-                   <div className="col-span-2 space-y-1.5">
-                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Delivery Radius (km)</label>
-                      <input 
-                         type="number"
-                         className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-300 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10" 
-                         value={isCreateMode ? createForm.deliveryRadiusKm : editingOutlet?.deliveryRadiusKm || ""} 
-                         onChange={(e) => isCreateMode ? setCreateForm({...createForm, deliveryRadiusKm: e.target.value}) : setEditingOutlet({...editingOutlet, deliveryRadiusKm: e.target.value})} 
                       />
                    </div>
                 </div>

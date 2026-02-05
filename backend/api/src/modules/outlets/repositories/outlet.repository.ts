@@ -30,6 +30,9 @@ export class OutletRepository {
         id: outlet.id,
         name: outlet.name,
         branch: outlet.branch,
+        address: outlet.address,
+        pincode: outlet.pincode,
+
 
         status: OutletStatusMapper.toPrisma(outlet.status),
         workingStatus: OutletWorkingStateMapper.toPrisma(
@@ -126,6 +129,8 @@ async findWithLocation(
       data: {
         name: outlet.name,
         branch: outlet.branch,
+        address: outlet.address,
+        pincode: outlet.pincode,
 
         ...GeoLocationMapper.toPrisma(outlet.location),
 
@@ -152,6 +157,8 @@ async findWithLocation(
       data: {
         name: outlet.name,
         branch: outlet.branch,
+        address: outlet.address,
+        pincode: outlet.pincode,
 
         status: OutletStatusMapper.toPrisma(outlet.status),
         workingStatus: OutletWorkingStateMapper.toPrisma(
@@ -250,6 +257,8 @@ async findWithLocation(
     id: string;
     name: string;
     branch: string | null;
+    address: string | null;
+    pincode: string | null;
 
     status: any;
     workingStatus: any;
@@ -272,6 +281,8 @@ async findWithLocation(
       id: row.id,
       name: row.name,
       branch: row.branch ?? undefined,
+      address: row.address ?? undefined,
+      pincode: row.pincode ?? undefined,
 
       status: OutletStatusMapper.toDomain(row.status),
       workingState: OutletWorkingStateMapper.toDomain(

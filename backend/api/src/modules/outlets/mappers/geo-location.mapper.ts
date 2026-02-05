@@ -1,5 +1,3 @@
-// src/modules/outlets/mappers/geo-location.mapper.ts
-
 import { GeoLocation } from '../domain/value-objects/geo-location.vo';
 
 export class GeoLocationMapper {
@@ -20,11 +18,21 @@ export class GeoLocationMapper {
   }
 
   static toPrisma(location?: GeoLocation): {
-    latitude?: number;
-    longitude?: number;
+    latitude: number | null;
+    longitude: number | null;
   } {
-    if (!location) return {};
+    if (!location) {
+      return {
+        latitude: null,
+        longitude: null,
+      };
+    }
 
-    return location.getRaw();
+    const raw = location.getRaw();
+
+    return {
+      latitude: raw.latitude,
+      longitude: raw.longitude,
+    };
   }
 }

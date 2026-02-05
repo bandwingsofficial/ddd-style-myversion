@@ -12,6 +12,10 @@ export interface OutletProps {
   id: string;
   name: string;
   branch?: string;
+
+  address?: string;
+  pincode?: string;
+
   location?: GeoLocation;
 
   status: OutletStatus;
@@ -43,6 +47,9 @@ export class Outlet {
   readonly deliveryRadiusKm?: number;
   readonly isCentral: boolean;
 
+  readonly address?: string;
+  readonly pincode?: string;
+
   readonly createdAt: Date;
   readonly updatedAt: Date;
   readonly createdBy?: string;
@@ -62,6 +69,8 @@ export class Outlet {
     name: string;
     createdBy: string;
     branch?: string;
+    address?: string;
+    pincode?: string;
     location?: GeoLocation;
     deliveryRadiusKm?: number;
     cameraEnabled?: boolean;
@@ -74,6 +83,8 @@ export class Outlet {
       id: params.id,
       name: params.name,
       branch: params.branch,
+      address: params.address,
+      pincode: params.pincode,
       location: params.location,
       deliveryRadiusKm: params.deliveryRadiusKm,
       isCentral: params.isCentral ?? false,
@@ -200,6 +211,8 @@ export class Outlet {
   updateDetails(params: {
     name?: string;
     branch?: string;
+    address?: string;
+    pincode?: string;
     location?: GeoLocation;
     deliveryRadiusKm?: number;
     now?: Date;
@@ -208,6 +221,8 @@ export class Outlet {
       ...this,
       name: params.name ?? this.name,
       branch: params.branch ?? this.branch,
+      address: params.address ?? this.address,
+      pincode: params.pincode ?? this.pincode,
       location: params.location ?? this.location,
       deliveryRadiusKm:
         params.deliveryRadiusKm ?? this.deliveryRadiusKm,
@@ -234,6 +249,19 @@ export class Outlet {
       throw new ValidationError(
         'OUTLET_INVALID_RADIUS',
         'Delivery radius must be greater than 0',
+      );
+    }
+    if (this.address && this.address.trim().length < 3) {
+      throw new ValidationError(
+        'OUTLET_INVALID_ADDRESS',
+        'Outlet address must be at least 3 characters',
+      );
+    }
+
+    if (this.pincode && this.pincode.trim().length !== 6) {
+      throw new ValidationError(
+        'OUTLET_INVALID_PINCODE',
+        'Outlet pincode must be 6 characters',
       );
     }
   }

@@ -15,6 +15,12 @@ export class UpdateOutletDetailsDto {
   @IsOptional()
   @IsString()
   branch?: string;
+  @IsOptional()
+  @IsString()
+  address?: string;
+  @IsOptional()
+  @IsString()
+  pincode?: string;
 
   @IsOptional()
   @IsNumber()
