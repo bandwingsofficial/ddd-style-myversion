@@ -30,8 +30,7 @@ export default function ProductsPage() {
     <div style={styles.pageContainer}>
       <div style={styles.pageHeader}>
         <h1 style={styles.pageTitle}>Product Management</h1>
-        <p style={styles.pageSubtitle}>Enable or disable items for your outlet menu.</p>
-      </div>
+        </div>
 
       <ProductList initialProducts={products} />
     </div>

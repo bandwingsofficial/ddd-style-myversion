@@ -9,38 +9,6 @@ export default function UsersPage() {
           Manage outlet users, roles, and access permissions
         </p>
       </div>
-
-      <div style={styles.card}>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th style={styles.th}>Name</th>
-              <th style={styles.th}>Email</th>
-              <th style={styles.th}>Role</th>
-              <th style={styles.th}>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style={styles.td}>Admin User</td>
-              <td style={styles.td}>admin@company.com</td>
-              <td style={styles.td}>Outlet Admin</td>
-              <td style={styles.td}>
-                <span style={styles.active}>Active</span>
-              </td>
-            </tr>
-
-            <tr>
-              <td style={styles.td}>Staff Member</td>
-              <td style={styles.td}>staff@company.com</td>
-              <td style={styles.td}>Staff</td>
-              <td style={styles.td}>
-                <span style={styles.inactive}>Inactive</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
     </section>
   );
 }

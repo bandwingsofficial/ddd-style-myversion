@@ -7,41 +7,42 @@ import {
   Search, 
   Bell, 
   Menu, 
-  Calendar, 
+  Store, 
   ChevronDown, 
   LogOut, 
   User, 
   Settings, 
   ShoppingBag 
 } from 'lucide-react';
+
 import { outletAuthService } from '@/features/auth/services/auth.service';
+import { outletService } from '@/features/outlet/services/outletService';
+import { Outlet } from '@/features/outlet/types';
 
 export default function Header() {
   const router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  
-  // 1. State for Live Date
-  const [currentDate, setCurrentDate] = useState<Date | null>(null);
 
-  // 2. Effect to set date on client load (updates every minute to stay accurate)
+  /* ---------------- Outlet State ---------------- */
+  const [outlet, setOutlet] = useState<Outlet | null>(null);
+  const [loadingOutlet, setLoadingOutlet] = useState(true);
+
+  /* ---------------- Fetch Outlet ---------------- */
   useEffect(() => {
-    setCurrentDate(new Date());
-    const timer = setInterval(() => {
-      setCurrentDate(new Date());
-    }, 60000); // Update every minute to catch midnight changes
+    const fetchOutlet = async () => {
+      try {
+        const outletData = await outletService.getOutlet();
+        setOutlet(outletData);
+      } catch (error) {
+        console.error('Failed to load outlet for header', error);
+        setOutlet(null);
+      } finally {
+        setLoadingOutlet(false);
+      }
+    };
 
-    return () => clearInterval(timer);
+    fetchOutlet();
   }, []);
-
-  // 3. Format Date Function (Date ONLY, no time)
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    }).format(date);
-  };
 
   const handleLogout = async () => {
     try {
@@ -53,7 +54,7 @@ export default function Header() {
 
   return (
     <header style={styles.header}>
-      {/* Left Section: Menu Toggle + Search */}
+      {/* Left Section */}
       <div style={styles.left}>
         <button style={styles.menuButton}>
           <Menu size={20} color="#64748b" />
@@ -69,14 +70,15 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Right Section: Date, Bell, Profile (with Dropdown) */}
+      {/* Right Section */}
       <div style={styles.right}>
-        {/* Live Date Widget (Date Only) */}
-        <div style={styles.dateWidget}>
-          <Calendar size={16} />
-          {/* Min-width ensures no layout shift */}
+        {/* Outlet Name Widget */}
+        <div style={styles.outletWidget}>
+          <Store size={16} />
           <span style={{ minWidth: '180px', textAlign: 'center' }}>
-            {currentDate ? formatDate(currentDate) : 'Loading...'}
+            {loadingOutlet
+              ? 'Loading outlet...'
+              : outlet?.name ?? 'Outlet not found'}
           </span>
         </div>
 
@@ -86,7 +88,7 @@ export default function Header() {
           <span style={styles.notificationDot}></span>
         </div>
 
-        {/* User Profile Wrapper - Handles Hover */}
+        {/* Profile Dropdown */}
         <div 
           style={styles.profileWrapper}
           onMouseEnter={() => setIsDropdownOpen(true)}
@@ -96,11 +98,12 @@ export default function Header() {
             <div style={styles.userDetails}>
               <span style={styles.role}>Outlet Admin</span>
             </div>
-            <div style={styles.avatar}>S</div>
-            <ChevronDown size={16} color="#64748b" style={{ marginLeft: '4px' }} />
+            <div style={styles.avatar}>
+              {outlet?.name?.charAt(0).toUpperCase() ?? 'O'}
+            </div>
+            <ChevronDown size={16} color="#64748b" />
           </div>
 
-          {/* Dropdown Menu */}
           <AnimatePresence>
             {isDropdownOpen && (
               <motion.div
@@ -111,23 +114,23 @@ export default function Header() {
                 style={styles.dropdown}
               >
                 <div style={styles.dropdownHeader}>
-                  <p style={styles.dropdownName}>Outler Admin</p>
-                  <p style={styles.dropdownEmail}>admin@caneandtender.com</p>
+                  <p style={styles.dropdownName}>
+                    {outlet?.name ?? 'Outlet Admin'}
+                  </p>
+                  <p style={styles.dropdownEmail}>
+                    admin@caneandtender.com
+                  </p>
                 </div>
 
                 <ul style={styles.dropdownList}>
-                  <li style={styles.dropdownItem}>
+                  {/* ✅ PROFILE LINKED HERE */}
+                  <li
+                    style={styles.dropdownItem}
+                    onClick={() => router.push('/profile')}
+                  >
                     <User size={16} />
                     <span>Profile</span>
-                  </li>
-                  <li style={styles.dropdownItem}>
-                    <ShoppingBag size={16} />
-                    <span>My Orders</span>
-                  </li>
-                  <li style={styles.dropdownItem}>
-                    <Settings size={16} />
-                    <span>Settings</span>
-                  </li>
+                  </li> 
                 </ul>
 
                 <div style={styles.dropdownFooter}>
@@ -147,6 +150,8 @@ export default function Header() {
     </header>
   );
 }
+
+/* ---------------- Styles ---------------- */
 
 const styles: { [key: string]: React.CSSProperties } = {
   header: {
@@ -172,8 +177,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     cursor: 'pointer',
     padding: '8px',
     borderRadius: '4px',
-    display: 'flex',
-    alignItems: 'center',
   },
   searchContainer: {
     display: 'flex',
@@ -193,26 +196,17 @@ const styles: { [key: string]: React.CSSProperties } = {
     color: '#334155',
     width: '100%',
   },
-  commandKey: {
-    fontSize: '12px',
-    color: '#94a3b8',
-    border: '1px solid #cbd5e1',
-    borderRadius: '4px',
-    padding: '2px 6px',
-    backgroundColor: '#ffffff',
-    fontWeight: 500,
-  },
   right: {
     display: 'flex',
     alignItems: 'center',
     gap: '24px',
   },
-  dateWidget: {
+  outletWidget: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
-    backgroundColor: '#dcfce7',
-    color: '#15803d',
+    backgroundColor: '#ecfeff',
+    color: '#0369a1',
     padding: '8px 16px',
     borderRadius: '8px',
     fontSize: '13px',
@@ -222,11 +216,11 @@ const styles: { [key: string]: React.CSSProperties } = {
   iconButton: {
     position: 'relative',
     cursor: 'pointer',
+    width: '32px',
+    height: '32px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: '32px',
-    height: '32px',
   },
   notificationDot: {
     position: 'absolute',
@@ -248,7 +242,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     alignItems: 'center',
     gap: '12px',
     cursor: 'pointer',
-    padding: '8px 0',
   },
   userDetails: {
     textAlign: 'right',
@@ -269,7 +262,6 @@ const styles: { [key: string]: React.CSSProperties } = {
     justifyContent: 'center',
     fontWeight: 700,
     fontSize: '18px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
   },
   dropdown: {
     position: 'absolute',
@@ -278,12 +270,9 @@ const styles: { [key: string]: React.CSSProperties } = {
     width: '240px',
     backgroundColor: '#ffffff',
     borderRadius: '12px',
-    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1)',
     border: '1px solid #e2e8f0',
     padding: '8px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
     zIndex: 50,
   },
   dropdownHeader: {
@@ -294,50 +283,39 @@ const styles: { [key: string]: React.CSSProperties } = {
     fontSize: '14px',
     fontWeight: 700,
     color: '#0f172a',
-    margin: '0 0 4px 0',
+    marginBottom: '4px',
   },
   dropdownEmail: {
     fontSize: '12px',
     color: '#64748b',
-    margin: 0,
   },
   dropdownList: {
     listStyle: 'none',
     padding: 0,
     margin: 0,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '2px',
   },
   dropdownItem: {
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
     padding: '10px 12px',
-    fontSize: '14px',
-    color: '#334155',
-    borderRadius: '8px',
     cursor: 'pointer',
-    transition: 'background-color 0.2s',
-    fontWeight: 500,
+    fontSize: '14px',
   },
   dropdownFooter: {
-    paddingTop: '8px',
     borderTop: '1px solid #f1f5f9',
+    paddingTop: '8px',
   },
   dropdownLogoutBtn: {
+    width: '100%',
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
-    width: '100%',
-    padding: '10px 12px',
-    backgroundColor: 'transparent',
+    background: 'transparent',
     border: 'none',
-    borderRadius: '8px',
     color: '#ef4444',
+    padding: '10px 12px',
     cursor: 'pointer',
-    fontSize: '14px',
     fontWeight: 600,
-    transition: 'background-color 0.2s',
   },
 };

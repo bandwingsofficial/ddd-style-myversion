@@ -3,16 +3,18 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Mail, Eye, EyeOff, ShieldCheck, Info, AlertCircle } from 'lucide-react';
+import { Lock, Mail, ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
 import { outletAuthService } from '@/features/auth/services/auth.service';
 
 export default function OutletLoginPage() {
   const router = useRouter();
+  
+  // Form States
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-
+  
   // UI States
-  const [showPass, setShowPass] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const validateInputs = () => {
@@ -27,180 +29,139 @@ export default function OutletLoginPage() {
     return true;
   };
 
-  const handleLogin = async () => {
+  const handleLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setError(null);
+    
     if (!validateInputs()) return;
 
     try {
+      setLoading(true);
       await outletAuthService.login({ email, password });
       router.replace('/dashboard');
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Invalid credentials.");
+      console.error(err);
+      setError(err?.response?.data?.message || "Invalid credentials. Please try again.");
+      setLoading(false);
     }
   };
 
   return (
-    <div style={styles.container}>
+    <div className="flex min-h-screen items-center justify-center bg-slate-100 p-4 font-sans">
+      
+      {/* CARD CONTAINER - Reduced max-width and rounded corners */}
       <motion.div 
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        initial={{ opacity: 0, scale: 0.98, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        style={styles.card}
+        transition={{ duration: 0.4 }}
+        className="flex w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200"
       >
-        <div style={styles.iconCircle}>
-          <ShieldCheck size={36} color="#10b981" />
+        
+        {/* --- LEFT SIDE: IMAGE (Hidden on mobile) --- */}
+        <div className="relative hidden w-1/2 bg-slate-900 md:block">
+          {/* Assuming 'login.jpg' is in your public folder */}
+          <img 
+            src="/login.jpg" 
+            alt="Outlet Login Cover" 
+            className="absolute inset-0 h-full w-full object-cover opacity-90 transition-opacity hover:opacity-100"
+          />
+          
+          {/* Optional Overlay Gradient */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+          
+          <div className="absolute bottom-8 left-8 text-white">
+            <p className="text-xs font-medium opacity-80 uppercase tracking-widest">Quality & Freshness</p>
+            <h3 className="mt-1 text-2xl font-bold tracking-tight">Pure Cane Goodness</h3>
+          </div>
         </div>
 
-        <header style={styles.header}>
-          <h1 style={styles.title}>Outlet Login</h1>
-          <p style={styles.subtitle}>Secure access to your outlet dashboard</p>
-        </header>
-
-        <AnimatePresence>
-          {error && (
-            <motion.div 
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              style={styles.errorBanner}
-            >
-              <AlertCircle size={16} style={{ marginRight: 8 }} /> {error}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div style={styles.formGroup}>
-          <div style={styles.inputWrapper}>
-            <Mail size={18} style={styles.fieldIcon} />
-            <input 
-              style={styles.input}
-              placeholder="Email address"
-              onChange={e => setEmail(e.target.value)} 
-              value={email}
-            />
+        {/* --- RIGHT SIDE: FORM - Reduced padding --- */}
+        <div className="flex w-full flex-col justify-center p-6 md:w-1/2 md:p-8 lg:p-10">
+            
+          {/* BRAND HEADER - Reduced margins and icon size */}
+          <div className="mb-6 flex items-center gap-3">
+             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500 text-white shadow-lg shadow-emerald-500/20">
+                <ShieldCheck size={18} />
+             </div>
+             <div className="flex flex-col leading-tight">
+                <span className="text-base font-extrabold tracking-tight text-slate-900">Cane & Tender</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Outlet Admin</span>
+             </div>
           </div>
 
-          <div style={styles.inputWrapper}>
-            <Lock size={18} style={styles.fieldIcon} />
-            <input 
-              style={styles.input}
-              type={showPass ? "text" : "password"} 
-              placeholder="Password"
-              onChange={e => setPassword(e.target.value)} 
-              value={password}
-            />
-            <button 
-              type="button"
-              onClick={() => setShowPass(!showPass)} 
-              style={styles.eyeBtn}
-            >
-              {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-            <div style={styles.tooltip}>
-              <Info size={12} /> Min 8 characters
+          {/* WELCOME TEXT - Reduced margins and font size */}
+          <div className="mb-6">
+             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Welcome Back!</h1>
+             <p className="mt-1 text-sm font-medium text-slate-500">
+               Please enter your details to access the dashboard.
+             </p>
+          </div>
+
+          {/* ERROR ALERT */}
+          <AnimatePresence>
+            {error && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginBottom: 20 }}
+                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                className="flex items-center gap-2 overflow-hidden rounded-lg border border-rose-100 bg-rose-50 p-3 text-xs font-semibold text-rose-600"
+              >
+                <AlertCircle size={16} className="shrink-0" /> 
+                <span>{error}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* LOGIN FORM - Reduced gaps */}
+          <form onSubmit={handleLogin} className="flex flex-col gap-4">
+            
+            {/* Email Field - Reduced height (py) */}
+            <div className="group relative">
+              <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-emerald-500" />
+              <input 
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10"
+                placeholder="Email address"
+                type="email"
+                disabled={loading}
+                onChange={e => setEmail(e.target.value)} 
+                value={email}
+              />
             </div>
+
+            {/* Password Field - Reduced height (py) */}
+            <div className="group relative">
+              <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-emerald-500" />
+              <input 
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm font-semibold text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10"
+                type="password" 
+                placeholder="Password"
+                disabled={loading}
+                onChange={e => setPassword(e.target.value)} 
+                value={password}
+              />
+            </div>
+
+            {/* Submit Button - Reduced height (py) */}
+            <motion.button 
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.98 }}
+              type="submit"
+              disabled={loading}
+              className="mt-1 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 py-2.5 text-xs font-bold uppercase tracking-wider text-white shadow-lg shadow-emerald-500/30 transition-all hover:bg-emerald-700 hover:shadow-emerald-500/50 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {loading && <Loader2 size={16} className="animate-spin" />}
+              {loading ? 'Logging in...' : 'Login to Dashboard'}
+            </motion.button>
+
+          </form>
+
+          {/* FOOTER - Reduced margin */}
+          <div className="mt-6 text-center text-[10px] font-medium text-slate-400">
+            &copy; {new Date().getFullYear()} Cane & Tender Outlet. All rights reserved.
           </div>
 
-          <motion.button 
-            whileTap={{ scale: 0.98 }}
-            onClick={handleLogin}
-            style={styles.gradientButton}
-          >
-            Login to Dashboard
-          </motion.button>
         </div>
       </motion.div>
     </div>
   );
 }
-
-const styles: { [key: string]: React.CSSProperties } = {
-  container: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f1f5f9',
-    fontFamily: "'Inter', sans-serif",
-  },
-  card: {
-    width: '420px',
-    padding: '48px 40px',
-    backgroundColor: '#ffffff',
-    borderRadius: '28px',
-    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.08)',
-    textAlign: 'center',
-    border: '1px solid #e2e8f0',
-  },
-  iconCircle: {
-    width: '72px',
-    height: '72px',
-    backgroundColor: '#ecfdf5',
-    borderRadius: '22px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    margin: '0 auto 24px auto',
-  },
-  header: { marginBottom: '32px' },
-  title: { fontSize: '30px', fontWeight: 800, color: '#0f172a', marginBottom: '8px', letterSpacing: '-0.025em' },
-  subtitle: { color: '#64748b', fontSize: '15px', fontWeight: 500 },
-  errorBanner: {
-    display: 'flex',
-    alignItems: 'center',
-    backgroundColor: '#fef2f2',
-    color: '#dc2626',
-    padding: '12px 16px',
-    borderRadius: '12px',
-    fontSize: '13px',
-    fontWeight: 600,
-    marginBottom: '20px',
-    border: '1px solid #fee2e2',
-    overflow: 'hidden',
-  },
-  formGroup: { display: 'flex', flexDirection: 'column', gap: '20px' },
-  inputWrapper: { position: 'relative', textAlign: 'left' },
-  fieldIcon: { position: 'absolute', left: '16px', top: '15px', color: '#94a3b8' },
-  input: {
-    width: '78%',
-    padding: '15px 48px',
-    borderRadius: '14px',
-    border: '1px solid #e2e8f0',
-    fontSize: '15px',
-    outline: 'none',
-    backgroundColor: '#f8fafc',
-    transition: 'border-color 0.2s ease',
-  },
-  eyeBtn: {
-    position: 'absolute',
-    right: '16px',
-    top: '15px',
-    background: 'none',
-    border: 'none',
-    color: '#94a3b8',
-    cursor: 'pointer',
-    padding: 0,
-  },
-  tooltip: {
-    fontSize: '12px',
-    color: '#94a3b8',
-    marginTop: '6px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    fontWeight: 500,
-  },
-  gradientButton: {
-    width: '100%',
-    padding: '16px',
-    borderRadius: '16px',
-    border: 'none',
-    background: 'linear-gradient(180deg, #34d399 0%, #10b981 100%)',
-    color: '#ffffff',
-    fontSize: '16px',
-    fontWeight: 700,
-    cursor: 'pointer',
-    boxShadow: '0 8px 20px -6px rgba(16, 185, 129, 0.4)',
-    marginTop: '10px',
-    textTransform: 'none',
-  }
-};
