@@ -4,13 +4,13 @@ import React from "react";
 import { useProducts } from "@/features/products/hooks/useProducts";
 import ProductCard from "./ProductCard";
 import ProductSkeleton from "./ProductSkeleton";
-import OutletSelector from "@/components/common/OutletSelector"; // Import the new component
+import OutletSelector from "@/components/common/OutletSelector";
 import { useOutletStore } from "@/features/outlet/outlet.store";
 import { ArrowRight, MapPin } from "lucide-react";
 import Link from "next/link";
 import { motion, Variants } from "framer-motion";
 
-// --- Animations (Same as before) ---
+// --- Animations ---
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.1 } },
@@ -26,26 +26,28 @@ export default function ProductGrid() {
   const { selectedOutlet, setOutlet } = useOutletStore();
 
   return (
-    <section style={styles.productSection} className="product-section">
-      {/* 1. Mount the Outlet Selector: It checks if outlet is needed */}
+    <section className="py-0 bg-white">
+      {/* 1. Mount the Outlet Selector */}
       <OutletSelector />
 
-      <div style={styles.sectionContainer}>
+      <div className="max-w-[1400px] mx-auto px-6">
         
         {/* Header */}
         <motion.div 
-          style={styles.centeredHeader}
+          className="text-center mb-10 flex flex-col items-center"
           initial={{ opacity: 0, y: -20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
         >
-          <motion.h2 style={styles.title}>Our Fresh Picks</motion.h2>
+          <motion.h2 className="text-[2.2rem] font-[800] m-0 text-slate-900">
+            Our Fresh Picks
+          </motion.h2>
           
           {/* Show Current Branch Name */}
           {selectedOutlet && (
             <div 
                 className="mt-3 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-sm font-semibold border border-emerald-100 cursor-pointer hover:bg-emerald-100 transition-colors"
-                onClick={() => setOutlet(null as any)} // Hack to trigger re-selection (set to null to open modal)
+                onClick={() => setOutlet(null as any)} 
             >
                 <MapPin size={14} />
                 <span>{selectedOutlet.name} ({selectedOutlet.branch})</span>
@@ -53,13 +55,12 @@ export default function ProductGrid() {
             </div>
           )}
 
-          <div style={styles.titleUnderline} />
+          <div className="w-[50px] h-[3px] bg-emerald-500 rounded-[2px] mt-4" />
         </motion.div>
 
         {/* Product Grid Content */}
         <motion.div 
-          style={styles.productsGrid} 
-          className="products-grid"
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-4 xl:gap-6"
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
@@ -69,19 +70,19 @@ export default function ProductGrid() {
              // Loading Skeletons
              Array.from({ length: 5 }).map((_, i) => <ProductSkeleton key={i} />)
           ) : !isOutletSelected ? (
-             // No Outlet Selected State (Though modal should cover this)
+             // No Outlet Selected State
              <div className="col-span-full text-center py-20 text-slate-400">
-                No Near by outlets find to selected destination.you can change the location in header.
+               No Near by outlets find to selected destination.you can change the location in header.
              </div>
           ) : products.length === 0 ? (
              // Empty Products State
              <div className="col-span-full flex flex-col items-center justify-center py-20 text-slate-400">
-                <p>No products available at this branch right now.</p>
+               <p>No products available at this branch right now.</p>
              </div>
           ) : (
              // Actual Products
              products.slice(0, 10).map((product) => (
-               <motion.div key={product.id} variants={itemVariants} style={{ height: '100%' }}>
+               <motion.div key={product.id} variants={itemVariants} className="h-full">
                  <ProductCard product={product} />
                </motion.div>
              ))
@@ -89,68 +90,19 @@ export default function ProductGrid() {
         </motion.div>
 
         {/* Footer Link */}
-        <div style={styles.footerRow}>
-           <Link href="/menu" style={{ textDecoration: 'none' }}>
-             <motion.div 
-               style={styles.viewAllButton}
-               whileHover={{ scale: 1.05 }}
-               whileTap={{ scale: 0.95 }}
-             >
-               View Full Menu <ArrowRight size={18} />
-             </motion.div>
+        <div className="mt-[50px] flex justify-center">
+            <Link href="/menu" className="no-underline">
+              <motion.div 
+                className="flex items-center gap-2 text-emerald-700 font-[700] text-[0.95rem] px-6 py-3 rounded-full bg-emerald-50 border border-emerald-200 cursor-pointer transition-colors"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                View Full Menu <ArrowRight size={18} />
+              </motion.div>
           </Link>
         </div>
 
       </div>
-
-      {/* Styles for Grid Responsiveness */}
-      <style jsx>{`
-        /* Default: 5 items per row for large screens */
-        .products-grid { 
-            display: grid; 
-            grid-template-columns: repeat(5, 1fr); 
-            gap: 1.5rem; 
-        }
-        
-        /* 1400px down: still 5, but maybe tighter */
-        @media (max-width: 1400px) { 
-            .products-grid { grid-template-columns: repeat(5, 1fr); gap: 1rem; } 
-        }
-
-        /* 1200px down: switch to 4 */
-        @media (max-width: 1200px) { 
-            .products-grid { grid-template-columns: repeat(4, 1fr); } 
-        }
-
-        /* 992px down: switch to 3 */
-        @media (max-width: 992px) { 
-            .products-grid { grid-template-columns: repeat(3, 1fr); } 
-        }
-
-        /* 768px down: switch to 2 */
-        @media (max-width: 768px) { 
-            .products-grid { grid-template-columns: repeat(2, 1fr); } 
-        }
-
-        /* 480px down: switch to 1 */
-        @media (max-width: 480px) { 
-            .products-grid { grid-template-columns: 1fr; } 
-        }
-      `}</style>
     </section>
   );
 }
-
-const styles: { [key: string]: React.CSSProperties } = {
-  productSection: { padding: "0px 0", background: "#ffffff" },
-  sectionContainer: { maxWidth: "1400px", margin: "0 auto", padding: "0 1.5rem" }, // Increased width slightly to fit 5 cards better
-  centeredHeader: { textAlign: "center", marginBottom: "40px", display: "flex", flexDirection: "column", alignItems: "center" },
-  title: { fontSize: "2.2rem", fontWeight: 800, margin: 0, color: "#0f172a" }, 
-  titleUnderline: { width: "50px", height: "3px", background: "#22c55e", borderRadius: "2px", marginTop: "16px" },
-  
-  // Inline fallback (CSS class overrides this)
-  productsGrid: { display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "1.5rem" },
-  
-  footerRow: { marginTop: "50px", display: "flex", justifyContent: "center" },
-  viewAllButton: { display: "flex", alignItems: "center", gap: "8px", color: "#15803d", fontWeight: 700, fontSize: "0.95rem", padding: "12px 24px", borderRadius: "50px", background: "#f0fdf4", border: "1px solid #bbf7d0", cursor: "pointer" },
-};
