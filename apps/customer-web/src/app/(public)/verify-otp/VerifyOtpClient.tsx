@@ -59,7 +59,7 @@ export default function VerifyOtpClient() {
       toast.success("Welcome back!");
     } catch (err: any) {
       setError(err?.message || "Invalid OTP");
-      setOtp(""); 
+      setOtp("");
     } finally {
       setLoading(false);
     }
@@ -71,13 +71,13 @@ export default function VerifyOtpClient() {
       setResendLoading(true);
       setError(null);
       await requestOtp(phone);
-      
+
       setTimer(60);
       setCanResend(false);
       setOtp("");
       inputRef.current?.focus();
       toast.success("Code resent successfully");
-    } catch (err) {
+    } catch {
       setError("Failed to resend. Try again.");
     } finally {
       setResendLoading(false);
@@ -95,95 +95,145 @@ export default function VerifyOtpClient() {
   };
 
   return (
-    <div className="relative h-screen w-full flex items-center justify-start overflow-hidden">
+    <div className="relative h-screen w-full overflow-hidden flex items-center justify-center bg-black">
       
-      {/* Background Image */}
+      {/* Background Image (Same as Login) */}
       <Image
-        src="/images/login1.png"
-        alt="Background"
+        src="/images/login2.png"
+        alt="Sugarcane field background"
         fill
-        className="object-cover"
         priority
+        className="object-cover"
       />
 
-      {/* Glassmorphism Card */}
-      <main className="relative z-10 w-[90%] max-w-[340px] ml-6 md:ml-20 backdrop-blur-md bg-white/30 rounded-[35px] border border-white/40 shadow-2xl p-6 md:p-8">
-        
-        {/* Logo Section */}
-        <div className="mb-6 flex items-start gap-1">
-          <h2 className="text-xl font-black text-[#1a3014] leading-tight tracking-tighter">
-            CANE<br />TENDER
-          </h2>
-          <div className="w-2.5 h-2.5 bg-[#47A851] rounded-full mt-1" />
-        </div>
-
-        {/* Header Content */}
-        <div className="space-y-2 mb-6">
-          <h1 className="text-2xl font-bold text-[#1a3014]">Verification</h1>
-          <p className="text-[#2D4A22] text-[15px] leading-snug font-medium opacity-90">
-            Enter code sent to <span className="font-bold">+91 {displayPhone}</span>
-          </p>
-          <button 
-            onClick={() => router.back()} 
-            className="text-[13px] text-[#47A851] font-bold hover:underline transition-colors"
-          >
-            Wrong number?
-          </button>
-        </div>
-
-        {/* OTP Input Field */}
-        <div className="space-y-4">
-          <div className="flex flex-col gap-1">
-            <div 
-              className={`flex items-center bg-white/60 rounded-xl overflow-hidden transition-all h-12 border border-white/20
-                ${error ? 'ring-1 ring-red-400' : 'focus-within:ring-1 focus-within:ring-emerald-500'}`}
-            >
-              <input
-                ref={inputRef}
-                type="tel"
-                value={otp}
-                onChange={handleOtpChange}
-                onKeyDown={handleKeyPress}
-                maxLength={6}
-                placeholder="••••••"
-                disabled={loading}
-                className="w-full h-full text-center text-xl font-bold tracking-[0.3em] text-gray-800 placeholder:text-gray-400/70 bg-transparent outline-none"
-              />
-            </div>
-            {error && <span className="text-red-600 text-[10px] font-bold ml-1 uppercase">{error}</span>}
+      {/* Glass Panel (Exact copy of Login Page styling) */}
+      <div className="relative z-10 w-[420px] max-w-[92%]">
+        <div
+          className="
+            rounded-[26px]
+            border border-white/30
+            bg-gradient-to-b from-black/60 to-black/40
+            backdrop-blur-xl
+            shadow-[0_30px_90px_rgba(0,0,0,0.75)]
+            px-10 py-12
+          "
+        >
+          {/* Brand Header */}
+          <div className="text-center mb-10">
+            <h1 className="text-xl font-extrabold tracking-[0.35em] text-white drop-shadow">
+              CANE&nbsp;TENDER
+            </h1>
+            <p className="text-[11px] tracking-[0.45em] text-white/80 mt-3 uppercase">
+              Verification
+            </p>
           </div>
 
-          <button
-            onClick={handleVerify}
-            disabled={loading || otp.length !== 6}
-            className={`
-              w-full py-2.5 rounded-full text-[16px] font-bold transition-all
-              ${loading || otp.length !== 6 
-                ? 'bg-gray-400/40 text-white cursor-not-allowed' 
-                : 'bg-[#47A851] hover:bg-[#3d9145] text-white shadow-md active:scale-95'}
-            `}
-          >
-            {loading ? "Verifying..." : "Verify & Proceed"}
-          </button>
+          {/* Content Area */}
+          <div className="space-y-6">
+            
+            {/* Info Text */}
+            <div className="text-center space-y-2">
+              <p className="text-white/80 text-xs tracking-widest uppercase">
+                Enter code sent to
+              </p>
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-white text-sm font-bold tracking-wider">
+                  +91 {displayPhone}
+                </span>
+                <button 
+                  onClick={() => router.back()}
+                  className="text-[#47A851] text-[10px] font-bold uppercase tracking-wide hover:text-white transition-colors"
+                >
+                  (Edit)
+                </button>
+              </div>
+            </div>
+
+            {/* OTP Input Container */}
+            <div className="space-y-3">
+              <div className={`
+                flex items-center
+                h-14
+                rounded-xl
+                border border-white/30
+                bg-black/50
+                px-4
+                transition
+                ${error ? "border-red-400" : "focus-within:border-[#47A851]"}
+              `}>
+                <input
+                  ref={inputRef}
+                  type="tel"
+                  value={otp}
+                  onChange={handleOtpChange}
+                  onKeyDown={handleKeyPress}
+                  placeholder="••••••"
+                  maxLength={6}
+                  className="
+                    w-full
+                    bg-transparent
+                    outline-none
+                    text-white
+                    text-2xl
+                    font-bold
+                    tracking-[0.5em]
+                    text-center
+                    placeholder:text-white/20
+                    placeholder:tracking-[0.2em]
+                  "
+                />
+              </div>
+
+              {/* Error Message */}
+              {error && (
+                <p className="text-red-400 text-xs tracking-wide font-medium text-center">
+                  {error}
+                </p>
+              )}
+            </div>
+
+            {/* Verify Button (Rectangular Pill version of the Login Circle) */}
+            <button
+              onClick={handleVerify}
+              disabled={loading || otp.length !== 6}
+              className="
+                w-full h-14 rounded-full
+                bg-[#47A851]
+                text-white text-xs font-bold uppercase tracking-widest
+                shadow-[0_0_35px_#47A851]
+                hover:brightness-110
+                active:scale-95
+                transition
+                disabled:opacity-40 disabled:shadow-none disabled:cursor-not-allowed
+                mt-4
+              "
+            >
+              {loading ? "Verifying..." : "Verify & Proceed"}
+            </button>
+
+            {/* Timer / Resend Link */}
+            <div className="mt-6 text-center">
+              {!canResend ? (
+                 <span className="text-[10px] tracking-[0.2em] text-white/50 uppercase">
+                   Resend code in <span className="text-white font-bold">{timer.toString().padStart(2, "0")}s</span>
+                 </span>
+              ) : (
+                <button
+                  onClick={handleResend}
+                  disabled={resendLoading}
+                  className="text-[10px] tracking-[0.2em] text-[#47A851] uppercase font-bold hover:text-white transition-colors disabled:opacity-50"
+                >
+                  {resendLoading ? "Sending..." : "Resend Code"}
+                </button>
+              )}
+            </div>
+
+          </div>
         </div>
 
-        {/* Timer / Resend Footer */}
-        <div className="mt-6 text-center">
-          {!canResend ? (
-            <p className="text-[#2D4A22] text-[13px] font-semibold opacity-80">
-              Resend code in <span className="text-[#47A851] tabular-nums font-bold">00:{timer.toString().padStart(2, '0')}</span>
-            </p>
-          ) : (
-            <button 
-              onClick={handleResend} 
-              disabled={resendLoading}
-              className="text-[#47A851] text-[13px] font-bold underline disabled:text-gray-400 transition-colors"
-            >
-              {resendLoading ? "Sending..." : "Resend Code"}
-            </button>
-          )}
-        </div>
-      </main>
+        {/* Base Glow (Same as Login) */}
+        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-[70%] h-5 bg-[#47A851] blur-2xl opacity-50 rounded-full" />
+      </div>
     </div>
   );
 }
