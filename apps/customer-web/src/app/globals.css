@@ -12,4 +12,23 @@ body {
   padding: 0;
 }
 
+@keyframes shine {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.animate-shine {
+  background: linear-gradient(
+    to right,
+    #475569 20%, 
+    #10b981 40%, 
+    #10b981 60%, 
+    #475569 80%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  text-fill-color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: shine 3s linear infinite;
+}
 

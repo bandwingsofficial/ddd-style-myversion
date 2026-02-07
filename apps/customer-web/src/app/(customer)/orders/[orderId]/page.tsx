@@ -1,53 +1,24 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { CheckoutApi } from "@/features/checkout/checkout.api";
 import { 
-  CheckCircle, 
-  Clock, 
-  MapPin, 
-  Package, 
-  Home, 
-  Loader2, 
-  AlertCircle, 
-  Truck, 
-  XCircle, 
-  ChevronLeft,
-  UtensilsCrossed // Added for "Preparing" icon
+  CheckCircle, Clock, MapPin, Package, Home, 
+  Loader2, AlertCircle, Truck, XCircle, 
+  ChevronLeft, UtensilsCrossed, ReceiptText,
+  Calendar, CreditCard, ShieldCheck
 } from "lucide-react";
 import Header from "@/components/customer/Header";
+import Footer from "@/components/customer/Footer";
 
-// ✅ 1. Define Types Locally
 interface OrderDetails {
-  id: string;
-  customerId: string;
-  outletId: string;
-  cartId: string;
-  status: string; 
-  address: {
-    id: string;
-    label: string;
-    addressText: string;
-    latitude: number;
-    longitude: number;
-  };
-  subtotal: number;
-  discount: number;
-  afterDiscountTotal: number;
-  deliveryFee: number;
-  grandTotal: number;
-  itemCount: number;
-  items: {
-    id: string;
-    productId: string;
-    productName: string;
-    productImage: string;
-    quantity: number;
-    unitPrice: number;
-    totalPrice: number;
-  }[];
+  id: string; customerId: string; outletId: string; cartId: string;
+  status: string; address: { id: string; label: string; addressText: string; };
+  subtotal: number; discount: number; afterDiscountTotal: number;
+  deliveryFee: number; grandTotal: number; itemCount: number;
+  items: { id: string; productId: string; productName: string; productImage: string; quantity: number; unitPrice: number; totalPrice: number; }[];
   createdAt: string;
 }
 
@@ -59,20 +30,14 @@ const getImageUrl = (path?: string) => {
 
 export default function OrderDetailsPage() {
   const { orderId } = useParams();
-  const router = useRouter();
-  
   const [order, setOrder] = useState<OrderDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
 
-  useEffect(() => {
-    if (orderId) fetchOrder();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderId]);
-
-  const fetchOrder = async () => {
+  // ✅ Real-time Fetching Function
+  const fetchOrder = useCallback(async (isSilent = false) => {
     try {
-      // @ts-ignore
+      if (!isSilent) setLoading(true);
       const data = await CheckoutApi.getOrder(orderId as string);
       setOrder(data);
     } catch (error) {
@@ -80,221 +45,264 @@ export default function OrderDetailsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [orderId]);
+
+  // ✅ Initial Load + Real-time Polling
+  useEffect(() => {
+    if (orderId) {
+      fetchOrder();
+      
+      // Poll every 10 seconds if order is not terminal (delivered or cancelled)
+      const interval = setInterval(() => {
+        if (order?.status !== "DELIVERED" && order?.status !== "CANCELLED") {
+          fetchOrder(true); 
+        }
+      }, 10000);
+
+      return () => clearInterval(interval);
+    }
+  }, [orderId, order?.status, fetchOrder]);
 
   const handleCancelOrder = async () => {
-    if (!confirm("Are you sure you want to cancel this pending order?")) return;
-    
+    if (!confirm("Are you sure?")) return;
     setProcessing(true);
     try {
       await CheckoutApi.cancelOrder(orderId as string);
-      alert("Order cancelled successfully.");
-      fetchOrder(); 
+      fetchOrder();
     } catch (error) {
-      console.error("Cancellation failed", error);
-      alert("Could not cancel. Please try again.");
+      alert("Could not cancel.");
     } finally {
       setProcessing(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
-        <Loader2 className="animate-spin text-emerald-600 w-10 h-10" />
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="min-h-screen bg-white flex items-center justify-center">
+      <Loader2 className="animate-spin text-emerald-600 w-10 h-10" />
+    </div>
+  );
   
-  if (!order) {
-    return (
-      <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center gap-4 text-slate-500">
-         <AlertCircle size={48} className="text-slate-300" />
-         <p className="font-medium">Order details not found.</p>
-         <Link href="/orders" className="text-emerald-600 font-bold hover:underline">Back to Orders</Link>
-      </div>
-    );
-  }
+  if (!order) return (
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center gap-3">
+      <AlertCircle size={50} className="text-slate-200" />
+      <p className="font-bold text-slate-400">Order not found.</p>
+      <Link href="/orders" className="bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm">Return to Orders</Link>
+    </div>
+  );
 
-  // ✅ 3. FIXED STATUS LOGIC
   const statusUpper = order.status ? order.status.toUpperCase() : "PENDING";
-  
-  // Explicit Checks
-  const isDelivered = statusUpper === "DELIVERED" || statusUpper === "COMPLETED";
-  const isPreparing = statusUpper === "PREPARING" || statusUpper === "ACCEPTED" || statusUpper === "Kitchen";
-  const isReady = statusUpper === "READY" || statusUpper === "OUT_FOR_DELIVERY";
-  const isPaid = statusUpper === "PAID" || statusUpper === "CONFIRMED";
-  const isFailed = statusUpper === "FAILED";
+  const isDelivered = ["DELIVERED", "COMPLETED"].includes(statusUpper);
+  const isPreparing = ["PREPARING", "ACCEPTED", "KITCHEN"].includes(statusUpper);
+  const isReady = ["READY", "OUT_FOR_DELIVERY"].includes(statusUpper);
+  const isPaid = ["PAID", "CONFIRMED"].includes(statusUpper);
   const isCancelled = statusUpper === "CANCELLED";
-  
-  // If none of the above, it defaults to Pending
-  const isPending = !isDelivered && !isPreparing && !isReady && !isPaid && !isFailed && !isCancelled;
+  const isPending = !isDelivered && !isPreparing && !isReady && !isPaid && !isCancelled;
 
-  // ✅ 4. Updated Dynamic Banner Styles
-  let bannerStyles = "bg-amber-500 text-white shadow-amber-500/20";
-  let BannerIcon = Clock;
-  let bannerTitle = "Order Pending";
-  let bannerDesc = "We are waiting for payment confirmation.";
-
-  if (isDelivered) {
-    bannerStyles = "bg-emerald-600 text-white shadow-emerald-600/20";
-    BannerIcon = CheckCircle;
-    bannerTitle = "Delivered";
-    bannerDesc = "This order has been delivered. Enjoy!";
-  } 
-  else if (isReady) {
-    bannerStyles = "bg-teal-600 text-white shadow-teal-600/20";
-    BannerIcon = Truck; // or Bike
-    bannerTitle = "Out for Delivery";
-    bannerDesc = "Your order is on the way!";
-  }
-  else if (isPreparing) {
-    // ✅ NEW: Specific style for PREPARING
-    bannerStyles = "bg-blue-600 text-white shadow-blue-600/20";
-    BannerIcon = UtensilsCrossed;
-    bannerTitle = "Preparing Order";
-    bannerDesc = "The kitchen is preparing your delicious food.";
-  } 
-  else if (isPaid) {
-    bannerStyles = "bg-emerald-500 text-white shadow-emerald-500/20";
-    BannerIcon = CheckCircle;
-    bannerTitle = "Order Confirmed";
-    bannerDesc = "Payment received. Order sent to kitchen.";
-  } 
-  else if (isFailed) {
-    bannerStyles = "bg-red-500 text-white shadow-red-500/20";
-    BannerIcon = XCircle;
-    bannerTitle = "Payment Failed";
-    bannerDesc = "The payment could not be processed.";
-  } 
-  else if (isCancelled) {
-    bannerStyles = "bg-slate-500 text-white shadow-slate-500/20";
-    BannerIcon = XCircle;
-    bannerTitle = "Order Cancelled";
-    bannerDesc = "This order has been cancelled.";
-  }
+  const steps = [
+    { label: "Confirmed", active: isPaid || isPreparing || isReady || isDelivered, icon: CheckCircle },
+    { label: "Preparing", active: isPreparing || isReady || isDelivered, icon: UtensilsCrossed },
+    { label: "On the way", active: isReady || isDelivered, icon: Truck },
+    { label: "Delivered", active: isDelivered, icon: Package },
+  ];
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#FAFBFC] selection:bg-emerald-100">
       <Header />
-      <main className="pt-32 pb-12 px-4 max-w-4xl mx-auto">
-        
-        {/* Back Button */}
-        <Link href="/orders" className="inline-flex items-center text-slate-500 hover:text-emerald-600 mb-6 font-medium transition-colors">
-          <ChevronLeft size={20} className="mr-1" /> Back to Orders
-        </Link>
-
-        {/* ✅ Status Banner */}
-        <div className={`rounded-3xl p-8 mb-8 text-center shadow-lg transition-all ${bannerStyles}`}>
-          <div className="bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 backdrop-blur-sm">
-            <BannerIcon size={32} />
+      
+      <main className="pt-32 pb-16 px-4 max-w-6xl mx-auto">
+        {/* Top Navigation - Reduced Margin */}
+        <div className="flex items-center justify-between mb-6">
+          <Link href="/orders" className="group flex items-center gap-2 text-slate-500 hover:text-emerald-600 transition-all">
+            <div className="p-1.5 rounded-full bg-white border border-slate-200 group-hover:bg-emerald-50 shadow-sm">
+              <ChevronLeft size={16} />
+            </div>
+            <span className="font-bold text-xs">History</span>
+          </Link>
+          <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-emerald-100">
+            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Live Tracking
           </div>
-          <h1 className="text-3xl font-extrabold mb-2">{bannerTitle}</h1>
-          <p className="opacity-90 text-lg mb-2">Order #{order.id.slice(0, 8).toUpperCase()}</p>
-          <p className="opacity-80 text-sm">{bannerDesc}</p>
-
-          {/* Cancel Button (Only if Pending) */}
-          {isPending && (
-             <div className="mt-8 pt-6 border-t border-white/20">
-                 <button 
-                   onClick={handleCancelOrder}
-                   disabled={processing}
-                   className="bg-white text-amber-600 px-6 py-2.5 rounded-full font-bold shadow-sm hover:bg-amber-50 transition-all flex items-center gap-2 mx-auto text-sm disabled:opacity-70"
-                 >
-                    {processing ? <Loader2 className="animate-spin" size={16}/> : <XCircle size={16}/>}
-                    {processing ? "Cancelling..." : "Cancel Order"}
-                 </button>
-                 <p className="text-white/60 text-xs mt-2">Cancel to retry payment or change items.</p>
-             </div>
-          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Main Info */}
-          <div className="md:col-span-2 space-y-6">
-            
-            {/* Items List */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-              <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <Package size={20} className="text-emerald-600"/> Order Items
-              </h2>
-              <div className="divide-y divide-slate-50">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          <div className="lg:col-span-8 space-y-5">
+            {/* 1. Tracking Card - Tighter Padding */}
+            <div className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-sm overflow-hidden relative">
+              <div className="relative z-10">
+                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-1">Live Order Status</p>
+                <h1 className="text-2xl font-black text-slate-900 mb-6 animate-shine">
+                  #{order.id.slice(-8).toUpperCase()}
+                </h1>
+
+                {!isCancelled ? (
+                  <div className="relative flex justify-between items-start px-2">
+                    <div className="absolute top-4 left-0 w-full h-0.5 bg-slate-100 z-0 rounded-full" />
+                    <div 
+                      className="absolute top-4 left-0 h-0.5 bg-emerald-500 z-0 transition-all duration-1000 rounded-full" 
+                      style={{ width: isDelivered ? '100%' : isReady ? '66%' : isPreparing ? '33%' : '0%' }}
+                    />
+                    
+                    {steps.map((step, idx) => (
+                      <div key={idx} className="relative z-10 flex flex-col items-center gap-2">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-500 border-[3px] ${
+                          step.active ? "bg-emerald-500 border-white text-white shadow-md shadow-emerald-100" : "bg-white border-slate-50 text-slate-200"
+                        }`}>
+                          <step.icon size={14} />
+                        </div>
+                        <span className={`text-[9px] font-black uppercase tracking-tighter ${step.active ? "text-slate-900" : "text-slate-400"}`}>
+                          {step.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 p-4 bg-rose-50 rounded-2xl border border-rose-100">
+                    <XCircle className="text-rose-500" size={24} />
+                    <h3 className="font-black text-rose-700 uppercase text-sm italic">Order Cancelled</h3>
+                  </div>
+                )}
+              </div>
+
+              {isPending && !isCancelled && (
+                <div className="mt-8 pt-6 border-t border-slate-50 flex justify-between items-center">
+                  <p className="text-[10px] font-medium text-slate-400 max-w-[180px]">Cancel before the kitchen starts.</p>
+                  <button 
+                    onClick={handleCancelOrder}
+                    disabled={processing}
+                    className="px-4 py-2 rounded-xl bg-rose-50 text-rose-600 font-bold text-[10px] hover:bg-rose-100 transition-all disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    {processing ? <Loader2 size={12} className="animate-spin" /> : <XCircle size={12} />}
+                    Cancel Order
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* 2. Items List Bento - Tighter Spacing */}
+            <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <ReceiptText className="text-emerald-500" size={18} />
+                  Manifest
+                </h2>
+                <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg">
+                  {order.items.length} Items
+                </span>
+              </div>
+
+              <div className="grid gap-3">
                 {order.items.map((item) => (
-                  <div key={item.id || item.productId} className="py-4 flex gap-4">
-                    <div className="w-16 h-16 rounded-lg bg-slate-50 border border-slate-100 overflow-hidden flex-shrink-0">
-                       <img 
-                        src={getImageUrl(item.productImage) || "/placeholder.png"} 
-                        alt={item.productName}
-                        className="w-full h-full object-cover" 
-                        onError={(e) => (e.currentTarget.style.display = 'none')}
+                  <div key={item.id} className="group flex items-center gap-4 p-3 rounded-2xl hover:bg-slate-50 transition-all border border-transparent hover:border-slate-100">
+                    <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 flex-shrink-0">
+                      <img 
+                        src={getImageUrl(item.productImage) || ""} 
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                        alt={item.productName} 
                       />
                     </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start">
-                        <span className="font-bold text-slate-800 text-sm">{item.productName}</span>
-                        <span className="font-bold text-slate-900 text-sm">₹{item.totalPrice}</span>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-black text-slate-800 text-base truncate mb-0.5">{item.productName}</h4>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">
+                          x{item.quantity}
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-400">₹{item.unitPrice}</span>
                       </div>
-                      <p className="text-slate-500 text-xs mt-1 font-medium bg-slate-50 inline-block px-2 py-1 rounded-md">
-                        {item.quantity} x ₹{item.unitPrice}
-                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-base font-black text-slate-900 tracking-tighter">₹{item.totalPrice}</p>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Address */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-              <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <MapPin size={20} className="text-emerald-600"/> Delivery Location
-              </h2>
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-start gap-3">
-                <MapPin size={20} className="text-slate-400 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="font-bold text-slate-900 text-sm mb-1">{order.address.label}</p>
-                  <p className="text-slate-600 text-sm leading-relaxed">{order.address.addressText}</p>
+            {/* 3. Address Detail - Tighter Padding */}
+            <div className="bg-slate-900 rounded-[2rem] p-6 text-white relative overflow-hidden group">
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center shrink-0 shadow-lg">
+                    <MapPin size={20} />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-0.5">Destination</p>
+                    <h3 className="text-lg font-bold mb-0.5">{order.address.label}</h3>
+                    <p className="text-xs text-slate-400 font-medium leading-relaxed max-w-sm line-clamp-1">{order.address.addressText}</p>
+                  </div>
+                </div>
+                <div className="pt-4 md:pt-0 border-t md:border-t-0 md:border-l border-white/10 md:pl-6">
+                  <div className="flex items-center gap-2 text-xs font-bold opacity-70">
+                    <Calendar size={14} className="text-emerald-500" />
+                    {new Date(order.createdAt).toLocaleDateString()}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Payment Summary Sidebar */}
-          <div className="md:col-span-1">
-            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm sticky top-32">
-              <h2 className="font-bold text-slate-800 mb-4">Payment Summary</h2>
-              
-              <div className="space-y-3 text-sm border-b border-slate-100 pb-4 mb-4">
-                <div className="flex justify-between text-slate-500">
-                  <span>Subtotal</span> 
-                  <span>₹{order.subtotal}</span>
-                </div>
-                {order.discount > 0 && (
-                   <div className="flex justify-between text-emerald-600 font-medium">
-                     <span>Discount</span> 
-                     <span>- ₹{order.discount}</span>
-                   </div>
-                )}
-                <div className="flex justify-between text-slate-500">
-                  <span>Delivery Fee</span> 
-                  <span className={order.deliveryFee === 0 ? "text-emerald-600" : ""}>
-                    {order.deliveryFee === 0 ? "Free" : `₹${order.deliveryFee}`}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="flex justify-between font-extrabold text-xl text-slate-900 mb-1">
-                <span>Total</span>
-                <span>₹{order.grandTotal}</span>
-              </div>
-              <p className="text-xs text-right text-slate-400 font-medium mb-6">Inclusive of all taxes</p>
+          {/* RIGHT COLUMN: Summary - Compacted */}
+          <div className="lg:col-span-4">
+            <div className="sticky top-28 space-y-4">
+              <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
+                <div className="p-6">
+                  <h3 className="font-black text-slate-900 text-base mb-5 flex items-center gap-2">
+                    <CreditCard size={18} className="text-slate-400" /> Summary
+                  </h3>
+                  
+                  <div className="space-y-3 mb-6">
+                    <div className="flex justify-between text-xs font-bold">
+                      <span className="text-slate-400">Subtotal</span>
+                      <span className="text-slate-900">₹{order.subtotal}</span>
+                    </div>
+                    {order.discount > 0 && (
+                      <div className="flex justify-between text-xs font-bold">
+                        <span className="text-emerald-600">Savings</span>
+                        <span className="text-emerald-600">-₹{order.discount}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-xs font-bold">
+                      <span className="text-slate-400">Fee</span>
+                      <span className={order.deliveryFee === 0 ? "text-emerald-600" : "text-slate-900"}>
+                        {order.deliveryFee === 0 ? "FREE" : `₹${order.deliveryFee}`}
+                      </span>
+                    </div>
+                    <div className="pt-3 border-t border-slate-50">
+                      <div className="flex justify-between items-end">
+                        <div>
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Paid Total</p>
+                          <p className="text-3xl font-black text-slate-900 tracking-tighter">₹{order.grandTotal}</p>
+                        </div>
+                        <div className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded mb-1">
+                          GST INCL.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
-              <Link href="/home" className="w-full bg-slate-900 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-lg hover:shadow-xl">
-                <Home size={18} /> Back to Home
-              </Link>
+                  <Link href="/home" className="flex items-center justify-center gap-2 w-full bg-emerald-600 text-white py-4 rounded-[1.2rem] font-black text-xs hover:bg-emerald-700 transition-all hover:scale-[1.01] active:scale-[0.99] shadow-lg shadow-emerald-200">
+                    <Home size={16} /> Home Dashboard
+                  </Link>
+                </div>
+                
+                <div className="h-1.5 w-full flex bg-slate-50">
+                  {[...Array(20)].map((_, i) => (
+                    <div key={i} className="flex-1 h-full bg-white rounded-full -mt-0.5 mx-0.5" />
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                <p className="text-[10px] font-black text-slate-800 uppercase tracking-widest mb-1">Support</p>
+                <button className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700">
+                  Chat with us regarding order #{order.id.slice(-4)} →
+                </button>
+              </div>
             </div>
           </div>
+
         </div>
       </main>
+      <Footer />
     </div>
   );
 }
