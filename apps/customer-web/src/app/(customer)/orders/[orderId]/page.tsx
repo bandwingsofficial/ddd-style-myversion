@@ -294,7 +294,7 @@ export default function OrderDetailsPage() {
               <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
                 <p className="text-[10px] font-black text-slate-800 uppercase tracking-widest mb-1">Support</p>
                 <button className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700">
-                  Chat with us regarding order #{order.id.slice(-4)} →
+                  Contact us regarding order #{order.id.slice(-4)} →
                 </button>
               </div>
             </div>
