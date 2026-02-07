@@ -50,7 +50,6 @@ export default function EditProfileModal({ isOpen, onClose, initialData, onSucce
       setSaving(false);
     }
   };
-
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200">
