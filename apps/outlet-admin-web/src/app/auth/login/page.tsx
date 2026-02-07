@@ -40,10 +40,18 @@ export default function OutletLoginPage() {
       await outletAuthService.login({ email, password });
       router.replace('/dashboard');
     } catch (err: any) {
-      console.error(err);
-      setError(err?.response?.data?.message || "Invalid credentials. Please try again.");
-      setLoading(false);
-    }
+  // Do not log expected 401 login failures
+  if (err?.response?.status !== 401) {
+    console.error(err);
+  }
+
+  setError(
+    err?.response?.data?.message ||
+    "Invalid credentials. Please try again."
+  );
+  setLoading(false);
+}
+
   };
 
   return (

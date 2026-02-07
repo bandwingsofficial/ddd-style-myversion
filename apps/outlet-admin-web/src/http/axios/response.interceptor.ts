@@ -11,19 +11,30 @@ export const responseInterceptor = {
     }
 
     const originalRequest: any = error.config;
+    const status = error.response.status;
+    const url = originalRequest?.url || '';
+    const pathname = window.location.pathname;
 
+    // 🚨 HARD STOPS — NEVER REFRESH IN THESE CASES
     if (
-      error.response.status === 401 &&
-      !originalRequest._retry
+      pathname.startsWith('/auth') ||               // login page
+      url.includes('/auth/outlets/login') ||        // login API
+      url.includes('/auth/session/refresh') ||      // refresh API itself
+      originalRequest._retry                        // already retried
     ) {
+      return Promise.reject(error);
+    }
+
+    // ✅ Refresh ONLY for protected APIs
+    if (status === 401) {
       originalRequest._retry = true;
 
       try {
         await refreshManager();
         return api(originalRequest);
       } catch {
-        // refresh failed → logout
         window.location.href = '/auth/login';
+        return Promise.reject(error);
       }
     }
 
