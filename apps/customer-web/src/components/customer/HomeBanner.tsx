@@ -233,7 +233,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   homeBanner: {
     background: "linear-gradient(135deg, #f0fdf4 0%, #ffffff 60%, #ecfccb 100%)",
     height: "calc(100vh - 80px)", // Adjusted for typical nav height
-    minHeight: "600px",
+    minHeight: "530px",
     display: "flex",
     alignItems: "center",
     position: "relative",
@@ -285,7 +285,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   badge: {
     display: "inline-flex",
     alignItems: "center",
-    padding: "8px 20px",
+    padding: "4px 12px",
     borderRadius: "50px",
     fontSize: "0.85rem",
     fontWeight: "800",
@@ -298,7 +298,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   mainHeading: {
     fontSize: "clamp(3rem, 5vw, 4.5rem)", // Responsive font size
-    fontWeight: 900,
+    fontWeight: 800,
     color: "#1e293b",
     lineHeight: "1.1",
     letterSpacing: "-0.02em",
@@ -315,7 +315,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   ctaButton: {
     color: "white",
     border: "none",
-    padding: "18px 48px",
+    padding: "12px 24px",
     borderRadius: "50px",
     fontWeight: 700,
     fontSize: "1.1rem",
