@@ -18,7 +18,7 @@ export default function PersonalDetailsView({ profile }: { profile: any }) {
       <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
         <div className="flex justify-between items-center mb-10">
           <div>
-            <h2 className="text-3xl font-black text-slate-800 tracking-tight">Personal Details</h2>
+            <h2 className="text-3xl font-black text-slate-800 tracking-tight animate-shine">Personal Details</h2>
             <p className="text-slate-500 text-sm mt-1">Manage your profile identity</p>
           </div>
           

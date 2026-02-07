@@ -24,7 +24,7 @@ export default function MenuPage() {
           
           {/* Page Header */}
           <header className="mb-8 border-b border-slate-100 pb-4">
-            <h1 className="text-left text-[1.75rem] font-extrabold text-[#052e16] md:text-[2rem]">
+            <h1 className="text-left text-[1.75rem] font-extrabold text-[#052e16] md:text-[2rem] animate-shine">
               Our Menu
             </h1>
           </header>
