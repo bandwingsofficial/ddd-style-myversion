@@ -40,7 +40,7 @@ body {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: premium-shine 4s ease-in-out infinite;
+  animation: premium-shine 6s ease-in-out infinite;
   display: inline-block;
 }
 
