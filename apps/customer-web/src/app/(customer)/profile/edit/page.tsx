@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Save, User, Mail } from "lucide-react";
+import { X, Save, User, Mail, Calendar, ChevronDown } from "lucide-react";
 import { profileApi } from "@/features/customer-profile/api/profile.api";
 
 interface EditProfileModalProps {
@@ -39,8 +39,8 @@ export default function EditProfileModal({ isOpen, onClose, initialData, onSucce
     try {
       const response = await profileApi.upsertProfile(formData);
       if (response.success) {
-        onSuccess(); // Re-fetches data in the parent component
-        onClose();   // Closes the modal
+        onSuccess();
+        onClose();
       }
     } catch (error) {
       console.error("Failed to update profile", error);
@@ -51,39 +51,55 @@ export default function EditProfileModal({ isOpen, onClose, initialData, onSucce
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200">
+    /* FIX: Added top-0, left-0, w-screen, h-screen to ensure the backdrop 
+       covers everything and isn't pushed down by the header.
+    */
+    <div className="fixed top-0 left-0 w-screen h-screen z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+      
+      {/* FIX: Added a wrapper with overflow-hidden to keep the rounded corners 
+         clean and a max-height to ensure it doesn't overflow the screen.
+      */}
+      <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-300">
         
-        <div className="flex items-center justify-between p-6 border-b border-slate-50">
-          <h2 className="text-xl font-bold text-slate-800">Edit Profile</h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
-            <X size={20} />
+        {/* Modal Header - Fixed at top */}
+        <div className="shrink-0 flex items-center justify-between p-5 border-b border-slate-50">
+          <div>
+            <h2 className="text-2xl font-black text-slate-800 tracking-tight animate-shine">Edit Profile</h2>
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-0.5">Personal Identity</p>
+          </div>
+          <button 
+            onClick={onClose} 
+            className="p-2.5 hover:bg-slate-100 rounded-2xl transition-all text-slate-400 hover:text-red-500"
+          >
+            <X size={22} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-          <div>
-            <label className="text-sm font-semibold text-slate-600 mb-1.5 block">Full Name</label>
+        {/* Modal Body - Scrollable if content is too long */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-6">
+          
+          <div className="space-y-1">
+            <label className="text-[11px] font-black text-slate-400 ml-1 uppercase tracking-[0.15em]">Full Name</label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
               <input 
                 type="text"
                 required
-                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-slate-800"
+                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:bg-white outline-none text-slate-800 font-bold transition-all"
                 value={formData.fullName}
                 onChange={(e) => setFormData({...formData, fullName: e.target.value})}
               />
             </div>
           </div>
 
-          <div>
-            <label className="text-sm font-semibold text-slate-600 mb-1.5 block">Email Address</label>
+          <div className="space-y-2">
+            <label className="text-[11px] font-black text-slate-400 ml-1 uppercase tracking-[0.15em]">Email Address</label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
               <input 
                 type="email"
                 required
-                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-slate-800"
+                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:bg-white outline-none text-slate-800 font-bold transition-all"
                 value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
               />
@@ -91,38 +107,52 @@ export default function EditProfileModal({ isOpen, onClose, initialData, onSucce
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-semibold text-slate-600 mb-1.5 block">Gender</label>
-              <select 
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-slate-800 appearance-none"
-                value={formData.gender}
-                onChange={(e) => setFormData({...formData, gender: e.target.value})}
-              >
-                <option value="MALE">Male</option>
-                <option value="FEMALE">Female</option>
-                <option value="OTHER">Other</option>
-              </select>
+            <div className="space-y-2">
+              <label className="text-[11px] font-black text-slate-400 ml-1 uppercase tracking-[0.15em]">Gender</label>
+              <div className="relative">
+                <select 
+                  className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:bg-white outline-none text-slate-800 font-bold appearance-none transition-all"
+                  value={formData.gender}
+                  onChange={(e) => setFormData({...formData, gender: e.target.value})}
+                >
+                  <option value="MALE">Male</option>
+                  <option value="FEMALE">Female</option>
+                  <option value="OTHER">Other</option>
+                </select>
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={18} />
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-semibold text-slate-600 mb-1.5 block">Date of Birth</label>
+
+            <div className="space-y-2">
+              <label className="text-[11px] font-black text-slate-400 ml-1 uppercase tracking-[0.15em]">Birth Date</label>
               <input 
                 type="date"
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-slate-800"
+                className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:bg-white outline-none text-slate-800 font-bold transition-all"
                 value={formData.dob}
                 onChange={(e) => setFormData({...formData, dob: e.target.value})}
               />
             </div>
           </div>
+        </form>
 
+        {/* Modal Footer - Fixed at bottom */}
+        <div className="p-7 border-t border-slate-50 bg-slate-50/50 shrink-0">
           <button 
             disabled={saving}
             type="submit" 
-            className="w-full mt-4 py-4 bg-emerald-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-emerald-700 active:scale-[0.98] transition-all disabled:opacity-50"
+            onClick={handleSubmit}
+            className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-lg shadow-xl shadow-emerald-200 flex items-center justify-center gap-3 hover:bg-emerald-700 active:scale-[0.98] transition-all disabled:opacity-50"
           >
-            <Save size={20} />
-            {saving ? "Saving Changes..." : "Save Changes"}
+            {saving ? (
+              <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <>
+                <Save size={20} />
+                Save Changes
+              </>
+            )}
           </button>
-        </form>
+        </div>
       </div>
     </div>
   );
