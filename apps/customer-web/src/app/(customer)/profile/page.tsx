@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { User, MapPin, Package, LogOut, ChevronRight, Mail, Calendar, ShieldCheck } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { User, MapPin, Package, LogOut, ChevronRight } from "lucide-react";
 import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
 import { useLogout } from "@/features/customer-auth/hooks/useLogout";
 import { profileApi } from "@/features/customer-profile/api/profile.api";
@@ -20,13 +20,25 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Memoized fetch function so it can be called after updates
+  const fetchProfile = useCallback(async () => {
+    try {
+      const res = await profileApi.getProfile();
+      if (res.success) {
+        setProfile(res.data);
+      }
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (isAuthenticated) {
-      profileApi.getProfile()
-        .then((res) => { if (res.success) setProfile(res.data); })
-        .finally(() => setLoading(false));
+      fetchProfile();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, fetchProfile]);
 
   if (!isHydrated || loading) return <LoadingSpinner />;
 
@@ -67,7 +79,7 @@ export default function ProfilePage() {
                   icon={<Package size={20} />} 
                   label="My Orders" 
                   active={activeTab === 'orders'} 
-                  onClick={() => window.location.href = '/orders'} // External link
+                  onClick={() => window.location.href = '/orders'} 
                 />
                 <hr className="my-4 border-slate-50" />
                 <button 
@@ -83,7 +95,12 @@ export default function ProfilePage() {
 
           {/* MAIN CONTENT AREA */}
           <section className="flex-1 min-w-0">
-            {activeTab === 'profile' && <PersonalDetailsView profile={profile} />}
+            {activeTab === 'profile' && (
+              <PersonalDetailsView 
+                profile={profile} 
+                onProfileUpdate={fetchProfile} 
+              />
+            )}
             {activeTab === 'addresses' && <AddressesView />}
           </section>
 
@@ -93,8 +110,6 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-// --- Helper Components ---
 
 function SidebarItem({ icon, label, active, onClick }: { icon: any, label: string, active: boolean, onClick: () => void }) {
   return (

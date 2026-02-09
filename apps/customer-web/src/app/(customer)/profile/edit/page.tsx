@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { X, Save, User, Mail, Calendar, Users } from "lucide-react";
+import { X, Save, User, Mail } from "lucide-react";
 import { profileApi } from "@/features/customer-profile/api/profile.api";
 
 interface EditProfileModalProps {
@@ -20,9 +20,8 @@ export default function EditProfileModal({ isOpen, onClose, initialData, onSucce
     dob: "",
   });
 
-  // Pre-fill form when modal opens or initialData changes
   useEffect(() => {
-    if (initialData) {
+    if (initialData && isOpen) {
       setFormData({
         fullName: initialData.fullName || "",
         email: initialData.email || "",
@@ -40,8 +39,8 @@ export default function EditProfileModal({ isOpen, onClose, initialData, onSucce
     try {
       const response = await profileApi.upsertProfile(formData);
       if (response.success) {
-        onSuccess(); // Refresh the parent data
-        onClose();   // Close the modal
+        onSuccess(); // Re-fetches data in the parent component
+        onClose();   // Closes the modal
       }
     } catch (error) {
       console.error("Failed to update profile", error);
@@ -50,11 +49,11 @@ export default function EditProfileModal({ isOpen, onClose, initialData, onSucce
       setSaving(false);
     }
   };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl border border-slate-100 overflow-hidden animate-in zoom-in-95 duration-200">
         
-        {/* Modal Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-50">
           <h2 className="text-xl font-bold text-slate-800">Edit Profile</h2>
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
@@ -62,7 +61,6 @@ export default function EditProfileModal({ isOpen, onClose, initialData, onSucce
           </button>
         </div>
 
-        {/* Modal Body / Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           <div>
             <label className="text-sm font-semibold text-slate-600 mb-1.5 block">Full Name</label>

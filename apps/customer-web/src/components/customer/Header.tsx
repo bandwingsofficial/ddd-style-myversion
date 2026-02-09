@@ -34,15 +34,15 @@ export default function Header() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // ✅ UPDATED LOGIC: Corrected href for Categories to match your protected folder
+  // ✅ UPDATED LOGIC: Removed "/protected" prefix to match your actual App Router structure
   const baseLinks = [
     { name: "Home", href: "/home" },
     { name: "Menu", href: "/menu" },
-    { name: "Categories", href: "/protected/category" }, 
+    { name: "Categories", href: "/category" }, 
   ];
 
   const navLinks = isAuthenticated 
-    ? [...baseLinks, { name: "Orders", href: "/protected/my-orders" }]
+    ? [...baseLinks, { name: "Orders", href: "/orders" }] // Adjusted to match your /orders folder
     : baseLinks;
 
   return (
@@ -114,19 +114,18 @@ export default function Header() {
           {/* RIGHT ACTIONS */}
           <div className="flex items-center gap-6">
             <div className="relative flex items-center pr-[10px] border-r border-slate-200 transition-transform duration-300 hover:-translate-y-px group/loc">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full rounded-[30px] shadow-[0_0_0_0_rgba(34,197,94,0.4)] animate-[pulse-ring_3s_infinite] opacity-0 group-hover/loc:opacity-100 -z-10" />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full rounded-[30px] shadow-[0_0_0_0_rgba(34,197,94,0.2)] animate-[pulse-ring_3s_infinite] opacity-0 group-hover/loc:opacity-100 -z-10" />
               <LocationSelector />
             </div>
 
             <div className="flex items-center gap-4">
-              <Link href="/protected/favorites" className="w-[42px] h-[42px] flex items-center justify-center rounded-full text-slate-700 transition-all duration-300 cubic-bezier(0.175,0.885,0.32,1.275) hover:bg-green-50 hover:text-green-500 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(34,197,94,0.1)] group/fav">
+              <Link href="/favorites" className="w-[42px] h-[42px] flex items-center justify-center rounded-full text-slate-700 transition-all duration-300 cubic-bezier(0.175,0.885,0.32,1.275) hover:bg-green-50 hover:text-green-500 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(34,197,94,0.1)] group/fav">
                 <Heart size={20} strokeWidth={2.5} className="group-hover/fav:animate-[heart-pop_0.4s_ease-in-out]" />
               </Link>
               
-              <Link href="/protected/cart" className="w-[42px] h-[42px] flex items-center justify-center rounded-full text-slate-700 transition-all duration-300 cubic-bezier(0.175,0.885,0.32,1.275) hover:bg-green-50 hover:text-green-500 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(34,197,94,0.1)] group/cart">
+              <Link href="/cart" className="w-[42px] h-[42px] flex items-center justify-center rounded-full text-slate-700 transition-all duration-300 cubic-bezier(0.175,0.885,0.32,1.275) hover:bg-green-50 hover:text-green-500 hover:-translate-y-0.5 hover:shadow-[0_4px_12px_rgba(34,197,94,0.1)] group/cart">
                 <div className="relative flex items-center">
                   <ShoppingCart size={20} strokeWidth={2.5} className="group-hover/cart:animate-bounce" />
-                  {/* ✅ DYNAMIC CART BADGE */}
                   {cartItemCount > 0 && (
                     <span className="absolute -top-1.5 -right-1.5 bg-orange-500 text-white text-[10px] font-extrabold w-[18px] h-[18px] rounded-full flex items-center justify-center border-2 border-white shadow-[0_2px_4px_rgba(249,115,22,0.3)] group-hover/cart:animate-[wiggle_1s_ease-in-out]">
                       {cartItemCount}
@@ -147,14 +146,11 @@ export default function Header() {
                       <p className="m-0 text-[0.8rem] text-slate-500">Welcome back</p>
                     </div>
                     <hr className="my-2 border-slate-200" />
-                    <Link href="/protected/profile" className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-600 text-[0.875rem] transition-all duration-200 hover:bg-green-50 hover:text-green-500 hover:pl-5">
+                    <Link href="/profile" className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-600 text-[0.875rem] transition-all duration-200 hover:bg-green-50 hover:text-green-500 hover:pl-5">
                       <User size={16} /> Profile
                     </Link>
-                    <Link href="/protected/my-orders" className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-600 text-[0.875rem] transition-all duration-200 hover:bg-green-50 hover:text-green-500 hover:pl-5">
+                    <Link href="/orders" className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-600 text-[0.875rem] transition-all duration-200 hover:bg-green-50 hover:text-green-500 hover:pl-5">
                       <Package size={16} /> My Orders
-                    </Link>
-                    <Link href="/protected/settings" className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-slate-600 text-[0.875rem] transition-all duration-200 hover:bg-green-50 hover:text-green-500 hover:pl-5">
-                      <Settings size={16} /> Settings
                     </Link>
                     <hr className="my-2 border-slate-200" />
                     <button 

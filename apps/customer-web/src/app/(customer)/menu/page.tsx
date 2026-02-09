@@ -30,7 +30,7 @@ export default function MenuPage() {
           </header>
 
           {/* Grid Layout */}
-          <div className="grid grid-cols-2 gap-3 md:gap-5 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 min-[380px]:grid-cols-2 max-[379px]:grid-cols-1">
+          <div className="grid grid-cols-2 gap-3 md:gap-5 lg:grid-cols-5 xl:grid-cols-4 2xl:grid-cols-5 min-[380px]:grid-cols-2 max-[379px]:grid-cols-1">
             {loading
               ? Array.from({ length: 10 }).map((_, i) => (
                   <ProductSkeleton key={i} />

@@ -98,7 +98,7 @@ export default function CartPage() {
           {/* ✅ 1. Professional Page Header */}
           <div className="flex flex-col md:flex-row justify-between items-end mb-8 border-b border-slate-200 pb-6">
             <div>
-                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">My Cart</h1>
+                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight animate-shine">My Cart</h1>
                 <p className="text-slate-500 mt-2 font-medium">
                     {items.length === 0 ? "Your cart is empty" : `You have ${items.length} ${items.length === 1 ? 'item' : 'items'} in your cart`}
                 </p>

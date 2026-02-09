@@ -14,8 +14,6 @@ export default function CategoriesPage() {
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Categories</h1>
           <p className="text-sm text-slate-400 font-medium">Browse our full range of products</p>
         </div>
-
-        {/* Calling your existing file here */}
         <CategoryCarousel />
       </main>
 

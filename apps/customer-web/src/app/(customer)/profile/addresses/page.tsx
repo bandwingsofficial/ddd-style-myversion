@@ -29,7 +29,6 @@ export default function AddressListPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [detecting, setDetecting] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     label: "Home",
@@ -58,7 +57,6 @@ export default function AddressListPage() {
   };
 
   const openModal = (addr?: Address) => {
-    setErrorMsg(null);
     if (addr) {
       setEditingId(addr.id);
       setFormData({
@@ -111,15 +109,14 @@ export default function AddressListPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMsg(null);
+    
+    // Validations with Popup instead of static text
     const isTaken = addresses.some(a => a.type === formData.type && a.id !== editingId);
     if (formData.type !== "OTHER" && isTaken) {
-      setErrorMsg(`You already have a ${formData.type} address.`);
-      return;
+      return setPopup({ type: "error", message: `You already have a ${formData.type} address saved.` });
     }
     if (!details.area || !details.pincode) {
-      setErrorMsg("Please fill all required fields");
-      return;
+      return setPopup({ type: "error", message: "Street/Locality and Pincode are required." });
     }
 
     setSubmitting(true);
@@ -140,10 +137,14 @@ export default function AddressListPage() {
       } else {
         await AddressService.create(payload);
       }
+      
       setShowFormModal(false);
       loadAddresses();
-    } catch (err) {
-      setErrorMsg("Failed to save address.");
+      setPopup({ type: "success", message: "Address saved successfully!" });
+    } catch (err: any) {
+      // Catch backend 400 errors and display in popup
+      const msg = err.response?.data?.message || "Could not save address. Check if this type already exists.";
+      setPopup({ type: "error", message: msg });
     } finally {
       setSubmitting(false);
     }
@@ -169,15 +170,15 @@ export default function AddressListPage() {
     <div className="min-h-screen bg-[#F8FAFC]">
       <Header />
 
-      {/* ✅ Premium Popup Overlay */}
+      {/* ✅ Global Popup Overlay (Centered on Screen) */}
       {popup && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white p-6 rounded-3xl shadow-2xl max-w-sm w-full text-center border border-slate-100 transform scale-100 animate-in zoom-in-95 duration-200">
             <div className={`mx-auto w-14 h-14 rounded-2xl flex items-center justify-center mb-4 ${popup.type === 'confirm' ? 'bg-orange-50 text-orange-500' : popup.type === 'error' ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-600'}`}>
-              {popup.type === 'success' ? <CheckCircle size={28} /> : popup.type === 'confirm' ? <AlertCircle size={28} /> : <AlertCircle size={28} />}
+              {popup.type === 'success' ? <CheckCircle size={28} /> : <AlertCircle size={28} />}
             </div>
             <h3 className="font-extrabold text-slate-900 mb-2 text-lg">
-              {popup.type === 'confirm' ? 'Delete Address?' : popup.type === 'error' ? 'Something went wrong' : 'Success!'}
+              {popup.type === 'confirm' ? 'Delete Address?' : popup.type === 'error' ? 'Oops!' : 'Success!'}
             </h3>
             <p className="text-slate-500 text-sm mb-6 leading-relaxed">{popup.message}</p>
             <div className="flex gap-3">
@@ -194,13 +195,13 @@ export default function AddressListPage() {
         </div>
       )}
 
-      {/* ✅ Modern Form Modal */}
+      {/* ✅ Form Modal */}
       {showFormModal && (
         <div className="fixed inset-0 z-[9998] flex items-end md:items-center justify-center bg-slate-900/40 backdrop-blur-[2px] animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-lg rounded-t-[2.5rem] md:rounded-[2rem] shadow-[0_-8px_30px_rgb(0,0,0,0.04)] overflow-hidden animate-in slide-in-from-bottom-full md:slide-in-from-bottom-10 duration-500 ease-out">
             <div className="flex items-center justify-between px-6 py-5 border-b border-slate-50">
               <div>
-                <h2 className="text-xl font-black text-slate-900 tracking-tight">{editingId ? "Edit Address" : "Add New Address"}</h2>
+                <h2 className="text-xl font-black text-slate-900 tracking-tight animate-shine">{editingId ? "Edit Address" : "Add New Address"}</h2>
                 <p className="text-xs text-slate-400 font-medium">Please provide accurate delivery details</p>
               </div>
               <button onClick={() => setShowFormModal(false)} className="p-2 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors text-slate-400">
@@ -209,12 +210,6 @@ export default function AddressListPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto scrollbar-hide">
-              {errorMsg && (
-                <div className="bg-red-50 text-red-600 p-4 rounded-2xl text-xs font-bold flex items-center gap-3 border border-red-100 animate-shake">
-                  <AlertCircle size={18} /> {errorMsg}
-                </div>
-              )}
-
               <div className="space-y-3">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 ml-1">Address Category</label>
                 <div className="grid grid-cols-3 gap-2">
@@ -227,9 +222,9 @@ export default function AddressListPage() {
                         type="button"
                         disabled={disabled}
                         onClick={() => setFormData({ ...formData, type: t as any, label: t === "OTHER" ? "" : t.charAt(0) + t.slice(1).toLowerCase() })}
-                        className={`py-3.5 rounded-2xl font-bold border transition-all flex flex-col items-center justify-center gap-1 ${
+                        className={`py-1.5 rounded-2xl font-bold border transition-all flex flex-col items-center justify-center gap-1 ${
                           formData.type === t ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg shadow-emerald-100 scale-[0.98]' : 
-                          disabled ? 'bg-slate-50 text-slate-300 border-slate-50 cursor-not-allowed' : 'bg-white text-slate-500 border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/30'
+                          disabled ? 'bg-slate-30 text-slate-300 border-slate-50 cursor-not-allowed' : 'bg-white text-slate-500 border-slate-100 hover:border-emerald-200 hover:bg-emerald-50/30'
                         }`}
                       >
                         <span className="text-sm">{t}</span>
@@ -247,7 +242,7 @@ export default function AddressListPage() {
                     value={formData.label} 
                     onChange={e => setFormData({...formData, label: e.target.value})}
                     placeholder="E.g. My Penthouse"
-                    className="w-full pl-4 pr-4 py-4 rounded-2xl border border-slate-100 bg-slate-50/50 font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm placeholder:font-medium"
+                    className="w-full pl-4 pr-4 py-3 rounded-2xl border border-slate-100 bg-slate-50/50 font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm placeholder:font-medium"
                     readOnly={formData.type !== "OTHER"}
                     required
                   />
@@ -258,7 +253,7 @@ export default function AddressListPage() {
                   type="button"
                   onClick={handleUseCurrent}
                   disabled={detecting}
-                  className="w-full py-4 flex items-center justify-center gap-3 bg-white text-slate-700 font-bold rounded-2xl border-2 border-dashed border-slate-200 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/50 transition-all disabled:opacity-50 text-sm"
+                  className="w-full py-3 flex items-center justify-center gap-3 bg-white text-slate-700 font-bold rounded-2xl border-2 border-dashed border-slate-200 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/50 transition-all disabled:opacity-50 text-sm"
                 >
                   {detecting ? <Loader2 className="animate-spin" size={18} /> : <Crosshair size={18} className="text-emerald-500" />} 
                   Locate me automatically
@@ -267,30 +262,29 @@ export default function AddressListPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 ml-1">FLAT / HOUSE NO.</label>
-                    <input value={details.houseNo} onChange={e => setDetails({...details, houseNo: e.target.value})} placeholder="102, B-Block" className="w-full p-4 rounded-2xl border border-slate-100 focus:outline-none focus:border-emerald-500 bg-slate-50/30 text-sm font-semibold" />
+                    <input value={details.houseNo} onChange={e => setDetails({...details, houseNo: e.target.value})} placeholder="102, B-Block" className="w-full p-3 rounded-2xl border border-slate-100 focus:outline-none focus:border-emerald-500 bg-slate-50/30 text-sm font-semibold" />
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-[10px] font-bold text-slate-400 ml-1">PINCODE *</label>
-                    <input value={details.pincode} onChange={e => setDetails({...details, pincode: e.target.value})} placeholder="6-digit PIN" className="w-full p-4 rounded-2xl border border-slate-100 focus:outline-none focus:border-emerald-500 bg-slate-50/30 text-sm font-semibold" required />
+                    <input value={details.pincode} onChange={e => setDetails({...details, pincode: e.target.value})} placeholder="6-digit PIN" className="w-full p-3 rounded-2xl border border-slate-100 focus:outline-none focus:border-emerald-500 bg-slate-50/30 text-sm font-semibold" required />
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-400 ml-1">STREET / LOCALITY *</label>
-                  <textarea value={details.area} onChange={e => setDetails({...details, area: e.target.value})} placeholder="Full building name or street..." className="w-full p-4 rounded-2xl border border-slate-100 h-24 resize-none focus:outline-none focus:border-emerald-500 bg-slate-50/30 text-sm font-semibold" required />
+                  <textarea value={details.area} onChange={e => setDetails({...details, area: e.target.value})} placeholder="Full building name or street..." className="w-full p-3 rounded-2xl border border-slate-100 h-24 resize-none focus:outline-none focus:border-emerald-500 bg-slate-50/30 text-sm font-semibold" required />
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-400 ml-1">LANDMARK (OPTIONAL)</label>
-                  <input value={details.landmark} onChange={e => setDetails({...details, landmark: e.target.value})} placeholder="Near Central Park..." className="w-full p-4 rounded-2xl border border-slate-100 focus:outline-none focus:border-emerald-500 bg-slate-50/30 text-sm font-semibold" />
+                  <input value={details.landmark} onChange={e => setDetails({...details, landmark: e.target.value})} placeholder="Near Central Park..." className="w-full p-3 rounded-2xl border border-slate-100 focus:outline-none focus:border-emerald-500 bg-slate-50/30 text-sm font-semibold" />
                 </div>
               </div>
 
-              {/* ✅ UPDATED BUTTON: Increased height (py-5) and emerald color */}
               <button 
                 type="submit" 
                 disabled={submitting}
-                className="w-full py-5 bg-emerald-600 text-white font-black rounded-2xl hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-200 disabled:opacity-70 text-base active:scale-[0.98]"
+                className="w-full py-4 bg-emerald-600 text-white font-black rounded-2xl hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-200 disabled:opacity-70 text-base active:scale-[0.98]"
               >
                 {submitting ? "Processing..." : editingId ? "Update Address" : "Save & Continue"}
               </button>
@@ -299,7 +293,7 @@ export default function AddressListPage() {
         </div>
       )}
 
-      {/* ✅ Premium List View */}
+      {/* ✅ List View */}
       <main className="max-w-4xl mx-auto px-4 pt-10 pb-24">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
@@ -346,7 +340,7 @@ export default function AddressListPage() {
                 
                 <div className="flex-1 min-w-0 pr-12">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-black text-slate-800 text-lg leading-tight truncate">{addr.label}</h3>
+                    <h3 className="font-black text-slate-700 text-lg leading-tight truncate">{addr.label}</h3>
                     <span className="text-[10px] font-extrabold px-2 py-0.5 bg-slate-100 text-slate-500 rounded-lg uppercase tracking-wider">{addr.type}</span>
                   </div>
                   <p className="text-slate-500 leading-relaxed text-sm font-medium line-clamp-2">{addr.addressText}</p>
