@@ -27,20 +27,16 @@ export class PaymentService {
   ) {}
 
 /* ================================================= */
-/* CREATE PAYMENT SESSION (SAFE)                     */
+/* CREATE PAYMENT SESSION (REAL RAZORPAY)             */
 /* ================================================= */
 
 async createPayment(params: {
   orderId: string;
 }): Promise<{
   payment: Payment;
-  checkoutUrl: string;
+  razorpayOrderId: string;   // 🔥 NEW
+  checkoutUrl: string | null;
 }> {
-
-  console.log('\n💳 ==============================');
-  console.log('CREATE PAYMENT SESSION START');
-  console.log('orderId:', params.orderId);
-  console.log('==============================\n');
 
   if (!params?.orderId) {
     throw new ValidationError(
@@ -50,13 +46,11 @@ async createPayment(params: {
   }
 
   /* ================================================= */
-  /* PHASE 1 — DB ONLY                                 */
+  /* PHASE 1 — DB                                      */
   /* ================================================= */
 
   const { payment, amount } = await this.prisma.$transaction(
     async (tx) => {
-
-      console.log('🛢️  [DB] Fetching order...');
 
       const order = await this.orderRepo.findById(params.orderId, tx);
 
@@ -65,7 +59,6 @@ async createPayment(params: {
       }
 
       if (!order.isCreated()) {
-        console.log('❌ Order not payable');
         throw new ValidationError(
           'ORDER_NOT_PAYABLE',
           'Payment already initiated for this order',
@@ -74,20 +67,16 @@ async createPayment(params: {
 
       const amount = order.grandTotal.toNumber();
 
-      console.log('🟡 Creating payment record...');
-      console.log({ amount });
-
+      /* 🔥 FIX #1 → REAL PROVIDER */
       const payment = Payment.createNew({
         id: uuid(),
         orderId: order.id,
         method: PaymentMethod.ONLINE,
         amount,
-        provider: 'MOCK_GATEWAY',
+        provider: 'RAZORPAY', // ✅ changed
       });
 
       const saved = await this.paymentRepo.create(payment, tx);
-
-      console.log('🔄 Marking order → PAYMENT_PENDING');
 
       const pendingOrder = order.markPaymentPending();
       await this.orderRepo.update(pendingOrder, tx);
@@ -96,15 +85,8 @@ async createPayment(params: {
     },
   );
 
-  console.log('✅ DB COMMIT COMPLETE');
-  console.log({
-    paymentId: payment.id,
-    orderId: payment.orderId,
-    status: 'PAYMENT_PENDING',
-  });
-
   /* ================================================= */
-  /* 🔥 EMIT AFTER COMMIT                               */
+  /* EVENTS                                            */
   /* ================================================= */
 
   this.paymentEvents.emitPaymentInitiated({
@@ -115,20 +97,13 @@ async createPayment(params: {
   });
 
   /* ================================================= */
-  /* PHASE 2 — EXTERNAL (Razorpay)                     */
+  /* PHASE 2 — RAZORPAY ORDER                          */
   /* ================================================= */
-
-  console.log('🌐 Calling Razorpay → create order...');
 
   const session = await this.gateway.createPaymentSession({
     orderId: payment.orderId,
     amount,
     currency: 'INR',
-  });
-
-  console.log('✅ Razorpay order created');
-  console.log({
-    providerOrderId: session.providerPaymentId,
   });
 
   /* ================================================= */
@@ -143,19 +118,19 @@ async createPayment(params: {
     await this.paymentRepo.update(updated, tx);
   });
 
-  console.log('🔗 Provider reference saved to DB');
-  console.log({
-    paymentId: updated.id,
-    providerRef: updated.providerRefId,
-  });
-
-  console.log('💳 CREATE PAYMENT SESSION END\n');
+  /* ================================================= */
+  /* 🔥 FIX #2 → RETURN ORDER ID FOR FRONTEND           */
+  /* ================================================= */
 
   return {
     payment: updated,
-    checkoutUrl: session.checkoutUrl,
+
+    razorpayOrderId: session.providerPaymentId, // ✅ new
+
+    checkoutUrl: session.checkoutUrl ?? null,
   };
 }
+
 
   /* ================================================= */
   /* CONFIRM PAYMENT (SAFE + IDEMPOTENT)               */

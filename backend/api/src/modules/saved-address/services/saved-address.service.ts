@@ -5,7 +5,6 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
 
-
 import { SavedAddress } from '../domain/models/saved-address.model';
 import { SavedAddressRepository } from '../repositories/saved-address.repository';
 
@@ -27,17 +26,17 @@ export class SavedAddressService {
   /* READS                                             */
   /* ================================================= */
 
-async getById(
-  params: {
-    customerId: string;
-    savedAddressId: string;
-  },
-  tx?: PrismaTransaction, // 🔥 add
-): Promise<SavedAddress>{
+  async getById(
+    params: {
+      customerId: string;
+      savedAddressId: string;
+    },
+    tx?: PrismaTransaction,
+  ): Promise<SavedAddress> {
     const address = await this.savedAddressRepo.findById(
       params.savedAddressId,
       params.customerId,
-      tx, // 🔥 pass
+      tx,
     );
 
     if (!address) {
@@ -50,14 +49,12 @@ async getById(
     return address;
   }
 
-  async getAllByCustomer(
-    customerId: string,
-  ): Promise<SavedAddress[]> {
+  async getAllByCustomer(customerId: string): Promise<SavedAddress[]> {
     return this.savedAddressRepo.findAllByCustomer(customerId);
   }
 
   /* ================================================= */
-  /* ⭐ NEW – PRIMARY / DEFAULT ADDRESS (VERY USEFUL)   */
+  /* PRIMARY                                           */
   /* ================================================= */
 
   async getPrimaryAddress(
@@ -79,44 +76,55 @@ async getById(
     let result!: SavedAddress;
 
     await this.prisma.$transaction(async (tx) => {
-      /* 1️⃣ Block duplicate ACTIVE */
-      const active =
-        await this.savedAddressRepo.findActiveByCustomerAndType(
-          address.customerId,
-          address.type,
-          tx,
-        );
 
-      if (active) {
-        throw new ValidationError(
-          'SAVED_ADDRESS_TYPE_ALREADY_EXISTS',
-          `Active ${address.type} address already exists`,
-        );
+      /* ✅ Only HOME/WORK uniqueness check */
+      if (
+        address.type === SavedAddressType.HOME ||
+        address.type === SavedAddressType.WORK
+      ) {
+        const active =
+          await this.savedAddressRepo.findActiveByCustomerAndType(
+            address.customerId,
+            address.type,
+            tx,
+          );
+
+        if (active) {
+          throw new ValidationError(
+            'SAVED_ADDRESS_TYPE_ALREADY_EXISTS',
+            `Active ${address.type} address already exists`,
+          );
+        }
       }
 
-      /* 2️⃣ Restore deleted */
-      const deleted =
-        await this.savedAddressRepo.findDeletedByCustomerAndType(
-          address.customerId,
-          address.type,
-          tx,
-        );
+      /* 2️⃣ Restore deleted (HOME/WORK only) */
+      if (
+        address.type === SavedAddressType.HOME ||
+        address.type === SavedAddressType.WORK
+      ) {
+        const deleted =
+          await this.savedAddressRepo.findDeletedByCustomerAndType(
+            address.customerId,
+            address.type,
+            tx,
+          );
 
-      if (deleted) {
-        const restored = deleted
-          .restore()
-          .updateDetails({
-            label: address.label,
-            addressText: address.addressText,
-            latitude: address.latitude,
-            longitude: address.longitude,
-          });
+        if (deleted) {
+          const restored = deleted
+            .restore()
+            .updateDetails({
+              label: address.label,
+              addressText: address.addressText,
+              latitude: address.latitude,
+              longitude: address.longitude,
+            });
 
-        result = await this.savedAddressRepo.save(restored, tx);
-        return;
+          result = await this.savedAddressRepo.save(restored, tx);
+          return;
+        }
       }
 
-      /* 3️⃣ Create new */
+      /* 3️⃣ Create new (OTHER unlimited) */
       result = await this.savedAddressRepo.create(address, tx);
     });
 
@@ -130,7 +138,7 @@ async getById(
   }
 
   /* ================================================= */
-  /* UPDATE (SAFE PARTIAL UPDATE ⭐ FIXED)              */
+  /* UPDATE                                            */
   /* ================================================= */
 
   async updateSavedAddress(params: {
@@ -153,11 +161,8 @@ async getById(
       );
     }
 
-    /* ⭐ SAFE UPDATE (prevents undefined overwrite) */
     const updated = address.updateDetails({
-      ...(params.label !== undefined && {
-        label: params.label,
-      }),
+      ...(params.label !== undefined && { label: params.label }),
       ...(params.addressText !== undefined && {
         addressText: params.addressText,
       }),

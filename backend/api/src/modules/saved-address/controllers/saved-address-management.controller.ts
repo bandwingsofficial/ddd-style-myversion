@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 
 import { SavedAddressOrchestratorService } from '../services/saved-address-orchestrator.service';
-import { OutletOrchestratorService } from '../../outlets/services/outlet-orchestrator.service'; // ⭐ NEW
+import { OutletOrchestratorService } from '../../outlets/services/outlet-orchestrator.service';
 
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
@@ -31,17 +31,16 @@ import { randomUUID } from 'crypto';
 export class SavedAddressManagementController {
   constructor(
     private readonly orchestrator: SavedAddressOrchestratorService,
-    private readonly outletOrchestrator: OutletOrchestratorService, // ⭐ NEW
+    private readonly outletOrchestrator: OutletOrchestratorService,
   ) {}
 
   /* ================= READ ================= */
 
   @Get()
   async getAllSavedAddresses(@CurrentUser() user) {
-    const data =
-      await this.orchestrator.getAllSavedAddresses({
-        customerId: user.actorId,
-      });
+    const data = await this.orchestrator.getAllSavedAddresses({
+      customerId: user.actorId,
+    });
 
     return {
       success: true,
@@ -56,11 +55,10 @@ export class SavedAddressManagementController {
     @Param('savedAddressId') savedAddressId: string,
     @CurrentUser() user,
   ) {
-    const data =
-      await this.orchestrator.getSavedAddressById({
-        customerId: user.actorId,
-        savedAddressId,
-      });
+    const data = await this.orchestrator.getSavedAddressById({
+      customerId: user.actorId,
+      savedAddressId,
+    });
 
     return {
       success: true,
@@ -71,7 +69,7 @@ export class SavedAddressManagementController {
   }
 
   /* ================================================= */
-  /* ⭐ NEW – GET OUTLETS BY SAVED ADDRESS (GEO)       */
+  /* GET OUTLETS BY SAVED ADDRESS (GEO)                */
   /* ================================================= */
 
   @Get(':savedAddressId/outlets')
@@ -85,7 +83,8 @@ export class SavedAddressManagementController {
         savedAddressId,
       });
 
-    if (!address.latitude || !address.longitude) {
+    // ✅ FIX: allow 0 coords
+    if (address.latitude == null || address.longitude == null) {
       return {
         success: true,
         code: 'NO_LOCATION_FOR_ADDRESS',
@@ -183,4 +182,3 @@ export class SavedAddressManagementController {
     };
   }
 }
- 

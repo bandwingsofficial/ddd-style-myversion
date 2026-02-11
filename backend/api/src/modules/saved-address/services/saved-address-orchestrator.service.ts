@@ -25,33 +25,27 @@ export class SavedAddressOrchestratorService {
   async getAllSavedAddresses(params: {
     customerId: string;
   }): Promise<SavedAddress[]> {
-    return this.savedAddressService.getAllByCustomer(
-      params.customerId,
-    );
+    return this.savedAddressService.getAllByCustomer(params.customerId);
   }
 
   /* ================================================= */
-  /* ⭐ NEW – PRIMARY ADDRESS (MOST USED)               */
+  /* PRIMARY                                           */
   /* ================================================= */
 
   async getPrimarySavedAddress(
     customerId: string,
   ): Promise<SavedAddress | null> {
-    return this.savedAddressService.getPrimaryAddress(
-      customerId,
-    );
+    return this.savedAddressService.getPrimaryAddress(customerId);
   }
 
   /* ================================================= */
-  /* SAVED ADDRESS – CREATE / UPDATE                   */
+  /* CREATE / UPDATE                                   */
   /* ================================================= */
 
   async createSavedAddress(params: {
     address: SavedAddress;
   }): Promise<SavedAddress> {
-    return this.savedAddressService.createSavedAddress(
-      params.address,
-    );
+    return this.savedAddressService.createSavedAddress(params.address);
   }
 
   async updateSavedAddress(params: {
@@ -62,21 +56,17 @@ export class SavedAddressOrchestratorService {
     latitude?: number | null;
     longitude?: number | null;
   }): Promise<SavedAddress> {
-    return this.savedAddressService.updateSavedAddress(
-      params,
-    );
+    return this.savedAddressService.updateSavedAddress(params);
   }
 
   /* ================================================= */
-  /* SAVED ADDRESS – DELETE                            */
+  /* DELETE                                            */
   /* ================================================= */
 
   async deleteSavedAddress(params: {
     customerId: string;
     savedAddressId: string;
   }): Promise<{ id: string; deleted: true }> {
-    return this.savedAddressService.deleteSavedAddress(
-      params,
-    );
+    return this.savedAddressService.deleteSavedAddress(params);
   }
 }

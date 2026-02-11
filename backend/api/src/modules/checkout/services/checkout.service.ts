@@ -112,18 +112,22 @@ async getCheckoutSummary(params: {
   });
 }
 
-  /* ================================================= */
-  /* START CHECKOUT (TX SAFE + PRODUCTION READY)        */
-  /* ================================================= */
+/* ================================================= */
+/* START CHECKOUT (GATEWAY STYLE)                    */
+/* ================================================= */
 
-  async startCheckout(params: {
+async startCheckout(params: {
   customerId: string;
   outletId: string;
   savedAddressId: string;
 }): Promise<{
   orderId: string;
   paymentId: string;
-  checkoutUrl: string;
+
+  // 🔥 NEW (for Razorpay popup)
+  razorpayOrderId: string;
+  amount: number;
+  key: string;
 }> {
 
   console.log('\n==============================');
@@ -133,10 +137,12 @@ async getCheckoutSummary(params: {
 
   this.validateParams(params);
 
+  /* ================================================= */
+  /* 1️⃣ CREATE ORDER (TX SAFE)                         */
+  /* ================================================= */
+
   const order = await this.prisma.$transaction(
     async (tx: PrismaTransaction) => {
-
-      console.log('🛒 Fetching active cart...');
 
       const cart = await this.cartService.getActiveCart(
         {
@@ -147,11 +153,8 @@ async getCheckoutSummary(params: {
       );
 
       if (!cart || !cart.hasItems()) {
-        console.log('❌ Cart empty');
         throw new ValidationError('EMPTY_CART', 'Cart is empty');
       }
-
-      console.log('✅ Cart found with items');
 
       await this.ensureNoActiveOrder(
         params.customerId,
@@ -160,14 +163,11 @@ async getCheckoutSummary(params: {
       );
 
       if (cart.status === CartStatus.LOCKED) {
-        console.log('❌ Cart already locked');
         throw new ValidationError(
           'CHECKOUT_ALREADY_IN_PROGRESS',
           'Checkout already started for this cart',
         );
       }
-
-      console.log('🔒 Locking cart...');
 
       const lockedCart = await this.cartService.lockCart(
         {
@@ -185,35 +185,24 @@ async getCheckoutSummary(params: {
         tx,
       );
 
-      console.log('📦 Creating order from cart...');
-
-      const createdOrder =
-        await this.orderOrchestrator.createOrderFromCart(
-          {
-            cart: lockedCart,
-            address,
-          },
-          tx,
-        );
-
-      console.log('✅ ORDER CREATED:', createdOrder.id);
-
-      return createdOrder;
+      return this.orderOrchestrator.createOrderFromCart(
+        {
+          cart: lockedCart,
+          address,
+        },
+        tx,
+      );
     },
   );
 
-  try {
+  /* ================================================= */
+  /* 2️⃣ CREATE PAYMENT SESSION                         */
+  /* ================================================= */
 
-    console.log('\n💳 Creating payment session...');
+  try {
 
     const paymentResult = await this.paymentOrchestrator.createPayment({
       orderId: order.id,
-    });
-
-    console.log('🟡 PAYMENT SESSION CREATED (ORDER → PAYMENT_PENDING)');
-    console.log({
-      orderId: order.id,
-      paymentId: paymentResult.payment.id,
     });
 
     this.checkoutEvents.emitCheckoutStarted({
@@ -224,18 +213,21 @@ async getCheckoutSummary(params: {
       grandTotal: order.grandTotal.toNumber(),
     });
 
-    console.log('✅ Checkout ready\n');
+    /* ================================================= */
+    /* 🔥 RETURN RAZORPAY DATA TO FRONTEND               */
+    /* ================================================= */
 
     return {
       orderId: order.id,
       paymentId: paymentResult.payment.id,
-      checkoutUrl: paymentResult.checkoutUrl,
+
+      // 🔥 THESE 3 ARE REQUIRED
+      razorpayOrderId: paymentResult.razorpayOrderId,
+      amount: order.grandTotal.toNumber() * 100, // paise
+      key: process.env.RAZORPAY_KEY_ID!,
     };
 
   } catch (err) {
-
-    console.log('❌ PAYMENT CREATION FAILED → unlocking cart');
-    console.error(err);
 
     await this.cartService.unlockCart({
       customerId: params.customerId,
@@ -250,6 +242,7 @@ async getCheckoutSummary(params: {
     throw err;
   }
 }
+
   private async ensureNoActiveOrder(
     customerId: string,
     outletId: string,

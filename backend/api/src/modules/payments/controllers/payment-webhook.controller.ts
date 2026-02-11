@@ -3,30 +3,33 @@ import {
   Post,
   Body,
   Headers,
+  HttpCode,
 } from '@nestjs/common';
 
 import { PaymentOrchestratorService } from '../services/payment-orchestrator.service';
-import { PaymentWebhookDto } from '../dtos/payment-webhook.dto';
 
-@Controller('payments/webhook')
+@Controller('payments/webhook/razorpay') // 🔥 explicit
 export class PaymentWebhookController {
   constructor(
     private readonly orchestrator: PaymentOrchestratorService,
   ) {}
 
   /* ================================================= */
-  /* WEBHOOK CALLBACK                                 */
+  /* 🔥 RAZORPAY WEBHOOK                               */
   /* ================================================= */
 
-@Post()
-async handleWebhook(
-  @Body() dto: PaymentWebhookDto,
-  @Headers('x-razorpay-signature') signature?: string,
-) {
-  await this.orchestrator.handleWebhook({
-    payload: dto.payload,
-    signature,
-  });
+  @Post()
+  @HttpCode(200) // 🔥 important for Razorpay
+  async handleWebhook(
+    @Body() payload: any, // 🔥 raw body (no DTO)
+    @Headers('x-razorpay-signature') signature?: string,
+  ) {
 
-  return { received: true };
-}}
+    await this.orchestrator.handleWebhook({
+      payload,
+      signature,
+    });
+
+    return { received: true };
+  }
+}

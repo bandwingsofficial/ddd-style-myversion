@@ -75,7 +75,7 @@ export class SavedAddress {
   }
 
   /* ---------------------------------------------- */
-  /* DOMAIN QUERIES                                 */
+  /* DOMAIN QUERIES                                */
   /* ---------------------------------------------- */
 
   isHome(): boolean {
@@ -135,7 +135,6 @@ export class SavedAddress {
     });
   }
 
-  /** ✅ OPTION B SUPPORT */
   restore(now = new Date()): SavedAddress {
     if (!this.isDeleted) {
       return this; // idempotent
@@ -160,11 +159,14 @@ export class SavedAddress {
       );
     }
 
-    if (!this.label || this.label.trim().length < 2) {
-      throw new ValidationError(
-        'SAVED_ADDRESS_INVALID_LABEL',
-        'Address label must be at least 2 characters',
-      );
+    // ✅ label required only for OTHER
+    if (this.isOther()) {
+      if (!this.label || this.label.trim().length < 2) {
+        throw new ValidationError(
+          'SAVED_ADDRESS_INVALID_LABEL',
+          'Other address must have custom label (min 2 chars)',
+        );
+      }
     }
 
     if (!this.addressText || this.addressText.trim().length < 5) {

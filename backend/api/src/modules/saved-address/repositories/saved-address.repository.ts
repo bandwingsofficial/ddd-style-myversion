@@ -20,6 +20,27 @@ export class SavedAddressRepository {
   ): Promise<SavedAddress> {
     const client = tx ?? this.prisma;
 
+    /* ✅ only HOME/WORK uniqueness check */
+    if (
+      address.type === SavedAddressType.HOME ||
+      address.type === SavedAddressType.WORK
+    ) {
+      const existing = await client.customerSavedAddress.findFirst({
+        where: {
+          customerId: address.customerId,
+          type: SavedAddressTypeMapper.toPrisma(address.type),
+          isDeleted: false,
+        },
+        select: { id: true },
+      });
+
+      if (existing) {
+        throw new Error(
+          `${address.type} address already exists for this customer`,
+        );
+      }
+    }
+
     const row = await client.customerSavedAddress.create({
       data: {
         id: address.id,
@@ -139,7 +160,6 @@ export class SavedAddressRepository {
 
   /* ================================================= */
   /* SAVE (FULL AGGREGATE)                             */
-  /* Used for update / restore                         */
   /* ================================================= */
 
   async save(

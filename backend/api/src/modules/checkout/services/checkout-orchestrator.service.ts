@@ -20,19 +20,17 @@ async getCheckoutSummary(params: {
 }): Promise<CheckoutSummaryDto> {
   return this.checkoutService.getCheckoutSummary(params);
 }
-  /* ================================================= */
-  /* CHECKOUT – START PAYMENT                          */
-  /* ================================================= */
-
   async startCheckout(params: {
-    customerId: string;
-    outletId: string; // 🔥 REQUIRED
-    savedAddressId: string;
-  }): Promise<{
-    orderId: string;
-    paymentId: string;
-    checkoutUrl: string;
-  }> {
-    return this.checkoutService.startCheckout(params);
-  }
+  customerId: string;
+  outletId: string;
+  savedAddressId: string;
+}): Promise<{
+  orderId: string;
+  paymentId: string;
+  razorpayOrderId: string;
+  amount: number;
+  key: string;
+}> {
+  return this.checkoutService.startCheckout(params);
+}
 }

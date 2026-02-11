@@ -15,25 +15,29 @@ export class PaymentOrchestratorService {
   /* PAYMENT – CREATE                                  */
   /* ================================================= */
 
-  async createPayment(params: {
-    orderId: string;
-  }): Promise<{
-    payment: Payment;
-    checkoutUrl: string;
-  }> {
+/* ================================================= */
+/* PAYMENT – CREATE                                  */
+/* ================================================= */
 
-    const { orderId } = params;
+async createPayment(params: {
+  orderId: string;
+}): Promise<{
+  payment: Payment;
+  razorpayOrderId: string;   // 🔥 NEW
+  checkoutUrl: string | null;
+}> {
 
-    if (!orderId) {
-      throw new ValidationError(
-        'ORDER_ID_REQUIRED',
-        'Order id is required',
-      );
-    }
+  const { orderId } = params;
 
-    return this.paymentService.createPayment({ orderId });
+  if (!orderId) {
+    throw new ValidationError(
+      'ORDER_ID_REQUIRED',
+      'Order id is required',
+    );
   }
 
+  return this.paymentService.createPayment({ orderId });
+}
   /* ================================================= */
   /* PAYMENT – CONFIRM                                 */
   /* ================================================= */
