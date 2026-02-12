@@ -14,7 +14,7 @@ export const OrdersTable = () => {
 
   const tabs = [
     { id: 'NEW', label: 'New Orders', count: columns.NEW.length, color: 'text-blue-600 bg-blue-50' },
-    { id: 'PREPARING', label: 'In Kitchen', count: columns.PREPARING.length, color: 'text-amber-600 bg-amber-50' },
+    { id: 'PREPARING', label: 'In Progress', count: columns.PREPARING.length, color: 'text-amber-600 bg-amber-50' },
     { id: 'DISPATCH', label: 'Out for Delivery', count: columns.DISPATCH.length, color: 'text-purple-600 bg-purple-50' },
     { id: 'COMPLETED', label: 'History', count: columns.COMPLETED.length, color: 'text-gray-600 bg-gray-50' },
   ];

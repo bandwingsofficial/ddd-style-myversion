@@ -10,6 +10,7 @@ import {
   Store,
   Package,
   ShoppingBag,
+  History,
 } from 'lucide-react';
 
 // Sidebar menu configuration
@@ -38,6 +39,11 @@ const menuItems = [
     label: 'Orders',
     href: '/orders',
     icon: <ShoppingBag size={20} />,
+  },
+  {
+    label: 'Order History',
+    href: '/orders/history', // Assuming this is your new route
+    icon: <History size={20} />,
   }
 ];
 
