@@ -3,12 +3,17 @@
 import { useSessionGuard } from '@/features/auth/hooks/useSession';
 import { useOrders } from '../../../features/orders/hooks/useOrders';
 import { motion } from 'framer-motion';
-import { TrendingUp, ShoppingBag, AlertCircle, Clock, Filter, Calendar, X } from 'lucide-react';
+import { TrendingUp, ShoppingBag, AlertCircle, Clock, Filter, Calendar, X, Package } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 type DateFilter = 'TODAY' | 'YESTERDAY' | 'WEEK' | '15_DAYS' | 'MONTH' | 'ALL';
 type StatusFilter = 'ALL' | 'DELIVERED' | 'CANCELLED' | 'NEW' | 'PREPARING';
+
+interface ProductStat {
+  name: string;
+  count: number;
+}
 
 export default function DashboardPage() {
   const { loading: sessionLoading } = useSessionGuard();
@@ -17,8 +22,8 @@ export default function DashboardPage() {
   const [dateFilter, setDateFilter] = useState<DateFilter>('WEEK');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
 
-  const { stats, chartPoints, filteredFeed } = useMemo(() => {
-    if (!columns) return { stats: { revenue: 0, orders: 0, pending: 0 }, chartPoints: [], filteredFeed: [] };
+  const { stats, chartPoints, topProducts } = useMemo(() => {
+    if (!columns) return { stats: { revenue: 0, orders: 0, pending: 0 }, chartPoints: [], topProducts: [] };
 
     const allOrders = Object.values(columns).flat();
     const now = new Date();
@@ -43,9 +48,11 @@ export default function DashboardPage() {
 
     const filtered = allOrders.filter(o => applyDateFilter(o) && applyStatusFilter(o));
 
+    // Stats Calculation
     const revenue = filtered.reduce((sum, o) => String(o.status) === 'DELIVERED' ? sum + o.grandTotal : sum, 0);
     const pendingCount = filtered.filter(o => String(o.status) === 'NEW' || String(o.status) === 'PREPARING').length;
 
+    // Chart Points Calculation
     const range = dateFilter === 'MONTH' ? 30 : dateFilter === '15_DAYS' ? 15 : 7;
     const points = Array.from({ length: range }, (_, i) => {
       const d = new Date();
@@ -61,10 +68,26 @@ export default function DashboardPage() {
       };
     }).reverse();
 
+    // Top Products Calculation
+    const productMap: Record<string, number> = {};
+    filtered.forEach((order: any) => {
+      // Only count products from valid/delivered orders if you prefer, 
+      // but here we use the filtered list based on your UI selection
+      order.items?.forEach((item: any) => {
+        const pName = item.productName || 'Unknown Product';
+        productMap[pName] = (productMap[pName] || 0) + (item.quantity || 1);
+      });
+    });
+
+    const sortedProducts = Object.entries(productMap)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6); // Top 6 products
+
     return {
       stats: { revenue, orders: filtered.length, pending: pendingCount },
       chartPoints: points,
-      filteredFeed: filtered.slice(0, 8) 
+      topProducts: sortedProducts
     };
   }, [columns, dateFilter, statusFilter]);
 
@@ -80,15 +103,15 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-8 max-w-[1400px] mx-auto">
-      <header className="mb-10 flex flex-wrap justify-between items-start gap-5">
+    <div className="p-6 max-w-[1400px] mx-auto">
+      <header className="mb-6 flex flex-wrap justify-between items-center gap-5">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Outlet Insights</h1>
-          <p className="text-sm text-slate-500 mt-1">Analyzing real-time performance</p>
+          <p className="text-sm text-slate-500">Analyzing real-time performance</p>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl shadow-sm">
+          <div className="flex items-center gap-2 px-5 py-2 bg-white border border-slate-200 rounded-xl shadow-sm">
             <Calendar size={14} className="text-slate-500" />
             <select 
               value={dateFilter} 
@@ -104,7 +127,7 @@ export default function DashboardPage() {
             </select>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-xl shadow-sm">
+          <div className="flex items-center gap-2 px-5 py-2 bg-white border border-slate-200 rounded-xl shadow-sm">
             <Filter size={14} className="text-slate-500" />
             <select 
               value={statusFilter} 
@@ -130,13 +153,14 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <StatCard title="Total Revenue" value={`₹${stats?.revenue.toLocaleString('en-IN')}`} icon={<TrendingUp size={20} />} color="emerald" />
         <StatCard title="Orders Found" value={stats?.orders.toString()} icon={<ShoppingBag size={20} />} color="blue" />
         <StatCard title="Needs Attention" value={stats?.pending.toString()} icon={<AlertCircle size={20} />} color="amber" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* Sales Chart */}
         <div className="lg:col-span-3 bg-white p-8 rounded-[24px] border border-slate-100 shadow-sm">
           <div className="mb-8">
             <h3 className="text-lg font-bold text-slate-900">Sales Trend</h3>
@@ -164,29 +188,45 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Top Products Section */}
         <div className="lg:col-span-2 bg-white p-8 rounded-[24px] border border-slate-100 shadow-sm">
-          <h3 className="text-lg font-bold text-slate-900">Filtered Order Stream</h3>
-          <div className="flex flex-col gap-4 mt-6">
-            {filteredFeed.length > 0 ? filteredFeed.map((order: any) => (
-              <div key={order.id} className="flex items-center justify-between pb-4 border-bottom border-slate-50 last:border-0">
-                <div className="flex-1">
-                  <p className="text-[13px] text-slate-800">
-                    <span className="font-bold">#{order.id.slice(-5).toUpperCase()}</span> • {order.items[0]?.productName}
-                  </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    {new Date(order.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} • ₹{order.grandTotal}
-                  </p>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">Best Sellers</h3>
+              <p className="text-[13px] text-slate-400 mt-0.5">Most ordered items in this period</p>
+            </div>
+            <Package size={20} className="text-slate-300" />
+          </div>
+
+          <div className="flex flex-col gap-5">
+            {topProducts.length > 0 ? topProducts.map((product, index) => {
+              // Calculate simple percentage for the progress bar relative to the top seller
+              const maxCount = topProducts[0].count;
+              const percentage = (product.count / maxCount) * 100;
+
+              return (
+                <div key={product.name} className="group">
+                  <div className="flex justify-between items-end mb-1.5">
+                    <p className="text-[13px] font-bold text-slate-700 group-hover:text-blue-600 transition-colors">
+                      {index + 1}. {product.name}
+                    </p>
+                    <span className="text-[12px] font-black text-slate-900 bg-slate-50 px-2 py-0.5 rounded-md">
+                      {product.count} <span className="text-[10px] text-slate-400 font-medium">Sold</span>
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${percentage}%` }}
+                      transition={{ duration: 1, ease: "easeOut" }}
+                      className="bg-blue-500 h-full rounded-full"
+                    />
+                  </div>
                 </div>
-                <span className={`text-[9px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider
-                  ${String(order.status) === 'DELIVERED' ? 'bg-green-100 text-green-800' : 
-                    String(order.status) === 'CANCELLED' ? 'bg-red-100 text-red-800' : 
-                    'bg-amber-100 text-amber-800'}`}>
-                  {String(order.status)}
-                </span>
-              </div>
-            )) : (
-              <div className="text-center py-14 text-slate-400 text-sm italic">
-                No records match current filters.
+              );
+            }) : (
+              <div className="text-center py-20 text-slate-400 text-sm italic">
+                No product data available for these filters.
               </div>
             )}
           </div>
@@ -208,14 +248,14 @@ function StatCard({ title, value, icon, color }: any) {
         initial={{ opacity: 0, y: 10 }} 
         animate={{ opacity: 1, y: 0 }} 
         whileHover={{ scale: 1.01 }} 
-        className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm"
+        className="bg-white p-4 rounded-[20px] border border-slate-100 shadow-sm flex items-center gap-4"
       >
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colorMap[color]}`}>
+        <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center ${colorMap[color]}`}>
           {icon}
         </div>
-        <div className="mt-4">
-          <p className="text-[12px] text-slate-500 font-bold uppercase tracking-tight">{title}</p>
-          <h4 className="text-3xl font-extrabold text-slate-900 mt-1">{value || '0'}</h4>
+        <div>
+          <p className="text-[11px] text-slate-500 font-bold uppercase tracking-tight">{title}</p>
+          <h4 className="text-2xl font-black text-slate-900 leading-tight">{value || '0'}</h4>
         </div>
       </motion.div>
     );
