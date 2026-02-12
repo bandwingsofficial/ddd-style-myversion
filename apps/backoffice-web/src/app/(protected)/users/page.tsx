@@ -78,16 +78,18 @@ export default function UsersOutletSelectPage() {
         <motion.div
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+          className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
         >
-          <div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900">
               Outlet Management
             </h1>
-            
+            <p className="text-sm text-slate-500">
+              Manage your outlets, stock, and products efficiently.
+            </p>
           </div>
 
-          {/* SEARCH (beside title) */}
+          {/* SEARCH */}
           <div className="relative w-full max-w-sm">
             <Search
               size={16}
@@ -104,7 +106,7 @@ export default function UsersOutletSelectPage() {
         </motion.div>
 
         {/* LIST */}
-        <motion.div layout className="flex flex-col gap-3">
+        <motion.div layout className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <AnimatePresence mode="popLayout">
             {filteredOutlets.map((o) => (
               <motion.div
@@ -114,7 +116,7 @@ export default function UsersOutletSelectPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 whileHover={{ y: -2 }}
-                className="group flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-emerald-500/30 hover:shadow-md sm:flex-row sm:items-center sm:justify-between"
+                className="group flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-emerald-500/30 hover:shadow-md"
               >
                 {/* INFO */}
                 <div className="flex items-center gap-3">
@@ -131,7 +133,7 @@ export default function UsersOutletSelectPage() {
                 </div>
 
                 {/* ACTIONS */}
-                <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap">
+                <div className="mt-3 flex flex-wrap gap-2">
                   <motion.button
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.95 }}
@@ -159,7 +161,7 @@ export default function UsersOutletSelectPage() {
                       showToast(`Loading ${o.name}...`);
                       router.push(`/users/${o.id}`);
                     }}
-                    className="flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 px-4 py-2 text-[11px] font-bold uppercase text-white shadow-md shadow-emerald-500/20"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-gradient-to-br from-emerald-400 to-emerald-600 px-4 py-2 text-[11px] font-bold uppercase text-white shadow-md shadow-emerald-500/20 sm:w-auto"
                   >
                     Manage
                     <ChevronRight size={14} />
@@ -171,7 +173,7 @@ export default function UsersOutletSelectPage() {
 
           {/* EMPTY */}
           {filteredOutlets.length === 0 && (
-            <div className="py-10 text-center">
+            <div className="col-span-full py-10 text-center">
               <Store size={40} className="mx-auto text-slate-300" />
               <p className="mt-2 text-sm font-medium text-slate-500">
                 No outlets match your search.

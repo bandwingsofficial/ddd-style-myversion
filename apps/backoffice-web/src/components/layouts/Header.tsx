@@ -1,15 +1,19 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useLogout } from '@/features/auth/hooks/useLogout'; 
 import { useRouter } from 'next/navigation';
 import { 
   Menu, Bell, Search, CalendarDays, 
   ChevronDown, LogOut, User, Settings as SettingsIcon,
-  LayoutDashboard, Store, Users, Boxes, Package, Layers, Warehouse, Command
+  LayoutDashboard, Store, Users, Boxes, Package, Layers, Warehouse, Command,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+// Import your API and types
+import { SuperAdminApi } from '../../features/super-admin/api/use-profile';
+import { ProfileData } from '../../features/super-admin/types';
 
 const SEARCH_ITEMS = [
   { label: 'Dashboard', path: '/', icon: LayoutDashboard },
@@ -27,7 +31,7 @@ interface HeaderProps {
 }
 
 export function Header({ onToggleSidebar }: HeaderProps) {
-  const { actorType } = useAuth();
+  const { actorType } = useAuth(); 
   const { logout } = useLogout();
   const router = useRouter();
   
@@ -38,8 +42,37 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   const [filteredItems, setFilteredItems] = useState(SEARCH_ITEMS);
   
   const [dateString, setDateString] = useState('');
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Memoized fetch function so it can be used in the event listener safely
+  const fetchProfile = useCallback(async () => {
+    try {
+      const data = await SuperAdminApi.getProfile();
+      if (data) {
+        setProfile(data);
+      }
+    } catch (error) {
+      console.error("Failed to load header profile:", error);
+    } finally {
+      setIsProfileLoading(false);
+    }
+  }, []);
+
+  // Initial Fetch + Event Listener for real-time updates
+  useEffect(() => {
+    fetchProfile();
+
+    // Listen for custom event 'profile-updated' from the ProfileForm
+    window.addEventListener('profile-updated', fetchProfile);
+    
+    return () => {
+      window.removeEventListener('profile-updated', fetchProfile);
+    };
+  }, [fetchProfile]);
 
   useEffect(() => {
     const now = new Date();
@@ -80,7 +113,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
   const handleNavigate = (path: string) => {
     router.push(path);
     setIsSearchFocused(false);
-    setIsDropdownOpen(false); // Added to close dropdown on navigation
+    setIsDropdownOpen(false); 
     setSearchQuery('');
   };
 
@@ -89,6 +122,8 @@ export function Header({ onToggleSidebar }: HeaderProps) {
       handleNavigate(filteredItems[0].path);
     }
   };
+
+  const userInitial = profile?.fullName?.charAt(0).toUpperCase() || "A";
 
   return (
     <motion.header 
@@ -124,7 +159,7 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                 h-11 w-64 rounded-2xl border bg-gray-50/50 py-2 pl-12 pr-12 text-sm text-gray-700 outline-none transition-all duration-300
                 placeholder:text-gray-400
                 ${isSearchFocused 
-                  ? 'w-80 border-emerald-400/50 bg-white ring-8 ring-emerald-500/5 shadow-lg shadow-emerald-500/5' 
+                  ? 'w-75 border-emerald-400/50 bg-white ring-8 ring-emerald-500/5 shadow-lg shadow-emerald-500/5' 
                   : 'border-emerald-500/10 hover:border-emerald-500/20'}
               `}
             />
@@ -201,16 +236,34 @@ export function Header({ onToggleSidebar }: HeaderProps) {
             className="group flex items-center gap-3 outline-none"
           >
             <div className="hidden text-right md:block">
-              <div className="text-sm font-black text-gray-800 leading-tight">John Doe</div>
-              <div className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-widest">{actorType || 'SUPER ADMIN'}</div>
+              {isProfileLoading ? (
+                <div className="h-4 w-20 animate-pulse bg-gray-200 rounded mb-1" />
+              ) : (
+                <div className="text-sm font-black text-gray-800 leading-tight">
+                  {profile?.fullName || 'Super Admin'}
+                </div>
+              )}
+              <div className="text-[10px] font-bold text-emerald-600/70 uppercase tracking-widest">
+                {actorType || 'SUPER ADMIN'}
+              </div>
             </div>
 
             <div className="relative">
               <motion.div 
                 whileHover={{ scale: 1.05 }}
-                className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#10a353] text-lg font-black text-white shadow-lg shadow-emerald-500/20 transition-transform group-hover:rotate-3"
+                className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-[#10a353] text-lg font-black text-white shadow-lg shadow-emerald-500/20 transition-transform group-hover:rotate-3"
               >
-                J
+                {/* Fixed Image Section with Key for re-rendering */}
+                {profile?.avatarUrl ? (
+                  <img 
+                    key={profile.avatarUrl}
+                    src={profile.avatarUrl} 
+                    alt="Avatar" 
+                    className="h-full w-full object-cover" 
+                  />
+                ) : (
+                  userInitial
+                )}
               </motion.div>
               <div className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-400 shadow-sm" />
             </div>
@@ -229,25 +282,18 @@ export function Header({ onToggleSidebar }: HeaderProps) {
               >
                 <div className="px-5 py-3 border-b border-gray-50 mb-1">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Account</p>
-                  <p className="text-xs font-black text-gray-800 truncate mt-0.5">john.doe@platform.com</p>
+                  <p className="text-xs font-black text-gray-800 truncate mt-0.5">
+                    {profile?.title || 'Administrator'}
+                  </p>
                 </div>
 
                 <div className="space-y-0.5">
-                  {/* LINKED PROFILE BUTTON */}
                   <button 
                     onClick={() => handleNavigate('/profile')}
                     className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-500 transition-all hover:bg-emerald-50 hover:text-emerald-700"
                   >
                     <User size={16} /> My Profile
                   </button>
-
-                  <button 
-                    onClick={() => handleNavigate('/settings')}
-                    className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold text-gray-500 transition-all hover:bg-emerald-50 hover:text-emerald-700"
-                  >
-                    <SettingsIcon size={16} /> Settings
-                  </button>
-
                   <div className="mx-4 my-1.5 h-px bg-gray-50" />
 
                   <button 

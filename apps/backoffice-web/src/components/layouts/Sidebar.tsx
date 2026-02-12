@@ -4,7 +4,7 @@ import { useLogout } from '@/features/auth/hooks/useLogout';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  LayoutDashboard, Store, Users, Boxes, Settings, LogOut,
+  LayoutDashboard, Store, Users, Boxes, LogOut,
   Warehouse, Package, Layers
 } from 'lucide-react';
 
@@ -16,11 +16,10 @@ const menuItems = [
   { label: 'Dashboard', path: '/', icon: LayoutDashboard },
   { label: 'Outlets', path: '/outlets', icon: Store },
   { label: 'Outlet Management', path: '/users', icon: Users },
-  { label: 'Stock Items', path: '/stock-items', icon: Boxes },
   { label: 'Products', path: '/products', icon: Package },
-  { label: 'Categories', path: '/categories', icon: Layers },
   { label: 'Central Inventory', path: '/inventory', icon: Warehouse },
-  { label: 'Settings', path: '/settings', icon: Settings },
+  { label: 'Stock Items', path: '/stock-items', icon: Boxes },
+  { label: 'Categories', path: '/categories', icon: Layers },
 ];
 
 export function Sidebar({ isOpen }: SidebarProps) {

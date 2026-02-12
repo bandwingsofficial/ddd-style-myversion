@@ -92,7 +92,7 @@ export const OutletFormModal = ({
                 {/* Branch Code */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">
-                    Branch Code
+                    Branch Name
                   </label>
                   <input
                     className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10"
