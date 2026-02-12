@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Script from "next/script"; 
 import { useRouter, useSearchParams } from "next/navigation";
 import { CheckoutApi } from "@/features/checkout/checkout.api";
@@ -8,7 +9,7 @@ import { CheckoutSummary, CheckoutErrorResponse } from "@/features/checkout/chec
 import { useCartStore } from "@/features/cart/cart.store";
 import { useOutletStore } from "@/features/outlet/outlet.store";
 import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
-import { ArrowLeft, ShieldCheck, Loader2, MapPin, TicketPercent, Bike } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Loader2, MapPin, TicketPercent, Bike, ShoppingCart, ExternalLink } from "lucide-react";
 import Header from "@/components/customer/Header";
 
 const BACKEND_URL = "https://api.dev.local:4000";
@@ -30,6 +31,12 @@ export default function CheckoutPage() {
   const [processing, setProcessing] = useState(false);
   const [initializing, setInitializing] = useState(true);
   
+  // Custom Modal State
+  const [pendingOrderModal, setPendingOrderModal] = useState<{ isOpen: boolean; orderId: string | null }>({
+    isOpen: false,
+    orderId: null
+  });
+
   // Stores
   const { isAuthenticated, isHydrated: authHydrated } = useCustomerAuthStore();
   const { items: cartItems, loadCart, clear, hydrated: cartHydrated } = useCartStore();
@@ -48,7 +55,6 @@ export default function CheckoutPage() {
         router.replace("/cart");
         return;
       }
-      // Try to load cart if empty
       if (cartItems.length === 0) {
         await loadCart(true);
       }
@@ -64,16 +70,13 @@ export default function CheckoutPage() {
     const currentOutletId = cartItems[0]?.outletId || selectedOutlet?.id;
 
     if (!currentOutletId) {
-       // Only redirect if completely stuck and not just loading
        if (!loading && cartItems.length === 0) { 
-           alert("Could not identify the outlet. Redirecting to home.");
            router.replace("/home");
        }
        return;
     }
 
     loadSummary(addressId!, currentOutletId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initializing]); 
 
   const loadSummary = async (addrId: string, outId: string) => {
@@ -83,9 +86,6 @@ export default function CheckoutPage() {
       setSummary(data);
     } catch (error: any) {
       console.error("Summary Error:", error);
-      if (error.response?.status === 400) {
-         console.warn("Cart might be invalid");
-      }
     } finally {
       setLoading(false);
     }
@@ -95,21 +95,16 @@ export default function CheckoutPage() {
     const currentOutletId = useCartStore.getState().items[0]?.outletId || useOutletStore.getState().selectedOutlet?.id;
 
     if (!addressId || !summary || !currentOutletId) {
-        alert("Missing checkout information. Please refresh.");
         return;
     }
 
     setProcessing(true);
     try {
-      // 1. Create Order
       const data = await CheckoutApi.startCheckout({
         savedAddressId: addressId,
         outletId: currentOutletId
       });
 
-      // 🛑 STOP: Do NOT clear cart here. Wait for payment success.
-
-      // 2. Open Razorpay
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, 
         amount: data.amount,
@@ -118,9 +113,6 @@ export default function CheckoutPage() {
         description: "Order Payment",
         order_id: data.razorpayOrderId,
         handler: async function (response: any) {
-            
-           // ✅ FIXED: Pass 'false' to clear only the frontend UI
-           // This prevents the 400 Error because we don't call the Backend API
            await clear(false); 
            
            const params = new URLSearchParams({
@@ -138,13 +130,10 @@ export default function CheckoutPage() {
           name: "Customer", 
           contact: "9999999999" 
         },
-        theme: {
-          color: "#10B981"
-        },
+        theme: { color: "#10B981" },
         modal: {
           ondismiss: function() {
             setProcessing(false);
-            // Cart remains intact if they close the modal!
           }
         }
       };
@@ -156,10 +145,11 @@ export default function CheckoutPage() {
       const errData = error.response?.data as CheckoutErrorResponse;
       
       if (errData?.code === "ORDER_ALREADY_IN_PROGRESS" && errData?.metadata?.orderId) {
-          const existingOrderId = errData.metadata.orderId;
-          if (confirm("You already have an order pending payment. Resume it?")) {
-              router.push(`/orders/${existingOrderId}`);
-          }
+          setPendingOrderModal({
+            isOpen: true,
+            orderId: errData.metadata.orderId
+          });
+          setProcessing(false);
           return;
       }
 
@@ -184,15 +174,51 @@ export default function CheckoutPage() {
     <div className="min-h-screen bg-[#F8FAFC]">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       <Header />
+      
+      {/* PENDING ORDER MODAL - Teleported to document.body to ensure it sits above the Header */}
+      {pendingOrderModal.isOpen && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-[2rem] p-6 max-w-[340px] w-full shadow-2xl text-center animate-in fade-in zoom-in duration-200">
+            <h2 className="text-2xl font-bold text-[#0F172A] mb-3">Order in Progress</h2>
+            <p className="text-slate-500 text-sm leading-relaxed mb-6 px-1">
+              You already have a pending payment for a previous order. You must complete or cancel that before starting a new one.
+            </p>
+            
+            <div className="space-y-3">
+              <button 
+                onClick={() => router.push(`/orders/${pendingOrderModal.orderId}`)}
+                className="w-full bg-[#059669] hover:bg-emerald-700 text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all"
+              >
+                Go to Pending Order <ExternalLink size={16} />
+              </button>
+              
+              <button 
+                onClick={() => router.push('/cart')}
+                className="w-full bg-[#F1F5F9] hover:bg-slate-200 text-[#0F172A] font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 transition-all"
+              >
+                <ShoppingCart size={16} /> Back to Cart
+              </button>
+
+              <button 
+                onClick={() => setPendingOrderModal({ isOpen: false, orderId: null })}
+                className="mt-4 text-slate-400 text-sm font-medium hover:text-slate-600 transition-colors inline-block"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       <main className="pt-36 pb-12 px-4 max-w-5xl mx-auto">
         <button onClick={() => router.back()} className="flex items-center text-slate-500 hover:text-emerald-600 mb-6 font-medium">
           <ArrowLeft size={18} className="mr-2" /> Back
         </button>
 
-        <h1 className="text-2xl font-bold text-slate-900 mb-6 animate-shine">Review & Pay</h1>
+        <h1 className="text-2xl font-bold text-slate-900 mb-6">Review & Pay</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* LEFT: Items & Address */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
               <div className="flex items-start gap-4">
@@ -232,7 +258,6 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* RIGHT: Bill Summary */}
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm sticky top-32">
               <h3 className="font-bold text-slate-900 mb-4">Bill Details</h3>
@@ -261,16 +286,11 @@ export default function CheckoutPage() {
               <button 
                 onClick={handlePay}
                 disabled={processing}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full bg-[#059669] hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {processing ? <Loader2 className="animate-spin" /> : <ShieldCheck />} 
                 {processing ? "Processing..." : `Pay ₹${summary.grandTotal}`}
               </button>
-              
-              <div className="mt-4 flex justify-center gap-4 opacity-50 grayscale">
-                 <img src="/icons/visa.png" className="h-4" alt="visa" onError={(e) => e.currentTarget.style.display = 'none'} />
-                 <img src="/icons/upi.png" className="h-4" alt="upi" onError={(e) => e.currentTarget.style.display = 'none'} />
-              </div>
             </div>
           </div>
         </div>

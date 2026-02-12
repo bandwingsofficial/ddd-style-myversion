@@ -8,7 +8,7 @@ import {
   Package, ChevronRight, Clock, CheckCircle, 
   XCircle, Calendar, Loader2, MapPin, 
   ShoppingBag, ArrowRight, ReceiptText, Hash,
-  Truck, CreditCard
+  Truck, CreditCard, Timer
 } from "lucide-react";
 import Header from "@/components/customer/Header";
 
@@ -21,33 +21,63 @@ const getImageUrl = (path?: string) => {
 
 const getStatusTheme = (status: string) => {
   const s = status.toUpperCase();
-  if (s === "PAID" || s === "DELIVERED") {
+  
+  // 1. DELIVERED: Final state
+  if (s === "DELIVERED") {
     return {
       bg: "bg-emerald-50",
       text: "text-emerald-700",
       border: "border-emerald-100",
       accent: "bg-emerald-500",
-      icon: <CheckCircle size={14} className="animate-pulse" />,
+      icon: <CheckCircle size={14} />,
       label: "Delivered & Verified"
     };
   }
-  if (s === "PAYMENT_PENDING") {
+
+  // 2. PAID: Payment successful, but not yet delivered
+  if (s === "PAID") {
+    return {
+      bg: "bg-blue-50",
+      text: "text-blue-700",
+      border: "border-blue-100",
+      accent: "bg-blue-500",
+      icon: <Timer size={14} className="animate-pulse" />,
+      label: "Order Paid & Preparing"
+    };
+  }
+
+  // 3. PAYMENT_PENDING: Initial state
+  if (s === "PAYMENT_PENDING" || s === "PENDING") {
     return {
       bg: "bg-amber-50",
       text: "text-amber-700",
       border: "border-amber-100",
       accent: "bg-amber-500",
-      icon: <Clock size={14} />,
-      label: "Processing Order"
+      icon: <Clock size={14} className="animate-bounce" />,
+      label: "Payment Pending"
     };
   }
+
+  // 4. CANCELLED: Failed state
+  if (s === "CANCELLED") {
+    return {
+      bg: "bg-rose-50",
+      text: "text-rose-700",
+      border: "border-rose-100",
+      accent: "bg-rose-500",
+      icon: <XCircle size={14} />,
+      label: "Order Cancelled"
+    };
+  }
+
+  // Default Fallback
   return {
-    bg: "bg-rose-50",
-    text: "text-rose-700",
-    border: "border-rose-100",
-    accent: "bg-rose-500",
-    icon: <XCircle size={14} />,
-    label: "Cancelled"
+    bg: "bg-slate-50",
+    text: "text-slate-700",
+    border: "border-slate-100",
+    accent: "bg-slate-500",
+    icon: <Hash size={14} />,
+    label: s
   };
 };
 
@@ -82,14 +112,12 @@ export default function OrdersPage() {
     <div className="min-h-screen bg-[#FAFBFC] font-sans pb-20">
       <Header />
       
-      {/* Premium Background Elements */}
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[10%] -right-[5%] w-[40%] h-[40%] rounded-full bg-emerald-50/50 blur-[120px]" />
         <div className="absolute top-[20%] -left-[5%] w-[30%] h-[30%] rounded-full bg-blue-50/40 blur-[100px]" />
       </div>
 
       <main className="relative z-10 pt-32 px-6 max-w-5xl mx-auto">
-        {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
           <div>
             <h1 className="text-4xl md:text-4xl font-black text-slate-900 tracking-tight mb-3 animate-shine">
@@ -129,11 +157,9 @@ export default function OrdersPage() {
                   key={order.id}
                   className="group block relative bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/60 transition-all duration-500"
                 >
-                  {/* Status Side Pillar */}
                   <div className={`absolute left-0 top-12 bottom-12 w-1.5 rounded-r-full transition-all duration-500 group-hover:top-8 group-hover:bottom-8 ${theme.accent}`} />
 
                   <div className="p-6 md:p-10">
-                    {/* Header: ID and Price */}
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                       <div className="flex items-center gap-4">
                         <div className={`p-3 rounded-2xl ${theme.bg} ${theme.text}`}>
@@ -164,7 +190,6 @@ export default function OrdersPage() {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                      {/* Items Column */}
                       <div className="lg:col-span-2">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">Cart Highlights</p>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -191,7 +216,6 @@ export default function OrdersPage() {
                         </div>
                       </div>
 
-                      {/* Info Column */}
                       <div className="flex flex-col justify-between gap-4 p-6 rounded-[2rem] bg-slate-900 text-white relative overflow-hidden group/info">
                         <div className="relative z-10">
                           <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em] mb-3">Delivery To</p>
@@ -212,7 +236,6 @@ export default function OrdersPage() {
                            </div>
                         </div>
 
-                        {/* Background Decor for Info Box */}
                         <div className="absolute -bottom-4 -right-4 w-20 h-20 bg-emerald-500/10 rounded-full blur-2xl transition-all group-hover/info:bg-emerald-500/20" />
                       </div>
                     </div>

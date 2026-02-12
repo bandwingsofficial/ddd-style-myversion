@@ -212,7 +212,7 @@ export default function CartPage() {
                        )}
                        <div className="flex justify-between text-slate-500 text-sm">
                            <span>Delivery Fee</span>
-                           <span className="text-emerald-600 font-medium">Free</span>
+                           <span className="text-emerald-600 font-medium">30</span>
                        </div>
                    </div>
 

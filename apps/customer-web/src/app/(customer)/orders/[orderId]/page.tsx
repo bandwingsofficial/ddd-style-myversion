@@ -8,7 +8,7 @@ import {
   CheckCircle, Clock, MapPin, Package, Home, 
   Loader2, AlertCircle, Truck, XCircle, 
   ChevronLeft, UtensilsCrossed, ReceiptText,
-  Calendar, CreditCard, ShieldCheck
+  Calendar, CreditCard, ShieldCheck, Timer
 } from "lucide-react";
 import Header from "@/components/customer/Header";
 import Footer from "@/components/customer/Footer";
@@ -52,8 +52,9 @@ export default function OrderDetailsPage() {
     if (orderId) {
       fetchOrder();
       
-      // Poll every 10 seconds if order is not terminal (delivered or cancelled)
+      // Poll every 10 seconds if order is not terminal
       const interval = setInterval(() => {
+        // We check the latest state directly from the current 'order' state
         if (order?.status !== "DELIVERED" && order?.status !== "CANCELLED") {
           fetchOrder(true); 
         }
@@ -90,13 +91,17 @@ export default function OrderDetailsPage() {
     </div>
   );
 
+  // ✅ REAL-TIME STATUS LOGIC
   const statusUpper = order.status ? order.status.toUpperCase() : "PENDING";
-  const isDelivered = ["DELIVERED", "COMPLETED"].includes(statusUpper);
-  const isPreparing = ["PREPARING", "ACCEPTED", "KITCHEN"].includes(statusUpper);
-  const isReady = ["READY", "OUT_FOR_DELIVERY"].includes(statusUpper);
-  const isPaid = ["PAID", "CONFIRMED"].includes(statusUpper);
+  
   const isCancelled = statusUpper === "CANCELLED";
-  const isPending = !isDelivered && !isPreparing && !isReady && !isPaid && !isCancelled;
+  const isDelivered = statusUpper === "DELIVERED";
+  const isReady = ["READY", "OUT_FOR_DELIVERY", "SHIPPED"].includes(statusUpper);
+  const isPreparing = ["PREPARING", "ACCEPTED", "KITCHEN", "PROCESSING"].includes(statusUpper);
+  const isPaid = ["PAID", "CONFIRMED"].includes(statusUpper);
+  
+  // Pending is only if it's not even paid yet (e.g., PAYMENT_PENDING)
+  const isPending = statusUpper.includes("PENDING") && !isPaid;
 
   const steps = [
     { label: "Confirmed", active: isPaid || isPreparing || isReady || isDelivered, icon: CheckCircle },
@@ -105,12 +110,20 @@ export default function OrderDetailsPage() {
     { label: "Delivered", active: isDelivered, icon: Package },
   ];
 
+  // Calculate Progress Bar Width based on actual DB status
+  const getProgressWidth = () => {
+    if (isDelivered) return '100%';
+    if (isReady) return '66%';
+    if (isPreparing) return '33%';
+    if (isPaid) return '12%'; // Just started
+    return '0%';
+  };
+
   return (
     <div className="min-h-screen bg-[#FAFBFC] selection:bg-emerald-100">
       <Header />
       
       <main className="pt-32 pb-16 px-4 max-w-6xl mx-auto">
-        {/* Top Navigation - Reduced Margin */}
         <div className="flex items-center justify-between mb-6">
           <Link href="/orders" className="group flex items-center gap-2 text-slate-500 hover:text-emerald-600 transition-all">
             <div className="p-1.5 rounded-full bg-white border border-slate-200 group-hover:bg-emerald-50 shadow-sm">
@@ -119,17 +132,16 @@ export default function OrderDetailsPage() {
             <span className="font-bold text-xs">History</span>
           </Link>
           <div className="flex items-center gap-2 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border border-emerald-100">
-            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Live Tracking
+            <div className={`w-1.5 h-1.5 bg-emerald-500 rounded-full ${!isCancelled && !isDelivered ? 'animate-pulse' : ''}`} /> 
+            {isCancelled || isDelivered ? 'Order Summary' : 'Live Tracking'}
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
           <div className="lg:col-span-8 space-y-5">
-            {/* 1. Tracking Card - Tighter Padding */}
             <div className="bg-white rounded-[2rem] p-6 md:p-8 border border-slate-100 shadow-sm overflow-hidden relative">
               <div className="relative z-10">
-                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-1">Live Order Status</p>
+                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-1">Status: {statusUpper.replace('_', ' ')}</p>
                 <h1 className="text-2xl font-black text-slate-900 mb-6 animate-shine">
                   #{order.id.slice(-8).toUpperCase()}
                 </h1>
@@ -139,7 +151,7 @@ export default function OrderDetailsPage() {
                     <div className="absolute top-4 left-0 w-full h-0.5 bg-slate-100 z-0 rounded-full" />
                     <div 
                       className="absolute top-4 left-0 h-0.5 bg-emerald-500 z-0 transition-all duration-1000 rounded-full" 
-                      style={{ width: isDelivered ? '100%' : isReady ? '66%' : isPreparing ? '33%' : '0%' }}
+                      style={{ width: getProgressWidth() }}
                     />
                     
                     {steps.map((step, idx) => (
@@ -163,7 +175,8 @@ export default function OrderDetailsPage() {
                 )}
               </div>
 
-              {isPending && !isCancelled && (
+              {/* Only show cancel option if it's strictly PENDING or just PAID (not yet in kitchen) */}
+              {(isPending || isPaid) && !isCancelled && !isPreparing && !isReady && !isDelivered && (
                 <div className="mt-8 pt-6 border-t border-slate-50 flex justify-between items-center">
                   <p className="text-[10px] font-medium text-slate-400 max-w-[180px]">Cancel before the kitchen starts.</p>
                   <button 
@@ -178,7 +191,6 @@ export default function OrderDetailsPage() {
               )}
             </div>
 
-            {/* 2. Items List Bento - Tighter Spacing */}
             <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
@@ -217,7 +229,6 @@ export default function OrderDetailsPage() {
               </div>
             </div>
 
-            {/* 3. Address Detail - Tighter Padding */}
             <div className="bg-slate-900 rounded-[2rem] p-6 text-white relative overflow-hidden group">
               <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex gap-4">
@@ -240,7 +251,6 @@ export default function OrderDetailsPage() {
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Summary - Compacted */}
           <div className="lg:col-span-4">
             <div className="sticky top-28 space-y-4">
               <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
@@ -299,7 +309,6 @@ export default function OrderDetailsPage() {
               </div>
             </div>
           </div>
-
         </div>
       </main>
       <Footer />
