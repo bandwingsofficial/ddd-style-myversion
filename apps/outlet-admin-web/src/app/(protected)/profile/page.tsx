@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Edit2, Building2, Phone, Mail, FileText, ShieldCheck, AlertCircle, Calendar, User, Smartphone } from 'lucide-react';
+import { Edit2, Building2, Phone, Mail, FileText, ShieldCheck, AlertCircle, Calendar, User, Smartphone, MapPin, Trash2 } from 'lucide-react';
 import OutletProfileForm from '@/features/outlet/components/OutletProfileForm';
 import OutletProfileDangerZone from '@/features/outlet/components/OutletProfileDangerZone';
 import { useOutletProfile } from '@/features/outlet/hooks/useOutletProfile';
@@ -56,51 +56,64 @@ export default function OutletProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] py-6 px-4">
-      <div className="max-w-3xl mx-auto">
-        
-        {/* Page Header */}
-        <div className="mb-6 ml-1 flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-            My Profile
-          </h1>
+    <div className="min-h-screen bg-[#F8FAFC] pb-10">
+      {/* Banner Section */}
+      {mode === 'view' && profile && (
+        <div className="h-48 w-full bg-slate-200 relative">
+          {profile.bannerUrl ? (
+            <img src={profile.bannerUrl} alt="Banner" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-r from-emerald-500 to-teal-600 opacity-20" />
+          )}
         </div>
+      )}
 
+      <div className="max-w-3xl mx-auto px-4">
         {/* VIEW MODE */}
         {mode === 'view' && profile && (
-          <div className="space-y-4 animate-in fade-in duration-300">
+          <div className="relative -mt-12 space-y-4 animate-in fade-in duration-300">
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden p-6">
               
               {/* Profile Header Area */}
-              <div className="flex items-center gap-6 mb-6 pb-6 border-b border-slate-100">
+              <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 mb-6 pb-6 border-b border-slate-100">
                 <div className="relative">
-                    <div className="w-20 h-20 rounded-full bg-slate-400 flex items-center justify-center text-white text-3xl font-semibold border-2 border-white shadow-md">
-                        {profile.ownerName?.charAt(0) || 'S'}
+                  <div className="w-24 h-24 rounded-2xl bg-white p-1 shadow-lg border border-slate-100">
+                    <div className="w-full h-full rounded-xl bg-slate-400 flex items-center justify-center text-white text-3xl font-semibold overflow-hidden">
+                      {profile.logoUrl ? (
+                        <img src={profile.logoUrl} alt="Logo" className="w-full h-full object-cover" />
+                      ) : (
+                        profile.ownerName?.charAt(0) || 'S'
+                      )}
                     </div>
+                  </div>
                 </div>
                 
-                <div className="flex-1">
-                  <h2 className="text-xl font-bold text-slate-800">{profile.ownerName}</h2>
-                  <div className="flex gap-2 mt-2">
-                    <span className="px-2.5 py-0.5 bg-emerald-500 text-white text-[10px] font-bold rounded-md uppercase">
-                      SUPER_ADMIN
-                    </span>
+                <div className="flex-1 text-center sm:text-left">
+                  <h2 className="text-2xl font-bold text-slate-800">{profile.ownerName}</h2>
+                  <div className="flex justify-center sm:justify-start gap-2 mt-2">
                     <span className="px-2.5 py-0.5 bg-cyan-400 text-white text-[10px] font-bold rounded-md">
                       Active
                     </span>
                   </div>
                 </div>
 
-                <button 
-                  onClick={() => setMode('edit')}
-                  className="hidden sm:flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
-                >
-                  <Edit2 size={16} />
-                  Edit
-                </button>
+                {/* Action Buttons Container */}
+                <div className="flex items-center gap-3 mt-4 sm:mt-0">
+                  <OutletProfileDangerZone 
+                    outletId={outletId} 
+                    onDeleted={refresh} 
+                  />
+                  <button 
+                    onClick={() => setMode('edit')}
+                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md shadow-emerald-100"
+                  >
+                    <Edit2 size={16} />
+                    Edit Profile
+                  </button>
+                </div>
               </div>
 
-              {/* Stats/Info Grid - 3 Columns on desktop for compactness */}
+              {/* Stats/Info Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-4">
                 <ProfileItem icon={<Mail size={16}/>} label="Email" value={profile.contactEmail} />
                 <ProfileItem icon={<Phone size={16}/>} label="Phone" value={profile.contactPhone} />
@@ -109,13 +122,6 @@ export default function OutletProfilePage() {
                 <ProfileItem icon={<ShieldCheck size={16}/>} label="FSSAI" value={profile.fssaiNumber} />
                 <ProfileItem icon={<Calendar size={16}/>} label="Updated" value={new Date().toLocaleDateString()} />
               </div>
-              
-              <button 
-                onClick={() => setMode('edit')}
-                className="sm:hidden w-full mt-4 flex items-center justify-center gap-2 bg-emerald-600 text-white py-2.5 rounded-lg text-sm font-semibold"
-              >
-                <Edit2 size={16} /> Edit Profile
-              </button>
             </div>
 
             {/* About Section */}
@@ -125,20 +131,12 @@ export default function OutletProfilePage() {
                     "{profile.description || 'No description provided.'}"
                 </p>
             </div>
-
-            {/* Danger Zone */}
-            <div className="mt-8">
-               <OutletProfileDangerZone 
-                outletId={outletId} 
-                onDeleted={refresh} 
-              />
-            </div>
           </div>
         )}
 
         {/* CREATE / EDIT MODE */}
         {(mode === 'create' || mode === 'edit') && (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-md p-6">
+          <div className="mt-6 bg-white rounded-2xl border border-slate-200 shadow-md p-6">
             <OutletProfileForm
               outletId={outletId}
               profile={mode === 'edit' ? profile : null}

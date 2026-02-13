@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Save, X, Image as ImageIcon, Briefcase, Phone, Mail, Hash, FileText } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Save, X, Image as ImageIcon, Briefcase, Phone, Mail, Hash, FileText, Camera, Upload } from 'lucide-react';
 import {
   OutletProfile,
   CreateOutletProfilePayload,
@@ -24,6 +24,18 @@ export default function OutletProfileForm({
   onCancel,
 }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // New states for files
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  
+  // Preview URLs
+  const [logoPreview, setLogoPreview] = useState<string>(profile?.logoUrl ?? '');
+  const [bannerPreview, setBannerPreview] = useState<string>(profile?.bannerUrl ?? '');
+
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
+
   const [form, setForm] = useState<CreateOutletProfilePayload>({
     logoUrl: profile?.logoUrl ?? '',
     bannerUrl: profile?.bannerUrl ?? '',
@@ -35,10 +47,29 @@ export default function OutletProfileForm({
     fssaiNumber: profile?.fssaiNumber ?? '',
   });
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'banner') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (type === 'logo') {
+          setLogoFile(file);
+          setLogoPreview(reader.result as string);
+        } else {
+          setBannerFile(file);
+          setBannerPreview(reader.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      // Note: In a real app, you'd send FormData if uploading actual files to your API
+      // For now, this maintains your service structure
       if (isEdit) {
         await outletProfileService.update(outletId, form);
       } else {
@@ -64,17 +95,67 @@ export default function OutletProfileForm({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-        {/* Branding Section */}
-        <div className="md:col-span-2 flex items-center gap-2 mt-2 mb-1">
+      {/* Image Upload Section */}
+      <div className="mb-8 space-y-4">
+        <div className="md:col-span-2 flex items-center gap-2 mb-3">
           <div className="p-1 bg-emerald-50 rounded text-emerald-600">
-             <ImageIcon size={14} />
+            <Camera size={14} />
           </div>
-          <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Branding & Identity</span>
+          <span className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Media & Branding</span>
         </div>
-        {renderInput('Logo URL', 'logoUrl', 'https://...', <ImageIcon size={14}/>)}
-        {renderInput('Banner URL', 'bannerUrl', 'https://...', <ImageIcon size={14}/>)}
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Logo Upload */}
+          <div className="space-y-2">
+            <label className="text-[11px] font-bold text-slate-500 uppercase ml-1">Outlet Logo</label>
+            <div 
+              onClick={() => logoInputRef.current?.click()}
+              className="relative h-32 w-32 rounded-xl border-2 border-dashed border-slate-200 hover:border-emerald-400 bg-slate-50 flex flex-col items-center justify-center cursor-pointer overflow-hidden transition-all group"
+            >
+              {logoPreview ? (
+                <>
+                  <img src={logoPreview} alt="Preview" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    <Upload className="text-white" size={20} />
+                  </div>
+                </>
+              ) : (
+                <div className="text-center p-4">
+                  <ImageIcon className="mx-auto text-slate-300 mb-1" size={24} />
+                  <span className="text-[10px] text-slate-400 font-medium">Upload Logo</span>
+                </div>
+              )}
+              <input type="file" ref={logoInputRef} hidden accept="image/*" onChange={(e) => handleFileChange(e, 'logo')} />
+            </div>
+          </div>
+
+          {/* Banner Upload */}
+          <div className="space-y-2">
+            <label className="text-[11px] font-bold text-slate-500 uppercase ml-1">Banner Image</label>
+            <div 
+              onClick={() => bannerInputRef.current?.click()}
+              className="relative h-32 w-full rounded-xl border-2 border-dashed border-slate-200 hover:border-emerald-400 bg-slate-50 flex flex-col items-center justify-center cursor-pointer overflow-hidden transition-all group"
+            >
+              {bannerPreview ? (
+                <>
+                  <img src={bannerPreview} alt="Preview" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    <Upload className="text-white" size={20} />
+                  </div>
+                </>
+              ) : (
+                <div className="text-center p-4">
+                  <ImageIcon className="mx-auto text-slate-300 mb-1" size={24} />
+                  <span className="text-[10px] text-slate-400 font-medium">Upload Banner Image</span>
+                </div>
+              )}
+              <input type="file" ref={bannerInputRef} hidden accept="image/*" onChange={(e) => handleFileChange(e, 'banner')} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
         {/* Contact Section */}
         <div className="md:col-span-2 flex items-center gap-2 mt-4 mb-1 border-t border-slate-50 pt-4">
           <div className="p-1 bg-emerald-50 rounded text-emerald-600">

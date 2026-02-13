@@ -17,6 +17,7 @@ import {
 
 import { outletAuthService } from '@/features/auth/services/auth.service';
 import { outletService } from '@/features/outlet/services/outletService';
+import { useOutletProfile } from '@/features/outlet/hooks/useOutletProfile'; // Import the hook
 import { Outlet } from '@/features/outlet/types';
 
 export default function Header() {
@@ -44,6 +45,10 @@ export default function Header() {
     fetchOutlet();
   }, []);
 
+  /* ---------------- Fetch Profile Data ---------------- */
+  // We use the hook just like in your Profile page to get the owner name and logo
+  const { profile, loading: loadingProfile } = useOutletProfile(outlet?.id ?? '');
+
   const handleLogout = async () => {
     try {
       await outletAuthService.logout();
@@ -51,6 +56,11 @@ export default function Header() {
       router.replace('/auth/login');
     }
   };
+
+  // Determine display name: Priority Profile Owner Name > Outlet Name > Default
+  const displayName = profile?.ownerName || outlet?.name || 'Outlet Admin';
+  const displayEmail = profile?.contactEmail || 'admin@caneandtender.com';
+  const avatarLetter = (profile?.ownerName || outlet?.name || 'O').charAt(0).toUpperCase();
 
   return (
     <header style={styles.header}>
@@ -96,10 +106,19 @@ export default function Header() {
         >
           <div style={styles.userInfoTrigger}>
             <div style={styles.userDetails}>
-              <span style={styles.role}>Outlet Admin</span>
+              {/* Updated to show Dynamic Name */}
+              <span style={styles.role}>{loadingProfile ? '...' : displayName}</span>
             </div>
             <div style={styles.avatar}>
-              {outlet?.name?.charAt(0).toUpperCase() ?? 'O'}
+              {profile?.logoUrl ? (
+                <img 
+                  src={profile.logoUrl} 
+                  alt="Avatar" 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} 
+                />
+              ) : (
+                avatarLetter
+              )}
             </div>
             <ChevronDown size={16} color="#64748b" />
           </div>
@@ -115,22 +134,21 @@ export default function Header() {
               >
                 <div style={styles.dropdownHeader}>
                   <p style={styles.dropdownName}>
-                    {outlet?.name ?? 'Outlet Admin'}
+                    {displayName}
                   </p>
                   <p style={styles.dropdownEmail}>
-                    admin@caneandtender.com
+                    {displayEmail}
                   </p>
                 </div>
 
                 <ul style={styles.dropdownList}>
-                  {/* ✅ PROFILE LINKED HERE */}
                   <li
                     style={styles.dropdownItem}
                     onClick={() => router.push('/profile')}
                   >
                     <User size={16} />
                     <span>Profile</span>
-                  </li> 
+                  </li>
                 </ul>
 
                 <div style={styles.dropdownFooter}>
@@ -262,6 +280,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     justifyContent: 'center',
     fontWeight: 700,
     fontSize: '18px',
+    overflow: 'hidden', // Added to contain the image
   },
   dropdown: {
     position: 'absolute',
@@ -301,6 +320,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     padding: '10px 12px',
     cursor: 'pointer',
     fontSize: '14px',
+    color: '#475569',
+    transition: 'background 0.2s',
   },
   dropdownFooter: {
     borderTop: '1px solid #f1f5f9',
