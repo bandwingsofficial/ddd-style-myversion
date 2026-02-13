@@ -15,6 +15,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { SuperAdminApi } from '../../features/super-admin/api/use-profile';
 import { ProfileData } from '../../features/super-admin/types';
 
+/**
+ * HELPER: Construct the full image URL.
+ * Updated to port 4000 based on your browser console logs.
+ */
+const getImageUrl = (path: string | null | undefined) => {
+  if (!path) return null;
+  if (path.startsWith('http') || path.startsWith('blob:')) return path;
+  
+  // MATCH THIS TO YOUR BACKEND LOGS: https://api.dev.local:4000
+  const API_URL = "https://api.dev.local:4000"; 
+  
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${API_URL}${cleanPath}`;
+};
+
 const SEARCH_ITEMS = [
   { label: 'Dashboard', path: '/', icon: LayoutDashboard },
   { label: 'Outlets', path: '/outlets', icon: Store },
@@ -253,13 +268,16 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                 whileHover={{ scale: 1.05 }}
                 className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-[#10a353] text-lg font-black text-white shadow-lg shadow-emerald-500/20 transition-transform group-hover:rotate-3"
               >
-                {/* Fixed Image Section with Key for re-rendering */}
+                {/* Corrected Image logic using helper */}
                 {profile?.avatarUrl ? (
                   <img 
                     key={profile.avatarUrl}
-                    src={profile.avatarUrl} 
+                    src={getImageUrl(profile.avatarUrl)!} 
                     alt="Avatar" 
                     className="h-full w-full object-cover" 
+                    onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                    }}
                   />
                 ) : (
                   userInitial

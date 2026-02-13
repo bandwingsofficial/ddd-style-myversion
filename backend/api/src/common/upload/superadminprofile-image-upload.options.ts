@@ -6,19 +6,16 @@ const appRoot =
   process.env.APP_ROOT ??
   path.resolve(process.cwd(), '..', '..');
 
-if (!process.env.APP_ROOT) {
-  console.warn(
-    '⚠️ APP_ROOT not set, using fallback:',
-    appRoot,
-  );
-}
-
 const uploadDir = path.join(
   appRoot,
   'images',
   'superadminprofile',
   'avatar',
 );
+
+/* -------------------------------------------------- */
+/* CREATE DIRECTORY IF NOT EXISTS 🔥                 */
+/* -------------------------------------------------- */
 
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
@@ -31,6 +28,7 @@ export const superAdminProfileImageUploadOptions: MulterOptions = {
     },
     filename: (_req, file, cb) => {
       const ext = path.extname(file.originalname);
+
       const filename =
         Date.now() + '-' + Math.round(Math.random() * 1e9);
 
@@ -43,6 +41,6 @@ export const superAdminProfileImageUploadOptions: MulterOptions = {
   },
 
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
+    fileSize: 5 * 1024 * 1024,
   },
 };
