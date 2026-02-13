@@ -268,7 +268,6 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                 whileHover={{ scale: 1.05 }}
                 className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl bg-[#10a353] text-lg font-black text-white shadow-lg shadow-emerald-500/20 transition-transform group-hover:rotate-3"
               >
-                {/* Corrected Image logic using helper */}
                 {profile?.avatarUrl ? (
                   <img 
                     key={profile.avatarUrl}
@@ -296,11 +295,12 @@ export function Header({ onToggleSidebar }: HeaderProps) {
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 12, scale: 0.95 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
-                className="absolute right-0 top-full mt-3 w-60 overflow-hidden rounded-[2rem] border border-emerald-500/10 bg-white p-2 shadow-2xl shadow-emerald-900/10"
+                // REDUCED BORDER RADIUS: from rounded-[2rem] to rounded-2xl
+                className="absolute right-0 top-full mt-3 w-60 overflow-hidden rounded-2xl border border-emerald-500/10 bg-white p-2 shadow-2xl shadow-emerald-900/10"
               >
                 <div className="px-5 py-3 border-b border-gray-50 mb-1">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Account</p>
-                  <p className="text-xs font-black text-gray-800 truncate mt-0.5">
+                  <p className="text-sm font-black text-gray-800 truncate mt-0.5">
                     {profile?.title || 'Administrator'}
                   </p>
                 </div>
