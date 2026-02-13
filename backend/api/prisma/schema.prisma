@@ -337,7 +337,7 @@ model OutletProfile {
   outletId String @unique
   outlet   Outlet @relation(fields: [outletId], references: [id], onDelete: Cascade)
 
-  logoUrl   String?
+  avatarUrl   String?
   bannerUrl String?
 
   contactPhone String?

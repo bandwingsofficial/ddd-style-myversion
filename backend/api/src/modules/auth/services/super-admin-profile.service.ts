@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
 
 import { ValidationError } from '../../../common/errors';
 
@@ -15,6 +18,7 @@ import { SuperAdminProfileRepository } from '../repositories/super-admin-profile
  *  - business rules
  *  - validation
  *  - transactions
+ *  - file cleanup
  *
  * NEVER:
  *  - controller logic
@@ -26,6 +30,33 @@ export class SuperAdminProfileService {
     private readonly prisma: PrismaService,
     private readonly repo: SuperAdminProfileRepository,
   ) {}
+
+  /* ================================================= */
+  /* 🔒 IMAGE NORMALIZATION                           */
+  /* ================================================= */
+
+  private normalizeImagePath(
+    imagePath?: string | null,
+  ): string | undefined {
+    if (!imagePath) return undefined;
+
+    let normalized = imagePath.trim();
+
+    normalized = normalized.replace(/^https?:\/\/[^/]+\//, '');
+
+    if (normalized.startsWith('/')) {
+      normalized = normalized.slice(1);
+    }
+
+    if (!normalized.startsWith('images/superadminprofile/avatar/')) {
+      throw new ValidationError(
+        'INVALID_AVATAR_PATH',
+        'Avatar must be inside images/superadminprofile/avatar/',
+      );
+    }
+
+    return normalized;
+  }
 
   /* ================================================= */
   /* READ                                             */
@@ -62,13 +93,17 @@ export class SuperAdminProfileService {
 
     const profile = SuperAdminProfile.createNew({
       id: randomUUID(),
-      ...params,
+      superAdminId: params.superAdminId,
+      fullName: params.fullName,
+      avatarUrl: this.normalizeImagePath(params.avatarUrl),
+      title: params.title,
       phone: this.normalizePhone(params.phone),
+      notes: params.notes,
     });
 
     let created!: SuperAdminProfile;
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx: PrismaTransaction) => {
       created = await this.repo.create(profile, tx);
     });
 
@@ -100,22 +135,52 @@ export class SuperAdminProfileService {
       );
     }
 
-    const updated = existing.update({
-  ...params.updates,
-  phone: this.normalizePhone(params.updates.phone),
-});
+    const oldAvatar = existing.avatarUrl;
+
+    /* ---------------------------------- */
+    /* Update non-avatar fields           */
+    /* ---------------------------------- */
+
+    let updated = existing.updateDetails({
+      fullName: params.updates.fullName,
+      title: params.updates.title,
+      phone: this.normalizePhone(params.updates.phone),
+      notes: params.updates.notes,
+    });
+
+    /* ---------------------------------- */
+    /* Avatar handling (DDD style)        */
+    /* ---------------------------------- */
+
+    if (params.updates.avatarUrl !== undefined) {
+      const normalizedAvatar = this.normalizeImagePath(
+        params.updates.avatarUrl,
+      );
+
+      updated = normalizedAvatar
+        ? updated.changeAvatar(normalizedAvatar)
+        : updated.clearAvatar();
+    }
 
     let saved!: SuperAdminProfile;
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx: PrismaTransaction) => {
       saved = await this.repo.update(updated, tx);
     });
+
+    /* ---------------------------------- */
+    /* Delete old avatar if replaced      */
+    /* ---------------------------------- */
+
+    if (oldAvatar && oldAvatar !== saved.avatarUrl) {
+      this.deleteImageSafe(oldAvatar);
+    }
 
     return saved;
   }
 
   /* ================================================= */
-  /* UPSERT (🔥 recommended for profile flows)         */
+  /* UPSERT                                           */
   /* ================================================= */
 
   async upsertProfile(params: {
@@ -137,21 +202,29 @@ export class SuperAdminProfileService {
         id: randomUUID(),
         superAdminId: params.superAdminId,
         fullName: params.fullName ?? 'Super Admin',
-        avatarUrl: params.avatarUrl,
+        avatarUrl: this.normalizeImagePath(params.avatarUrl),
         title: params.title,
         phone: this.normalizePhone(params.phone),
         notes: params.notes,
       });
     } else {
-      profile = existing.update({
-  ...params,
-  phone: this.normalizePhone(params.phone),
-});
+      profile = await this.updateProfile({
+        superAdminId: params.superAdminId,
+        updates: {
+          fullName: params.fullName,
+          avatarUrl: params.avatarUrl,
+          title: params.title,
+          phone: params.phone,
+          notes: params.notes,
+        },
+      });
+
+      return profile;
     }
 
     let saved!: SuperAdminProfile;
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx: PrismaTransaction) => {
       saved = await this.repo.upsert(profile, tx);
     });
 
@@ -171,21 +244,41 @@ export class SuperAdminProfileService {
 
     if (!existing) return;
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx: PrismaTransaction) => {
       await this.repo.deleteBySuperAdminId(superAdminId, tx);
     });
+
+    if (existing.avatarUrl) {
+      this.deleteImageSafe(existing.avatarUrl);
+    }
   }
 
-private normalizePhone(phone?: string): string | undefined {
-  if (!phone?.trim()) return undefined;
+  /* ================================================= */
+  /* HELPERS                                          */
+  /* ================================================= */
 
-  const digits = phone.replace(/[^\d+]/g, '');
+  private normalizePhone(phone?: string): string | undefined {
+    if (!phone?.trim()) return undefined;
 
-  if (digits.startsWith('+')) return digits;
-  if (digits.startsWith('91')) return `+${digits}`;
-  if (digits.length === 10) return `+91${digits}`;
+    const digits = phone.replace(/[^\d+]/g, '');
 
-  return digits;
-}
+    if (digits.startsWith('+')) return digits;
+    if (digits.startsWith('91')) return `+${digits}`;
+    if (digits.length === 10) return `+91${digits}`;
 
+    return digits;
+  }
+
+  private deleteImageSafe(imagePath?: string): void {
+    if (!imagePath) return;
+
+    const appRoot =
+      process.env.APP_ROOT ?? path.resolve(process.cwd(), '..', '..');
+
+    const fullPath = path.join(appRoot, imagePath);
+
+    fs.promises.unlink(fullPath).catch(() => {
+      // silent fail
+    });
+  }
 }

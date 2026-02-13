@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
 
@@ -22,7 +24,7 @@ export class SuperAdminProfileRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   /* ================================================= */
-  /* READ                                             */
+  /* READ                                              */
   /* ================================================= */
 
   async findBySuperAdminId(
@@ -52,7 +54,7 @@ export class SuperAdminProfileRepository {
   }
 
   /* ================================================= */
-  /* CREATE                                           */
+  /* CREATE                                            */
   /* ================================================= */
 
   async create(
@@ -62,14 +64,16 @@ export class SuperAdminProfileRepository {
     const client = tx ?? this.prisma;
 
     const row = await client.superAdminProfile.create({
-      data: SuperAdminProfileMapper.toCreateInput(profile),
+      data:
+        SuperAdminProfileMapper.toCreateInput(profile) satisfies
+        Prisma.SuperAdminProfileUncheckedCreateInput,
     });
 
     return SuperAdminProfileMapper.toDomain(row);
   }
 
   /* ================================================= */
-  /* UPDATE                                           */
+  /* UPDATE                                            */
   /* ================================================= */
 
   async update(
@@ -80,14 +84,16 @@ export class SuperAdminProfileRepository {
 
     const row = await client.superAdminProfile.update({
       where: { superAdminId: profile.superAdminId },
-      data: SuperAdminProfileMapper.toUpdateInput(profile),
+      data:
+        SuperAdminProfileMapper.toUpdateInput(profile) satisfies
+        Prisma.SuperAdminProfileUncheckedUpdateInput,
     });
 
     return SuperAdminProfileMapper.toDomain(row);
   }
 
   /* ================================================= */
-  /* UPSERT (very useful for profile flows)            */
+  /* UPSERT                                            */
   /* ================================================= */
 
   async upsert(
@@ -99,16 +105,20 @@ export class SuperAdminProfileRepository {
     const row = await client.superAdminProfile.upsert({
       where: { superAdminId: profile.superAdminId },
 
-      create: SuperAdminProfileMapper.toCreateInput(profile),
+      create:
+        SuperAdminProfileMapper.toCreateInput(profile) satisfies
+        Prisma.SuperAdminProfileUncheckedCreateInput,
 
-      update: SuperAdminProfileMapper.toUpdateInput(profile),
+      update:
+        SuperAdminProfileMapper.toUpdateInput(profile) satisfies
+        Prisma.SuperAdminProfileUncheckedUpdateInput,
     });
 
     return SuperAdminProfileMapper.toDomain(row);
   }
 
   /* ================================================= */
-  /* DELETE                                           */
+  /* DELETE                                            */
   /* ================================================= */
 
   async deleteBySuperAdminId(

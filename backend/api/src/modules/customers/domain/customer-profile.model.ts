@@ -44,7 +44,7 @@ export class CustomerProfile {
   private constructor(props: CustomerProfileProps) {
     Object.assign(this, {
       ...props,
-      email: props.email?.toLowerCase(), // normalize
+      email: props.email?.toLowerCase(),
     });
 
     this.assertValidState();
@@ -89,7 +89,15 @@ export class CustomerProfile {
   }
 
   static rehydrate(props: CustomerProfileProps): CustomerProfile {
-    return new CustomerProfile(props);
+    return new CustomerProfile({
+      ...props,
+      avatarUrl: props.avatarUrl ?? undefined,
+      fullName: props.fullName ?? undefined,
+      email: props.email ?? undefined,
+      gender: props.gender ?? undefined,
+      dob: props.dob ?? undefined,
+      referralCode: props.referralCode ?? undefined,
+    });
   }
 
   /* ---------------------------------------------- */
@@ -97,7 +105,11 @@ export class CustomerProfile {
   /* ---------------------------------------------- */
 
   hasProfile(): boolean {
-    return !!(this.fullName || this.email || this.avatarUrl);
+    return Boolean(this.fullName || this.email || this.avatarUrl);
+  }
+
+  hasAvatar(): boolean {
+    return Boolean(this.avatarUrl);
   }
 
   /* ---------------------------------------------- */
@@ -107,7 +119,6 @@ export class CustomerProfile {
   updateDetails(params: {
     fullName?: string;
     email?: string;
-    avatarUrl?: string;
     gender?: string;
     dob?: Date;
     now?: Date;
@@ -116,14 +127,16 @@ export class CustomerProfile {
       ...this,
       fullName: params.fullName ?? this.fullName,
       email: params.email ?? this.email,
-      avatarUrl: params.avatarUrl ?? this.avatarUrl,
       gender: params.gender ?? this.gender,
       dob: params.dob ?? this.dob,
       updatedAt: params.now ?? new Date(),
     });
   }
 
-  changeAvatar(avatarUrl: string, now = new Date()): CustomerProfile {
+  changeAvatar(
+    avatarUrl: string,
+    now = new Date(),
+  ): CustomerProfile {
     return new CustomerProfile({
       ...this,
       avatarUrl,
@@ -144,6 +157,13 @@ export class CustomerProfile {
   /* ---------------------------------------------- */
 
   private assertValidState(): void {
+    if (!this.customerId) {
+      throw new ValidationError(
+        'PROFILE_INVALID_CUSTOMER',
+        'Customer id is required',
+      );
+    }
+
     if (this.fullName && this.fullName.length > 120) {
       throw new ValidationError(
         'PROFILE_NAME_TOO_LONG',
@@ -155,13 +175,6 @@ export class CustomerProfile {
       throw new ValidationError(
         'PROFILE_EMAIL_TOO_LONG',
         'Email too long',
-      );
-    }
-
-    if (!this.customerId) {
-      throw new ValidationError(
-        'PROFILE_INVALID_CUSTOMER',
-        'Customer id is required',
       );
     }
   }

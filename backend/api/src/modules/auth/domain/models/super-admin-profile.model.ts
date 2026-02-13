@@ -39,7 +39,13 @@ export class SuperAdminProfile {
     createdAt: Date;
     updatedAt: Date;
   }) {
-    Object.assign(this, params);
+    Object.assign(this, {
+      ...params,
+      avatarUrl: params.avatarUrl ?? undefined,
+      title: params.title ?? undefined,
+      phone: params.phone ?? undefined,
+      notes: params.notes ?? undefined,
+    });
 
     this.assertValid();
 
@@ -75,32 +81,66 @@ export class SuperAdminProfile {
     superAdminId: string;
 
     fullName: string;
-    avatarUrl?: string;
-    title?: string;
+    avatarUrl?: string | null;
+    title?: string | null;
 
-    phone?: string;
-    notes?: string;
+    phone?: string | null;
+    notes?: string | null;
 
     createdAt: Date;
     updatedAt: Date;
   }): SuperAdminProfile {
-    return new SuperAdminProfile(params);
+    return new SuperAdminProfile({
+      ...params,
+      avatarUrl: params.avatarUrl ?? undefined,
+      title: params.title ?? undefined,
+      phone: params.phone ?? undefined,
+      notes: params.notes ?? undefined,
+    });
+  }
+
+  /* ------------------------------------------ */
+  /* DOMAIN QUERIES                              */
+  /* ------------------------------------------ */
+
+  hasAvatar(): boolean {
+    return Boolean(this.avatarUrl);
   }
 
   /* ------------------------------------------ */
   /* DOMAIN TRANSITIONS                          */
   /* ------------------------------------------ */
 
-  update(params: {
+  updateDetails(params: {
     fullName?: string;
-    avatarUrl?: string;
     title?: string;
     phone?: string;
     notes?: string;
   }): SuperAdminProfile {
     return new SuperAdminProfile({
       ...this,
-      ...params,
+      fullName: params.fullName ?? this.fullName,
+      title: params.title ?? this.title,
+      phone: params.phone ?? this.phone,
+      notes: params.notes ?? this.notes,
+      updatedAt: new Date(),
+    });
+  }
+
+  changeAvatar(
+    avatarUrl: string,
+  ): SuperAdminProfile {
+    return new SuperAdminProfile({
+      ...this,
+      avatarUrl,
+      updatedAt: new Date(),
+    });
+  }
+
+  clearAvatar(): SuperAdminProfile {
+    return new SuperAdminProfile({
+      ...this,
+      avatarUrl: undefined,
       updatedAt: new Date(),
     });
   }

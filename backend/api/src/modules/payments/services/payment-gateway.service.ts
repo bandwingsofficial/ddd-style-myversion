@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ValidationError } from '../../../common/errors';
 
 import {
@@ -12,7 +13,7 @@ import {
 /* ================================================= */
 
 export interface PaymentSession {
-  providerPaymentId: string; // razorpay order id
+  providerPaymentId: string;
   checkoutUrl: string | null;
 }
 
@@ -21,13 +22,18 @@ export interface PaymentVerificationResult {
   providerPaymentId: string;
   raw?: unknown;
 }
+console.log('ENV DEBUG →', process.env.NODE_ENV);
 
 /* ================================================= */
-/* GATEWAY SERVICE (REAL RAZORPAY)                   */
+/* GATEWAY SERVICE                                   */
 /* ================================================= */
 
 @Injectable()
 export class PaymentGatewayService {
+  constructor(
+    private readonly config: ConfigService, // 🔥 ADD THIS
+  ) {}
+
   /* ================================================= */
   /* CREATE PAYMENT SESSION                            */
   /* ================================================= */
@@ -38,45 +44,24 @@ export class PaymentGatewayService {
     currency: string;
   }): Promise<PaymentSession> {
 
-
-
     if (!params?.orderId) {
-      throw new ValidationError(
-        'ORDER_ID_REQUIRED',
-        'Order id is required',
-      );
+      throw new ValidationError('ORDER_ID_REQUIRED', 'Order id is required');
     }
 
     if (!params.amount || params.amount <= 0) {
-      throw new ValidationError(
-        'INVALID_AMOUNT',
-        'Payment amount must be greater than 0',
-      );
+      throw new ValidationError('INVALID_AMOUNT', 'Payment amount must be greater than 0');
     }
 
-    try {
-      /* ---------------------------------------------- */
-      /* 🔥 REAL RAZORPAY ORDER                         */
-      /* ---------------------------------------------- */
+    const razorpayOrder = await createRazorpayOrder({
+      receipt: params.orderId,
+      amount: params.amount,
+      currency: params.currency,
+    });
 
-      const razorpayOrder = await createRazorpayOrder({
-        receipt: params.orderId,
-        amount: params.amount,
-        currency: params.currency,
-      });
-
-      return {
-        providerPaymentId: razorpayOrder.id, // 👈 important
-        checkoutUrl: null, // Razorpay uses frontend SDK
-      };
-    } catch (err) {
-      console.error('[PAYMENT GATEWAY] Razorpay order failed:', err);
-
-      throw new ValidationError(
-        'PAYMENT_GATEWAY_FAILED',
-        'Failed to create payment session',
-      );
-    }
+    return {
+      providerPaymentId: razorpayOrder.id,
+      checkoutUrl: null,
+    };
   }
 
   /* ================================================= */
@@ -84,73 +69,76 @@ export class PaymentGatewayService {
   /* ================================================= */
 
   async verifyPayment(params: {
-  providerPaymentId: string;
-}): Promise<PaymentVerificationResult> {
+    providerPaymentId: string;
+  }): Promise<PaymentVerificationResult> {
 
-  console.log('\n🔍 VERIFY PAYMENT CALLED');
+    console.log('\n==============================');
+    console.log('🔍 VERIFY PAYMENT START');
+    console.log('providerPaymentId:', params.providerPaymentId);
 
-  if (!params?.providerPaymentId) {
-    throw new ValidationError(
-      'PROVIDER_PAYMENT_ID_REQUIRED',
-      'Provider payment id is required',
-    );
+    /* 🔥 DEBUG BOTH SOURCES */
+    console.log('process.env.NODE_ENV =', process.env.NODE_ENV);
+
+    const env = this.config.get<string>('NODE_ENV');
+    console.log('ConfigService NODE_ENV =', env);
+
+    console.log('==============================\n');
+
+    if (!params?.providerPaymentId) {
+      throw new ValidationError(
+        'PROVIDER_PAYMENT_ID_REQUIRED',
+        'Provider payment id is required',
+      );
+    }
+
+    /* ================================================= */
+    /* DEV MODE                                          */
+    /* ================================================= */
+
+    if (env !== 'production') {
+      console.log('⚡ MOCK MODE → auto success\n');
+
+      return {
+        success: true,
+        providerPaymentId: params.providerPaymentId,
+        raw: { mocked: true },
+      };
+    }
+
+    /* ================================================= */
+    /* PRODUCTION MODE                                   */
+    /* ================================================= */
+
+    try {
+      console.log('🌐 REAL MODE → calling Razorpay verify...');
+
+      const payment = await fetchRazorpayPayment(
+        params.providerPaymentId,
+      );
+
+      console.log('📡 Razorpay status →', payment.status);
+
+      return {
+        success: payment.status === 'captured',
+        providerPaymentId: params.providerPaymentId,
+        raw: payment,
+      };
+
+    } catch (err) {
+      console.error('❌ Razorpay verify failed:', err);
+
+      return {
+        success: false,
+        providerPaymentId: params.providerPaymentId,
+      };
+    }
   }
-
-  const env = process.env.NODE_ENV;
-  console.log('ENV =', env);
-
-  /* ================================================= */
-  /* 🔥 LOCAL / DEV → ALWAYS SUCCESS                   */
-  /* ================================================= */
-
-  if (env !== 'production') {
-    console.log('⚡ MOCK GATEWAY → auto success (skipping Razorpay)');
-
-    return {
-      success: true,
-      providerPaymentId: params.providerPaymentId,
-      raw: { mocked: true },
-    };
-  }
-
-  /* ================================================= */
-  /* 🔴 PRODUCTION → REAL RAZORPAY ONLY                */
-  /* ================================================= */
-
-  try {
-    console.log('🌐 Calling Razorpay verify...');
-
-    const payment = await fetchRazorpayPayment(
-      params.providerPaymentId,
-    );
-
-    console.log('📡 Razorpay status →', payment.status);
-
-    return {
-      success: payment.status === 'captured',
-      providerPaymentId: params.providerPaymentId,
-      raw: payment,
-    };
-
-  } catch (err) {
-    console.error('❌ Razorpay verify failed:', err);
-
-    return {
-      success: false,
-      providerPaymentId: params.providerPaymentId,
-    };
-  }
-}
-
 
   /* ================================================= */
   /* WEBHOOK VERIFY                                    */
   /* ================================================= */
 
-  verifyWebhookSignature(
-    signature?: string,
-    payload?: string | Buffer,
-  ): void {
+  verifyWebhookSignature(signature?: string, payload?: string | Buffer): void {
     verifyRazorpaySignature({
       signature,
       payload: payload ?? '',

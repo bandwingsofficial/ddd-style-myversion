@@ -1,17 +1,38 @@
 import { ValidationError } from '../../../../common/errors';
 
-/**
- * OutletProfile (Domain Entity)
- *
- * Pure domain model
- * Immutable
- * No Prisma / DTO types
- */
+/* ---------------------------------------------- */
+/* PROPS                                          */
+/* ---------------------------------------------- */
+
+export interface OutletProfileProps {
+  id: string;
+  outletId: string;
+
+  avatarUrl?: string;
+  bannerUrl?: string;
+
+  contactPhone?: string;
+  contactEmail?: string;
+
+  ownerName?: string;
+  description?: string;
+
+  gstNumber?: string;
+  fssaiNumber?: string;
+
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/* ---------------------------------------------- */
+/* ENTITY                                         */
+/* ---------------------------------------------- */
+
 export class OutletProfile {
   readonly id: string;
   readonly outletId: string;
 
-  readonly logoUrl?: string;
+  readonly avatarUrl?: string;
   readonly bannerUrl?: string;
 
   readonly contactPhone?: string;
@@ -26,41 +47,21 @@ export class OutletProfile {
   readonly createdAt: Date;
   readonly updatedAt: Date;
 
-  private constructor(params: {
-    id: string;
-    outletId: string;
-
-    logoUrl?: string;
-    bannerUrl?: string;
-
-    contactPhone?: string;
-    contactEmail?: string;
-
-    ownerName?: string;
-    description?: string;
-
-    gstNumber?: string;
-    fssaiNumber?: string;
-
-    createdAt: Date;
-    updatedAt: Date;
-  }) {
-    Object.assign(this, params);
-
-    this.assertValid();
-
+  private constructor(props: OutletProfileProps) {
+    Object.assign(this, props);
+    this.assertValidState();
     Object.freeze(this);
   }
 
   /* ---------------------------------------------- */
-  /* FACTORIES                                      */
+  /* FACTORIES                                     */
   /* ---------------------------------------------- */
 
   static createNew(params: {
     id: string;
     outletId: string;
 
-    logoUrl?: string;
+    avatarUrl?: string;
     bannerUrl?: string;
 
     contactPhone?: string;
@@ -77,35 +78,52 @@ export class OutletProfile {
     const now = params.now ?? new Date();
 
     return new OutletProfile({
-      ...params,
+      id: params.id,
+      outletId: params.outletId,
+
+      avatarUrl: params.avatarUrl,
+      bannerUrl: params.bannerUrl,
+
+      contactPhone: params.contactPhone,
+      contactEmail: params.contactEmail,
+
+      ownerName: params.ownerName,
+      description: params.description,
+
+      gstNumber: params.gstNumber,
+      fssaiNumber: params.fssaiNumber,
+
       createdAt: now,
       updatedAt: now,
     });
   }
 
-  /**
-   * Repository only
-   */
-  static rehydrate(params: {
-    id: string;
-    outletId: string;
+  static rehydrate(props: OutletProfileProps): OutletProfile {
+    return new OutletProfile(props);
+  }
 
-    logoUrl?: string;
-    bannerUrl?: string;
+  /* ---------------------------------------------- */
+  /* DOMAIN QUERIES                                 */
+  /* ---------------------------------------------- */
 
-    contactPhone?: string;
-    contactEmail?: string;
+  hasAvatar(): boolean {
+    return Boolean(this.avatarUrl);
+  }
 
-    ownerName?: string;
-    description?: string;
+  hasBanner(): boolean {
+    return Boolean(this.bannerUrl);
+  }
 
-    gstNumber?: string;
-    fssaiNumber?: string;
+  hasBranding(): boolean {
+    return this.hasAvatar() || this.hasBanner();
+  }
 
-    createdAt: Date;
-    updatedAt: Date;
-  }): OutletProfile {
-    return new OutletProfile(params);
+  hasContact(): boolean {
+    return Boolean(this.contactPhone || this.contactEmail);
+  }
+
+  hasComplianceInfo(): boolean {
+    return Boolean(this.gstNumber || this.fssaiNumber);
   }
 
   /* ---------------------------------------------- */
@@ -113,7 +131,7 @@ export class OutletProfile {
   /* ---------------------------------------------- */
 
   updateDetails(params: {
-    logoUrl?: string;
+    avatarUrl?: string;
     bannerUrl?: string;
 
     contactPhone?: string;
@@ -129,32 +147,44 @@ export class OutletProfile {
   }): OutletProfile {
     return new OutletProfile({
       ...this,
-      ...params,
+
+      avatarUrl: params.avatarUrl ?? this.avatarUrl,
+      bannerUrl: params.bannerUrl ?? this.bannerUrl,
+
+      contactPhone: params.contactPhone ?? this.contactPhone,
+      contactEmail: params.contactEmail ?? this.contactEmail,
+
+      ownerName: params.ownerName ?? this.ownerName,
+      description: params.description ?? this.description,
+
+      gstNumber: params.gstNumber ?? this.gstNumber,
+      fssaiNumber: params.fssaiNumber ?? this.fssaiNumber,
+
       updatedAt: params.now ?? new Date(),
     });
   }
 
-  /* ---------------------------------------------- */
-  /* DOMAIN QUERIES                                 */
-  /* ---------------------------------------------- */
-
-  hasBranding(): boolean {
-    return Boolean(this.logoUrl || this.bannerUrl);
+  updateAvatar(avatarUrl: string, now = new Date()): OutletProfile {
+    return new OutletProfile({
+      ...this,
+      avatarUrl,
+      updatedAt: now,
+    });
   }
 
-  hasContact(): boolean {
-    return Boolean(this.contactPhone || this.contactEmail);
-  }
-
-  hasComplianceInfo(): boolean {
-    return Boolean(this.gstNumber || this.fssaiNumber);
+  updateBanner(bannerUrl: string, now = new Date()): OutletProfile {
+    return new OutletProfile({
+      ...this,
+      bannerUrl,
+      updatedAt: now,
+    });
   }
 
   /* ---------------------------------------------- */
   /* INVARIANTS                                     */
   /* ---------------------------------------------- */
 
-  private assertValid(): void {
+  private assertValidState(): void {
     if (!this.outletId) {
       throw new ValidationError(
         'OUTLET_PROFILE_OUTLET_REQUIRED',

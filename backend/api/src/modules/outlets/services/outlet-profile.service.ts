@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
@@ -8,10 +10,6 @@ import { OutletProfileRepository } from '../repositories/outlet-profile.reposito
 
 import { ValidationError } from '../../../common/errors';
 
-/* ================================================= */
-/* SERVICE                                          */
-/* ================================================= */
-
 @Injectable()
 export class OutletProfileService {
   constructor(
@@ -20,18 +18,44 @@ export class OutletProfileService {
   ) {}
 
   /* ================================================= */
+  /* 🔒 IMAGE PATH NORMALIZATION                       */
+  /* ================================================= */
+
+  private normalizeImagePath(
+    imagePath?: string | null,
+  ): string | null | undefined {
+    if (!imagePath) return imagePath;
+
+    let normalized = imagePath.trim();
+
+    normalized = normalized.replace(/^https?:\/\/[^/]+\//, '');
+
+    if (normalized.startsWith('/')) {
+      normalized = normalized.slice(1);
+    }
+
+    if (
+      !normalized.startsWith('images/outletprofile/avatar/') &&
+      !normalized.startsWith('images/outletprofile/banner/')
+    ) {
+      throw new ValidationError(
+        'OUTLET_PROFILE_INVALID_IMAGE_PATH',
+        'Image path must be under images/outletprofile/',
+      );
+    }
+
+    return normalized;
+  }
+
+  /* ================================================= */
   /* READ                                              */
   /* ================================================= */
 
-  async getProfile(
-    outletId: string,
-  ): Promise<OutletProfile | null> {
+  async getProfile(outletId: string): Promise<OutletProfile | null> {
     return this.profileRepo.findByOutletId(outletId);
   }
 
-  async getProfileOrThrow(
-    outletId: string,
-  ): Promise<OutletProfile> {
+  async getProfileOrThrow(outletId: string): Promise<OutletProfile> {
     const profile = await this.profileRepo.findByOutletId(outletId);
 
     if (!profile) {
@@ -51,7 +75,7 @@ export class OutletProfileService {
   async createProfile(params: {
     outletId: string;
 
-    logoUrl?: string;
+    avatarUrl?: string;
     bannerUrl?: string;
 
     contactPhone?: string;
@@ -63,9 +87,7 @@ export class OutletProfileService {
     gstNumber?: string;
     fssaiNumber?: string;
   }): Promise<OutletProfile> {
-    const existing = await this.profileRepo.findByOutletId(
-      params.outletId,
-    );
+    const existing = await this.profileRepo.findByOutletId(params.outletId);
 
     if (existing) {
       throw new ValidationError(
@@ -76,7 +98,17 @@ export class OutletProfileService {
 
     const profile = OutletProfile.createNew({
       id: crypto.randomUUID(),
-      ...params,
+      outletId: params.outletId,
+
+      avatarUrl: this.normalizeImagePath(params.avatarUrl),
+      bannerUrl: this.normalizeImagePath(params.bannerUrl),
+
+      contactPhone: params.contactPhone,
+      contactEmail: params.contactEmail,
+      ownerName: params.ownerName,
+      description: params.description,
+      gstNumber: params.gstNumber,
+      fssaiNumber: params.fssaiNumber,
     });
 
     let created!: OutletProfile;
@@ -95,7 +127,7 @@ export class OutletProfileService {
   async updateProfile(params: {
     outletId: string;
     updates: {
-      logoUrl?: string;
+      avatarUrl?: string;
       bannerUrl?: string;
 
       contactPhone?: string;
@@ -110,7 +142,20 @@ export class OutletProfileService {
   }): Promise<OutletProfile> {
     const profile = await this.getProfileOrThrow(params.outletId);
 
-    const updated = profile.updateDetails(params.updates);
+    const oldAvatar = profile.avatarUrl;
+    const oldBanner = profile.bannerUrl;
+
+    const updated = profile.updateDetails({
+      avatarUrl: this.normalizeImagePath(params.updates.avatarUrl),
+      bannerUrl: this.normalizeImagePath(params.updates.bannerUrl),
+
+      contactPhone: params.updates.contactPhone,
+      contactEmail: params.updates.contactEmail,
+      ownerName: params.updates.ownerName,
+      description: params.updates.description,
+      gstNumber: params.updates.gstNumber,
+      fssaiNumber: params.updates.fssaiNumber,
+    });
 
     let saved!: OutletProfile;
 
@@ -118,58 +163,101 @@ export class OutletProfileService {
       saved = await this.profileRepo.update(updated, tx);
     });
 
+    /* ---------------------------------- */
+    /* Delete replaced files safely       */
+    /* ---------------------------------- */
+
+    if (oldAvatar && oldAvatar !== saved.avatarUrl) {
+      this.deleteImageSafe(oldAvatar);
+    }
+
+    if (oldBanner && oldBanner !== saved.bannerUrl) {
+      this.deleteImageSafe(oldBanner);
+    }
+
     return saved;
   }
 
   /* ================================================= */
-  /* UPSERT (most practical for admin forms)            */
-  /* ================================================= */
+/* UPSERT                                            */
+/* ================================================= */
 
-  async upsertProfile(params: {
-    outletId: string;
+async upsertProfile(params: {
+  outletId: string;
 
-    logoUrl?: string;
-    bannerUrl?: string;
+  avatarUrl?: string;
+  bannerUrl?: string;
 
-    contactPhone?: string;
-    contactEmail?: string;
+  contactPhone?: string;
+  contactEmail?: string;
 
-    ownerName?: string;
-    description?: string;
+  ownerName?: string;
+  description?: string;
 
-    gstNumber?: string;
-    fssaiNumber?: string;
-  }): Promise<OutletProfile> {
-    const existing = await this.profileRepo.findByOutletId(
-      params.outletId,
-    );
+  gstNumber?: string;
+  fssaiNumber?: string;
+}): Promise<OutletProfile> {
+  const existing = await this.profileRepo.findByOutletId(
+    params.outletId,
+  );
 
-    if (!existing) {
-      return this.createProfile(params);
-    }
-
-    return this.updateProfile({
-      outletId: params.outletId,
-      updates: params,
-    });
+  if (!existing) {
+    return this.createProfile(params);
   }
+
+  return this.updateProfile({
+    outletId: params.outletId,
+    updates: {
+      avatarUrl: params.avatarUrl,
+      bannerUrl: params.bannerUrl,
+      contactPhone: params.contactPhone,
+      contactEmail: params.contactEmail,
+      ownerName: params.ownerName,
+      description: params.description,
+      gstNumber: params.gstNumber,
+      fssaiNumber: params.fssaiNumber,
+    },
+  });
+}
 
   /* ================================================= */
   /* DELETE                                            */
   /* ================================================= */
 
   async deleteProfile(outletId: string): Promise<void> {
-    const existing = await this.profileRepo.findByOutletId(outletId);
-
-    if (!existing) {
-      throw new ValidationError(
-        'OUTLET_PROFILE_NOT_FOUND',
-        'Profile does not exist',
-      );
-    }
+    const existing = await this.getProfileOrThrow(outletId);
 
     await this.prisma.$transaction(async (tx: PrismaTransaction) => {
       await this.profileRepo.deleteByOutletId(outletId, tx);
+    });
+
+    /* ---------------------------------- */
+    /* Delete stored images               */
+    /* ---------------------------------- */
+
+    if (existing.avatarUrl) {
+      this.deleteImageSafe(existing.avatarUrl);
+    }
+
+    if (existing.bannerUrl) {
+      this.deleteImageSafe(existing.bannerUrl);
+    }
+  }
+
+  /* ================================================= */
+  /* FILE HELPER                                       */
+  /* ================================================= */
+
+  private deleteImageSafe(imagePath?: string): void {
+    if (!imagePath) return;
+
+    const appRoot =
+      process.env.APP_ROOT ?? path.resolve(process.cwd(), '..', '..');
+
+    const fullPath = path.join(appRoot, imagePath);
+
+    fs.promises.unlink(fullPath).catch(() => {
+      // silent fail
     });
   }
 }

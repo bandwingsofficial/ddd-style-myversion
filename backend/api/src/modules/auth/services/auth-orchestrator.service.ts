@@ -354,55 +354,54 @@ export class AuthOrchestratorService {
     return this.sessionService.revokeAllSessions(params);
   }
 
-  /* ================================================= */
-/* SUPER ADMIN PROFILE (delegation only)              */
 /* ================================================= */
+  /* SUPER ADMIN PROFILE (delegation only)            */
+  /* ================================================= */
 
-async getSuperAdminProfile(
-  superAdminId: string,
-): Promise<SuperAdminProfile | null> {
-  return this.superAdminProfileService.getProfile(superAdminId);
-}
+  async getSuperAdminProfile(
+    superAdminId: string,
+  ): Promise<SuperAdminProfile | null> {
+    return this.superAdminProfileService.getProfile(superAdminId);
+  }
 
-async createSuperAdminProfile(params: {
-  superAdminId: string;
-  fullName: string;
-  avatarUrl?: string;
-  title?: string;
-  phone?: string;
-  notes?: string;
-}): Promise<SuperAdminProfile> {
-  return this.superAdminProfileService.createProfile(params);
-}
+  async createSuperAdminProfile(params: {
+    superAdminId: string;
+    fullName: string;
+    avatarUrl?: string;
+    title?: string;
+    phone?: string;
+    notes?: string;
+  }): Promise<SuperAdminProfile> {
+    return this.superAdminProfileService.createProfile(params);
+  }
 
-async updateSuperAdminProfile(params: {
-  superAdminId: string;
-  updates: {
+  async updateSuperAdminProfile(params: {
+    superAdminId: string;
+    updates: {
+      fullName?: string;
+      avatarUrl?: string;
+      title?: string;
+      phone?: string;
+      notes?: string;
+    };
+  }): Promise<SuperAdminProfile> {
+    return this.superAdminProfileService.updateProfile(params);
+  }
+
+  async upsertSuperAdminProfile(params: {
+    superAdminId: string;
     fullName?: string;
     avatarUrl?: string;
     title?: string;
     phone?: string;
     notes?: string;
-  };
-}): Promise<SuperAdminProfile> {
-  return this.superAdminProfileService.updateProfile(params);
-}
+  }): Promise<SuperAdminProfile> {
+    return this.superAdminProfileService.upsertProfile(params);
+  }
 
-async upsertSuperAdminProfile(params: {
-  superAdminId: string;
-  fullName?: string;
-  avatarUrl?: string;
-  title?: string;
-  phone?: string;
-  notes?: string;
-}): Promise<SuperAdminProfile> {
-  return this.superAdminProfileService.upsertProfile(params);
-}
-
-async deleteSuperAdminProfile(
-  superAdminId: string,
-): Promise<void> {
-  return this.superAdminProfileService.deleteProfile(superAdminId);
-}
-
+  async deleteSuperAdminProfile(
+    superAdminId: string,
+  ): Promise<void> {
+    return this.superAdminProfileService.deleteProfile(superAdminId);
+  }
 }

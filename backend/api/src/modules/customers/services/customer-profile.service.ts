@@ -1,4 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
+import { randomUUID } from 'crypto';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
@@ -18,6 +21,33 @@ export class CustomerProfileService {
     private readonly prisma: PrismaService,
     private readonly profileRepo: CustomerProfileRepository,
   ) {}
+
+  /* ================================================= */
+  /* 🔒 IMAGE PATH NORMALIZATION                       */
+  /* ================================================= */
+
+  private normalizeImagePath(
+    imagePath?: string | null,
+  ): string | null | undefined {
+    if (!imagePath) return imagePath;
+
+    let normalized = imagePath.trim();
+
+    normalized = normalized.replace(/^https?:\/\/[^/]+\//, '');
+
+    if (normalized.startsWith('/')) {
+      normalized = normalized.slice(1);
+    }
+
+    if (!normalized.startsWith('images/customerprofile/avatar/')) {
+      throw new ValidationError(
+        'PROFILE_INVALID_IMAGE_PATH',
+        'Image path must be under images/customerprofile/avatar/',
+      );
+    }
+
+    return normalized;
+  }
 
   /* ================================================= */
   /* READ                                              */
@@ -64,13 +94,18 @@ export class CustomerProfileService {
     }
 
     const profile = CustomerProfile.createNew({
-      id: crypto.randomUUID(),
-      ...params,
+      id: randomUUID(),
+      customerId: params.customerId,
+      fullName: params.fullName,
+      email: params.email,
+      avatarUrl: this.normalizeImagePath(params.avatarUrl),
+      gender: params.gender,
+      dob: params.dob,
     });
 
     let created!: CustomerProfile;
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx: PrismaTransaction) => {
       created = await this.profileRepo.create(profile, tx);
     });
 
@@ -93,19 +128,52 @@ export class CustomerProfileService {
   }): Promise<CustomerProfile> {
     const profile = await this.getProfileOrThrow(params.customerId);
 
-    const updated = profile.updateDetails(params.updates);
+    const oldAvatar = profile.avatarUrl;
+
+    /* ---------------------------------- */
+    /* Update non-avatar fields           */
+    /* ---------------------------------- */
+
+    let updated = profile.updateDetails({
+      fullName: params.updates.fullName,
+      email: params.updates.email,
+      gender: params.updates.gender,
+      dob: params.updates.dob,
+    });
+
+    /* ---------------------------------- */
+    /* Handle avatar separately (DDD)     */
+    /* ---------------------------------- */
+
+    if (params.updates.avatarUrl !== undefined) {
+      const normalizedAvatar = this.normalizeImagePath(
+        params.updates.avatarUrl,
+      );
+
+      updated = normalizedAvatar
+        ? updated.changeAvatar(normalizedAvatar)
+        : updated.clearAvatar();
+    }
 
     let saved!: CustomerProfile;
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx: PrismaTransaction) => {
       saved = await this.profileRepo.update(updated, tx);
     });
+
+    /* ---------------------------------- */
+    /* Delete old avatar safely           */
+    /* ---------------------------------- */
+
+    if (oldAvatar && oldAvatar !== saved.avatarUrl) {
+      this.deleteImageSafe(oldAvatar);
+    }
 
     return saved;
   }
 
   /* ================================================= */
-  /* UPSERT (most useful for frontend forms)            */
+  /* UPSERT                                            */
   /* ================================================= */
 
   async upsertProfile(params: {
@@ -126,7 +194,13 @@ export class CustomerProfileService {
 
     return this.updateProfile({
       customerId: params.customerId,
-      updates: params,
+      updates: {
+        fullName: params.fullName,
+        email: params.email,
+        avatarUrl: params.avatarUrl,
+        gender: params.gender,
+        dob: params.dob,
+      },
     });
   }
 
@@ -135,17 +209,35 @@ export class CustomerProfileService {
   /* ================================================= */
 
   async deleteProfile(customerId: string): Promise<void> {
-    const existing = await this.profileRepo.findByCustomerId(customerId);
+    const existing = await this.getProfileOrThrow(customerId);
 
-    if (!existing) {
-      throw new ValidationError(
-        'PROFILE_NOT_FOUND',
-        'Profile does not exist',
-      );
-    }
-
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx: PrismaTransaction) => {
       await this.profileRepo.deleteByCustomerId(customerId, tx);
+    });
+
+    /* ---------------------------------- */
+    /* Delete stored avatar                */
+    /* ---------------------------------- */
+
+    if (existing.avatarUrl) {
+      this.deleteImageSafe(existing.avatarUrl);
+    }
+  }
+
+  /* ================================================= */
+  /* FILE HELPER                                       */
+  /* ================================================= */
+
+  private deleteImageSafe(imagePath?: string): void {
+    if (!imagePath) return;
+
+    const appRoot =
+      process.env.APP_ROOT ?? path.resolve(process.cwd(), '..', '..');
+
+    const fullPath = path.join(appRoot, imagePath);
+
+    fs.promises.unlink(fullPath).catch(() => {
+      // silent fail
     });
   }
 }

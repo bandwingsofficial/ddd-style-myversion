@@ -1,7 +1,7 @@
 export interface OutletProfile {
   id: string;
   outletId: string;
-  logoUrl: string;
+  avatarUrl: string; // Changed from logoUrl
   bannerUrl: string;
   contactPhone: string;
   contactEmail: string;
@@ -14,7 +14,7 @@ export interface OutletProfile {
 }
 
 export interface CreateOutletProfilePayload {
-  logoUrl: string;
+  avatarUrl: string; // Changed from logoUrl
   bannerUrl: string;
   contactPhone: string;
   contactEmail: string;

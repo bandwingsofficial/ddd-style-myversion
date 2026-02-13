@@ -11,14 +11,15 @@ import {
   ChevronDown, 
   LogOut, 
   User, 
-  Settings, 
-  ShoppingBag 
 } from 'lucide-react';
 
 import { outletAuthService } from '@/features/auth/services/auth.service';
 import { outletService } from '@/features/outlet/services/outletService';
-import { useOutletProfile } from '@/features/outlet/hooks/useOutletProfile'; // Import the hook
+import { useOutletProfile } from '@/features/outlet/hooks/useOutletProfile';
 import { Outlet } from '@/features/outlet/types';
+
+// Define the backend URL to match your Profile Page logic
+const BACKEND_URL = 'https://api.dev.local:4000';
 
 export default function Header() {
   const router = useRouter();
@@ -46,7 +47,6 @@ export default function Header() {
   }, []);
 
   /* ---------------- Fetch Profile Data ---------------- */
-  // We use the hook just like in your Profile page to get the owner name and logo
   const { profile, loading: loadingProfile } = useOutletProfile(outlet?.id ?? '');
 
   const handleLogout = async () => {
@@ -57,10 +57,22 @@ export default function Header() {
     }
   };
 
+  /**
+   * Helper to format image URLs correctly (Sync with Profile Page)
+   */
+  const getImageUrl = (path: string | undefined) => {
+    if (!path) return null;
+    if (path.startsWith('http') || path.startsWith('blob:')) return path;
+    return `${BACKEND_URL}/${path}`;
+  };
+
   // Determine display name: Priority Profile Owner Name > Outlet Name > Default
   const displayName = profile?.ownerName || outlet?.name || 'Outlet Admin';
   const displayEmail = profile?.contactEmail || 'admin@caneandtender.com';
   const avatarLetter = (profile?.ownerName || outlet?.name || 'O').charAt(0).toUpperCase();
+  
+  // Use avatarUrl from backend profile
+  const avatarImage = getImageUrl(profile?.avatarUrl);
 
   return (
     <header style={styles.header}>
@@ -106,13 +118,12 @@ export default function Header() {
         >
           <div style={styles.userInfoTrigger}>
             <div style={styles.userDetails}>
-              {/* Updated to show Dynamic Name */}
               <span style={styles.role}>{loadingProfile ? '...' : displayName}</span>
             </div>
             <div style={styles.avatar}>
-              {profile?.logoUrl ? (
+              {avatarImage ? (
                 <img 
-                  src={profile.logoUrl} 
+                  src={avatarImage} 
                   alt="Avatar" 
                   style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} 
                 />
@@ -280,7 +291,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     justifyContent: 'center',
     fontWeight: 700,
     fontSize: '18px',
-    overflow: 'hidden', // Added to contain the image
+    overflow: 'hidden',
   },
   dropdown: {
     position: 'absolute',

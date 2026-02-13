@@ -16,7 +16,7 @@ export class OutletProfileMapper {
       id: row.id,
       outletId: row.outletId,
 
-      logoUrl: row.logoUrl ?? undefined,
+      avatarUrl: row.avatarUrl ?? undefined,
       bannerUrl: row.bannerUrl ?? undefined,
 
       contactPhone: row.contactPhone ?? undefined,
@@ -44,7 +44,7 @@ export class OutletProfileMapper {
       id: profile.id,
       outletId: profile.outletId,
 
-      logoUrl: profile.logoUrl ?? null,
+      avatarUrl: profile.avatarUrl ?? null,
       bannerUrl: profile.bannerUrl ?? null,
 
       contactPhone: profile.contactPhone ?? null,
@@ -67,7 +67,7 @@ export class OutletProfileMapper {
 
   static toUpdateInput(profile: OutletProfile) {
     return {
-      logoUrl: profile.logoUrl ?? null,
+      avatarUrl: profile.avatarUrl ?? null,
       bannerUrl: profile.bannerUrl ?? null,
 
       contactPhone: profile.contactPhone ?? null,

@@ -5,7 +5,6 @@ import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
 
 import { OutletProfile } from '../domain/models/outlet-profile.model';
-import { OutletProfileMapper } from '../mappers/outlet-profile.mapper';
 
 /* ================================================= */
 /* REPOSITORY                                       */
@@ -16,7 +15,7 @@ export class OutletProfileRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   /* ================================================= */
-  /* READ – SINGLE                                     */
+  /* READ – SINGLE                                    */
   /* ================================================= */
 
   async findByOutletId(
@@ -27,7 +26,7 @@ export class OutletProfileRepository {
       where: { outletId },
     });
 
-    return row ? OutletProfileMapper.toDomain(row) : null;
+    return row ? this.toDomain(row) : null;
   }
 
   async findById(
@@ -38,7 +37,7 @@ export class OutletProfileRepository {
       where: { id },
     });
 
-    return row ? OutletProfileMapper.toDomain(row) : null;
+    return row ? this.toDomain(row) : null;
   }
 
   /* ================================================= */
@@ -52,13 +51,28 @@ export class OutletProfileRepository {
     const client = tx ?? this.prisma;
 
     const row = await client.outletProfile.create({
-      data:
-        OutletProfileMapper.toCreateInput(
-          profile,
-        ) satisfies Prisma.OutletProfileUncheckedCreateInput,
+      data: {
+        id: profile.id,
+        outletId: profile.outletId,
+
+        avatarUrl: profile.avatarUrl,
+        bannerUrl: profile.bannerUrl,
+
+        contactPhone: profile.contactPhone,
+        contactEmail: profile.contactEmail,
+
+        ownerName: profile.ownerName,
+        description: profile.description,
+
+        gstNumber: profile.gstNumber,
+        fssaiNumber: profile.fssaiNumber,
+
+        createdAt: profile.createdAt,
+        updatedAt: profile.updatedAt,
+      } satisfies Prisma.OutletProfileUncheckedCreateInput,
     });
 
-    return OutletProfileMapper.toDomain(row);
+    return this.toDomain(row);
   }
 
   /* ================================================= */
@@ -73,10 +87,24 @@ export class OutletProfileRepository {
 
     const row = await client.outletProfile.update({
       where: { outletId: profile.outletId },
-      data: OutletProfileMapper.toUpdateInput(profile),
+      data: {
+        avatarUrl: profile.avatarUrl,
+        bannerUrl: profile.bannerUrl,
+
+        contactPhone: profile.contactPhone,
+        contactEmail: profile.contactEmail,
+
+        ownerName: profile.ownerName,
+        description: profile.description,
+
+        gstNumber: profile.gstNumber,
+        fssaiNumber: profile.fssaiNumber,
+
+        updatedAt: profile.updatedAt,
+      } satisfies Prisma.OutletProfileUncheckedUpdateInput,
     });
 
-    return OutletProfileMapper.toDomain(row);
+    return this.toDomain(row);
   }
 
   /* ================================================= */
@@ -91,14 +119,43 @@ export class OutletProfileRepository {
 
     const row = await client.outletProfile.upsert({
       where: { outletId: profile.outletId },
-      create:
-        OutletProfileMapper.toCreateInput(
-          profile,
-        ) satisfies Prisma.OutletProfileUncheckedCreateInput,
-      update: OutletProfileMapper.toUpdateInput(profile),
+      create: {
+        id: profile.id,
+        outletId: profile.outletId,
+
+        avatarUrl: profile.avatarUrl,
+        bannerUrl: profile.bannerUrl,
+
+        contactPhone: profile.contactPhone,
+        contactEmail: profile.contactEmail,
+
+        ownerName: profile.ownerName,
+        description: profile.description,
+
+        gstNumber: profile.gstNumber,
+        fssaiNumber: profile.fssaiNumber,
+
+        createdAt: profile.createdAt,
+        updatedAt: profile.updatedAt,
+      } satisfies Prisma.OutletProfileUncheckedCreateInput,
+      update: {
+        avatarUrl: profile.avatarUrl,
+        bannerUrl: profile.bannerUrl,
+
+        contactPhone: profile.contactPhone,
+        contactEmail: profile.contactEmail,
+
+        ownerName: profile.ownerName,
+        description: profile.description,
+
+        gstNumber: profile.gstNumber,
+        fssaiNumber: profile.fssaiNumber,
+
+        updatedAt: profile.updatedAt,
+      } satisfies Prisma.OutletProfileUncheckedUpdateInput,
     });
 
-    return OutletProfileMapper.toDomain(row);
+    return this.toDomain(row);
   }
 
   /* ================================================= */
@@ -111,6 +168,50 @@ export class OutletProfileRepository {
   ): Promise<void> {
     await (tx ?? this.prisma).outletProfile.delete({
       where: { outletId },
+    });
+  }
+
+  /* ================================================= */
+  /* PRIVATE MAPPER                                   */
+  /* ================================================= */
+
+  private toDomain(row: {
+    id: string;
+    outletId: string;
+
+    avatarUrl: string | null;
+    bannerUrl: string | null;
+
+    contactPhone: string | null;
+    contactEmail: string | null;
+
+    ownerName: string | null;
+    description: string | null;
+
+    gstNumber: string | null;
+    fssaiNumber: string | null;
+
+    createdAt: Date;
+    updatedAt: Date;
+  }): OutletProfile {
+    return OutletProfile.rehydrate({
+      id: row.id,
+      outletId: row.outletId,
+
+      avatarUrl: row.avatarUrl ?? undefined,
+      bannerUrl: row.bannerUrl ?? undefined,
+
+      contactPhone: row.contactPhone ?? undefined,
+      contactEmail: row.contactEmail ?? undefined,
+
+      ownerName: row.ownerName ?? undefined,
+      description: row.description ?? undefined,
+
+      gstNumber: row.gstNumber ?? undefined,
+      fssaiNumber: row.fssaiNumber ?? undefined,
+
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
     });
   }
 }

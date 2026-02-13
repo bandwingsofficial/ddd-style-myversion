@@ -20,6 +20,11 @@ import { AuthOrchestratorService } from '../services/auth-orchestrator.service';
 import { CreateSuperAdminProfileDto } from '../dto/create-super-admin-profile.dto';
 import { UpdateSuperAdminProfileDto } from '../dto/update-super-admin-profile.dto';
 
+import { UseInterceptors, UploadedFile } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { superAdminProfileImageUploadOptions } from '../../../common/upload/superadminprofile-image-upload.options';
+
+
 /* ================================================= */
 /* CONTROLLER                                        */
 /* ================================================= */
@@ -51,18 +56,34 @@ export class SuperAdminProfileController {
   }
 
   /* ================================================= */
-  /* CREATE PROFILE                                    */
+  /* CREATE PROFILE (🔥 with avatar upload)           */
   /* ================================================= */
 
   @Post()
+  @UseInterceptors(
+    FileInterceptor(
+      'avatar',
+      superAdminProfileImageUploadOptions,
+    ),
+  )
   async createProfile(
     @CurrentUser() user,
     @Body() dto: CreateSuperAdminProfileDto,
+    @UploadedFile() file?: Express.Multer.File,
   ) {
-    const data = await this.orchestrator.createSuperAdminProfile({
-      superAdminId: user.actorId,
-      ...dto,
-    });
+    const avatarUrl = file
+      ? `images/superadminprofile/avatar/${file.filename}`
+      : undefined;
+
+    const data =
+      await this.orchestrator.createSuperAdminProfile({
+        superAdminId: user.actorId,
+        fullName: dto.fullName,
+        title: dto.title,
+        phone: dto.phone,
+        notes: dto.notes,
+        avatarUrl,
+      });
 
     return {
       success: true,
@@ -73,45 +94,38 @@ export class SuperAdminProfileController {
   }
 
   /* ================================================= */
-  /* UPDATE PROFILE                                    */
+  /* UPDATE PROFILE (🔥 with avatar replace)          */
   /* ================================================= */
 
   @Patch()
+  @UseInterceptors(
+    FileInterceptor(
+      'avatar',
+      superAdminProfileImageUploadOptions,
+    ),
+  )
   async updateProfile(
     @CurrentUser() user,
     @Body() dto: UpdateSuperAdminProfileDto,
+    @UploadedFile() file?: Express.Multer.File,
   ) {
-    const data = await this.orchestrator.updateSuperAdminProfile({
-      superAdminId: user.actorId,
-      updates: dto,
-    });
+    const avatarUrl = file
+      ? `images/superadminprofile/avatar/${file.filename}`
+      : undefined;
+
+    const data =
+      await this.orchestrator.updateSuperAdminProfile({
+        superAdminId: user.actorId,
+        updates: {
+          ...dto,
+          avatarUrl,
+        },
+      });
 
     return {
       success: true,
       code: 'SUPER_ADMIN_PROFILE_UPDATED',
       message: 'Profile updated successfully',
-      data,
-    };
-  }
-
-  /* ================================================= */
-  /* UPSERT PROFILE (very useful)                      */
-  /* ================================================= */
-
-  @Post('upsert')
-  async upsertProfile(
-    @CurrentUser() user,
-    @Body() dto: UpdateSuperAdminProfileDto,
-  ) {
-    const data = await this.orchestrator.upsertSuperAdminProfile({
-      superAdminId: user.actorId,
-      ...dto,
-    });
-
-    return {
-      success: true,
-      code: 'SUPER_ADMIN_PROFILE_SAVED',
-      message: 'Profile saved successfully',
       data,
     };
   }
@@ -134,3 +148,4 @@ export class SuperAdminProfileController {
     };
   }
 }
+

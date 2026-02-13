@@ -20,6 +20,12 @@ import { OutletOrchestratorService } from '../services/outlet-orchestrator.servi
 import { CreateOutletProfileDto } from '../dtos/create-outlet-profile.dto';
 import { UpdateOutletProfileDto } from '../dtos/update-outlet-profile.dto';
 
+import { UseInterceptors, UploadedFiles } from '@nestjs/common';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
+
+import { outletProfileImageUploadOptions } 
+  from '../../../common/upload/outletprofile-image-upload.options';
+
 /* ================================================= */
 /* CONTROLLER                                       */
 /* ================================================= */
@@ -54,70 +60,142 @@ export class OutletProfileController {
   /* ================================================= */
 
   @Post()
-  async createProfile(
-    @Param('outletId') outletId: string,
-    @Body() dto: CreateOutletProfileDto,
-  ) {
-    const data =
-      await this.orchestrator.createOutletProfile({
-        outletId,
-        ...dto,
-      });
+@UseInterceptors(
+  FileFieldsInterceptor(
+    [
+      { name: 'avatar', maxCount: 1 },
+      { name: 'banner', maxCount: 1 },
+    ],
+    outletProfileImageUploadOptions,
+  ),
+)
+async createProfile(
+  @Param('outletId') outletId: string,
+  @Body() dto: CreateOutletProfileDto,
+  @UploadedFiles()
+  files: {
+    avatar?: Express.Multer.File[];
+    banner?: Express.Multer.File[];
+  },
+) {
+  const avatarPath = files?.avatar?.length
+    ? `images/outletprofile/avatar/${files.avatar[0].filename}`
+    : undefined;
 
-    return {
-      success: true,
-      code: 'OUTLET_PROFILE_CREATED',
-      message: 'Outlet profile created successfully',
-      data,
-    };
-  }
+  const bannerPath = files?.banner?.length
+    ? `images/outletprofile/banner/${files.banner[0].filename}`
+    : undefined;
 
+  const data =
+    await this.orchestrator.createOutletProfile({
+      outletId,
+      avatarUrl: avatarPath,
+      bannerUrl: bannerPath,
+      ...dto,
+    });
+
+  return {
+    success: true,
+    code: 'OUTLET_PROFILE_CREATED',
+    message: 'Outlet profile created successfully',
+    data,
+  };
+}
   /* ================================================= */
   /* UPDATE                                           */
   /* ================================================= */
 
   @Patch()
-  async updateProfile(
-    @Param('outletId') outletId: string,
-    @Body() dto: UpdateOutletProfileDto,
-  ) {
-    const data =
-      await this.orchestrator.updateOutletProfile({
-        outletId,
-        updates: dto,
-      });
+@UseInterceptors(
+  FileFieldsInterceptor(
+    [
+      { name: 'avatar', maxCount: 1 },
+      { name: 'banner', maxCount: 1 },
+    ],
+    outletProfileImageUploadOptions,
+  ),
+)
+async updateProfile(
+  @Param('outletId') outletId: string,
+  @Body() dto: UpdateOutletProfileDto,
+  @UploadedFiles()
+  files: {
+    avatar?: Express.Multer.File[];
+    banner?: Express.Multer.File[];
+  },
+) {
+  const avatarPath = files?.avatar?.length
+    ? `images/outletprofile/avatar/${files.avatar[0].filename}`
+    : undefined;
 
-    return {
-      success: true,
-      code: 'OUTLET_PROFILE_UPDATED',
-      message: 'Outlet profile updated successfully',
-      data,
-    };
-  }
+  const bannerPath = files?.banner?.length
+    ? `images/outletprofile/banner/${files.banner[0].filename}`
+    : undefined;
+
+  const data =
+    await this.orchestrator.updateOutletProfile({
+      outletId,
+      updates: {
+        avatarUrl: avatarPath,
+        bannerUrl: bannerPath,
+        ...dto,
+      },
+    });
+
+  return {
+    success: true,
+    code: 'OUTLET_PROFILE_UPDATED',
+    message: 'Outlet profile updated successfully',
+    data,
+  };
+}
 
   /* ================================================= */
   /* UPSERT                                           */
   /* ================================================= */
 
   @Post('upsert')
-  async upsertProfile(
-    @Param('outletId') outletId: string,
-    @Body() dto: UpdateOutletProfileDto,
-  ) {
-    const data =
-      await this.orchestrator.upsertOutletProfile({
-        outletId,
-        ...dto,
-      });
+@UseInterceptors(
+  FileFieldsInterceptor(
+    [
+      { name: 'avatar', maxCount: 1 },
+      { name: 'banner', maxCount: 1 },
+    ],
+    outletProfileImageUploadOptions,
+  ),
+)
+async upsertProfile(
+  @Param('outletId') outletId: string,
+  @Body() dto: UpdateOutletProfileDto,
+  @UploadedFiles()
+  files: {
+    avatar?: Express.Multer.File[];
+    banner?: Express.Multer.File[];
+  },
+) {
+  const avatarPath = files?.avatar?.length
+    ? `images/outletprofile/avatar/${files.avatar[0].filename}`
+    : undefined;
 
-    return {
-      success: true,
-      code: 'OUTLET_PROFILE_SAVED',
-      message: 'Outlet profile saved successfully',
-      data,
-    };
-  }
+  const bannerPath = files?.banner?.length
+    ? `images/outletprofile/banner/${files.banner[0].filename}`
+    : undefined;
 
+  const data =
+    await this.orchestrator.upsertOutletProfile({
+      outletId,
+      avatarUrl: avatarPath,
+      bannerUrl: bannerPath,
+      ...dto,
+    });
+
+  return {
+    success: true,
+    code: 'OUTLET_PROFILE_SAVED',
+    message: 'Outlet profile saved successfully',
+    data,
+  };
+}
   /* ================================================= */
   /* DELETE                                           */
   /* ================================================= */

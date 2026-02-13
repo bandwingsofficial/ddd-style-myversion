@@ -41,7 +41,14 @@ export class CustomerProfileOrchestratorService {
     gender?: string;
     dob?: Date;
   }): Promise<CustomerProfile> {
-    return this.profileService.createProfile(params);
+    return this.profileService.createProfile({
+      customerId: params.customerId,
+      fullName: params.fullName,
+      email: params.email,
+      avatarUrl: params.avatarUrl,
+      gender: params.gender,
+      dob: params.dob,
+    });
   }
 
   /* ================================================= */
@@ -58,11 +65,20 @@ export class CustomerProfileOrchestratorService {
       dob?: Date;
     };
   }): Promise<CustomerProfile> {
-    return this.profileService.updateProfile(params);
+    return this.profileService.updateProfile({
+      customerId: params.customerId,
+      updates: {
+        fullName: params.updates.fullName,
+        email: params.updates.email,
+        avatarUrl: params.updates.avatarUrl,
+        gender: params.updates.gender,
+        dob: params.updates.dob,
+      },
+    });
   }
 
   /* ================================================= */
-  /* UPSERT (recommended for frontend)                 */
+  /* UPSERT                                            */
   /* ================================================= */
 
   async upsertProfile(params: {
@@ -73,7 +89,14 @@ export class CustomerProfileOrchestratorService {
     gender?: string;
     dob?: Date;
   }): Promise<CustomerProfile> {
-    return this.profileService.upsertProfile(params);
+    return this.profileService.upsertProfile({
+      customerId: params.customerId,
+      fullName: params.fullName,
+      email: params.email,
+      avatarUrl: params.avatarUrl,
+      gender: params.gender,
+      dob: params.dob,
+    });
   }
 
   /* ================================================= */

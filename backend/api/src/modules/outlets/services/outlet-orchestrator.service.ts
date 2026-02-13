@@ -276,30 +276,52 @@ async getNearbyOutlets(
     return this.outletUserService.enableUser(params);
   }
 
-  /* ================================================= */
-  /* OUTLET PROFILE – READS                            */
-  /* ================================================= */
+/* ================================================= */
+/* OUTLET PROFILE – READS                            */
+/* ================================================= */
 
-  async getOutletProfile(
-    outletId: string,
-  ): Promise<OutletProfile | null> {
-    return this.outletProfileService.getProfile(outletId);
-  }
+async getOutletProfile(
+  outletId: string,
+): Promise<OutletProfile | null> {
+  return this.outletProfileService.getProfile(outletId);
+}
 
-  async getOutletProfileOrThrow(
-    outletId: string,
-  ): Promise<OutletProfile> {
-    return this.outletProfileService.getProfileOrThrow(outletId);
-  }
+async getOutletProfileOrThrow(
+  outletId: string,
+): Promise<OutletProfile> {
+  return this.outletProfileService.getProfileOrThrow(outletId);
+}
 
-  /* ================================================= */
-  /* OUTLET PROFILE – CREATE / UPDATE / UPSERT / DELETE */
-  /* ================================================= */
+/* ================================================= */
+/* OUTLET PROFILE – CREATE                           */
+/* ================================================= */
 
-  async createOutletProfile(params: {
-    outletId: string;
+async createOutletProfile(params: {
+  outletId: string;
 
-    logoUrl?: string;
+  avatarUrl?: string;
+  bannerUrl?: string;
+
+  contactPhone?: string;
+  contactEmail?: string;
+
+  ownerName?: string;
+  description?: string;
+
+  gstNumber?: string;
+  fssaiNumber?: string;
+}) {
+  return this.outletProfileService.createProfile(params);
+}
+
+/* ================================================= */
+/* OUTLET PROFILE – UPDATE                           */
+/* ================================================= */
+
+async updateOutletProfile(params: {
+  outletId: string;
+  updates: {
+    avatarUrl?: string;
     bannerUrl?: string;
 
     contactPhone?: string;
@@ -310,48 +332,38 @@ async getNearbyOutlets(
 
     gstNumber?: string;
     fssaiNumber?: string;
-  }) {
-    return this.outletProfileService.createProfile(params);
-  }
+  };
+}) {
+  return this.outletProfileService.updateProfile(params);
+}
 
-  async updateOutletProfile(params: {
-    outletId: string;
-    updates: {
-      logoUrl?: string;
-      bannerUrl?: string;
+/* ================================================= */
+/* OUTLET PROFILE – UPSERT                           */
+/* ================================================= */
 
-      contactPhone?: string;
-      contactEmail?: string;
+async upsertOutletProfile(params: {
+  outletId: string;
 
-      ownerName?: string;
-      description?: string;
+  avatarUrl?: string;
+  bannerUrl?: string;
 
-      gstNumber?: string;
-      fssaiNumber?: string;
-    };
-  }) {
-    return this.outletProfileService.updateProfile(params);
-  }
+  contactPhone?: string;
+  contactEmail?: string;
 
-  async upsertOutletProfile(params: {
-    outletId: string;
+  ownerName?: string;
+  description?: string;
 
-    logoUrl?: string;
-    bannerUrl?: string;
+  gstNumber?: string;
+  fssaiNumber?: string;
+}) {
+  return this.outletProfileService.upsertProfile(params);
+}
 
-    contactPhone?: string;
-    contactEmail?: string;
+/* ================================================= */
+/* OUTLET PROFILE – DELETE                           */
+/* ================================================= */
 
-    ownerName?: string;
-    description?: string;
-
-    gstNumber?: string;
-    fssaiNumber?: string;
-  }) {
-    return this.outletProfileService.upsertProfile(params);
-  }
-
-  async deleteOutletProfile(outletId: string) {
-    return this.outletProfileService.deleteProfile(outletId);
-  }
+async deleteOutletProfile(outletId: string) {
+  return this.outletProfileService.deleteProfile(outletId);
+}
 }

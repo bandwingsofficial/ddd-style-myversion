@@ -15,7 +15,7 @@ export class CustomerProfileRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   /* ================================================= */
-  /* READ – SINGLE                                     */
+  /* READ – SINGLE                                    */
   /* ================================================= */
 
   async findByCustomerId(
@@ -51,7 +51,9 @@ export class CustomerProfileRepository {
     const client = tx ?? this.prisma;
 
     const row = await client.customerProfile.create({
-      data: this.toPersistence(profile),
+      data:
+        this.toPersistence(profile) satisfies
+        Prisma.CustomerProfileUncheckedCreateInput,
     });
 
     return this.toDomain(row);
@@ -69,21 +71,16 @@ export class CustomerProfileRepository {
 
     const row = await client.customerProfile.update({
       where: { id: profile.id },
-      data: {
-        fullName: profile.fullName,
-        email: profile.email,
-        avatarUrl: profile.avatarUrl,
-        gender: profile.gender,
-        dob: profile.dob,
-        updatedAt: profile.updatedAt,
-      },
+      data:
+        this.toUpdatePersistence(profile) satisfies
+        Prisma.CustomerProfileUncheckedUpdateInput,
     });
 
     return this.toDomain(row);
   }
 
   /* ================================================= */
-  /* DELETE (hard delete – profile only)                */
+  /* DELETE                                            */
   /* ================================================= */
 
   async deleteByCustomerId(
@@ -96,7 +93,7 @@ export class CustomerProfileRepository {
   }
 
   /* ================================================= */
-  /* UPSERT (very useful for profile flows)             */
+  /* UPSERT                                            */
   /* ================================================= */
 
   async upsert(
@@ -107,22 +104,19 @@ export class CustomerProfileRepository {
 
     const row = await client.customerProfile.upsert({
       where: { customerId: profile.customerId },
-      create: this.toPersistence(profile),
-      update: {
-        fullName: profile.fullName,
-        email: profile.email,
-        avatarUrl: profile.avatarUrl,
-        gender: profile.gender,
-        dob: profile.dob,
-        updatedAt: profile.updatedAt,
-      },
+      create:
+        this.toPersistence(profile) satisfies
+        Prisma.CustomerProfileUncheckedCreateInput,
+      update:
+        this.toUpdatePersistence(profile) satisfies
+        Prisma.CustomerProfileUncheckedUpdateInput,
     });
 
     return this.toDomain(row);
   }
 
   /* ================================================= */
-  /* PRIVATE MAPPER (same style as Product repo)        */
+  /* PRIVATE MAPPERS                                   */
   /* ================================================= */
 
   private toDomain(row: {
@@ -159,7 +153,9 @@ export class CustomerProfileRepository {
     });
   }
 
-  private toPersistence(profile: CustomerProfile): Prisma.CustomerProfileUncheckedCreateInput {
+  private toPersistence(
+    profile: CustomerProfile,
+  ): Prisma.CustomerProfileUncheckedCreateInput {
     return {
       id: profile.id,
       customerId: profile.customerId,
@@ -174,6 +170,23 @@ export class CustomerProfileRepository {
       referralCode: profile.referralCode ?? null,
 
       createdAt: profile.createdAt,
+      updatedAt: profile.updatedAt,
+    };
+  }
+
+  private toUpdatePersistence(
+    profile: CustomerProfile,
+  ): Prisma.CustomerProfileUncheckedUpdateInput {
+    return {
+      fullName: profile.fullName ?? null,
+      email: profile.email ?? null,
+      avatarUrl: profile.avatarUrl ?? null,
+
+      gender: profile.gender ?? null,
+      dob: profile.dob ?? null,
+
+      referralCode: profile.referralCode ?? null,
+
       updatedAt: profile.updatedAt,
     };
   }

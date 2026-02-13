@@ -6,7 +6,11 @@ import {
   Patch,
   Delete,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+
+import { FileInterceptor } from '@nestjs/platform-express';
 
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
@@ -19,6 +23,8 @@ import { CustomerProfileOrchestratorService } from '../services/customer-profile
 
 import { CreateCustomerProfileDto } from '../dtos/create-customer-profile.dto';
 import { UpdateCustomerProfileDto } from '../dtos/update-customer-profile.dto';
+
+import { customerProfileImageUploadOptions } from '../../../common/upload/customerprofile-image-upload.options';
 
 /* ================================================= */
 /* CONTROLLER                                       */
@@ -49,22 +55,30 @@ export class CustomerProfileController {
   }
 
   /* ================================================= */
-  /* CREATE PROFILE                                    */
+  /* CREATE PROFILE (WITH AVATAR)                     */
   /* ================================================= */
 
   @Post()
+  @UseInterceptors(
+    FileInterceptor('avatar', customerProfileImageUploadOptions),
+  )
   async createProfile(
     @CurrentUser() user,
     @Body() dto: CreateCustomerProfileDto,
+    @UploadedFile() file?: Express.Multer.File,
   ) {
+    const avatarPath = file
+      ? `images/customerprofile/avatar/${file.filename}`
+      : undefined;
+
     const data = await this.orchestrator.createProfile({
-  customerId: user.actorId,
-  fullName: dto.fullName,
-  email: dto.email,
-  avatarUrl: dto.avatarUrl,
-  gender: dto.gender,
-  dob: dto.dob ? new Date(dto.dob) : undefined,
-});
+      customerId: user.actorId,
+      fullName: dto.fullName,
+      email: dto.email,
+      avatarUrl: avatarPath,
+      gender: dto.gender,
+      dob: dto.dob ? new Date(dto.dob) : undefined,
+    });
 
     return {
       success: true,
@@ -75,23 +89,31 @@ export class CustomerProfileController {
   }
 
   /* ================================================= */
-  /* UPDATE PROFILE                                    */
+  /* UPDATE PROFILE (WITH AVATAR REPLACE)             */
   /* ================================================= */
 
   @Patch()
+  @UseInterceptors(
+    FileInterceptor('avatar', customerProfileImageUploadOptions),
+  )
   async updateProfile(
     @CurrentUser() user,
     @Body() dto: UpdateCustomerProfileDto,
+    @UploadedFile() file?: Express.Multer.File,
   ) {
+    const avatarPath = file
+      ? `images/customerprofile/avatar/${file.filename}`
+      : undefined;
+
     const data = await this.orchestrator.updateProfile({
       customerId: user.actorId,
       updates: {
-  fullName: dto.fullName,
-  email: dto.email,
-  avatarUrl: dto.avatarUrl,
-  gender: dto.gender,
-  dob: dto.dob ? new Date(dto.dob) : undefined,
-},
+        fullName: dto.fullName,
+        email: dto.email,
+        avatarUrl: avatarPath,
+        gender: dto.gender,
+        dob: dto.dob ? new Date(dto.dob) : undefined,
+      },
     });
 
     return {
@@ -103,22 +125,30 @@ export class CustomerProfileController {
   }
 
   /* ================================================= */
-  /* UPSERT PROFILE (optional but very useful)          */
+  /* UPSERT PROFILE                                   */
   /* ================================================= */
 
   @Post('upsert')
+  @UseInterceptors(
+    FileInterceptor('avatar', customerProfileImageUploadOptions),
+  )
   async upsertProfile(
     @CurrentUser() user,
     @Body() dto: UpdateCustomerProfileDto,
+    @UploadedFile() file?: Express.Multer.File,
   ) {
+    const avatarPath = file
+      ? `images/customerprofile/avatar/${file.filename}`
+      : undefined;
+
     const data = await this.orchestrator.upsertProfile({
-  customerId: user.actorId,
-  fullName: dto.fullName,
-  email: dto.email,
-  avatarUrl: dto.avatarUrl,
-  gender: dto.gender,
-  dob: dto.dob ? new Date(dto.dob) : undefined,
-});
+      customerId: user.actorId,
+      fullName: dto.fullName,
+      email: dto.email,
+      avatarUrl: avatarPath,
+      gender: dto.gender,
+      dob: dto.dob ? new Date(dto.dob) : undefined,
+    });
 
     return {
       success: true,

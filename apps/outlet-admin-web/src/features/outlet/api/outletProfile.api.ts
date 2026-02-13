@@ -1,9 +1,5 @@
 import { api } from '@/http/axios/instance';
-import {
-  OutletProfile,
-  CreateOutletProfilePayload,
-  UpdateOutletProfilePayload,
-} from '../types/outletProfile.types';
+import { OutletProfile } from '../types/outletProfile.types';
 
 const BASE = '/outlets';
 
@@ -12,17 +8,19 @@ export const outletProfileApi = {
     return api.get<{ data: OutletProfile }>(`${BASE}/${outletId}/profile`);
   },
 
-  create(outletId: string, payload: CreateOutletProfilePayload) {
+  create(outletId: string, payload: FormData) {
     return api.post<{ data: OutletProfile }>(
       `${BASE}/${outletId}/profile`,
-      payload
+      payload,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
     );
   },
 
-  update(outletId: string, payload: UpdateOutletProfilePayload) {
+  update(outletId: string, payload: FormData) {
     return api.patch<{ data: OutletProfile }>(
       `${BASE}/${outletId}/profile`,
-      payload
+      payload,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
     );
   },
 

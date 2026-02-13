@@ -7,6 +7,7 @@ export const envValidationSchema = z.object({
   PORT: z.coerce.number().min(1),
 
   DATABASE_URL: z.string().url(),
+  
 
   REDIS_URL: z.string().url(),
 
