@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { X, Save, User, Mail, Calendar, ChevronDown } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { X, Save, User, Mail, Calendar, ChevronDown, Camera } from "lucide-react";
 import { profileApi } from "@/features/customer-profile/api/profile.api";
 
 interface EditProfileModalProps {
@@ -13,105 +13,161 @@ interface EditProfileModalProps {
 
 export default function EditProfileModal({ isOpen, onClose, initialData, onSuccess }: EditProfileModalProps) {
   const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
     gender: "MALE",
     dob: "",
   });
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (initialData && isOpen) {
+    if (isOpen) {
       setFormData({
-        fullName: initialData.fullName || "",
-        email: initialData.email || "",
-        gender: initialData.gender || "MALE",
-        dob: initialData.dob ? initialData.dob.split("T")[0] : "",
+        fullName: initialData?.fullName || "",
+        email: initialData?.email || "",
+        gender: initialData?.gender || "MALE",
+        dob: initialData?.dob ? initialData.dob.split("T")[0] : "",
       });
+      
+      if (initialData?.avatarUrl) {
+        setPreviewUrl(`${process.env.NEXT_PUBLIC_API_URL || 'https://admin.dev.local:4000'}/${initialData.avatarUrl}`);
+      } else {
+        setPreviewUrl(null);
+      }
+      setSelectedFile(null);
     }
   }, [initialData, isOpen]);
 
   if (!isOpen) return null;
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setSelectedFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.fullName.trim()) {
+      alert("Full Name is required");
+      return;
+    }
+
     setSaving(true);
     try {
-      const response = await profileApi.upsertProfile(formData);
+      const data = new FormData();
+      data.append("fullName", formData.fullName.trim());
+      data.append("gender", formData.gender);
+      
+      if (formData.email) data.append("email", formData.email);
+      if (formData.dob) data.append("dob", formData.dob);
+      
+      if (selectedFile) {
+        data.append("avatar", selectedFile);
+      }
+
+      let response;
+      if (initialData && Object.keys(initialData).length > 0) {
+        response = await profileApi.updateProfile(data);
+      } else {
+        response = await profileApi.createProfile(data);
+      }
+
       if (response.success) {
         onSuccess();
         onClose();
       }
-    } catch (error) {
-      console.error("Failed to update profile", error);
-      alert("Something went wrong while saving.");
+    } catch (error: any) {
+      console.error("Operation failed:", error.response?.data || error.message);
+      const serverMessage = error.response?.data?.message || "Failed to save profile.";
+      alert(serverMessage);
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    /* FIX: Added top-0, left-0, w-screen, h-screen to ensure the backdrop 
-       covers everything and isn't pushed down by the header.
-    */
-    <div className="fixed top-0 left-0 w-screen h-screen z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
-      
-      {/* FIX: Added a wrapper with overflow-hidden to keep the rounded corners 
-         clean and a max-height to ensure it doesn't overflow the screen.
-      */}
-      <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-300">
+    <div className="fixed top-0 left-0 w-screen h-screen z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+      {/* Reduced rounded corners to 2xl */}
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden">
         
-        {/* Modal Header - Fixed at top */}
-        <div className="shrink-0 flex items-center justify-between p-5 border-b border-slate-50">
+        {/* Tightened Header Padding */}
+        <div className="shrink-0 flex items-center justify-between p-4 border-b border-slate-50">
           <div>
-            <h2 className="text-2xl font-black text-slate-800 tracking-tight animate-shine">Edit Profile</h2>
-            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-0.5">Personal Identity</p>
+            <h2 className="text-xl font-black text-slate-800 tracking-tight">
+               {initialData ? "Edit Profile" : "Create Profile"}
+            </h2>
           </div>
-          <button 
-            onClick={onClose} 
-            className="p-2.5 hover:bg-slate-100 rounded-2xl transition-all text-slate-400 hover:text-red-500"
-          >
-            <X size={22} />
+          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400 transition-colors">
+            <X size={20} />
           </button>
         </div>
 
-        {/* Modal Body - Scrollable if content is too long */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-6">
-          
+        {/* Tightened Body Padding and Gaps */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex flex-col items-center gap-2">
+            <div className="relative group">
+              {/* Profile image container reduced radius */}
+              <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-slate-50 bg-slate-100 shadow-sm">
+                {previewUrl ? (
+                  <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-slate-300">
+                    <User size={32} />
+                  </div>
+                )}
+              </div>
+              <button 
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute -bottom-1 -right-1 p-1.5 bg-emerald-600 text-white rounded-lg shadow-lg hover:bg-emerald-700 transition-all"
+              >
+                <Camera size={14} />
+              </button>
+              <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+            </div>
+          </div>
+
           <div className="space-y-1">
-            <label className="text-[11px] font-black text-slate-400 ml-1 uppercase tracking-[0.15em]">Full Name</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Full Name</label>
             <div className="relative">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+              <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
               <input 
                 type="text"
                 required
-                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:bg-white outline-none text-slate-800 font-bold transition-all"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl outline-none text-slate-800 font-bold text-sm focus:border-emerald-500 transition-all"
                 value={formData.fullName}
                 onChange={(e) => setFormData({...formData, fullName: e.target.value})}
               />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[11px] font-black text-slate-400 ml-1 uppercase tracking-[0.15em]">Email Address</label>
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
             <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
               <input 
                 type="email"
-                required
-                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:bg-white outline-none text-slate-800 font-bold transition-all"
+                disabled={!!initialData}
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl outline-none text-slate-800 font-bold text-sm disabled:opacity-60 transition-all"
                 value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-[11px] font-black text-slate-400 ml-1 uppercase tracking-[0.15em]">Gender</label>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Gender</label>
               <div className="relative">
                 <select 
-                  className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:bg-white outline-none text-slate-800 font-bold appearance-none transition-all"
+                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl outline-none text-slate-800 font-bold text-sm appearance-none focus:border-emerald-500 transition-all"
                   value={formData.gender}
                   onChange={(e) => setFormData({...formData, gender: e.target.value})}
                 >
@@ -119,15 +175,15 @@ export default function EditProfileModal({ isOpen, onClose, initialData, onSucce
                   <option value="FEMALE">Female</option>
                   <option value="OTHER">Other</option>
                 </select>
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={18} />
+                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={16} />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[11px] font-black text-slate-400 ml-1 uppercase tracking-[0.15em]">Birth Date</label>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Birth Date</label>
               <input 
                 type="date"
-                className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 focus:bg-white outline-none text-slate-800 font-bold transition-all"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-xl outline-none text-slate-800 font-bold text-sm focus:border-emerald-500 transition-all"
                 value={formData.dob}
                 onChange={(e) => setFormData({...formData, dob: e.target.value})}
               />
@@ -135,22 +191,15 @@ export default function EditProfileModal({ isOpen, onClose, initialData, onSucce
           </div>
         </form>
 
-        {/* Modal Footer - Fixed at bottom */}
-        <div className="p-7 border-t border-slate-50 bg-slate-50/50 shrink-0">
+        {/* Tightened Footer Padding */}
+        <div className="p-5 border-t border-slate-50 bg-slate-50/50 shrink-0">
           <button 
             disabled={saving}
             type="submit" 
             onClick={handleSubmit}
-            className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-lg shadow-xl shadow-emerald-200 flex items-center justify-center gap-3 hover:bg-emerald-700 active:scale-[0.98] transition-all disabled:opacity-50"
+            className="w-full py-3 bg-emerald-600 text-white rounded-xl font-black text-base shadow-lg hover:bg-emerald-700 active:scale-[0.98] disabled:opacity-50 transition-all"
           >
-            {saving ? (
-              <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : (
-              <>
-                <Save size={20} />
-                Save Changes
-              </>
-            )}
+            {saving ? "Saving..." : initialData ? "Save Changes" : "Create Profile"}
           </button>
         </div>
       </div>

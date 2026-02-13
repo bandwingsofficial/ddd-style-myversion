@@ -1,5 +1,5 @@
 import customerAxios from "@/http/axios/customerAxios";
-import { ProfileResponse, UpsertProfileRequest } from "../types/profile.types";
+import { ProfileResponse } from "../types/profile.types";
 
 export const profileApi = {
   getProfile: async (): Promise<ProfileResponse> => {
@@ -7,8 +7,19 @@ export const profileApi = {
     return data;
   },
 
-  upsertProfile: async (payload: UpsertProfileRequest): Promise<ProfileResponse> => {
-    const { data } = await customerAxios.post("/me/profile/upsert", payload);
+  // NEW: Method for initial creation
+  createProfile: async (formData: FormData): Promise<ProfileResponse> => {
+    const { data } = await customerAxios.post("/me/profile", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return data;
+  },
+
+  // Existing update method
+  updateProfile: async (formData: FormData): Promise<ProfileResponse> => {
+    const { data } = await customerAxios.patch("/me/profile", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
     return data;
   },
 

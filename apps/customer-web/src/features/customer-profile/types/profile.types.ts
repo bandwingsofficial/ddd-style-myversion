@@ -17,10 +17,11 @@ export interface ProfileResponse {
   data: ProfileData | null;
 }
 
-export interface UpsertProfileRequest {
+// Changed to support FormData (File upload)
+export interface UpdateProfileRequest {
   fullName?: string;
   email?: string;
-  avatarUrl?: string;
+  avatar?: File; // The actual file object for the PATCH request
   gender?: string;
   dob?: string;
 }
