@@ -13,7 +13,7 @@ export default function MenuPage() {
   
   // --- Filter States ---
   const [searchQuery, setSearchQuery] = useState("");
-  const [maxPrice, setMaxPrice] = useState<number>(2000);
+  const [maxPrice, setMaxPrice] = useState<number>(500);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   const filterOptions = ["Organic", "Fresh", "Natural"];
@@ -48,7 +48,7 @@ export default function MenuPage() {
 
   const clearFilters = () => {
     setSearchQuery("");
-    setMaxPrice(2000);
+    setMaxPrice(500);
     setSelectedTags([]);
   };
 
@@ -115,7 +115,7 @@ export default function MenuPage() {
                 </div>
 
                 {/* Clear Filters */}
-                {(searchQuery || selectedTags.length > 0 || maxPrice < 2000) && (
+                {(searchQuery || selectedTags.length > 0 || maxPrice < 500) && (
                   <button 
                     onClick={clearFilters}
                     className="flex items-center gap-1 text-xs font-bold text-red-500 hover:text-red-600 px-2"

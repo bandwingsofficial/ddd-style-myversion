@@ -66,7 +66,7 @@ export default function Header() {
 
       {/* MAIN NAV */}
       <div className={`w-full transition-all duration-400 flex items-center ${scrolled ? "h-[70px]" : "h-[85px]"}`}>
-        <div className="max-w-[1440px] mx-auto w-full h-full px-6 flex items-center justify-between gap-5">
+        <div className="max-w-[1440px] mx-auto w-full h-full px-0 flex items-center justify-between gap-5">
           
           <div className="flex items-center gap-8">
             <Link href="/home" className="shrink-0 flex items-center transition-all duration-300 hover:scale-105 hover:-rotate-1 group">
@@ -87,7 +87,7 @@ export default function Header() {
                 <Link 
                   key={link.name} 
                   href={link.href} 
-                  className="relative px-3 py-2 text-[0.95rem] font-medium text-slate-600 transition-colors duration-300 hover:text-green-900 group/link"
+                  className="relative px-2 py-2 text-[0.95rem] font-medium text-slate-600 transition-colors duration-300 hover:text-green-900 group/link"
                 >
                   <ShinyText text={link.name} />
                   <span className="absolute bottom-0 left-1/2 w-0 h-[2px] bg-green-500 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] -translate-x-1/2 rounded-full group-hover/link:w-[80%]" />
@@ -105,7 +105,7 @@ export default function Header() {
               />
               <input 
                 type="text" 
-                placeholder="Search for fresh items..." 
+                placeholder="Search Products..." 
                 className="bg-transparent border-none outline-none text-[0.95rem] w-full text-slate-600 font-medium pl-3 placeholder:text-slate-400" 
               />
             </div>
