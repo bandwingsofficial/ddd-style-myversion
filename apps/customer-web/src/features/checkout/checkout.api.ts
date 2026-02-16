@@ -17,6 +17,10 @@ export const CheckoutApi = {
     return data.data;
   },
 
+  /**
+   * Initiates the checkout process.
+   * Returns orderId (UUID), orderNumber (CNT-...), and Razorpay details.
+   */
   startCheckout: async (payload: CheckoutStartRequest) => {
     const { data } = await customerAxios.post<{ data: CheckoutStartResponse }>("/checkout/start", payload);
     return data.data;
@@ -37,11 +41,19 @@ export const CheckoutApi = {
     return data.data;
   },
 
+  /**
+   * Fetches specific order details. 
+   * Expects UUID as the orderId parameter.
+   */
   getOrder: async (orderId: string) => {
     const { data } = await customerAxios.get<{ data: OrderDetails }>(`/orders/${orderId}`);
     return data.data;
   },
 
+  /**
+   * Fetches the customer's order history.
+   * Returns an array of OrderDetails containing orderNumber for display.
+   */
   getMyOrders: async () => {
     const { data } = await customerAxios.get<{ data: OrderDetails[] }>("/my-orders");
     return data.data;

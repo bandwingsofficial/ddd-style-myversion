@@ -59,7 +59,8 @@ export const OrdersTable = () => {
           <table className="w-full text-left border-collapse">
             <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
               <tr>
-                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-[120px]">Order ID</th>
+                {/* Width adjusted for Order Number string */}
+                <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-[160px]">Order Info</th>
                 <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-[180px]">Date & Time</th>
                 <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Items</th>
                 <th className="p-4 text-xs font-semibold text-gray-500 uppercase tracking-wider w-[120px]">Total</th>
@@ -95,10 +96,12 @@ export const OrdersTable = () => {
 const TableRow = ({ order, activeTab, onAction }: { order: Order; activeTab: string; onAction: any }) => {
   return (
     <tr className="hover:bg-blue-50/30 transition-colors group">
-      {/* ID */}
+      {/* Order Info (Number + Customer Name) */}
       <td className="p-4 align-top">
-        <div className="font-mono text-xs text-gray-500">#{order.id.slice(0, 8)}</div>
-        <div className="text-xs text-blue-600 font-medium mt-1">{order.customerId.slice(0,10)}...</div>
+        <div className="font-bold text-sm text-gray-900">{order.orderNumber}</div>
+        <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100 uppercase tracking-tight">
+          👤 {order.customerFullName}
+        </div>
       </td>
 
       {/* Time */}
@@ -122,14 +125,13 @@ const TableRow = ({ order, activeTab, onAction }: { order: Order; activeTab: str
           ))}
         </div>
         <div className="mt-2 text-xs text-gray-500 flex items-center gap-1">
-           📍 {order.address.addressText}
+            📍 {order.address.addressText}
         </div>
       </td>
 
       {/* Amount & Status Badge */}
       <td className="p-4 align-top">
         <div className="text-sm font-bold text-gray-800">₹{order.grandTotal}</div>
-        {/* Updated Badge to see status changes clearly */}
         <div className={`text-xs inline-block px-1.5 rounded mt-1 font-bold ${
             order.status === 'CONFIRMED' ? 'bg-blue-100 text-blue-700' :
             order.status === 'PREPARING' ? 'bg-amber-100 text-amber-700' :
@@ -156,7 +158,7 @@ const TableRow = ({ order, activeTab, onAction }: { order: Order; activeTab: str
           </div>
         )}
 
-        {/* 👇 FIXED LOGIC: Handles the 2-step Kitchen Process */}
+        {/* FIXED LOGIC: Handles the 2-step Kitchen Process */}
         {activeTab === 'PREPARING' && (
           <div>
             {order.status === 'CONFIRMED' ? (

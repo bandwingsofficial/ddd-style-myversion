@@ -31,10 +31,15 @@ export default function CheckoutPage() {
   const [processing, setProcessing] = useState(false);
   const [initializing, setInitializing] = useState(true);
   
-  // Custom Modal State
-  const [pendingOrderModal, setPendingOrderModal] = useState<{ isOpen: boolean; orderId: string | null }>({
+  // Custom Modal State - Updated to include orderNumber for better tracking
+  const [pendingOrderModal, setPendingOrderModal] = useState<{ 
+    isOpen: boolean; 
+    orderId: string | null;
+    orderNumber: string | null; 
+  }>({
     isOpen: false,
-    orderId: null
+    orderId: null,
+    orderNumber: null
   });
 
   // Stores
@@ -117,6 +122,7 @@ export default function CheckoutPage() {
            
            const params = new URLSearchParams({
              orderId: data.orderId,
+             orderNumber: data.orderNumber, // Added orderNumber to params
              paymentId: data.paymentId,
              rzp_payment_id: response.razorpay_payment_id,
              rzp_order_id: response.razorpay_order_id,
@@ -144,10 +150,12 @@ export default function CheckoutPage() {
     } catch (error: any) {
       const errData = error.response?.data as CheckoutErrorResponse;
       
+      // Updated to capture orderNumber if returned in metadata
       if (errData?.code === "ORDER_ALREADY_IN_PROGRESS" && errData?.metadata?.orderId) {
           setPendingOrderModal({
             isOpen: true,
-            orderId: errData.metadata.orderId
+            orderId: errData.metadata.orderId,
+            orderNumber: errData.metadata.orderNumber || null
           });
           setProcessing(false);
           return;
@@ -175,13 +183,18 @@ export default function CheckoutPage() {
       <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       <Header />
       
-      {/* PENDING ORDER MODAL - Teleported to document.body to ensure it sits above the Header */}
+      {/* PENDING ORDER MODAL */}
       {pendingOrderModal.isOpen && typeof document !== "undefined" && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white rounded-[2rem] p-6 max-w-[340px] w-full shadow-2xl text-center animate-in fade-in zoom-in duration-200">
             <h2 className="text-2xl font-bold text-[#0F172A] mb-3">Order in Progress</h2>
-            <p className="text-slate-500 text-sm leading-relaxed mb-6 px-1">
-              You already have a pending payment for a previous order. You must complete or cancel that before starting a new one.
+            <p className="text-slate-500 text-sm leading-relaxed mb-4 px-1">
+              You already have a pending payment for a previous order. 
+              {pendingOrderModal.orderNumber && (
+                <span className="block mt-2 font-bold text-emerald-600 uppercase">
+                  Order: #{pendingOrderModal.orderNumber}
+                </span>
+              )}
             </p>
             
             <div className="space-y-3">
@@ -200,7 +213,7 @@ export default function CheckoutPage() {
               </button>
 
               <button 
-                onClick={() => setPendingOrderModal({ isOpen: false, orderId: null })}
+                onClick={() => setPendingOrderModal({ isOpen: false, orderId: null, orderNumber: null })}
                 className="mt-4 text-slate-400 text-sm font-medium hover:text-slate-600 transition-colors inline-block"
               >
                 Close

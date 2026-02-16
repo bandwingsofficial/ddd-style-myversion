@@ -31,6 +31,7 @@
   "dependencies": {
     "@nest-lab/throttler-storage-redis": "1.1.0",
     "@nestjs-modules/mailer": "2.0.2",
+    "@nestjs/axios": "^4.0.1",
     "@nestjs/bull": "^11.0.4",
     "@nestjs/bullmq": "11.0.4",
     "@nestjs/common": "^11.1.9",
@@ -48,6 +49,7 @@
     "@paralleldrive/cuid2": "^3.0.6",
     "@prisma/client": "5.15.0",
     "argon2": "0.44.0",
+    "axios": "^1.13.5",
     "bcrypt": "^6.0.0",
     "bull": "^4.16.5",
     "bullmq": "5.65.0",

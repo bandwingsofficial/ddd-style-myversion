@@ -52,28 +52,33 @@ export const useOrders = () => {
 
   // Organize orders into columns for the UI
   const columns = {
-    // 1. NEW: Default for Pending, Paid, or unknown statuses
+    // 1. NEW: Includes your specific backend status PAYMENT_PENDING
     NEW: orders.filter(o => 
       !o.status || 
-      ['PENDING', 'ORDER_PLACED', 'PAID', 'CREATED'].includes(o.status.toUpperCase()) ||
-      !['CONFIRMED', 'PREPARING', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED', 'REJECTED'].includes(o.status.toUpperCase())
+      ['PENDING', 'ORDER_PLACED', 'PAID', 'CREATED', 'PAYMENT_PENDING'].includes(o.status.toUpperCase())
     ),
 
     // 2. KITCHEN: Orders that are confirmed or being prepared
     PREPARING: orders.filter(o => 
-      ['CONFIRMED', 'PREPARING', 'ACCEPTED'].includes(o.status?.toUpperCase())
+      ['CONFIRMED', 'PREPARING', 'ACCEPTED', 'READY'].includes(o.status?.toUpperCase())
     ),
 
     // 3. DISPATCH: Orders out for delivery
     DISPATCH: orders.filter(o => 
-      ['OUT_FOR_DELIVERY', 'DISPATCHED'].includes(o.status?.toUpperCase())
+      ['OUT_FOR_DELIVERY', 'DISPATCHED', 'DISPATCH'].includes(o.status?.toUpperCase())
     ),
 
-    // 4. COMPLETED: Finished or Cancelled orders
+    // 4. COMPLETED: Finished or Cancelled orders for History view
     COMPLETED: orders.filter(o => 
       ['DELIVERED', 'COMPLETED', 'CANCELLED', 'REJECTED'].includes(o.status?.toUpperCase())
     ),
   };
 
-  return { orders, columns, loading, handleStatusChange, refresh: loadOrders };
+  return { 
+    orders, 
+    columns, 
+    loading, 
+    handleStatusChange, 
+    refresh: loadOrders 
+  };
 };

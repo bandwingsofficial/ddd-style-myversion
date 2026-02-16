@@ -29,9 +29,10 @@ export interface CheckoutStartRequest {
   savedAddressId: string;
 }
 
-// ✅ UPDATED: Includes Razorpay Order Details
+// ✅ UPDATED: Includes Razorpay Order Details and OrderNumber for UI
 export interface CheckoutStartResponse {
-  orderId: string;
+  orderId: string;        // The UUID (Internal)
+  orderNumber: string;   // The readable ID (e.g., CNT-2026...)
   paymentId: string;
   razorpayOrderId: string; // "order_..." from Razorpay
   amount: number;          // Amount in paisa
@@ -54,17 +55,21 @@ export interface CheckoutErrorResponse {
   message: string;
   metadata?: {
     orderId?: string;
+    orderNumber?: string; // Added to handle display in error modals
   };
 }
 
+// ✅ UPDATED: Reflects the actual API response for order listings and details
 export interface OrderDetails {
-  id: string;
+  id: string;             // UUID
+  orderNumber: string;    // Readable ID (Added for standard display)
   customerId: string;
+  customerFullName?: string; // Seen in your outlet-order response
   outletId: string;
   cartId: string;
-  status: "PAYMENT_PENDING" | "PAID" | "FAILED" | "CANCELLED" | "Delivered";
+  status: "PAYMENT_PENDING" | "PAID" | "FAILED" | "CANCELLED" | "DELIVERED";
   address: {
-    id: string;
+    id?: string;
     label: string;
     addressText: string;
     latitude: number;
@@ -76,6 +81,17 @@ export interface OrderDetails {
   deliveryFee: number;
   grandTotal: number;
   itemCount: number;
-  items: any[];
+  items: {
+    id: string;
+    productId: string;
+    productName: string;
+    productImage: string;
+    quantity: number;
+    unitPrice: number;
+    discountPrice: number;
+    totalPrice: number; // Matches your outlet-order detail JSON
+    createdAt: string;
+  }[];
   createdAt: string;
+  updatedAt?: string;
 }

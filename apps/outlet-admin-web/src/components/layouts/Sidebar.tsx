@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
-  Users,
   LogOut,
   Store,
   Package,
@@ -29,11 +28,6 @@ const menuItems = [
     label: 'Products',
     href: '/products',
     icon: <Package size={20} />,
-  },
-  {
-    label: 'Users Details',
-    href: '/users',
-    icon: <Users size={20} />,
   },
   {
     label: 'Orders',

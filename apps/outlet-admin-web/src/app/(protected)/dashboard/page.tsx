@@ -3,17 +3,12 @@
 import { useSessionGuard } from '@/features/auth/hooks/useSession';
 import { useOrders } from '../../../features/orders/hooks/useOrders';
 import { motion } from 'framer-motion';
-import { TrendingUp, ShoppingBag, AlertCircle, Clock, Filter, Calendar, X, Package } from 'lucide-react';
+import { TrendingUp, ShoppingBag, AlertCircle, Clock, Filter, Calendar, X, ListChecks } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 type DateFilter = 'TODAY' | 'YESTERDAY' | 'WEEK' | '15_DAYS' | 'MONTH' | 'ALL';
 type StatusFilter = 'ALL' | 'DELIVERED' | 'CANCELLED' | 'NEW' | 'PREPARING';
-
-interface ProductStat {
-  name: string;
-  count: number;
-}
 
 export default function DashboardPage() {
   const { loading: sessionLoading } = useSessionGuard();
@@ -22,8 +17,8 @@ export default function DashboardPage() {
   const [dateFilter, setDateFilter] = useState<DateFilter>('WEEK');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
 
-  const { stats, chartPoints, topProducts } = useMemo(() => {
-    if (!columns) return { stats: { revenue: 0, orders: 0, pending: 0 }, chartPoints: [], topProducts: [] };
+  const { stats, chartPoints, recentActivity } = useMemo(() => {
+    if (!columns) return { stats: { revenue: 0, orders: 0, pending: 0 }, chartPoints: [], recentActivity: [] };
 
     const allOrders = Object.values(columns).flat();
     const now = new Date();
@@ -48,9 +43,11 @@ export default function DashboardPage() {
 
     const filtered = allOrders.filter(o => applyDateFilter(o) && applyStatusFilter(o));
 
-    // Stats Calculation
+    // Stats Calculation - Updated to include PAYMENT_PENDING in pending count
     const revenue = filtered.reduce((sum, o) => String(o.status) === 'DELIVERED' ? sum + o.grandTotal : sum, 0);
-    const pendingCount = filtered.filter(o => String(o.status) === 'NEW' || String(o.status) === 'PREPARING').length;
+    const pendingCount = filtered.filter(o => 
+      ['NEW', 'PREPARING', 'PAYMENT_PENDING'].includes(String(o.status))
+    ).length;
 
     // Chart Points Calculation
     const range = dateFilter === 'MONTH' ? 30 : dateFilter === '15_DAYS' ? 15 : 7;
@@ -68,26 +65,15 @@ export default function DashboardPage() {
       };
     }).reverse();
 
-    // Top Products Calculation
-    const productMap: Record<string, number> = {};
-    filtered.forEach((order: any) => {
-      // Only count products from valid/delivered orders if you prefer, 
-      // but here we use the filtered list based on your UI selection
-      order.items?.forEach((item: any) => {
-        const pName = item.productName || 'Unknown Product';
-        productMap[pName] = (productMap[pName] || 0) + (item.quantity || 1);
-      });
-    });
-
-    const sortedProducts = Object.entries(productMap)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 6); // Top 6 products
+    // FEATURE REPLACEMENT: Recent Activity (Top 6 latest orders)
+    const sortedActivity = [...filtered]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 6);
 
     return {
       stats: { revenue, orders: filtered.length, pending: pendingCount },
       chartPoints: points,
-      topProducts: sortedProducts
+      recentActivity: sortedActivity
     };
   }, [columns, dateFilter, statusFilter]);
 
@@ -188,45 +174,37 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Top Products Section */}
-        <div className="lg:col-span-2 bg-white p-8 rounded-[24px] border border-slate-100 shadow-sm">
+        {/* NEW FEATURE: Recent Activity Feed */}
+        <div className="lg:col-span-2 bg-white p-8 rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-bold text-slate-900">Best Sellers</h3>
-              <p className="text-[13px] text-slate-400 mt-0.5">Most ordered items in this period</p>
+              <h3 className="text-lg font-bold text-slate-900">Recent Activity</h3>
+              <p className="text-[13px] text-slate-400 mt-0.5">Latest order updates</p>
             </div>
-            <Package size={20} className="text-slate-300" />
+            <ListChecks size={20} className="text-slate-300" />
           </div>
 
-          <div className="flex flex-col gap-5">
-            {topProducts.length > 0 ? topProducts.map((product, index) => {
-              // Calculate simple percentage for the progress bar relative to the top seller
-              const maxCount = topProducts[0].count;
-              const percentage = (product.count / maxCount) * 100;
-
-              return (
-                <div key={product.name} className="group">
-                  <div className="flex justify-between items-end mb-1.5">
-                    <p className="text-[13px] font-bold text-slate-700 group-hover:text-blue-600 transition-colors">
-                      {index + 1}. {product.name}
-                    </p>
-                    <span className="text-[12px] font-black text-slate-900 bg-slate-50 px-2 py-0.5 rounded-md">
-                      {product.count} <span className="text-[10px] text-slate-400 font-medium">Sold</span>
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                    <motion.div 
-                      initial={{ width: 0 }}
-                      animate={{ width: `${percentage}%` }}
-                      transition={{ duration: 1, ease: "easeOut" }}
-                      className="bg-blue-500 h-full rounded-full"
-                    />
+          <div className="flex flex-col gap-4">
+            {recentActivity.length > 0 ? recentActivity.map((order: any) => (
+              <div key={order.id} className="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl border border-slate-100 transition-all hover:border-blue-100">
+                <div className="flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full ${
+                    order.status === 'DELIVERED' ? 'bg-emerald-500' :
+                    order.status === 'CANCELLED' ? 'bg-red-500' : 'bg-blue-500'
+                  }`} />
+                  <div>
+                    <p className="text-[12px] font-black text-slate-800 uppercase tracking-tight">{order.orderNumber}</p>
+                    <p className="text-[10px] text-slate-500 font-medium">{order.customerFullName}</p>
                   </div>
                 </div>
-              );
-            }) : (
+                <div className="text-right">
+                  <p className="text-[12px] font-black text-slate-900">₹{order.grandTotal}</p>
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">{order.status}</p>
+                </div>
+              </div>
+            )) : (
               <div className="text-center py-20 text-slate-400 text-sm italic">
-                No product data available for these filters.
+                No recent activity found.
               </div>
             )}
           </div>

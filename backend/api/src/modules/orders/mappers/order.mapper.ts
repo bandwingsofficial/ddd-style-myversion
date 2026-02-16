@@ -16,137 +16,150 @@ import { OrderAddress } from '../domain/value-objects/order-address.vo';
 /* ---------------------------------------------- */
 
 type PrismaOrderWithItems =
-  Prisma.OrderGetPayload<{ include: { items: true } }>;
+  Prisma.OrderGetPayload<{
+    include: {
+      items: true;
+      customer: {
+        include: {
+          profile: true;
+        };
+      };
+    };
+  }>;
 
 /* ---------------------------------------------- */
 /* MAPPER                                         */
 /* ---------------------------------------------- */
 
 export class OrderMapper {
+
   /* ---------------------------------------------- */
   /* TO DOMAIN                                      */
   /* ---------------------------------------------- */
 
   static toDomain(order: PrismaOrderWithItems): Order {
-  if (!order.items || order.items.length === 0) {
-    throw new Error(
-      `Order ${order.id} has no items. DB corruption or invalid state.`,
-    );
+    if (!order.items || order.items.length === 0) {
+      throw new Error(
+        `Order ${order.id} has no items. DB corruption or invalid state.`,
+      );
+    }
+
+    return Order.rehydrate({
+      id: order.id,
+      orderSequence: order.orderSequence,
+      orderNumber: order.orderNumber,
+
+      customerId: order.customerId,
+      customerFullName: order.customer?.profile?.fullName ?? null,
+      outletId: order.outletId,
+      cartId: order.cartId ?? undefined,
+
+      address: OrderAddress.create({
+        label: order.addressLabel,
+        addressText: order.addressText,
+        latitude: order.latitude ?? undefined,
+        longitude: order.longitude ?? undefined,
+      }),
+
+      subtotal: Money.create(Number(order.subtotal)),
+      discount: Money.create(Number(order.discount)),
+      afterDiscountTotal: Money.create(Number(order.afterDiscountTotal)),
+      deliveryFee: Money.create(Number(order.deliveryFee)),
+      grandTotal: Money.create(Number(order.grandTotal)),
+
+      itemCount: order.itemCount,
+
+      status: this.toDomainStatus(order.status),
+      version: order.version,
+
+      items: order.items.map((item) =>
+        OrderItem.rehydrate({
+          id: item.id,
+          orderId: item.orderId,
+          productId: item.productId,
+          productName: item.productName,
+          productImage: item.productImage,
+          quantity: item.quantity,
+          unitPrice: Money.create(Number(item.unitPrice)),
+          discountPrice: item.discountPrice
+            ? Money.create(Number(item.discountPrice))
+            : undefined,
+          totalPrice: Money.create(Number(item.totalPrice)),
+          createdAt: item.createdAt,
+        }),
+      ),
+
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+    });
   }
 
-  return Order.rehydrate({
-    id: order.id,
-
-    customerId: order.customerId,
-    outletId: order.outletId,
-
-    cartId: order.cartId ?? undefined,
-
-    address: OrderAddress.create({
-      label: order.addressLabel,
-      addressText: order.addressText,
-      latitude: order.latitude ?? undefined,
-      longitude: order.longitude ?? undefined,
-    }),
-
-    subtotal: Money.create(Number(order.subtotal)),
-    discount: Money.create(Number(order.discount)),
-    afterDiscountTotal: Money.create(Number(order.afterDiscountTotal)),
-    deliveryFee: Money.create(Number(order.deliveryFee)),
-    grandTotal: Money.create(Number(order.grandTotal)), // ✅ FIXED
-
-    itemCount: order.itemCount,
-
-    status: this.toDomainStatus(order.status),
-    version: order.version,
-
-    items: order.items.map((item) =>
-      OrderItem.rehydrate({
-        id: item.id,
-        orderId: item.orderId,
-        productId: item.productId,
-        productName: item.productName,
-        productImage: item.productImage,
-        quantity: item.quantity,
-        unitPrice: Money.create(Number(item.unitPrice)),
-        discountPrice: item.discountPrice
-          ? Money.create(Number(item.discountPrice))
-          : undefined,
-        totalPrice: Money.create(Number(item.totalPrice)),
-        createdAt: item.createdAt,
-      }),
-    ),
-
-    createdAt: order.createdAt,
-    updatedAt: order.updatedAt,
-  });
-}
-
   /* ---------------------------------------------- */
-/* TO PRISMA (CREATE)                              */
-/* ---------------------------------------------- */
+  /* TO PRISMA (CREATE) — FIXED VERSION              */
+  /* ---------------------------------------------- */
 
-static toPrismaCreate(order: Order): Prisma.OrderCreateInput {
-  return {
-    id: order.id,
+  static toPrismaCreate(order: Order): Prisma.OrderCreateInput {
+    return {
+      id: order.id,
 
-    createdAt: order.createdAt,
-    updatedAt: order.updatedAt,
+      // 🔥 DO NOT send orderSequence
+      // 🔥 DO NOT send orderNumber
+      // Let DB autoincrement handle it
 
-    customer: {
-      connect: { id: order.customerId },
-    },
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
 
-    outlet: {
-      connect: { id: order.outletId },
-    },
+      customer: {
+        connect: { id: order.customerId },
+      },
 
-    cart: order.cartId
-      ? {
-          connect: { id: order.cartId },
-        }
-      : undefined,
+      outlet: {
+        connect: { id: order.outletId },
+      },
 
-    /* -------- address snapshot -------- */
+      cart: order.cartId
+        ? {
+            connect: { id: order.cartId },
+          }
+        : undefined,
 
-    addressLabel: order.address.getLabel(),
-    addressText: order.address.getAddressText(),
-    latitude: order.address.getLatitude(),
-    longitude: order.address.getLongitude(),
+      /* -------- address snapshot -------- */
 
-    /* -------- money snapshot (🔥 FULL FIX) -------- */
+      addressLabel: order.address.getLabel(),
+      addressText: order.address.getAddressText(),
+      latitude: order.address.getLatitude(),
+      longitude: order.address.getLongitude(),
 
-    subtotal: order.subtotal.toNumber(),
-    discount: order.discount.toNumber(),
-    afterDiscountTotal: order.afterDiscountTotal.toNumber(),
-    deliveryFee: order.deliveryFee.toNumber(),
-    grandTotal: order.grandTotal.toNumber(),   // ✅ renamed
-    itemCount: order.itemCount,                // ✅ added
+      /* -------- money snapshot -------- */
 
-    status: this.toPrismaStatus(order.status),
-    version: order.version,
+      subtotal: order.subtotal.toNumber(),
+      discount: order.discount.toNumber(),
+      afterDiscountTotal: order.afterDiscountTotal.toNumber(),
+      deliveryFee: order.deliveryFee.toNumber(),
+      grandTotal: order.grandTotal.toNumber(),
+      itemCount: order.itemCount,
 
-    /* -------- items snapshot -------- */
+      status: this.toPrismaStatus(order.status),
+      version: order.version,
 
-    items: {
-      create: order.items.map((item) => ({
-        id: item.id,
+      /* -------- items snapshot -------- */
 
-        productId: item.productId,
-        productName: item.productName,
-        productImage: item.productImage,
+      items: {
+        create: order.items.map((item) => ({
+          id: item.id,
+          productId: item.productId,
+          productName: item.productName,
+          productImage: item.productImage,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice.toNumber(),
+          discountPrice: item.discountPrice?.toNumber(),
+          totalPrice: item.totalPrice.toNumber(),
+          createdAt: item.createdAt,
+        })),
+      },
+    };
+  }
 
-        quantity: item.quantity,
-
-        unitPrice: item.unitPrice.toNumber(),
-        discountPrice: item.discountPrice?.toNumber(),
-        totalPrice: item.totalPrice.toNumber(),
-
-        createdAt: item.createdAt,
-      })),
-    },
-  };
-}
   /* ---------------------------------------------- */
   /* STATUS MAPPING                                 */
   /* ---------------------------------------------- */
@@ -179,22 +192,8 @@ static toPrismaCreate(order: Order): Prisma.OrderCreateInput {
   }
 
   static toPrismaStatus(
-  status: OrderStatus,
-): PrismaOrderStatus {
-  switch (status) {
-    case OrderStatus.CREATED:
-    case OrderStatus.PAYMENT_PENDING:
-    case OrderStatus.PAID:
-    case OrderStatus.CONFIRMED:
-    case OrderStatus.PREPARING:
-    case OrderStatus.OUT_FOR_DELIVERY:
-    case OrderStatus.DELIVERED:
-    case OrderStatus.CANCELLED:
-    case OrderStatus.FAILED:
-      return status;
-
-    default:
-      throw new Error(`Unknown Domain OrderStatus: ${status}`);
+    status: OrderStatus,
+  ): PrismaOrderStatus {
+    return status;
   }
-}
 }

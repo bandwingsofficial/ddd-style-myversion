@@ -13,7 +13,11 @@ import { OrderItem } from './order-item.model';
 export interface OrderProps {
   id: string;
 
+  orderSequence: number;
+  orderNumber: string;
+
   customerId: string;
+  customerFullName?: string | null;
   outletId: string;
 
   cartId?: string;
@@ -43,7 +47,11 @@ export interface OrderProps {
 export class Order {
   readonly id: string;
 
+  readonly orderSequence: number;
+  readonly orderNumber: string;
+
   readonly customerId: string;
+  readonly customerFullName?: string | null;
   readonly outletId: string;
 
   readonly cartId?: string;
@@ -84,6 +92,7 @@ export class Order {
   id: string;
 
   customerId: string;
+  customerFullName?: string | null;
   outletId: string;
 
   cartId?: string;
@@ -102,19 +111,22 @@ export class Order {
 
   now?: Date;
 }): Order {
-
   const now = params.now ?? new Date();
 
   return new Order({
     id: params.id,
 
+    // 🔥 These will be set after DB persistence
+    orderSequence: 0,
+    orderNumber: '',
+
     customerId: params.customerId,
+    customerFullName: params.customerFullName,
     outletId: params.outletId,
     cartId: params.cartId,
 
     address: params.address,
 
-    /* 🔥 NO CALCULATIONS — JUST COPY */
     subtotal: Money.create(params.subtotal),
     discount: Money.create(params.discount),
     afterDiscountTotal: Money.create(params.afterDiscountTotal),
@@ -174,16 +186,21 @@ export class Order {
   }
 
   getItemCount(): number {
-  return this.itemCount;
-}
-
+    return this.itemCount;
+  }
+  get displayId(): string {
+    return this.orderNumber;
+  }
   /* ---------------------------------------------- */
   /* DOMAIN TRANSITIONS (STRICT STATE MACHINE)       */
   /* ---------------------------------------------- */
 
   markPaymentPending(now = new Date()): Order {
     if (this.status !== OrderStatus.CREATED) {
-      throw new ValidationError('INVALID_TRANSITION', 'Cannot move to PAYMENT_PENDING');
+      throw new ValidationError(
+        'INVALID_TRANSITION',
+        'Cannot move to PAYMENT_PENDING',
+      );
     }
 
     return new Order({
@@ -235,7 +252,10 @@ export class Order {
 
   outForDelivery(now = new Date()): Order {
     if (this.status !== OrderStatus.PREPARING) {
-      throw new ValidationError('INVALID_TRANSITION', 'Cannot go out for delivery');
+      throw new ValidationError(
+        'INVALID_TRANSITION',
+        'Cannot go out for delivery',
+      );
     }
 
     return new Order({
@@ -284,15 +304,16 @@ export class Order {
     });
   }
 
-  
-
   /* ---------------------------------------------- */
   /* INVARIANTS (CRITICAL BUSINESS RULES)            */
   /* ---------------------------------------------- */
 
   private assertValidState(): void {
     if (!this.customerId) {
-      throw new ValidationError('ORDER_INVALID_CUSTOMER', 'Customer is required');
+      throw new ValidationError(
+        'ORDER_INVALID_CUSTOMER',
+        'Customer is required',
+      );
     }
 
     if (!this.outletId) {
@@ -300,61 +321,63 @@ export class Order {
     }
 
     if (!this.items || this.items.length === 0) {
-      throw new ValidationError('ORDER_EMPTY', 'Order must contain at least one item');
+      throw new ValidationError(
+        'ORDER_EMPTY',
+        'Order must contain at least one item',
+      );
     }
 
- /* -------- money consistency -------- */
+    /* -------- money consistency -------- */
 
-// lineTotal already represents AFTER DISCOUNT
-const itemsTotal = this.items.reduce(
-  (sum, item) => sum.add(item.totalPrice),
-  Money.create(0),
-);
+    // lineTotal already represents AFTER DISCOUNT
+    const itemsTotal = this.items.reduce(
+      (sum, item) => sum.add(item.totalPrice),
+      Money.create(0),
+    );
 
-// afterDiscountTotal must equal sum(lineTotals)
-if (!itemsTotal.equals(this.afterDiscountTotal)) {
-  throw new ValidationError(
-    'ORDER_AFTER_DISCOUNT_TOTAL_MISMATCH',
-    'After discount total does not match items total',
-  );
+    // afterDiscountTotal must equal sum(lineTotals)
+    if (!itemsTotal.equals(this.afterDiscountTotal)) {
+      throw new ValidationError(
+        'ORDER_AFTER_DISCOUNT_TOTAL_MISMATCH',
+        'After discount total does not match items total',
+      );
+    }
+
+    // afterDiscount = subtotal - discount
+    const expectedAfterDiscount = this.subtotal.subtract(this.discount);
+
+    if (!expectedAfterDiscount.equals(this.afterDiscountTotal)) {
+      throw new ValidationError(
+        'ORDER_DISCOUNT_MISMATCH',
+        'After discount total mismatch',
+      );
+    }
+
+    // grand total = afterDiscount + delivery
+    const expectedGrand = this.afterDiscountTotal.add(this.deliveryFee);
+
+    if (!expectedGrand.equals(this.grandTotal)) {
+      throw new ValidationError(
+        'ORDER_GRANDTOTAL_MISMATCH',
+        'Grand total mismatch',
+      );
+    }
+
+    // item count snapshot
+    const expectedCount = this.items.reduce((sum, i) => sum + i.quantity, 0);
+
+    if (expectedCount !== this.itemCount) {
+      throw new ValidationError(
+        'ORDER_ITEMCOUNT_MISMATCH',
+        'Item count mismatch',
+      );
+    }
+
+    if (this.grandTotal.isZero()) {
+      throw new ValidationError(
+        'ORDER_INVALID_GRANDTOTAL',
+        'Order grand total must be greater than zero',
+      );
+    }
+  }
 }
-
-// afterDiscount = subtotal - discount
-const expectedAfterDiscount = this.subtotal.subtract(this.discount);
-
-if (!expectedAfterDiscount.equals(this.afterDiscountTotal)) {
-  throw new ValidationError(
-    'ORDER_DISCOUNT_MISMATCH',
-    'After discount total mismatch',
-  );
-}
-
-// grand total = afterDiscount + delivery
-const expectedGrand = this.afterDiscountTotal.add(this.deliveryFee);
-
-if (!expectedGrand.equals(this.grandTotal)) {
-  throw new ValidationError(
-    'ORDER_GRANDTOTAL_MISMATCH',
-    'Grand total mismatch',
-  );
-}
-
-// item count snapshot
-const expectedCount = this.items.reduce((sum, i) => sum + i.quantity, 0);
-
-if (expectedCount !== this.itemCount) {
-  throw new ValidationError(
-    'ORDER_ITEMCOUNT_MISMATCH',
-    'Item count mismatch',
-  );
-}
-
-if (this.grandTotal.isZero()) {
-  throw new ValidationError(
-    'ORDER_INVALID_GRANDTOTAL',
-    'Order grand total must be greater than zero',
-  );
-}
-
-
-  }}

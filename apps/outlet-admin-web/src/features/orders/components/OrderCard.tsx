@@ -1,7 +1,7 @@
 import React from 'react';
 import { Order } from '../types';
-import { format } from 'date-fns'; // You likely have this or similar
-import { Clock, MapPin, ShoppingBag } from 'lucide-react'; // Icon library
+import { format } from 'date-fns';
+import { Clock, MapPin, User } from 'lucide-react';
 
 interface OrderCardProps {
   order: Order;
@@ -11,12 +11,24 @@ interface OrderCardProps {
 export const OrderCard: React.FC<OrderCardProps> = ({ order, onAction }) => {
   const isHighValue = order.grandTotal > 500;
 
+  // Helper to handle casing issues from backend
+  const status = order.status?.toUpperCase();
+
   return (
     <div className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 transition-all hover:shadow-md ${isHighValue ? 'border-l-4 border-l-emerald-500' : ''}`}>
       {/* Header */}
       <div className="flex justify-between items-start mb-3">
         <div>
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">#{order.id.slice(0, 8)}</span>
+          <span className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">
+            {order.orderNumber}
+          </span>
+          {/* Customer Name Token */}
+          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md border border-blue-100 mb-2">
+            <User size={12} className="shrink-0" />
+            <span className="text-[11px] font-bold uppercase truncate max-w-[120px]">
+              {order.customerFullName}
+            </span>
+          </div>
           <h3 className="text-lg font-bold text-gray-800">₹{order.grandTotal}</h3>
         </div>
         <div className="text-right">
@@ -51,7 +63,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onAction }) => {
       {/* Actions */}
       <div className="grid gap-2">
         {/* New Order Actions */}
-        {(order.status === 'PENDING' || !order.status) && (
+        {(status === 'PENDING' || status === 'PAYMENT_PENDING' || !status) && (
           <div className="grid grid-cols-2 gap-2">
              <button 
                onClick={() => onAction(order.id, 'reject')}
@@ -67,7 +79,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onAction }) => {
         )}
 
         {/* Confirmed -> Preparing */}
-        {order.status === 'CONFIRMED' && (
+        {status === 'CONFIRMED' && (
           <button 
             onClick={() => onAction(order.id, 'prepare')}
             className="w-full px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
@@ -76,7 +88,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onAction }) => {
         )}
 
         {/* Preparing -> Out for Delivery */}
-        {order.status === 'PREPARING' && (
+        {status === 'PREPARING' && (
           <button 
             onClick={() => onAction(order.id, 'deliver')}
             className="w-full px-3 py-2 text-sm font-medium text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors flex items-center justify-center gap-2">
@@ -85,7 +97,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onAction }) => {
         )}
 
         {/* Out for Delivery -> Delivered */}
-        {order.status === 'OUT_FOR_DELIVERY' && (
+        {(status === 'OUT_FOR_DELIVERY' || status === 'DISPATCH') && (
           <button 
             onClick={() => onAction(order.id, 'complete')}
             className="w-full px-3 py-2 text-sm font-medium text-emerald-700 bg-emerald-100 rounded-lg hover:bg-emerald-200 transition-colors border border-emerald-200">

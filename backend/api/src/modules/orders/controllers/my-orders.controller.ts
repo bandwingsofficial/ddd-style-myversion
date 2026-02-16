@@ -22,21 +22,37 @@ export class MyOrdersController {
   ) {}
 
   /* ================================================= */
-  /* GET CUSTOMER ORDERS                              */
+  /* RESPONSE MAPPER                                   */
+  /* ================================================= */
+
+  private toResponse(order: any) {
+    return {
+      id: order.id,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      itemCount: order.itemCount,
+      grandTotal: order.grandTotal.toNumber(),
+      createdAt: order.createdAt,
+    };
+  }
+
+  /* ================================================= */
+  /* GET CUSTOMER ORDERS                               */
   /* ================================================= */
 
   @Get()
-async getMyOrders(@CurrentUser() user) {
-  const { actorId } = user;
+  async getMyOrders(
+    @CurrentUser() user: { actorId: string },
+  ) {
+    const orders = await this.orchestrator.getCustomerOrders(
+      user.actorId,
+    );
 
-  const data =
-    await this.orchestrator.getCustomerOrders(actorId);
-
-  return {
-    success: true,
-    code: 'MY_ORDERS_FETCHED',
-    message: 'Orders fetched successfully',
-    data,
-  };
-}
+    return {
+      success: true,
+      code: 'MY_ORDERS_FETCHED',
+      message: 'Orders fetched successfully',
+      data: orders.map((order) => this.toResponse(order)),
+    };
+  }
 }

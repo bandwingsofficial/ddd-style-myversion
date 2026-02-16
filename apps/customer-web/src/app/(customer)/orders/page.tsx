@@ -82,7 +82,7 @@ const getStatusTheme = (status: string) => {
 };
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<OrderDetails[]>([]);
+  const [orders, setOrders] = useState<any[]>([]); // Use any temporarily to handle API structure variations
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -168,7 +168,10 @@ export default function OrdersPage() {
                         <div>
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">Order</span>
-                            <span className="text-lg font-black text-slate-900">#{order.id.slice(-8).toUpperCase()}</span>
+                            {/* Updated: Using official orderNumber instead of id slice */}
+                            <span className="text-lg font-black text-slate-900">
+                              #{order.orderNumber}
+                            </span>
                           </div>
                           <div className="flex items-center gap-3">
                             <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${theme.bg} ${theme.text}`}>
@@ -180,7 +183,7 @@ export default function OrdersPage() {
                       
                       <div className="flex items-center gap-6 self-end md:self-center">
                         <div className="text-right">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Paid Amount</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Grand Total</p>
                           <p className="text-3xl font-black text-slate-900 tracking-tighter">₹{order.grandTotal}</p>
                         </div>
                         <div className="h-10 w-10 rounded-full border border-slate-100 flex items-center justify-center text-slate-300 group-hover:border-emerald-500 group-hover:text-emerald-500 transition-all group-hover:rotate-45">
@@ -191,48 +194,44 @@ export default function OrdersPage() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                       <div className="lg:col-span-2">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">Cart Highlights</p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {order.items.slice(0, 2).map((item: any) => (
-                            <div key={item.id} className="flex items-center gap-4 p-3 rounded-2xl bg-slate-50/50 border border-transparent group-hover:border-slate-100 transition-all">
-                              <div className="w-14 h-14 rounded-xl overflow-hidden bg-white shadow-sm flex-shrink-0">
-                                <img 
-                                  src={getImageUrl(item.productImage) || ""} 
-                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
-                                  alt="" 
-                                />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-bold text-slate-800 text-sm truncate">{item.productName}</p>
-                                <p className="text-xs font-medium text-slate-500">{item.quantity} x ₹{item.unitPrice}</p>
-                              </div>
-                            </div>
-                          ))}
-                          {order.items.length > 2 && (
-                            <div className="flex items-center justify-center p-3 rounded-2xl border border-dashed border-slate-200 text-slate-400 text-xs font-bold">
-                              + {order.items.length - 2} more treasures
-                            </div>
-                          )}
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">Summary</p>
+                        <div className="flex items-center gap-3 p-4 rounded-2xl bg-slate-50/50 border border-transparent group-hover:border-slate-100 transition-all">
+                           <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                              <Package className="text-emerald-500" size={24} />
+                           </div>
+                           <div>
+                              <p className="font-bold text-slate-800 leading-tight">
+                                {order.itemCount} {order.itemCount === 1 ? 'Item' : 'Items'}
+                              </p>
+                              <p className="text-xs font-medium text-slate-500">Deliciousness arriving soon</p>
+                           </div>
                         </div>
                       </div>
 
                       <div className="flex flex-col justify-between gap-4 p-6 rounded-[2rem] bg-slate-900 text-white relative overflow-hidden group/info">
                         <div className="relative z-10">
-                          <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em] mb-3">Delivery To</p>
+                          <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-[0.2em] mb-3">Order Placed On</p>
                           <div className="flex gap-2">
-                            <MapPin size={16} className="text-emerald-400 shrink-0" />
-                            <p className="text-xs font-medium leading-relaxed opacity-80">{order.address.addressText}</p>
+                            <Calendar size={16} className="text-emerald-400 shrink-0" />
+                            <p className="text-xs font-bold leading-relaxed">
+                               {new Date(order.createdAt).toLocaleDateString('en-IN', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                               })}
+                            </p>
                           </div>
                         </div>
                         
                         <div className="relative z-10 pt-4 border-t border-white/10 flex justify-between items-center">
                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-tighter opacity-60">
-                             <Calendar size={12} />
-                             {new Date(order.createdAt).toLocaleDateString()}
-                           </div>
-                           <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-tighter opacity-60">
                              <CreditCard size={12} />
-                             Online
+                             Online Payment
+                           </div>
+                           <div className="flex items-center gap-1 text-[10px] font-black text-emerald-400 uppercase tracking-tighter">
+                             View Details <ChevronRight size={10} />
                            </div>
                         </div>
 

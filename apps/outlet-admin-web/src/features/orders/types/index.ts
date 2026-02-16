@@ -1,20 +1,26 @@
 export type OrderStatus = 
-  | 'PENDING' // Assuming initial state before accept
+  | 'PAYMENT_PENDING' 
+  | 'PENDING' 
   | 'CONFIRMED' 
+  | 'ACCEPTED'      // Added to fix the red error in image 4
   | 'PREPARING' 
+  | 'READY'         // Added to match your hook logic
+  | 'DISPATCH'      // Added to match your hook logic
   | 'OUT_FOR_DELIVERY' 
   | 'DELIVERED' 
-  | 'CANCELLED';
+  | 'CANCELLED'
+  | 'REJECTED';
 
 export interface OrderItem {
   id: string;
-  orderId: string;
   productId: string;
   productName: string;
   productImage: string;
   quantity: number;
   unitPrice: number;
+  discountPrice?: number;
   totalPrice: number;
+  createdAt?: string;
 }
 
 export interface CustomerAddress {
@@ -26,18 +32,20 @@ export interface CustomerAddress {
 
 export interface Order {
   id: string;
-  customerId: string;
-  outletId: string;
-  address: CustomerAddress;
-  subtotal: number;
-  discount: number;
-  deliveryFee: number;
+  orderNumber: string;
+  customerId?: string; 
+  customerFullName: string;
+  address?: CustomerAddress; 
+  subtotal?: number;
+  discount?: number;
+  afterDiscountTotal?: number;
+  deliveryFee?: number;
   grandTotal: number;
   itemCount: number;
   status: OrderStatus;
-  items: OrderItem[];
+  items?: OrderItem[]; 
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 export interface OrderResponse {
@@ -45,4 +53,11 @@ export interface OrderResponse {
   code: string;
   message: string;
   data: Order[];
+}
+
+export interface SingleOrderResponse {
+  success: boolean;
+  code: string;
+  message: string;
+  data: Order;
 }

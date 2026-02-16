@@ -13,12 +13,30 @@ import {
 import Header from "@/components/customer/Header";
 import Footer from "@/components/customer/Footer";
 
+// ✅ UPDATED INTERFACE to include orderNumber
 interface OrderDetails {
-  id: string; customerId: string; outletId: string; cartId: string;
-  status: string; address: { id: string; label: string; addressText: string; };
-  subtotal: number; discount: number; afterDiscountTotal: number;
-  deliveryFee: number; grandTotal: number; itemCount: number;
-  items: { id: string; productId: string; productName: string; productImage: string; quantity: number; unitPrice: number; totalPrice: number; }[];
+  id: string; 
+  orderNumber: string; // Added this field
+  customerId: string; 
+  outletId: string; 
+  cartId: string;
+  status: string; 
+  address: { id: string; label: string; addressText: string; };
+  subtotal: number; 
+  discount: number; 
+  afterDiscountTotal: number;
+  deliveryFee: number; 
+  grandTotal: number; 
+  itemCount: number;
+  items: { 
+    id: string; 
+    productId: string; 
+    productName: string; 
+    productImage: string; 
+    quantity: number; 
+    unitPrice: number; 
+    totalPrice: number; 
+  }[];
   createdAt: string;
 }
 
@@ -39,7 +57,7 @@ export default function OrderDetailsPage() {
     try {
       if (!isSilent) setLoading(true);
       const data = await CheckoutApi.getOrder(orderId as string);
-      setOrder(data);
+      setOrder(data as unknown as OrderDetails);
     } catch (error) {
       console.error("Order fetch failed", error);
     } finally {
@@ -54,7 +72,6 @@ export default function OrderDetailsPage() {
       
       // Poll every 10 seconds if order is not terminal
       const interval = setInterval(() => {
-        // We check the latest state directly from the current 'order' state
         if (order?.status !== "DELIVERED" && order?.status !== "CANCELLED") {
           fetchOrder(true); 
         }
@@ -100,7 +117,6 @@ export default function OrderDetailsPage() {
   const isPreparing = ["PREPARING", "ACCEPTED", "KITCHEN", "PROCESSING"].includes(statusUpper);
   const isPaid = ["PAID", "CONFIRMED"].includes(statusUpper);
   
-  // Pending is only if it's not even paid yet (e.g., PAYMENT_PENDING)
   const isPending = statusUpper.includes("PENDING") && !isPaid;
 
   const steps = [
@@ -110,12 +126,11 @@ export default function OrderDetailsPage() {
     { label: "Delivered", active: isDelivered, icon: Package },
   ];
 
-  // Calculate Progress Bar Width based on actual DB status
   const getProgressWidth = () => {
     if (isDelivered) return '100%';
     if (isReady) return '66%';
     if (isPreparing) return '33%';
-    if (isPaid) return '12%'; // Just started
+    if (isPaid) return '12%';
     return '0%';
   };
 
@@ -143,7 +158,7 @@ export default function OrderDetailsPage() {
               <div className="relative z-10">
                 <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-1">Status: {statusUpper.replace('_', ' ')}</p>
                 <h1 className="text-2xl font-black text-slate-900 mb-6 animate-shine">
-                  #{order.id.slice(-8).toUpperCase()}
+                  #{order.orderNumber} {/* UPDATED: Displaying orderNumber instead of ID slice */}
                 </h1>
 
                 {!isCancelled ? (
@@ -175,7 +190,6 @@ export default function OrderDetailsPage() {
                 )}
               </div>
 
-              {/* Only show cancel option if it's strictly PENDING or just PAID (not yet in kitchen) */}
               {(isPending || isPaid) && !isCancelled && !isPreparing && !isReady && !isDelivered && (
                 <div className="mt-8 pt-6 border-t border-slate-50 flex justify-between items-center">
                   <p className="text-[10px] font-medium text-slate-400 max-w-[180px]">Cancel before the kitchen starts.</p>
@@ -198,7 +212,7 @@ export default function OrderDetailsPage() {
                   Manifest
                 </h2>
                 <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg">
-                  {order.items.length} Items
+                  {order.itemCount} {order.itemCount === 1 ? 'Item' : 'Items'}
                 </span>
               </div>
 
@@ -304,7 +318,7 @@ export default function OrderDetailsPage() {
               <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
                 <p className="text-[10px] font-black text-slate-800 uppercase tracking-widest mb-1">Support</p>
                 <button className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700">
-                  Contact us regarding order #{order.id.slice(-4)} →
+                  Contact us regarding order #{order.orderNumber} → {/* UPDATED: Support text uses orderNumber */}
                 </button>
               </div>
             </div>

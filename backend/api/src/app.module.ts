@@ -8,6 +8,8 @@ import { AppConfigModule } from './config/config.module';
 import { PrismaModule } from './infrastructure/prisma/prisma.module';
 import { QueueModule } from './infrastructure/queue/queue.module';
 import { RedisModule } from './infrastructure/redis/redis.module';
+import { HttpModule } from '@nestjs/axios';
+
 
 import { AuthModule } from './modules/auth/modules/auth.module';
 import { CartModule } from './modules/cart/modules/cart.module';
@@ -32,6 +34,7 @@ import { OtpWorker } from './workers/otp.worker';
     PrismaModule,
     RedisModule,
     QueueModule,
+    HttpModule,
 
     // 🔥 CRITICAL FIX — ENABLE WILDCARDS
     EventEmitterModule.forRoot({

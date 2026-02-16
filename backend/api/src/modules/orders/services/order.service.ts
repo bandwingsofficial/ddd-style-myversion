@@ -119,22 +119,20 @@ export class OrderService {
   );
 
   /* 🔥 SNAPSHOT TOTALS (NO RECALC EVER) */
-const order = Order.createNew({
-  id: orderId,
-  customerId: cart.customerId!,
-  outletId: cart.outletId,
-  cartId: cart.id,
-  address: orderAddress,
-
-  subtotal: toNumber(cart.subtotal),
-  discount: toNumber(cart.discount),
-  afterDiscountTotal: toNumber(cart.afterDiscountTotal),
-  deliveryFee: toNumber(cart.deliveryFee),
-  grandTotal: toNumber(cart.grandTotal),
-  itemCount: cart.itemCount,
-
-  items,
-});
+  const order = Order.createNew({
+    id: orderId,
+    customerId: cart.customerId!,
+    outletId: cart.outletId,
+    cartId: cart.id,
+    address: orderAddress,
+    subtotal: toNumber(cart.subtotal),
+    discount: toNumber(cart.discount),
+    afterDiscountTotal: toNumber(cart.afterDiscountTotal),
+    deliveryFee: toNumber(cart.deliveryFee),
+    grandTotal: toNumber(cart.grandTotal),
+    itemCount: cart.itemCount,
+    items,
+  });
 
   const saved = await this.orderRepo.create(order, tx);
 
@@ -149,7 +147,6 @@ const order = Order.createNew({
 
   return saved;
 }
-
   /* ================================================= */
   /* GET OUTLET ORDERS                                 */
   async getOutletOrders(outletId: string): Promise<Order[]> {
