@@ -155,7 +155,7 @@ export default function OrdersPage() {
                 <Link 
                   href={`/orders/${order.id}`}
                   key={order.id}
-                  className="group block relative bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/60 transition-all duration-500"
+                  className="group block relative bg-white rounded-[1.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-slate-200/60 transition-all duration-500"
                 >
                   <div className={`absolute left-0 top-12 bottom-12 w-1.5 rounded-r-full transition-all duration-500 group-hover:top-8 group-hover:bottom-8 ${theme.accent}`} />
 

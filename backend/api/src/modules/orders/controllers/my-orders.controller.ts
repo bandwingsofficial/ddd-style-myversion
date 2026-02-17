@@ -25,17 +25,48 @@ export class MyOrdersController {
   /* RESPONSE MAPPER                                   */
   /* ================================================= */
 
-  private toResponse(order: any) {
+private toResponse(order: any) {
     return {
       id: order.id,
       orderNumber: order.orderNumber,
-      status: order.status,
-      itemCount: order.itemCount,
+      customerId: order.customerId,
+      customerFullName: order.customerFullName,
+      outletId: order.outletId,
+      cartId: order.cartId,
+
+      address: {
+        label: order.address.label,
+        type: order.address.type,
+        addressText: order.address.addressText,
+        latitude: order.address.latitude,
+        longitude: order.address.longitude,
+      },
+
+      subtotal: order.subtotal.toNumber(),
+      discount: order.discount.toNumber(),
+      afterDiscountTotal: order.afterDiscountTotal.toNumber(),
+      deliveryFee: order.deliveryFee.toNumber(),
       grandTotal: order.grandTotal.toNumber(),
+      itemCount: order.itemCount,
+
+      status: order.status,
+
+      items: order.items.map((item: any) => ({
+        id: item.id,
+        productId: item.productId,
+        productName: item.productName,
+        productImage: item.productImage,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice.toNumber(),
+        discountPrice: item.discountPrice?.toNumber(),
+        totalPrice: item.totalPrice.toNumber(),
+        createdAt: item.createdAt,
+      })),
+
       createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
     };
   }
-
   /* ================================================= */
   /* GET CUSTOMER ORDERS                               */
   /* ================================================= */
