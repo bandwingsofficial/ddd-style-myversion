@@ -1,0 +1,54 @@
+# Dependencies
+**/node_modules
+.pnpm-store
+
+# Build outputs
+**/.next
+**/dist
+**/build
+**/.turbo
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# Git
+.git
+.gitignore
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tests
+coverage
+
+# Misc
+README.md
+*.md
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+
+# Certificates
+certs
+
+# Images
+images
+
+# Temporary
+tmp
+temp
+.cache
