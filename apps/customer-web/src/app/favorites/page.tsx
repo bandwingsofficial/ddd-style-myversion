@@ -1,27 +1,33 @@
 "use client";
 
+
 import React from "react";
 import Link from "next/link";
 import { Heart, ArrowLeft, ShoppingBag } from "lucide-react";
+
 
 // Components
 import Header from "@/components/customer/Header";
 import Footer from "@/components/customer/Footer";
 import ProductCard from "@/components/product/ProductCard";
 
+
 // Logic: Import from the SAME file as Step 1
-import { useFavorites } from "@/providers/CustomerAuthProvider"; 
+import { useFavorites } from "@/providers/CustomerAuthProvider";
+
 
 export default function FavoritesPage() {
   const { favorites } = useFavorites();
+
 
   return (
     <div className="page-wrapper">
       <Header />
 
+
       <main className="main-content">
         <div className="container">
-          
+         
           {/* --- EMPTY STATE --- */}
           {favorites.length === 0 ? (
             <div className="empty-container">
@@ -32,11 +38,13 @@ export default function FavoritesPage() {
                 </div>
               </div>
 
+
               <h2 className="empty-title">Your wishlist is empty</h2>
               <p className="empty-desc">
                 Looks like you haven't added anything to your favorites yet.
                 Explore our products and find something you love!
               </p>
+
 
               <Link href="/menu" className="cta-button">
                 <ShoppingBag size={18} />
@@ -57,11 +65,13 @@ export default function FavoritesPage() {
                   </h1>
                 </div>
 
+
                 <Link href="/menu" className="back-link">
                   <ArrowLeft size={16} />
                   Continue Shopping
                 </Link>
               </header>
+
 
               <div className="grid-layout">
                 {favorites.map((product) => (
@@ -71,10 +81,13 @@ export default function FavoritesPage() {
             </>
           )}
 
+
         </div>
       </main>
 
+
       <Footer />
+
 
       <style jsx>{`
         /* --- Layout & Structure --- */
@@ -85,17 +98,20 @@ export default function FavoritesPage() {
           flex-direction: column;
         }
 
+
         .main-content {
           padding-top: 150px; /* Space for fixed header */
           padding-bottom: 60px;
           flex: 1;
         }
 
+
         .container {
           max-width: 1300px;
           margin: 0 auto;
           padding: 0 2rem;
         }
+
 
         /* --- Header Section --- */
         .page-header {
@@ -107,11 +123,13 @@ export default function FavoritesPage() {
           padding-bottom: 1.5rem;
         }
 
+
         .header-left {
           display: flex;
           align-items: center;
           gap: 1rem;
         }
+
 
         .header-icon-box {
           background: #fef2f2;
@@ -121,12 +139,13 @@ export default function FavoritesPage() {
           align-items: center;
           justify-content: center;
         }
-        
+       
         /* Global selector for the Lucide icon */
         .header-icon-box :global(.heart-icon) {
           color: #ef4444;
           fill: #ef4444;
         }
+
 
         .title {
           font-size: 2rem;
@@ -136,6 +155,7 @@ export default function FavoritesPage() {
           display: flex;
           align-items: center;
         }
+
 
         .count-badge {
           margin-left: 1rem;
@@ -147,6 +167,7 @@ export default function FavoritesPage() {
           border-radius: 999px;
           vertical-align: middle;
         }
+
 
         .back-link {
           display: flex;
@@ -162,12 +183,14 @@ export default function FavoritesPage() {
           color: #052e16;
         }
 
+
         /* --- Grid Layout --- */
         .grid-layout {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
           gap: 2rem;
         }
+
 
         /* --- Empty State Styling --- */
         .empty-container {
@@ -179,10 +202,12 @@ export default function FavoritesPage() {
           text-align: center;
         }
 
+
         .icon-wrapper {
           position: relative;
           margin-bottom: 1.5rem;
         }
+
 
         .icon-bg-blur {
           position: absolute;
@@ -193,6 +218,7 @@ export default function FavoritesPage() {
           opacity: 0.5;
         }
 
+
         .icon-circle {
           position: relative;
           background: white;
@@ -202,12 +228,14 @@ export default function FavoritesPage() {
           z-index: 10;
         }
 
+
         .empty-title {
           font-size: 1.5rem;
           font-weight: 700;
           color: #1e293b;
           margin-bottom: 0.5rem;
         }
+
 
         .empty-desc {
           color: #64748b;
@@ -216,42 +244,60 @@ export default function FavoritesPage() {
           line-height: 1.6;
         }
 
-        .cta-button {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          background: #052e16;
-          color: white;
-          padding: 0.8rem 2rem;
-          border-radius: 12px;
-          font-weight: 700;
-          text-decoration: none;
-          transition: all 0.2s;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+
+        /* --- Updated Link Styling Fix --- */
+        :global(.cta-button) {
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 0.5rem !important;
+          background: #052e16 !important;
+          color: white !important;
+          padding: 0.8rem 2rem !important;
+          border-radius: 12px !important;
+          font-weight: 700 !important;
+          text-decoration: none !important;
+          transition: all 0.2s !important;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
         }
-        
-        .cta-button:hover {
-          background: #0f4c28;
-          transform: translateY(-2px);
-          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+       
+        :global(.cta-button:hover) {
+          background: #0f4c28 !important;
+          transform: translateY(-2px) !important;
+          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
         }
+
 
         /* --- Mobile Responsive --- */
         @media (max-width: 768px) {
-          .main-content { padding-top: 90px; }
+          .main-content { padding-top: 100px; padding-bottom: 40px; }
           .page-header {
             flex-direction: column;
             align-items: flex-start;
-            gap: 1rem;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
           }
           .title { font-size: 1.5rem; }
-          .grid-layout { 
-            grid-template-columns: repeat(2, 1fr); 
-            gap: 1rem; 
+          .count-badge { margin-left: 0.5rem; font-size: 0.75rem; padding: 0.15rem 0.5rem; }
+          .grid-layout {
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 1rem;
           }
           .container { padding: 0 1rem; }
+          .empty-container { min-height: 50vh; }
+          .empty-title { font-size: 1.25rem; }
+          .empty-desc { font-size: 0.9rem; margin-bottom: 1.5rem; width: 100%; max-width: 320px; }
+        }
+
+
+        @media (max-width: 480px) {
+          .grid-layout {
+            grid-template-columns: 1fr;
+          }
         }
       `}</style>
     </div>
   );
 }
+
