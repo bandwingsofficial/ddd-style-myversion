@@ -1,22 +1,14 @@
 import { Response } from 'express';
 
-/**
- * HTTPS + cross-subdomain cookies
- * admin.dev.local ↔ api.dev.local
- *
- * REQUIREMENTS (all satisfied):
- * - HTTPS
- * - sameSite = 'none'
- * - secure = true
- * - shared domain
- * - camelCase cookie names (frontend-compatible)
- */
+const isProduction = process.env.NODE_ENV === 'production';
 
 const baseCookieOptions = {
   httpOnly: true,
-  secure: true,               // 🔒 HTTPS only
-  sameSite: 'none' as const,  // 🔒 Required for cross-site cookies
-  domain: '.dev.local',       // 🔑 Share across subdomains
+  secure: isProduction,
+  sameSite: isProduction ? ('none' as const) : ('lax' as const),
+  ...(process.env.COOKIE_DOMAIN
+    ? { domain: process.env.COOKIE_DOMAIN }
+    : {}),
   path: '/',
 };
 
@@ -41,9 +33,6 @@ export function setAuthCookies(
 }
 
 export function clearAuthCookies(res: Response) {
-  /**
-   * clearCookie MUST match the SAME options
-   */
   res.clearCookie('accessToken', baseCookieOptions);
   res.clearCookie('refreshToken', baseCookieOptions);
 }
