@@ -8,14 +8,13 @@ export class RedisService implements OnModuleDestroy {
 
   constructor(private readonly config: ConfigService) {
     // 🔥 Redis MUST be created immediately (Bull requirement)
-    this.client = new Redis({
-      host: this.config.get<string>('REDIS_HOST'),
-      port: this.config.get<number>('REDIS_PORT'),
-      password: this.config.get<string>('REDIS_PASSWORD'),
-      db: this.config.get<number>('REDIS_DB') ?? 0,
-      lazyConnect: false,           // ⭐ DO NOT delay connection
-      maxRetriesPerRequest: null,   // ⭐ REQUIRED for Bull
-    });
+    this.client = new Redis(
+  this.config.getOrThrow<string>('REDIS_URL'),
+  {
+    lazyConnect: false,
+    maxRetriesPerRequest: null,
+  },
+);
 
     this.client.on('error', (err) => {
       console.error('[Redis] Error:', err);

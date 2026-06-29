@@ -21,6 +21,7 @@ enum ActorType {
   OUTLET_USER
   SUPER_ADMIN
 }
+
 enum OutletUserRole {
   ADMIN
   MANAGER
@@ -43,7 +44,6 @@ enum DeliveryStatus {
 }
 
 enum AuditAction {
-
   OTP_REQUESTED
   OTP_VERIFICATION_FAILED
   OTP_VERIFIED
@@ -56,24 +56,20 @@ enum AuditAction {
   TOKEN_REFRESHED
   TOKEN_REUSE_DETECTED
 
-
   LOGOUT
   LOGOUT_ALL
   SESSION_REVOKED
-
 
   DELIVERY_APPROVED
   DELIVERY_REJECTED
   DELIVERY_SUSPENDED
   DELIVERY_BLOCKED
 
-
   OUTLET_USER_CREATED
   OUTLET_USER_DISABLED
   OUTLET_USER_DELETED
   OUTLET_USER_ENABLED
   OUTLET_USER_PASSWORD_RESET
-
 
   OUTLET_CREATED
   OUTLET_UPDATED
@@ -87,7 +83,6 @@ enum AuditAction {
   OUTLET_CAMERA_ON
   OUTLET_CAMERA_OFF
   OUTLET_CAMERA_MAINTENANCE
-
 
   SUPER_ADMIN_LOGIN
   SUPER_ADMIN_ACTION
@@ -110,19 +105,18 @@ enum CameraStatus {
   MAINTENANCE
 }
 
-
 //////////////////////////////////////////////////////
 // CORE AUTH (SESSION = SOURCE OF TRUTH)
 //////////////////////////////////////////////////////
 
 model AuthSession {
   id         String    @id @default(cuid())
-  actorType ActorType
-  actorId   String
-  deviceId  String?
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime  @default(now())
+  actorType  ActorType
+  actorId    String
+  deviceId   String?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
   lastUsedAt DateTime
   revokedAt  DateTime?
 
@@ -134,13 +128,13 @@ model AuthSession {
 }
 
 model RefreshToken {
-  id            String   @id @default(cuid())
-  sessionId     String
-  tokenHash     String   @unique
-  createdAt     DateTime @default(now())
-  expiresAt     DateTime
-  rotatedAt     DateTime?
-  replacedById  String?
+  id           String    @id @default(cuid())
+  sessionId    String
+  tokenHash    String    @unique
+  createdAt    DateTime  @default(now())
+  expiresAt    DateTime
+  rotatedAt    DateTime?
+  replacedById String?
 
   session AuthSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
@@ -154,16 +148,16 @@ model RefreshToken {
 //////////////////////////////////////////////////////
 
 model OtpRequest {
-  id         String @id @default(cuid())
-  actorType ActorType
-  actorId   String?
-  phone     String
-  purpose   OtpPurpose
-  otpHash   String
-  attempts  Int    @default(0)
-  expiresAt DateTime
+  id         String     @id @default(cuid())
+  actorType  ActorType
+  actorId    String?
+  phone      String
+  purpose    OtpPurpose
+  otpHash    String
+  attempts   Int        @default(0)
+  expiresAt  DateTime
   verifiedAt DateTime?
-  createdAt DateTime @default(now())
+  createdAt  DateTime   @default(now())
 
   @@index([phone, purpose])
   @@index([expiresAt])
@@ -174,14 +168,14 @@ model OtpRequest {
 //////////////////////////////////////////////////////
 
 model MfaChallenge {
-  id         String @id @default(cuid())
-  actorType ActorType
-  actorId   String
-  expiresAt DateTime
+  id         String    @id @default(cuid())
+  actorType  ActorType
+  actorId    String
+  expiresAt  DateTime
   verifiedAt DateTime?
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime @default(now())
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime  @default(now())
 
   @@index([actorType, actorId])
   @@index([expiresAt])
@@ -192,7 +186,7 @@ model MfaChallenge {
 //////////////////////////////////////////////////////
 
 model AuditLog {
-  id         String @id @default(cuid())
+  id        String      @id @default(cuid())
   actorType ActorType
   actorId   String?
   sessionId String?
@@ -200,7 +194,7 @@ model AuditLog {
   metadata  Json?
   ipAddress String?
   userAgent String?
-  createdAt DateTime @default(now())
+  createdAt DateTime    @default(now())
 
   session AuthSession? @relation(fields: [sessionId], references: [id])
 
@@ -214,32 +208,32 @@ model AuditLog {
 //////////////////////////////////////////////////////
 
 model Customer {
-  id           String @id @default(cuid())
-  phone        String @unique
-  isBlocked    Boolean @default(false)
+  id           String    @id @default(cuid())
+  phone        String    @unique
+  isBlocked    Boolean   @default(false)
   blockedAt    DateTime?
-  tokenVersion Int @default(0)
-  createdAt    DateTime @default(now())
+  tokenVersion Int       @default(0)
+  createdAt    DateTime  @default(now())
 
-  orders Order[]
-  carts Cart[]
+  orders  Order[]
+  carts   Cart[]
   profile CustomerProfile?
-  
+
   savedAddresses CustomerSavedAddress[]
 }
 
 model CustomerProfile {
   id String @id @default(cuid())
 
-  customerId String @unique
+  customerId String   @unique
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
-  fullName   String?
-  email      String?  @unique
-  avatarUrl  String?
+  fullName  String?
+  email     String? @unique
+  avatarUrl String?
 
-  gender     String?
-  dob        DateTime?
+  gender String?
+  dob    DateTime?
 
   referralCode String? @unique
 
@@ -250,14 +244,14 @@ model CustomerProfile {
 }
 
 model DeliveryPartner {
-  id           String @id @default(cuid())
-  phone        String @unique
+  id           String         @id @default(cuid())
+  phone        String         @unique
   status       DeliveryStatus @default(CREATED)
   kycRefId     String?
   approvedAt   DateTime?
   approvedBy   String?
-  tokenVersion Int @default(0)
-  createdAt    DateTime @default(now())
+  tokenVersion Int            @default(0)
+  createdAt    DateTime       @default(now())
 
   deliveries Delivery[]
 }
@@ -267,46 +261,46 @@ model DeliveryPartner {
 //////////////////////////////////////////////////////
 
 model Outlet {
-  id        String @id @default(cuid())
+  id String @id @default(cuid())
 
   // Identity
-  name      String
-  branch    String?
-  address   String?
-  location  String?
-  pincode   String?
+  name     String
+  branch   String?
+  address  String?
+  location String?
+  pincode  String?
 
   // Geo
   latitude  Float?
   longitude Float?
 
   // Admin control
-  status OutletStatus @default(ACTIVE)
-  isActive     Boolean @default(true)
+  status   OutletStatus @default(ACTIVE)
+  isActive Boolean      @default(true)
 
   // Customer-facing availability
   workingStatus OutletWorkingStatus @default(CLOSED)
 
   // Camera
-  isCameraEnabled Boolean @default(false)
+  isCameraEnabled Boolean      @default(false)
   cameraStatus    CameraStatus @default(OFF)
   cameraStreamUrl String?
 
   // Config
   deliveryRadiusKm Float?
-  isCentral         Boolean @default(false)
+  isCentral        Boolean @default(false)
 
   // Metadata
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
   createdBy String?
   profile   OutletProfile?
 
-  users  OutletUser[]
+  users        OutletUser[]
   outletStocks OutletStock[]
-  orders Order[]
-  carts Cart[]
-  products OutletProduct[]
+  orders       Order[]
+  carts        Cart[]
+  products     OutletProduct[]
 }
 
 model OutletUser {
@@ -314,14 +308,14 @@ model OutletUser {
   outletId String
 
   // Auth
-  email        String @unique
+  email        String  @unique
   passwordHash String
   isActive     Boolean @default(true)
 
   // Security
-  failedAttempts Int @default(0)
+  failedAttempts Int       @default(0)
   lockedUntil    DateTime?
-  tokenVersion   Int @default(0)
+  tokenVersion   Int       @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -337,17 +331,17 @@ model OutletProfile {
   outletId String @unique
   outlet   Outlet @relation(fields: [outletId], references: [id], onDelete: Cascade)
 
-  avatarUrl   String?
+  avatarUrl String?
   bannerUrl String?
 
   contactPhone String?
   contactEmail String?
 
-  ownerName String?
+  ownerName   String?
   description String?
 
-  gstNumber    String?
-  fssaiNumber  String?
+  gstNumber   String?
+  fssaiNumber String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -367,8 +361,8 @@ model OutletProduct {
   // outlet-specific controls
   isAvailable Boolean @default(true)
 
-  priceOverride     Decimal? @db.Decimal(12,2)
-  discountOverride  Decimal? @db.Decimal(12,2)
+  priceOverride    Decimal? @db.Decimal(12, 2)
+  discountOverride Decimal? @db.Decimal(12, 2)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -383,13 +377,13 @@ model OutletProduct {
 //////////////////////////////////////////////////////
 
 model SuperAdmin {
-  id           String @id @default(cuid())
-  email        String @unique
+  id           String   @id @default(cuid())
+  email        String   @unique
   passwordHash String
   totpSecret   String?
-  mfaEnabled   Boolean @default(true)
-  isActive     Boolean @default(true)
-  tokenVersion Int @default(0)
+  mfaEnabled   Boolean  @default(true)
+  isActive     Boolean  @default(true)
+  tokenVersion Int      @default(0)
   createdAt    DateTime @default(now())
 
   profile SuperAdminProfile?
@@ -398,15 +392,15 @@ model SuperAdmin {
 model SuperAdminProfile {
   id String @id @default(cuid())
 
-  superAdminId String @unique
+  superAdminId String     @unique
   superAdmin   SuperAdmin @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
 
   fullName  String
   avatarUrl String?
   title     String? // e.g. Ops Head, Tech Lead
 
-  phone     String?
-  notes     String?
+  phone String?
+  notes String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -426,8 +420,8 @@ enum CategoryStatus {
 model Category {
   id        String         @id @default(uuid())
   name      String
-  subtitle  String?        // optional subtitle
-  imagePath String?        // local stored image path: images/categories/*
+  subtitle  String? // optional subtitle
+  imagePath String? // local stored image path: images/categories/*
   status    CategoryStatus
   sortOrder Int            @default(0)
   createdAt DateTime       @default(now())
@@ -435,7 +429,6 @@ model Category {
 
   products Product[]
 }
-
 
 //////////////////////////////////////////////////////
 // Product /stockitems
@@ -456,12 +449,12 @@ enum Unit {
 }
 
 model StockItem {
-  id        String           @id @default(cuid())
-  name      String           @unique @db.VarChar(100)
+  id        String          @id @default(cuid())
+  name      String          @unique @db.VarChar(100)
   unit      Unit
-  status    StockItemStatus  @default(ACTIVE)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  status    StockItemStatus @default(ACTIVE)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
 
   // 🔁 RELATIONS (REQUIRED)
   centralInventory CentralInventory?
@@ -469,8 +462,6 @@ model StockItem {
   outletStocks     OutletStock[]
   products         Product[]
 }
-
-
 
 //////////////////////////////////////////////////////
 // INVENTORY ENUMS
@@ -503,20 +494,20 @@ enum StockDestination {
 //////////////////////////////////////////////////////
 
 model CentralInventory {
-  id           String @id @default(uuid())
+  id String @id @default(uuid())
 
-  stockItemId  String @unique
-  stockItem    StockItem @relation(fields: [stockItemId], references: [id])
+  stockItemId String    @unique
+  stockItem   StockItem @relation(fields: [stockItemId], references: [id])
 
-  unit         Unit
+  unit Unit
 
-  availableQty Decimal @db.Decimal(12, 3) @default(0)
-  totalQty     Decimal @db.Decimal(12, 3) @default(0)
+  availableQty Decimal @default(0) @db.Decimal(12, 3)
+  totalQty     Decimal @default(0) @db.Decimal(12, 3)
 
-  status       InventoryStatus @default(ACTIVE)
+  status InventoryStatus @default(ACTIVE)
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   transactions StockTransaction[]
 
@@ -524,31 +515,30 @@ model CentralInventory {
   @@index([status])
 }
 
-
 //////////////////////////////////////////////////////
 // STOCK TRANSACTIONS (AUDIT LOG)
 //////////////////////////////////////////////////////
 
 model StockTransaction {
-  id              String @id @default(uuid())
+  id String @id @default(uuid())
 
-  stockItemId     String
-  stockItem       StockItem @relation(fields: [stockItemId], references: [id])
+  stockItemId String
+  stockItem   StockItem @relation(fields: [stockItemId], references: [id])
 
-  inventoryId     String
-  inventory       CentralInventory @relation(fields: [inventoryId], references: [id])
+  inventoryId String
+  inventory   CentralInventory @relation(fields: [inventoryId], references: [id])
 
-  type            StockTransactionType
-  quantity        Decimal @db.Decimal(12, 3)
+  type     StockTransactionType
+  quantity Decimal              @db.Decimal(12, 3)
 
-  source          StockSource
-  destination     StockDestination
+  source      StockSource
+  destination StockDestination
 
-  outletId        String?
-  performedBy     String?   // superAdminId
-  remarks         String?
+  outletId    String?
+  performedBy String? // superAdminId
+  remarks     String?
 
-  createdAt       DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([stockItemId])
   @@index([inventoryId])
@@ -556,31 +546,29 @@ model StockTransaction {
   @@index([createdAt])
 }
 
-
 //////////////////////////////////////////////////////
 // OUTLET STOCK (PER OUTLET)
 //////////////////////////////////////////////////////
 
 model OutletStock {
-  id          String @id @default(uuid())
+  id String @id @default(uuid())
 
-  outletId    String
-  outlet      Outlet @relation(fields: [outletId], references: [id])
+  outletId String
+  outlet   Outlet @relation(fields: [outletId], references: [id])
 
   stockItemId String
   stockItem   StockItem @relation(fields: [stockItemId], references: [id])
 
-  unit        Unit
-  quantity    Decimal @db.Decimal(12, 3) @default(0)
+  unit     Unit
+  quantity Decimal @default(0) @db.Decimal(12, 3)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([outletId, stockItemId])
   @@index([outletId])
   @@index([stockItemId])
 }
-
 
 //////////////////////////////////////////////////////
 // PRODUCT ENUMS
@@ -610,68 +598,70 @@ enum ProductTag {
   VEGAN
 }
 
-
 //////////////////////////////////////////////////////
 // PRODUCT
 //////////////////////////////////////////////////////
 
 model Product {
-  id                String        @id @default(uuid())
+  id String @id @default(uuid())
 
-  categoryId        String
-  category          Category      @relation(fields: [categoryId], references: [id])
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
 
-  stockItemId       String
-  stockItem         StockItem     @relation(fields: [stockItemId], references: [id])
+  stockItemId String
+  stockItem   StockItem @relation(fields: [stockItemId], references: [id])
 
-  productName       String        @unique @db.VarChar(150)
-  slug              String        @unique @db.VarChar(180)
+  productName String @unique @db.VarChar(150)
+  slug        String @unique @db.VarChar(180)
 
-  shortDescription  String?       @db.VarChar(300)
-  longDescription   String?
+  shortDescription String? @db.VarChar(300)
+  longDescription  String?
 
-  originalPrice     Decimal       @db.Decimal(12, 2)
-  discountPrice     Decimal?      @db.Decimal(12, 2)
+  originalPrice Decimal  @db.Decimal(12, 2)
+  discountPrice Decimal? @db.Decimal(12, 2)
 
-  mainImage         String
-  galleryImages     ProductImage[]
+  mainImage     String
+  galleryImages ProductImage[]
 
   // 🏷 TAGS
-  tags              ProductTag[]  @default([])
-  sortOrder         Int           @default(0)
+  tags      ProductTag[] @default([])
+  sortOrder Int          @default(0)
 
   // 📏 UNIT
-  unitValue         Int
-  unitType          UnitType
+  unitValue Int
+  unitType  UnitType
 
-  ratingAverage     Decimal?      @db.Decimal(3, 2)
-  ratingCount       Int           @default(0)
+  ratingAverage Decimal? @db.Decimal(3, 2)
+  ratingCount   Int      @default(0)
 
   // 🔥 NEW (very useful)
-  isFeatured        Boolean       @default(false)
+  isFeatured Boolean @default(false)
 
-  isTrending        Boolean       @default(false)
-  isAvailable       Boolean       @default(true)
-
+  isTrending  Boolean @default(false)
+  isAvailable Boolean @default(true)
 
   // 🔥 NEW CONTENT FIELDS (added)
 
-  ingredients       String?       @db.Text
-  benefits          String?       @db.Text
+  ingredients String? @db.Text
+  benefits    String? @db.Text
 
-  extraInfo1        String?       @db.VarChar(255) // flexible label/value
-  extraInfo2        String?       @db.VarChar(255)
+  extraInfo1 String? @db.VarChar(255) // flexible label/value
+  extraInfo2 String? @db.VarChar(255)
 
-  status            ProductStatus @default(ACTIVE)
-  createdBy         String
+  status    ProductStatus @default(ACTIVE)
+  createdBy String
 
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  deletedAt         DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   //////////////////////////////////////////////////
   // INDEXES (performance upgrades)
   //////////////////////////////////////////////////
+
+  carts      CartItem[]
+  outlets    OutletProduct[]
+  orderItems OrderItem[]
 
   @@index([deletedAt]) // soft delete filter
   @@index([slug, status, isAvailable]) // fast slug fetch
@@ -680,10 +670,6 @@ model Product {
   @@index([isFeatured])
   @@index([productName])
   @@index([stockItemId])
-
-  carts CartItem[]
-  outlets OutletProduct[]
-  orderItems OrderItem[]
 }
 
 //////////////////////////////////////////////////////
@@ -691,13 +677,13 @@ model Product {
 //////////////////////////////////////////////////////
 
 model ProductImage {
-  id        String   @id @default(uuid())
+  id String @id @default(uuid())
 
   productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   imageUrl  String
-  sortOrder Int      @default(0)
+  sortOrder Int    @default(0)
 
   createdAt DateTime @default(now())
 
@@ -705,12 +691,9 @@ model ProductImage {
   @@index([productId, sortOrder])
 }
 
-
-
 //////////////////////////////////////////////////////
 // cart +cartitems 
 //////////////////////////////////////////////////////
-
 
 enum CartStatus {
   ACTIVE
@@ -737,16 +720,16 @@ model Cart {
   //////////////////////////////////////////////////
   // 🔥 ADD THESE (summary cache for frontend)
   //////////////////////////////////////////////////
-  subtotal     Decimal @db.Decimal(12,2) @default(0)
-  discount     Decimal @db.Decimal(12,2) @default(0)
-  afterDiscountTotal Decimal @db.Decimal(12,2)  @default(0)
-  deliveryFee  Decimal @db.Decimal(12,2) @default(0)
-  grandTotal   Decimal @db.Decimal(12,2) @default(0)
-  itemCount    Int     @default(0)
+  subtotal           Decimal @default(0) @db.Decimal(12, 2)
+  discount           Decimal @default(0) @db.Decimal(12, 2)
+  afterDiscountTotal Decimal @default(0) @db.Decimal(12, 2)
+  deliveryFee        Decimal @default(0) @db.Decimal(12, 2)
+  grandTotal         Decimal @default(0) @db.Decimal(12, 2)
+  itemCount          Int     @default(0)
   //////////////////////////////////////////////////
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   lockedAt  DateTime?
   expiresAt DateTime?
 
@@ -757,20 +740,19 @@ model Cart {
   @@index([outletId])
   @@index([status])
   @@index([sessionId])
-
 }
 
 model CartItem {
   id String @id @default(cuid())
 
   cartId String
-  cart   Cart @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  cart   Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
 
   productId String
   product   Product @relation(fields: [productId], references: [id])
 
-  quantity Int @default(1)
-  lineTotal Decimal @db.Decimal(12,2) // 🔥 add
+  quantity  Int     @default(1)
+  lineTotal Decimal @db.Decimal(12, 2) // 🔥 add
 
   unitPrice     Decimal  @db.Decimal(12, 2)
   discountPrice Decimal? @db.Decimal(12, 2)
@@ -785,7 +767,6 @@ model CartItem {
   @@index([productId])
 }
 
-
 //////////////////////////////////////////////////////
 // saved address
 //////////////////////////////////////////////////////
@@ -797,25 +778,25 @@ enum SavedAddressType {
 }
 
 model CustomerSavedAddress {
-  id          String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // 🔗 OWNERSHIP
-  customerId  String
-  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
   // 🏷️ ADDRESS META
   type        SavedAddressType
-  label       String   @db.VarChar(50) // custom name (used mainly for OTHER)
-  addressText String   @db.Text
+  label       String           @db.VarChar(50) // custom name (used mainly for OTHER)
+  addressText String           @db.Text
 
-  latitude    Float?
-  longitude   Float?
+  latitude  Float?
+  longitude Float?
 
   // 🗑️ SOFT DELETE
-  isDeleted   Boolean  @default(false)
+  isDeleted Boolean @default(false)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([customerId])
   @@index([type])
@@ -827,10 +808,10 @@ model CustomerSavedAddress {
 //////////////////////////////////////////////////////
 
 enum OrderStatus {
-  CREATED          // order created, before payment
-  PAYMENT_PENDING  // payment initiated
-  PAID             // payment success
-  CONFIRMED        // outlet accepted
+  CREATED // order created, before payment
+  PAYMENT_PENDING // payment initiated
+  PAID // payment success
+  CONFIRMED // outlet accepted
   PREPARING
   OUT_FOR_DELIVERY
   DELIVERED
@@ -845,8 +826,8 @@ model Order {
   // ORDER NUMBER SYSTEM
   //////////////////////////////////////////////////
 
-  orderSequence Int      @unique @default(autoincrement())
-  orderNumber   String?   @unique
+  orderSequence Int     @unique @default(autoincrement())
+  orderNumber   String? @unique
 
   orderDate DateTime @default(now())
 
@@ -856,13 +837,12 @@ model Order {
 
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id])
-  
 
   outletId String
   outlet   Outlet @relation(fields: [outletId], references: [id])
 
   cartId String? @unique
-  cart   Cart? @relation(fields: [cartId], references: [id])
+  cart   Cart?   @relation(fields: [cartId], references: [id])
 
   //////////////////////////////////////////////////
   // ADDRESS SNAPSHOT
@@ -879,15 +859,15 @@ model Order {
   // MONEY SNAPSHOT
   //////////////////////////////////////////////////
 
-  subtotal           Decimal @db.Decimal(12,2)
-  discount           Decimal @db.Decimal(12,2)
-  afterDiscountTotal Decimal @db.Decimal(12,2)
-  deliveryFee        Decimal @db.Decimal(12,2)
-  grandTotal         Decimal @db.Decimal(12,2)
+  subtotal           Decimal @db.Decimal(12, 2)
+  discount           Decimal @db.Decimal(12, 2)
+  afterDiscountTotal Decimal @db.Decimal(12, 2)
+  deliveryFee        Decimal @db.Decimal(12, 2)
+  grandTotal         Decimal @db.Decimal(12, 2)
   itemCount          Int
 
-  status OrderStatus @default(CREATED)
-  version Int @default(0)
+  status  OrderStatus @default(CREATED)
+  version Int         @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -899,13 +879,13 @@ model Order {
   events   OrderEvent[]
   delivery Delivery?
 
-  paidAt DateTime?
-  confirmedAt DateTime?
-  preparingAt DateTime?
+  paidAt           DateTime?
+  confirmedAt      DateTime?
+  preparingAt      DateTime?
   outForDeliveryAt DateTime?
-  deliveredAt DateTime?
-  cancelledAt DateTime?
-  failedAt DateTime?
+  deliveredAt      DateTime?
+  cancelledAt      DateTime?
+  failedAt         DateTime?
 
   //////////////////////////////////////////////////
 
@@ -924,7 +904,7 @@ model OrderItem {
   id String @id @default(cuid())
 
   orderId String
-  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   productId String
   product   Product @relation(fields: [productId], references: [id])
@@ -935,16 +915,15 @@ model OrderItem {
 
   quantity Int
 
-  unitPrice     Decimal @db.Decimal(12,2)
-  discountPrice Decimal? @db.Decimal(12,2)
+  unitPrice     Decimal  @db.Decimal(12, 2)
+  discountPrice Decimal? @db.Decimal(12, 2)
 
-  totalPrice Decimal @db.Decimal(12,2)
+  totalPrice Decimal @db.Decimal(12, 2)
 
   createdAt DateTime @default(now())
 
   @@index([orderId])
 }
-
 
 //////////////////////////////////////////////////////
 // PAYMENT
@@ -966,20 +945,20 @@ model Payment {
   id String @id @default(cuid())
 
   orderId String
-  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
-  method PaymentMethod
-  status PaymentStatus @default(INITIATED)
-  attemptNo Int @default(1)
+  method    PaymentMethod
+  status    PaymentStatus @default(INITIATED)
+  attemptNo Int           @default(1)
 
-  provider        String?    // razorpay/stripe/phonepe
-  providerRefId   String? @unique
-  transactionId   String?
+  provider      String? // razorpay/stripe/phonepe
+  providerRefId String? @unique
+  transactionId String?
 
-  amount      Decimal @db.Decimal(12,2)
-  paidAmount  Decimal? @db.Decimal(12,2)   // 🔥 safer reconciliation
+  amount     Decimal  @db.Decimal(12, 2)
+  paidAmount Decimal? @db.Decimal(12, 2) // 🔥 safer reconciliation
 
-  failureReason String?                   // 🔥 added for debugging
+  failureReason  String? // 🔥 added for debugging
   idempotencyKey String? @unique
 
   paidAt DateTime?
@@ -987,11 +966,11 @@ model Payment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([orderId, attemptNo])
   @@index([orderId])
   @@index([status])
   @@index([providerRefId])
   @@index([createdAt])
-  @@unique([orderId, attemptNo])
 }
 
 enum DeliveryTripStatus {
@@ -1006,14 +985,14 @@ model Delivery {
   id String @id @default(cuid())
 
   orderId String @unique
-  order   Order @relation(fields: [orderId], references: [id])
+  order   Order  @relation(fields: [orderId], references: [id])
 
   partnerId String
   partner   DeliveryPartner @relation(fields: [partnerId], references: [id])
 
   status DeliveryTripStatus @default(ASSIGNED)
 
-  assignedAt  DateTime @default(now())
+  assignedAt  DateTime  @default(now())
   pickedUpAt  DateTime?
   deliveredAt DateTime?
   failedAt    DateTime?
@@ -1022,13 +1001,12 @@ model Delivery {
   updatedAt DateTime @updatedAt
 
   locations DeliveryLocation[]
-  events DeliveryEvent[]
+  events    DeliveryEvent[]
 
   @@index([partnerId])
   @@index([status])
   @@index([createdAt])
 }
-
 
 model DeliveryLocation {
   id String @id @default(cuid())
@@ -1045,7 +1023,6 @@ model DeliveryLocation {
   @@index([deliveryId, createdAt])
 }
 
-
 enum OrderEventType {
   CREATED
   PAYMENT_PENDING
@@ -1057,11 +1034,12 @@ enum OrderEventType {
   CANCELLED
   FAILED
 }
+
 model OrderEvent {
   id String @id @default(cuid())
 
   orderId String
-  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   type OrderEventType
 
@@ -1070,8 +1048,8 @@ model OrderEvent {
   actorId   String?
 
   // extra info
-  note      String?
-  metadata  Json?
+  note     String?
+  metadata Json?
 
   // retry safety
   idempotencyKey String? @unique
@@ -1098,7 +1076,7 @@ model DeliveryEvent {
   deliveryId String
   delivery   Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
 
-  type DeliveryEventType
+  type     DeliveryEventType
   metadata Json?
 
   createdAt DateTime @default(now())

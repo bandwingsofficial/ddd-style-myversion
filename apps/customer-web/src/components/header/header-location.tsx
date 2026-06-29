@@ -1,13 +1,13 @@
 "use client";
 
 import { MapPin } from "lucide-react";
-import { useLocation } from "@/features/location/use-location";
+import { useLiveLocation } from "@/features/location/hooks/useLiveLocation";
 import { useLocationStore } from "@/features/location/location.store";
 
 export default function HeaderLocation() {
-  useLocation();
+  const location = useLiveLocation();
 
-  const { area, city, loading } = useLocationStore();
+  const { addressLabel } = useLocationStore();
 
   return (
     <button className="flex items-center gap-2 text-sm">
@@ -19,9 +19,7 @@ export default function HeaderLocation() {
         </span>
 
         <span className="max-w-[140px] truncate font-medium">
-          {loading
-            ? "Detecting..."
-            : `${area}${city ? ", " + city : ""}`}
+          {location.lat === null ? "Detecting..." : addressLabel}
         </span>
       </div>
     </button>

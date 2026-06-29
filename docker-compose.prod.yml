@@ -1,0 +1,132 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sugar-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sugarcane
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - sugar-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: sugar-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    networks:
+      - sugar-network
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    container_name: sugar-api
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - backend/api/.env
+    expose:
+      - "4000"
+    networks:
+      - sugar-network
+
+  customer:
+    build:
+      context: .
+      dockerfile: docker/next/Dockerfile
+      args:
+        APP_NAME: customer-web
+    container_name: sugar-customer
+    restart: unless-stopped
+    depends_on:
+      - api
+    env_file:
+      - apps/customer-web/.env
+    expose:
+      - "3000"
+    networks:
+      - sugar-network
+
+  backoffice:
+    build:
+      context: .
+      dockerfile: docker/next/Dockerfile
+      args:
+        APP_NAME: backoffice-web
+    container_name: sugar-backoffice
+    restart: unless-stopped
+    depends_on:
+      - api
+    env_file:
+      - apps/backoffice-web/.env
+    expose:
+      - "3000"
+    networks:
+      - sugar-network
+
+  outlet-admin:
+    build:
+      context: .
+      dockerfile: docker/next/Dockerfile
+      args:
+        APP_NAME: outlet-admin-web
+    container_name: sugar-outlet-admin
+    restart: unless-stopped
+    depends_on:
+      - api
+    env_file:
+      - apps/outlet-admin-web/.env
+    expose:
+      - "3000"
+    networks:
+      - sugar-network
+
+  delivery:
+    build:
+      context: .
+      dockerfile: docker/next/Dockerfile
+      args:
+        APP_NAME: delivery-web
+    container_name: sugar-delivery
+    restart: unless-stopped
+    depends_on:
+      - api
+    expose:
+      - "3000"
+    networks:
+      - sugar-network
+
+  nginx:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    container_name: sugar-nginx
+    restart: unless-stopped
+    depends_on:
+      - api
+      - customer
+      - backoffice
+      - outlet-admin
+      - delivery
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - sugar-network
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  sugar-network:
+    driver: bridge

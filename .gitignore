@@ -1,12 +1,53 @@
-# Next.js
+# =========================
+# Dependencies
+# =========================
+node_modules/
+
+# =========================
+# Build Output
+# =========================
 .next/
 apps/*/.next/
 
-# Dependencies & builds
-node_modules/
 dist/
+build/
+out/
 
-# Env files
+# =========================
+# Logs
+# =========================
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =========================
+# Environment
+# =========================
 .env
 .env.*
-s
+!.env.example
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDE
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# Turbo
+# =========================
+.turbo/
+
+# =========================
+# Docker
+# =========================
+docker-data/

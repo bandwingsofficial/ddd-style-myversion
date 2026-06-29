@@ -2,35 +2,32 @@
   "name": "sugar-cane-platform",
   "private": true,
   "version": "0.0.0",
-  "packageManager": "pnpm@8.6.6",
+  "packageManager": "pnpm@10.16.1",
   "engines": {
-    "node": ">=18",
-    "pnpm": ">=8"
+    "node": ">=22",
+    "pnpm": ">=10"
   },
   "scripts": {
-    "dev": "turbo run dev --parallel",
-    "build": "turbo run build",
-    "lint": "turbo run lint",
-    "format": "prettier --write .",
+    "dev": "turbo dev",
+    "build:all": "turbo run build",
+    "lint:all": "turbo run lint",
     "clean": "turbo run clean",
-    "changeset": "changeset",
-    "release": "changeset publish"
+    "format": "prettier --write ."
   },
   "devDependencies": {
-    "@changesets/cli": "latest",
     "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/node": "25.0.3",
     "@types/supertest": "^6.0.3",
     "autoprefixer": "10.4.23",
     "baseline-browser-mapping": "2.9.7",
-    "eslint": "latest",
+    "eslint": "^9.39.1",
     "jest": "^30.2.0",
     "postcss": "8.5.6",
-    "prettier": "latest",
+    "prettier": "^3.6.2",
     "supertest": "^7.1.4",
     "tailwindcss": "4.1.18",
-    "turbo": "latest",
-    "typescript": "latest"
+    "turbo": "^2.10.0",
+    "typescript": "^5.9.3"
   }
 }

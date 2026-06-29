@@ -21,21 +21,6 @@
     "paths": {
       "@/*": [
         "./src/*"
-      ],
-      "@types/*": [
-        "../../packages/types/src/*"
-      ],
-      "@ui/*": [
-        "../../packages/ui/src/*"
-      ],
-      "@utils/*": [
-        "../../packages/utils/src/*"
-      ],
-      "@config/*": [
-        "../../packages/config/src/*"
-      ],
-      "@api-client/*": [
-        "../../packages/api-client/src/*"
       ]
     }
   },

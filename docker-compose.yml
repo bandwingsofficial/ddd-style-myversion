@@ -1,0 +1,118 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sugar-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sugarcane
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - sugar-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: sugar-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - sugar-network
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    container_name: sugar-api
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    env_file:
+      - backend/api/.env
+    ports:
+      - "4000:4000"
+    networks:
+      - sugar-network
+
+  customer:
+    build:
+      context: .
+      dockerfile: docker/next/Dockerfile
+      args:
+        APP_NAME: customer-web
+    container_name: sugar-customer
+    restart: unless-stopped
+    depends_on:
+      - api
+    env_file:
+      - apps/customer-web/.env
+    ports:
+      - "3000:3000"
+    networks:
+      - sugar-network
+
+  backoffice:
+    build:
+      context: .
+      dockerfile: docker/next/Dockerfile
+      args:
+        APP_NAME: backoffice-web
+    container_name: sugar-backoffice
+    restart: unless-stopped
+    depends_on:
+      - api
+    env_file:
+      - apps/backoffice-web/.env
+    ports:
+      - "3001:3000"
+    networks:
+      - sugar-network
+
+  outlet-admin:
+    build:
+      context: .
+      dockerfile: docker/next/Dockerfile
+      args:
+        APP_NAME: outlet-admin-web
+    container_name: sugar-outlet-admin
+    restart: unless-stopped
+    depends_on:
+      - api
+    env_file:
+      - apps/outlet-admin-web/.env
+    ports:
+      - "3002:3000"
+    networks:
+      - sugar-network
+
+  delivery:
+    build:
+      context: .
+      dockerfile: docker/next/Dockerfile
+      args:
+        APP_NAME: delivery-web
+    container_name: sugar-delivery
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "3003:3000"
+    networks:
+      - sugar-network
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  sugar-network:
+    driver: bridge

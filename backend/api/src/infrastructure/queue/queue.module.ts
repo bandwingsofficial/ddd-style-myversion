@@ -15,13 +15,8 @@ import { OTP_QUEUE } from './queues/otp.queue';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        redis: {
-          host: config.get<string>('REDIS_HOST'),
-          port: config.get<number>('REDIS_PORT'),
-          password: config.get<string>('REDIS_PASSWORD'),
-          db: config.get<number>('REDIS_DB') ?? 0,
-        },
-      }),
+  redis: config.getOrThrow<string>('REDIS_URL'),
+}),
     }),
 
     BullModule.registerQueue({
