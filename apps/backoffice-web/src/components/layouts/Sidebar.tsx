@@ -48,7 +48,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
         >
           {/* Logo with specific gold/green drop shadow glow */}
           <img 
-            src="/4.png"
+            src="/canten1.png"
             alt="Logo"
             className="h-full w-full object-contain object-center drop-shadow-[0_0_15px_rgba(234,179,8,0.3)]"
           />

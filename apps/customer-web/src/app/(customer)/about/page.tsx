@@ -28,7 +28,7 @@ export default function AboutPage() {
           </h1>
           
           <p className="text-lg text-slate-500 max-w-2xl mx-auto leading-relaxed">
-            At Cane & Tender, we are on a mission to redefine freshness by delivering 
+            At CanTen, we are on a mission to redefine freshness by delivering 
             nature's finest juices directly from the farm to your doorstep.
           </p>
         </section>
@@ -77,7 +77,7 @@ export default function AboutPage() {
               <h2 className="text-2xl font-bold text-slate-900 mb-6">Our Journey</h2>
               <div className="prose prose-slate mx-auto">
                 <p className="text-slate-500 leading-loose text-lg">
-                  Founded in 2026, <span className="font-semibold text-slate-800">Cane & Tender</span> began with a simple question: "Why is it so hard to find 
+                  Founded in 2026, <span className="font-semibold text-slate-800">CanTen</span> began with a simple question: "Why is it so hard to find 
                   authentic, hygienic sugarcane juice?" What started as a small stall in Bengaluru has 
                   grown into a trusted brand, connecting urban consumers with the raw, refreshing taste 
                   of nature. We bridge the gap between rural freshness and modern convenience.

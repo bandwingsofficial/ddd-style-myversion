@@ -32,7 +32,7 @@ export default function RefundPolicyPage() {
             <section className="mb-12">
               <h2 className="mb-4 text-[1.4rem] font-bold text-slate-800">1. Overview</h2>
               <p className="mb-4">
-                At Cane & Tender, we strive to deliver the freshest products. Due to the perishable nature 
+                At CanTen, we strive to deliver the freshest products. Due to the perishable nature 
                 of our goods (fresh juices and tender coconuts), we have strict guidelines regarding refunds and cancellations.
               </p>
             </section>
@@ -54,7 +54,7 @@ export default function RefundPolicyPage() {
                 <li className="mb-2">The package was tampered with during delivery.</li>
               </ul>
               <p className="mb-4">
-                Please report any issues to <strong className="font-semibold text-slate-900">support@caneandtender.com</strong> within 1 hour of delivery with photographic evidence.
+                Please report any issues to <strong className="font-semibold text-slate-900">connect@canten.com</strong> within 1 hour of delivery with photographic evidence.
               </p>
             </section>
 

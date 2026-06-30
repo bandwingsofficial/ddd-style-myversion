@@ -38,7 +38,7 @@ export default function TermsOfServicePage() {
                 Acceptance of Terms
               </h2>
               <p className="text-slate-600 leading-relaxed text-lg">
-                By accessing and using the <span className="font-semibold text-slate-800">Cane & Tender</span> website ("Service"), you accept and agree to be bound by the terms and provision of this agreement. 
+                By accessing and using the <span className="font-semibold text-slate-800">CanTen</span> website ("Service"), you accept and agree to be bound by the terms and provision of this agreement. 
                 If you do not agree to abide by these terms, please do not use this Service.
               </p>
             </section>
@@ -87,7 +87,7 @@ export default function TermsOfServicePage() {
                 Limitation of Liability
               </h2>
               <div className="bg-slate-50 border border-slate-100 rounded-xl p-6 text-slate-600 leading-relaxed">
-                In no event shall <span className="font-semibold text-slate-900">Cane & Tender</span>, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for 
+                In no event shall <span className="font-semibold text-slate-900">CanTen</span>, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for 
                 any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, 
                 data, use, goodwill, or other intangible losses.
               </div>

@@ -17,51 +17,82 @@ export const ProductsAPI = {
 
   // Create Product
   create: async (payload: {
-    categoryId: string;
-    stockItemId: string;
-    productName: string;
-    originalPrice: number;
-    discountPrice: number;
-    unitValue: number;
-    unitType: string;
-    shortDescription: string;
-    longDescription: string;
-    isTrending: boolean;
-    tags: string[];
-    mainImage: File;
-    galleryImages: File[];
-  }) => {
-    const formData = new FormData();
-    
-    formData.append("categoryId", payload.categoryId);
-    formData.append("stockItemId", payload.stockItemId);
-    formData.append("productName", payload.productName);
-    formData.append("originalPrice", String(payload.originalPrice));
-    formData.append("discountPrice", String(payload.discountPrice));
-    formData.append("unitValue", String(payload.unitValue));
-    formData.append("unitType", payload.unitType);
-    formData.append("shortDescription", payload.shortDescription);
-    formData.append("longDescription", payload.longDescription);
-    formData.append("isTrending", payload.isTrending ? "TRUE" : "FALSE");
-    
-    if (payload.tags && payload.tags.length > 0) {
-      payload.tags.forEach(tag => formData.append("tags", tag));
-    }
+  categoryId: string;
+  stockItemId: string;
+  productName: string;
+  originalPrice: number;
+  discountPrice?: number;
+  unitValue: number;
+  unitType: string;
+  shortDescription: string;
+  longDescription: string;
+  isTrending: boolean;
+  tags: string[];
+  mainImage: File;
+  galleryImages: File[];
+}) => {
+  const formData = new FormData();
 
-    if (payload.mainImage) {
-      formData.append("mainImage", payload.mainImage);
-    }
-    
-    if (payload.galleryImages && payload.galleryImages.length > 0) {
-      payload.galleryImages.forEach((file) => {
-        formData.append("galleryImages", file);
-      });
-    }
+  formData.append("categoryId", payload.categoryId);
+  formData.append("stockItemId", payload.stockItemId);
+  formData.append("productName", payload.productName);
 
-    const res = await axiosInstance.post("/products", formData);
-    return res.data.data;
-  },
+  formData.append("originalPrice", String(payload.originalPrice));
 
+  if (
+    payload.discountPrice !== undefined &&
+    payload.discountPrice > 0
+  ) {
+    formData.append(
+      "discountPrice",
+      String(payload.discountPrice)
+    );
+  }
+
+  formData.append("unitValue", String(payload.unitValue));
+  formData.append("unitType", payload.unitType);
+
+  if (payload.shortDescription) {
+    formData.append(
+      "shortDescription",
+      payload.shortDescription
+    );
+  }
+
+  if (payload.longDescription) {
+    formData.append(
+      "longDescription",
+      payload.longDescription
+    );
+  }
+
+  formData.append(
+    "isTrending",
+    String(payload.isTrending)
+  );
+
+  payload.tags.forEach(tag => {
+    formData.append("tags", tag);
+  });
+
+  formData.append("mainImage", payload.mainImage);
+
+  payload.galleryImages.forEach(file => {
+    formData.append("galleryImages", file);
+  });
+
+  // Debug
+  for (const [key, value] of formData.entries()) {
+    console.log(key, value);
+  }
+
+  const res = await axiosInstance.post(
+    "/products",
+    formData
+  );
+
+  return res.data.data;
+},
   // Update Product (FIXED: Always sends mainImage)
   update: async (
     productId: string,

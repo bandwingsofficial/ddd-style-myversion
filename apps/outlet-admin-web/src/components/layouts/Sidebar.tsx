@@ -50,7 +50,7 @@ export default function Sidebar() {
     <aside style={styles.sidebar}>
       {/* Logo Area */}
       <div style={styles.brand}>
-        <img src="/4.png" alt="Cane & Tender Logo" style={styles.logo} />
+        <img src="/4.png" alt="Canten Logo" style={styles.logo} />
       </div>
 
       {/* Navigation */}

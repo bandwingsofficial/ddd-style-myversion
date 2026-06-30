@@ -9,6 +9,7 @@ import {
   Facebook,
   Phone,
   Mail,
+  MapPin,
 } from "lucide-react";
 
 export default function Footer() {
@@ -31,7 +32,7 @@ export default function Footer() {
               <div className="logo-wrapper">
                 <Image 
                   src="/images/canten1.png" 
-                  alt="Can &amp; Ten Logo" 
+                  alt="CanTen Logo" 
                   width={140} 
                   height={50}  
                   className="logo-img"
@@ -97,7 +98,15 @@ export default function Footer() {
                 <span className="icon-badge">
                   <Phone size={14} />
                 </span>
-                <span className="contact-text">+1 (555) 123-4567</span>
+                <span className="contact-text">+91 98765 43211</span>
+              </li>
+              <li className="contact-item address-item">
+                <span className="icon-badge">
+                  <MapPin size={14} />
+                </span>
+                <span className="contact-text">
+                  Sai Dharshan, 1st A Main Road, 1st Phase, Yelahanka New Town, Bengaluru - 560064
+                </span>
               </li>
               <li className="contact-item hours-item">
                 <span className="hours">Mon – Sat: 9 AM – 8 PM</span>
@@ -132,7 +141,7 @@ export default function Footer() {
       <div className="footer-bottom">
         <div className="bottom-container">
           <p className="copyright">
-            © {currentYear} Can &amp; Ten. All rights reserved.
+            © {currentYear} CanTen. All rights reserved.
           </p>
           <div className="bottom-tag">
             <span className="tag-dot" />
@@ -367,7 +376,7 @@ export default function Footer() {
         /* ---------- CONTACT ---------- */
         .contact-item {
           display: flex;
-          align-items: center;
+          align-items: flex-start;
           gap: 10px;
           font-size: 0.9rem;
         }
@@ -389,6 +398,7 @@ export default function Footer() {
           color: #f0fdf4;
           opacity: 0.92;
           word-break: break-word;
+          line-height: 1.4;
         }
 
         .hours-item {
@@ -484,7 +494,7 @@ export default function Footer() {
             animation: none !important;
           }
         }
-      `}</style>
+      `}</style>  
     </footer>
   );
 }

@@ -38,7 +38,7 @@ export default function PrivacyPolicyPage() {
                 Introduction
               </h2>
               <p className="text-slate-600 leading-relaxed text-lg">
-                <span className="font-semibold text-slate-800">Cane & Tender</span> ("we," "our," or "us") is committed to protecting your privacy. 
+                <span className="font-semibold text-slate-800">CanTen</span> ("we," "our," or "us") is committed to protecting your privacy. 
                 This Privacy Policy explains how we collect, use, and disclose your personal information when you use our website and services.
               </p>
             </section>
@@ -90,8 +90,8 @@ export default function PrivacyPolicyPage() {
                 <p className="text-slate-600 mb-2">
                   If you have questions about this policy or our data practices, please contact our Data Protection Officer:
                 </p>
-                <a href="mailto:privacy@caneandtender.com" className="text-emerald-600 font-semibold hover:underline hover:text-emerald-700 transition-colors">
-                  privacy@caneandtender.com
+                <a href="mailto:connect@canten.com" className="text-emerald-600 font-semibold hover:underline hover:text-emerald-700 transition-colors">
+                  connect@canten.com
                 </a>
               </div>
             </section>

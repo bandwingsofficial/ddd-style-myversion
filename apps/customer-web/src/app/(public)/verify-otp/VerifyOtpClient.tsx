@@ -121,7 +121,7 @@ export default function VerifyOtpClient() {
           {/* Brand Header */}
           <div className="text-center mb-10">
             <h1 className="text-xl font-extrabold tracking-[0.35em] text-white drop-shadow">
-              CANE&nbsp;TENDER
+              CANTEN
             </h1>
             <p className="text-[11px] tracking-[0.45em] text-white/80 mt-3 uppercase">
               Verification

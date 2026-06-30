@@ -46,7 +46,7 @@ export default function ContactPage() {
                     <span className="mb-1 block text-sm font-semibold uppercase tracking-wide text-[#86efac]">
                       Email Us
                     </span>
-                    <p className="text-lg text-white">support@caneandtender.com</p>
+                    <p className="text-lg text-white">connect@canten.com</p>
                   </div>
                 </div>
 

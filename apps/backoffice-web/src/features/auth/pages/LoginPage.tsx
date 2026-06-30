@@ -53,7 +53,7 @@ export function LoginPage() {
                  <span className="text-white font-black text-xl">S</span>
               </div>
               <div>
-                <h2 className="text-xl font-black leading-none text-[#10a353] tracking-tight">Cane & Tender</h2>
+                <h2 className="text-xl font-black leading-none text-[#10a353] tracking-tight">CanTen</h2>
                 <p className="text-[9px] font-bold tracking-[0.2em] text-gray-400 uppercase">Super Admin</p>
               </div>
             </div>
@@ -119,7 +119,7 @@ export function LoginPage() {
 
           {/* INTERNAL FOOTER (Matches your screenshot position) */}
           <div className="absolute bottom-4 left-0 w-full text-center text-[10px] font-medium text-gray-400">
-            &copy; 2026 Cane & Tender Admin. All rights reserved.
+            &copy; 2026 CanTen Admin. All rights reserved.
           </div>
         </div>
       </motion.div>

@@ -92,7 +92,7 @@ export default function OutletLoginPage() {
                 <ShieldCheck size={18} />
              </div>
              <div className="flex flex-col leading-tight">
-                <span className="text-base font-extrabold tracking-tight text-slate-900">Cane & Tender</span>
+                <span className="text-base font-extrabold tracking-tight text-slate-900">CanTen</span>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Outlet Admin</span>
              </div>
           </div>
@@ -165,7 +165,7 @@ export default function OutletLoginPage() {
 
           {/* FOOTER - Reduced margin */}
           <div className="mt-6 text-center text-[10px] font-medium text-slate-400">
-            &copy; {new Date().getFullYear()} Cane & Tender Outlet. All rights reserved.
+            &copy; {new Date().getFullYear()} CanTen Outlet. All rights reserved.
           </div>
 
         </div>
