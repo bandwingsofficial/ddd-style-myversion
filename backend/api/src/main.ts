@@ -111,12 +111,9 @@ async function bootstrap() {
   /* -------------------------------------------------- */
 
   const port = Number(process.env.APP_PORT) || 4000;
-
   await app.listen(port, '0.0.0.0');
 
-  console.log(
-    `🚀 API running on ${isProduction ? 'http' : 'https'}://0.0.0.0:${port}`,
-  );
+  console.log(`🚀 API running on https://api.dev.local:${port}`);
 }
 
 bootstrap();

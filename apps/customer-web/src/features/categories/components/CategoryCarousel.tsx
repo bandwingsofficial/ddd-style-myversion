@@ -11,12 +11,13 @@ import {
   Droplets
 } from "lucide-react";
 import { useCategories } from "../hooks/useCategories";
+import { useRouter } from "next/navigation";
 
 // Fallback Icon Logic
-const getCategoryIcon = (name: string) => {
+const getCategoryIcon = (name: string, isMobile = false) => {
   const lowerName = name.toLowerCase();
-  // UPDATED: Increased icon size to 48 (was 32)
-  const iconProps = { size: 48, color: "#214527" }; 
+  // Dynamically size icons based on device viewport
+  const iconProps = { size: isMobile ? 32 : 48, color: "#214527" }; 
 
   if (lowerName.includes("cane") || lowerName.includes("juice")) return <Leaf {...iconProps} />;
   if (lowerName.includes("coconut") || lowerName.includes("water")) return <Droplets {...iconProps} />;
@@ -29,8 +30,19 @@ const getCategoryIcon = (name: string) => {
 export const CategoryCarousel = () => {
   const { categories, isLoading } = useCategories();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  
+  const router = useRouter();
   const [showControls, setShowControls] = useState(false);
+  const [isMobileView, setIsMobileView] = useState(false);
+
+  // Detect mobile view to adjust fallback icon sizes natively
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileView(window.innerWidth <= 768);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // 1. SORT ALPHABETICALLY (A-Z)
   const sortedCategories = useMemo(() => {
@@ -54,8 +66,7 @@ export const CategoryCarousel = () => {
 
   const scroll = (direction: "left" | "right") => {
     if (scrollContainerRef.current) {
-      // UPDATED: Increased scroll amount since cards are wider
-      const scrollAmount = 400; 
+      const scrollAmount = window.innerWidth <= 768 ? 250 : 400; 
       scrollContainerRef.current.scrollBy({
         left: direction === "left" ? -scrollAmount : scrollAmount,
         behavior: "smooth",
@@ -131,7 +142,7 @@ export const CategoryCarousel = () => {
           transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .category-card:hover {
-          transform: translateY(-8px); /* Slightly higher lift */
+          transform: translateY(-8px);
         }
         .category-card:hover .image-circle {
           border-color: #4ade80;
@@ -159,19 +170,59 @@ export const CategoryCarousel = () => {
           overflow: hidden;
           text-overflow: ellipsis;
         }
+
+        /* ==========================================================================
+           MOBILE UI RESPONSIVE BREAKPOINTS (Max-width: 768px)
+           ========================================================================== */
+        @media (max-width: 768px) {
+          .responsive-section {
+            padding: 2rem 0 !important;
+          }
+          .responsive-header-row {
+            margin-bottom: 1.5rem !important;
+          }
+          .responsive-title {
+            font-size: 1.75rem !important;
+          }
+          /* Hide desktop control buttons on tiny viewports if they overlap titles */
+          .responsive-controls {
+            display: none !important;
+          }
+          /* Tighten carousel track gap for smaller smartphone screen aesthetics */
+          .responsive-track {
+            gap: 1.25rem !important;
+            padding-left: 16px !important;
+            padding-right: 16px !important;
+          }
+          /* Responsive sizing overrides for cards and circles */
+          .category-card {
+            width: 110px !important;
+            gap: 0.75rem !important;
+          }
+          .image-circle {
+            width: 100px !important;
+            height: 100px !important;
+          }
+          .category-name {
+            font-size: 0.95rem !important;
+          }
+          .subtitle-clamp {
+            font-size: 0.75rem !important;
+          }
+        }
       `}</style>
 
-      <section style={styles.section}>
+      <section style={styles.section} className="responsive-section">
         <div style={styles.container}>
           
           {/* Header Row (Centered) */}
-          <div style={styles.headerRow}>
-            <h2 style={styles.title} className="shine-title">
+          <div style={styles.headerRow} className="responsive-header-row">
+            <h2 style={styles.title} className="shine-title responsive-title">
               Shop by Category
             </h2>
             
             {showControls && (
-              <div style={styles.controlsAbsolute}>
+              <div style={styles.controlsAbsolute} className="responsive-controls">
                 <button onClick={() => scroll("left")} style={styles.navButton} className="nav-btn">
                   <ChevronLeft size={24} color="#214527" />
                 </button>
@@ -189,11 +240,15 @@ export const CategoryCarousel = () => {
               ...styles.carouselTrack,
               justifyContent: showControls ? 'flex-start' : 'center' 
             }}
-            className="hide-scrollbar"
+            className="hide-scrollbar responsive-track"
           >
             {sortedCategories.map((cat) => (
-              <div key={cat.id} style={styles.categoryCard} className="category-card">
-                
+              <div
+  key={cat.id}
+  style={styles.categoryCard}
+  className="category-card"
+  onClick={() => router.push(`/category/${cat.id}`)}
+> 
                 {/* Image Circle */}
                 <div style={styles.imageCircle} className="image-circle">
                   {cat.imagePath ? (
@@ -207,11 +262,11 @@ export const CategoryCarousel = () => {
                         }}
                       />
                       <div style={styles.fallbackIcon}>
-                        {getCategoryIcon(cat.name)}
+                        {getCategoryIcon(cat.name, isMobileView)}
                       </div>
                     </>
                   ) : (
-                    getCategoryIcon(cat.name)
+                    getCategoryIcon(cat.name, isMobileView)
                   )}
                 </div>
 
@@ -239,11 +294,11 @@ export const CategoryCarousel = () => {
   );
 };
 
-// --- STYLES OBJECT ---
+// --- STYLES OBJECT (Kept original configurations clean for Home/Desktop layout) ---
 const styles: { [key: string]: React.CSSProperties } = {
   section: {
     width: "100%",
-    padding: "4rem 0", // Increased padding slightly for balance
+    padding: "4rem 0", 
     backgroundColor: "#ffffff",
   },
   container: {
@@ -267,7 +322,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     position: "relative",
   },
   title: {
-    fontSize: "2.5rem", // Increased Title Size
+    fontSize: "2.5rem", 
     fontWeight: 700,
     fontFamily: "serif", 
     margin: 0,
@@ -282,7 +337,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     transform: "translateY(-50%)",
   },
   navButton: {
-    width: "44px", // Bigger buttons
+    width: "44px", 
     height: "44px",
     borderRadius: "50%",
     border: "1px solid #e2e8f0",
@@ -295,11 +350,11 @@ const styles: { [key: string]: React.CSSProperties } = {
   },
   carouselTrack: {
     display: "flex",
-    gap: "3rem", // Increased gap between items
+    gap: "3rem", 
     overflowX: "auto",
     paddingBottom: "20px",
     scrollBehavior: "smooth",
-    paddingLeft: "10px", // Safety padding
+    paddingLeft: "10px", 
     paddingRight: "10px",
   },
   categoryCard: {
@@ -309,11 +364,11 @@ const styles: { [key: string]: React.CSSProperties } = {
     gap: "1.25rem",
     cursor: "pointer",
     flexShrink: 0,
-    width: "200px", // UPDATED: Increased width (was 130px)
+    width: "200px", 
   },
   imageCircle: {
-    width: "190px", // UPDATED: Increased Size (was 150px)
-    height: "190px", // UPDATED: Increased Size (was 150px)
+    width: "190px", 
+    height: "190px", 
     borderRadius: "50%",
     backgroundColor: "#f8fafc",
     border: "2px solid #e2e8f0",
@@ -348,14 +403,14 @@ const styles: { [key: string]: React.CSSProperties } = {
     width: "100%",
   },
   categoryName: {
-    fontSize: "1.2rem", // UPDATED: Larger font size (was 1rem)
+    fontSize: "1.2rem", 
     fontWeight: 700,
     color: "#334155",
     textAlign: "center",
     transition: "color 0.3s ease",
   },  
   subtitle: {
-    fontSize: "0.9rem", // UPDATED: Larger font size (was 0.8rem)
+    fontSize: "0.9rem", 
     color: "#64748b",
     textAlign: "center",
     lineHeight: "1.4",
