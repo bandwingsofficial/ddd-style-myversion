@@ -80,12 +80,7 @@ export const ProductsAPI = {
   payload.galleryImages.forEach(file => {
     formData.append("galleryImages", file);
   });
-
-  // Debug
-  for (const [key, value] of formData.entries()) {
-    console.log(key, value);
-  }
-
+  
   const res = await axiosInstance.post(
     "/products",
     formData
