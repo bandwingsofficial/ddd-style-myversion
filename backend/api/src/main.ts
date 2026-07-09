@@ -1,6 +1,5 @@
 // src/main.ts
 
-import * as fs from 'fs';
 import * as path from 'path';
 
 import { NestFactory } from '@nestjs/core';
@@ -15,8 +14,6 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
 
 async function bootstrap() {
-  const isProduction = process.env.NODE_ENV === 'production';
-
   const repoRoot =
     process.env.APP_ROOT ??
     path.resolve(__dirname, '..', '..', '..');
@@ -25,24 +22,8 @@ async function bootstrap() {
     console.warn('⚠️ APP_ROOT not set, using fallback:', repoRoot);
   }
 
-  let app;
-
-  if (isProduction) {
-    app = await NestFactory.create(AppModule);
-  } else {
-    const httpsOptions = {
-      key: fs.readFileSync(
-        path.join(repoRoot, 'certs', 'admin.dev.local+1-key.pem'),
-      ),
-      cert: fs.readFileSync(
-        path.join(repoRoot, 'certs', 'admin.dev.local+1.pem'),
-      ),
-    };
-
-    app = await NestFactory.create(AppModule, {
-      httpsOptions,
-    });
-  }
+  // Always use HTTP locally
+  const app = await NestFactory.create(AppModule);
 
   /* -------------------------------------------------- */
   /* WEBSOCKET                                          */
@@ -113,7 +94,7 @@ async function bootstrap() {
   const port = Number(process.env.APP_PORT) || 4000;
   await app.listen(port, '0.0.0.0');
 
-  console.log(`🚀 API running on https://api.dev.local:${port}`);
+  console.log(`🚀 API running on http://localhost:${port}`);
 }
 
 bootstrap();
