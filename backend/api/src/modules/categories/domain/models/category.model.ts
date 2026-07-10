@@ -7,7 +7,7 @@ export interface CategoryProps {
   id: string;
   name: string;
   subtitle?: string;
-  imagePath?: string; // backend stored image path: images/categories/*
+  imagePath?: string; // S3 object key: categories/image/*
   status: CategoryStatus;
   sortOrder: number;
   createdAt: Date;
@@ -197,11 +197,11 @@ export class Category {
 
     if (
       this.imagePath &&
-      !this.imagePath.startsWith('images/categories/')
+      !this.imagePath.startsWith('categories/')
     ) {
       throw new ValidationError(
         'CATEGORY_INVALID_IMAGE_PATH',
-        'Image path must start with images/categories/',
+        'Image path must start with categories/',
       );
     }
 

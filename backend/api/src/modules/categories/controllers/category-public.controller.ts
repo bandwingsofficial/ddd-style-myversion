@@ -6,7 +6,7 @@ import { CategoryOrchestratorService } from '../services/category-orchestrator.s
 import { Public } from '../../../common/decorators/public.decorator';
 
 @Controller('public/categories')
-@Public() // 🔓 NO JWT, NO ROLES
+@Public()
 export class CategoryPublicController {
   constructor(
     private readonly orchestrator: CategoryOrchestratorService,
@@ -14,17 +14,8 @@ export class CategoryPublicController {
 
   @Get()
   async getCategoriesForPublic() {
-    const categories =
-      await this.orchestrator.getAllCategories({
-        includeInactive: false,
-      });
-
-    const data = categories.map((category) => ({
-      id: category.id,
-      name: category.name,
-      subtitle: category.subtitle,
-      imagePath: category.imagePath,
-    }));
+    const data =
+      await this.orchestrator.getAllCategoriesForPublic();
 
     return {
       success: true,

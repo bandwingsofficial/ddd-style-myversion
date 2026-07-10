@@ -4,11 +4,18 @@ import { Injectable } from '@nestjs/common';
 
 import { CategoryService } from './category.service';
 import { Category } from '../domain/models/category.model';
+import {
+  CategoryPublicResponse,
+  CategoryResponse,
+  CategoryResponseMapper,
+} from '../mappers/category-response.mapper';
+import { MulterUploadFile } from '../../uploads/interfaces/upload-file.interface';
 
 @Injectable()
 export class CategoryOrchestratorService {
   constructor(
     private readonly categoryService: CategoryService,
+    private readonly categoryResponseMapper: CategoryResponseMapper,
   ) {}
 
   /* ================================================= */
@@ -17,19 +24,28 @@ export class CategoryOrchestratorService {
 
   async getCategoryById(
     categoryId: string,
-  ): Promise<Category> {
-    return this.categoryService.getById(categoryId);
+  ): Promise<CategoryResponse> {
+    const category = await this.categoryService.getById(categoryId);
+
+    return this.categoryResponseMapper.toResponse(category);
   }
 
-  /**
-   * GET ALL
-   * - admin → includeInactive = true
-   * - customer → includeInactive = false
-   */
   async getAllCategories(params?: {
     includeInactive?: boolean;
-  }): Promise<Category[]> {
-    return this.categoryService.getAll(params);
+  }): Promise<CategoryResponse[]> {
+    const categories = await this.categoryService.getAll(params);
+
+    return this.categoryResponseMapper.toResponseList(categories);
+  }
+
+  async getAllCategoriesForPublic(): Promise<CategoryPublicResponse[]> {
+    const categories = await this.categoryService.getAll({
+      includeInactive: false,
+    });
+
+    return this.categoryResponseMapper.toPublicResponseList(
+      categories,
+    );
   }
 
   /* ================================================= */
@@ -38,34 +54,37 @@ export class CategoryOrchestratorService {
 
   async createCategory(params: {
     category: Category;
-  }): Promise<Category> {
-    return this.categoryService.createCategory(
-      params.category,
+    imageFile?: MulterUploadFile;
+  }): Promise<CategoryResponse> {
+    const category = await this.categoryService.createCategory(
+      params,
     );
+
+    return this.categoryResponseMapper.toResponse(category);
   }
 
   async renameCategory(params: {
     categoryId: string;
     name: string;
-  }): Promise<Category> {
-    return this.categoryService.renameCategory(
+  }): Promise<CategoryResponse> {
+    const category = await this.categoryService.renameCategory(
       params,
     );
+
+    return this.categoryResponseMapper.toResponse(category);
   }
 
-  /**
-   * UPDATE DETAILS
-   * - subtitle
-   * - image (replace / remove)
-   */
   async updateCategoryDetails(params: {
     categoryId: string;
     subtitle?: string;
     imagePath?: string | null;
-  }): Promise<Category> {
-    return this.categoryService.updateCategoryDetails(
-      params,
-    );
+    imageFile?: MulterUploadFile;
+    removeImage?: boolean;
+  }): Promise<CategoryResponse> {
+    const category =
+      await this.categoryService.updateCategoryDetails(params);
+
+    return this.categoryResponseMapper.toResponse(category);
   }
 
   async disableCategory(params: {
@@ -91,9 +110,11 @@ export class CategoryOrchestratorService {
   async changeCategorySortOrder(params: {
     categoryId: string;
     sortOrder: number;
-  }): Promise<Category> {
-    return this.categoryService.changeSortOrder(
+  }): Promise<CategoryResponse> {
+    const category = await this.categoryService.changeSortOrder(
       params,
     );
+
+    return this.categoryResponseMapper.toResponse(category);
   }
 }

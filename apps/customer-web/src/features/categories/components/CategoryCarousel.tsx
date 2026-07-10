@@ -44,10 +44,10 @@ export const CategoryCarousel = () => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // 1. SORT ALPHABETICALLY (A-Z)
+  // Preserve backend sort order (active categories by sortOrder asc)
   const sortedCategories = useMemo(() => {
     if (!categories) return [];
-    return [...categories].sort((a, b) => a.name.localeCompare(b.name));
+    return categories;
   }, [categories]);
 
   // Check overflow logic
@@ -72,13 +72,6 @@ export const CategoryCarousel = () => {
         behavior: "smooth",
       });
     }
-  };
-
-  const getImageUrl = (path: string) => {
-    if (!path) return "";
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") || "";
-    const cleanPath = path.replace(/^\//, "");
-    return `${baseUrl}/${cleanPath}`;
   };
 
   if (isLoading) {
@@ -251,10 +244,10 @@ export const CategoryCarousel = () => {
 > 
                 {/* Image Circle */}
                 <div style={styles.imageCircle} className="image-circle">
-                  {cat.imagePath ? (
+                  {cat.imageUrl ? (
                     <>
                       <img
-                        src={getImageUrl(cat.imagePath)}
+                        src={cat.imageUrl}
                         alt={cat.name}
                         style={styles.image}
                         onError={(e) => {

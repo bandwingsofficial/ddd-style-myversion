@@ -7,7 +7,6 @@ export const envValidationSchema = z.object({
   PORT: z.coerce.number().min(1),
 
   DATABASE_URL: z.string().url(),
-  
 
   REDIS_URL: z.string().url(),
 
@@ -19,6 +18,12 @@ export const envValidationSchema = z.object({
 
   OTP_TTL_SECONDS: z.coerce.number().min(30),
   OTP_MAX_ATTEMPTS: z.coerce.number().min(1).max(10),
+
+  AWS_ACCESS_KEY_ID: z.string().min(1),
+  AWS_SECRET_ACCESS_KEY: z.string().min(1),
+  AWS_REGION: z.string().min(1),
+  AWS_BUCKET_NAME: z.string().min(1),
+
 });
 
 export function validateEnv(config: Record<string, unknown>) {

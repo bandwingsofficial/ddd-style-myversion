@@ -1,6 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import * as fs from 'fs';
-import * as path from 'path';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 
@@ -11,6 +9,9 @@ import { ValidationError } from '../../../common/errors';
 
 /* 🔥 EVENTS */
 import { CategoryEventsService } from '../events/category-events.service';
+import { UploadFolders } from '../../uploads/constants/upload-folders.constants';
+import { UploadService } from '../../uploads/services/upload.service';
+import { MulterUploadFile } from '../../uploads/interfaces/upload-file.interface';
 
 @Injectable()
 export class CategoryService {
@@ -18,10 +19,11 @@ export class CategoryService {
     private readonly prisma: PrismaService,
     private readonly categoryRepo: CategoryRepository,
     private readonly categoryEvents: CategoryEventsService,
+    private readonly uploadService: UploadService,
   ) {}
 
   /* ================================================= */
-  /* 🔒 IMAGE PATH NORMALIZATION (NEW)                 */
+  /* 🔒 IMAGE PATH NORMALIZATION                       */
   /* ================================================= */
 
   private normalizeImagePath(
@@ -31,19 +33,16 @@ export class CategoryService {
 
     let normalized = imagePath.trim();
 
-    // remove protocol + domain (https://example.com/)
     normalized = normalized.replace(/^https?:\/\/[^/]+\//, '');
 
-    // remove leading slash
     if (normalized.startsWith('/')) {
       normalized = normalized.slice(1);
     }
 
-    // enforce correct base directory
-    if (!normalized.startsWith('images/categories/')) {
+    if (!normalized.startsWith(`${UploadFolders.CATEGORIES}/`)) {
       throw new ValidationError(
         'CATEGORY_INVALID_IMAGE_PATH',
-        'Image path must be under images/categories/',
+        `Image path must be under ${UploadFolders.CATEGORIES}/`,
       );
     }
 
@@ -79,13 +78,30 @@ export class CategoryService {
   /* CREATE CATEGORY                                   */
   /* ================================================= */
 
-  async createCategory(category: Category): Promise<Category> {
+  async createCategory(params: {
+    category: Category;
+    imageFile?: MulterUploadFile;
+  }): Promise<Category> {
     let result!: Category;
 
-    // 🔒 normalize imagePath BEFORE domain persistence
-    const normalizedCategory = category.updateDetails({
-      subtitle: category.subtitle,
-      imagePath: this.normalizeImagePath(category.imagePath),
+    let objectKey: string | undefined;
+
+    if (params.imageFile) {
+      const uploadResult = await this.uploadService.uploadSingleImage({
+        folder: UploadFolders.CATEGORIES,
+        file: params.imageFile,
+      });
+
+      objectKey = uploadResult.objectKey;
+    } else if (params.category.imagePath) {
+      objectKey = this.normalizeImagePath(
+        params.category.imagePath,
+      ) as string;
+    }
+
+    const normalizedCategory = params.category.updateDetails({
+      subtitle: params.category.subtitle,
+      imagePath: objectKey,
     });
 
     await this.prisma.$transaction(async (tx) => {
@@ -129,7 +145,6 @@ export class CategoryService {
       result = await this.categoryRepo.create(normalizedCategory, tx);
     });
 
-    // 🔔 DOMAIN EVENT
     this.categoryEvents.emitCategoryCreated({
       categoryId: result.id,
     });
@@ -145,6 +160,8 @@ export class CategoryService {
     categoryId: string;
     subtitle?: string;
     imagePath?: string | null;
+    imageFile?: MulterUploadFile;
+    removeImage?: boolean;
   }): Promise<Category> {
     const category = await this.getById(params.categoryId);
 
@@ -156,10 +173,25 @@ export class CategoryService {
     }
 
     const oldImage = category.imagePath;
+    let nextImagePath: string | null | undefined = params.imagePath;
+
+    if (params.removeImage) {
+      nextImagePath = null;
+    } else if (params.imageFile) {
+      const uploadResult = await this.uploadService.uploadSingleImage({
+        folder: UploadFolders.CATEGORIES,
+        file: params.imageFile,
+      });
+
+      nextImagePath = uploadResult.objectKey;
+    }
 
     const updated = category.updateDetails({
       subtitle: params.subtitle,
-      imagePath: this.normalizeImagePath(params.imagePath),
+      imagePath:
+        nextImagePath === undefined
+          ? undefined
+          : this.normalizeImagePath(nextImagePath),
     });
 
     await this.prisma.$transaction(async (tx) => {
@@ -167,7 +199,7 @@ export class CategoryService {
     });
 
     if (oldImage && oldImage !== updated.imagePath) {
-      this.deleteImageSafe(oldImage);
+      await this.deleteImageSafe(oldImage);
 
       if (updated.imagePath) {
         this.categoryEvents.emitCategoryImageUpdated({
@@ -219,57 +251,71 @@ export class CategoryService {
     return updated;
   }
 
-  /* ================================================= */
-  /* ENABLE / DISABLE                                 */
-  /* ================================================= */
+ /* ================================================= */
+/* ENABLE / DISABLE                                  */
+/* ================================================= */
 
-  async disableCategory(categoryId: string): Promise<{
-    id: string;
-    status: 'INACTIVE';
-  }> {
-    const category = await this.getById(categoryId);
+async disableCategory(categoryId: string): Promise<{
+  id: string;
+  status: 'INACTIVE';
+}> {
+  const category = await this.getById(categoryId);
 
-    if (category.isInactive()) {
-      return { id: category.id, status: 'INACTIVE' };
-    }
-
-    const disabled = category.disable();
-
-    await this.prisma.$transaction(async (tx) => {
-      await this.categoryRepo.updateStatus(disabled, tx);
-      await this.categoryRepo.normalizeActiveSortOrders(tx);
-    });
-
-    this.categoryEvents.emitCategoryDisabled({
-      categoryId: category.id,
-    });
-
-    return { id: category.id, status: 'INACTIVE' };
+  if (category.isInactive()) {
+    return {
+      id: category.id,
+      status: 'INACTIVE',
+    };
   }
 
-  async enableCategory(categoryId: string): Promise<{
-    id: string;
-    status: 'ACTIVE';
-  }> {
-    const category = await this.getById(categoryId);
+  const disabled = category.disable();
 
-    if (category.isActive()) {
-      return { id: category.id, status: 'ACTIVE' };
-    }
+  await this.prisma.$transaction(async (tx) => {
+    await this.categoryRepo.updateStatus(disabled, tx);
 
-    const enabled = category.enable();
+    await this.categoryRepo.normalizeActiveSortOrders(tx);
+  });
 
-    await this.prisma.$transaction(async (tx) => {
-      await this.categoryRepo.updateStatus(enabled, tx);
-      await this.categoryRepo.normalizeActiveSortOrders(tx);
-    });
+  this.categoryEvents.emitCategoryDisabled({
+    categoryId: category.id,
+  });
 
-    this.categoryEvents.emitCategoryEnabled({
-      categoryId: category.id,
-    });
+  return {
+    id: category.id,
+    status: 'INACTIVE',
+  };
+}
 
-    return { id: category.id, status: 'ACTIVE' };
+async enableCategory(categoryId: string): Promise<{
+  id: string;
+  status: 'ACTIVE';
+}> {
+  const category = await this.getById(categoryId);
+
+  if (category.isActive()) {
+    return {
+      id: category.id,
+      status: 'ACTIVE',
+    };
   }
+
+  const enabled = category.enable();
+
+  await this.prisma.$transaction(async (tx) => {
+    await this.categoryRepo.updateStatus(enabled, tx);
+
+    await this.categoryRepo.normalizeActiveSortOrders(tx);
+  });
+
+  this.categoryEvents.emitCategoryEnabled({
+    categoryId: category.id,
+  });
+
+  return {
+    id: category.id,
+    status: 'ACTIVE',
+  };
+}
 
   /* ================================================= */
   /* SORT ORDER                                       */
@@ -313,20 +359,16 @@ export class CategoryService {
   }
 
   /* ================================================= */
-  /* FILE HELPERS                                     */
+  /* STORAGE HELPERS                                  */
   /* ================================================= */
 
-  private deleteImageSafe(imagePath?: string): void {
-  if (!imagePath) return;
+  private async deleteImageSafe(objectKey?: string): Promise<void> {
+    if (!objectKey) return;
 
-  const appRoot =
-    process.env.APP_ROOT ??
-    path.resolve(process.cwd(), '..', '..');
-
-  const fullPath = path.join(appRoot, imagePath);
-
-  fs.promises.unlink(fullPath).catch(() => {
-    // silent fail (file may not exist)
-  });
-}
+    try {
+      await this.uploadService.deleteObject({ objectKey });
+    } catch {
+      // silent fail (object may not exist)
+    }
+  }
 }

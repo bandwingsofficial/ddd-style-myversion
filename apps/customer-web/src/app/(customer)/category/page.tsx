@@ -20,18 +20,12 @@ export default function CategoriesPage() {
   const { categories, isLoading } = useCategories();
   const [searchQuery, setSearchQuery] = useState("");
 
-  const sortedCategories = useMemo(() => {
+  const filteredCategories = useMemo(() => {
     if (!categories) return [];
-    return [...categories]
-      .filter(cat => cat.name.toLowerCase().includes(searchQuery.toLowerCase()))
-      .sort((a, b) => a.name.localeCompare(b.name));
+    return categories.filter((cat) =>
+      cat.name.toLowerCase().includes(searchQuery.toLowerCase()),
+    );
   }, [categories, searchQuery]);
-
-  const getImageUrl = (path: string) => {
-    if (!path) return "";
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") || "";
-    return `${baseUrl}/${path.replace(/^\//, "")}`;
-  };
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] flex flex-col justify-between">
@@ -97,15 +91,15 @@ export default function CategoriesPage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-8">
-              {sortedCategories.map((cat) => (
+              {filteredCategories.map((cat) => (
                 <div key={cat.id} className="category-card group cursor-pointer flex flex-col items-center">
                   
                   {/* Perfectly Sized Elegant Circular Thumbnail */}
                   <div className="img-wrapper relative w-full max-w-[150px] sm:max-w-[160px] aspect-square rounded-full mb-4 bg-slate-50 overflow-hidden flex items-center justify-center border-4 border-white shadow-md shadow-slate-200/60 mx-auto">
-                    {cat.imagePath ? (
+                    {cat.imageUrl ? (
                       <>
                         <img
-                          src={getImageUrl(cat.imagePath)}
+                          src={cat.imageUrl}
                           alt={cat.name}
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                           onError={(e) => (e.currentTarget.style.display = "none")}
@@ -139,7 +133,7 @@ export default function CategoriesPage() {
             </div>
           )}
 
-          {!isLoading && sortedCategories.length === 0 && (
+          {!isLoading && filteredCategories.length === 0 && (
             <div className="text-center py-20 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
               <ShoppingBag className="mx-auto text-slate-300 mb-3" size={40} />
               <p className="text-slate-500 text-sm">We couldn't find any categories matching "{searchQuery}"</p>

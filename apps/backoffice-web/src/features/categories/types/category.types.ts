@@ -3,11 +3,25 @@ export type CategoryStatus = 'ACTIVE' | 'INACTIVE';
 export interface Category {
   id: string;
   name: string;
-  subtitle: string;      // Added based on your screenshot
-  imagePath?: string;    // Added based on your screenshot
-  sortOrder: number;     // Added based on your screenshot
+  subtitle?: string;
+  imageUrl?: string;
   status: CategoryStatus;
-  isActive?: any;        // Kept for compatibility if you use it elsewhere
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CategoryStatusChangeResponse {
+  id: string;
+  status: CategoryStatus;
+}
+
+export interface CategoriesUpdatedSocketPayload {
+  version: number;
+  categories: Array<{
+    id: string;
+    name: string;
+    imagePath?: string;
+    sortOrder: number;
+  }>;
 }

@@ -37,8 +37,8 @@ export default function CreateCategoryModal({
     setError('');
 
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setError('File is too large. Please choose an image under 5MB.');
+      if (file.size > 10 * 1024 * 1024) {
+        setError('File is too large. Please choose an image under 10MB.');
         return;
       }
       setImage(file);
@@ -177,7 +177,7 @@ export default function CreateCategoryModal({
             {/* FILE UPLOAD & PREVIEW */}
             <div className="space-y-1">
               <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                Cover Image <span className="text-[10px] font-normal lowercase">(max 5mb)</span>
+                Cover Image <span className="text-[10px] font-normal lowercase">(max 10mb)</span>
               </label>
               
               <div className={`

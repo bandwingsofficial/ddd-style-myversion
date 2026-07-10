@@ -4,7 +4,7 @@ import {
   ExceptionFilter,
   HttpStatus,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 
 import { AppError } from '../errors/app-error';
 import {
@@ -24,16 +24,35 @@ export class DomainExceptionFilter
     host: ArgumentsHost,
   ) {
     const ctx = host.switchToHttp();
+    const request = ctx.getRequest<Request>();
     const response = ctx.getResponse<Response>();
 
-    let status = HttpStatus.BAD_REQUEST;
+    /* ================================================= */
+    /* DEBUG LOGS                                        */
+    /* ================================================= */
+
+    console.error('\n================ DOMAIN EXCEPTION ================');
+    console.error(`Path      : ${request.method} ${request.url}`);
+    console.error(`Code      : ${exception.code}`);
+    console.error(`Message   : ${exception.message}`);
+    console.error('Metadata  :', exception.metadata ?? null);
+    console.error('Exception :', exception);
+
+    if (exception instanceof Error) {
+      console.error('Stack:\n', exception.stack);
+    }
+
+    console.error('==================================================\n');
 
     /* ================================================= */
     /* STATUS CODE MAPPING                               */
     /* ================================================= */
 
+    let status = HttpStatus.BAD_REQUEST;
+
     switch (exception.code) {
       /* ---------- AUTH / SECURITY ---------- */
+
       case 'UNAUTHORIZED':
       case 'INVALID_CREDENTIALS':
         status = HttpStatus.UNAUTHORIZED;
@@ -55,6 +74,7 @@ export class DomainExceptionFilter
         break;
 
       /* ---------- OUTLET DOMAIN ---------- */
+
       case 'OUTLET_NOT_FOUND':
       case 'OUTLET_USER_NOT_FOUND':
         status = HttpStatus.NOT_FOUND;
@@ -65,18 +85,20 @@ export class DomainExceptionFilter
         break;
 
       /* ---------- VALIDATION ---------- */
+
       case 'VALIDATION_ERROR':
       case 'INVARIANT_VIOLATION':
         status = HttpStatus.UNPROCESSABLE_ENTITY;
         break;
 
       /* ---------- DEFAULT ---------- */
+
       default:
         status = HttpStatus.BAD_REQUEST;
     }
 
     /* ================================================= */
-    /* UNIFIED ERROR RESPONSE                            */
+    /* RESPONSE                                          */
     /* ================================================= */
 
     return response.status(status).json({

@@ -32,7 +32,7 @@ import { UpdateCategoryDetailsDto } from '../dtos/update-category-details.dto';
 import { Category } from '../domain/models/category.model';
 
 /* Upload */
-import { categoryImageUploadOptions } from '../../../common/upload/category-image.upload';
+import { categoryImageUploadOptions } from '../../uploads/validators/multer-memory.options';
 
 @Controller('categories')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -52,6 +52,9 @@ export class CategoryManagementController {
       await this.orchestrator.getAllCategories({
         includeInactive: true,
       });
+        console.log("==============");
+  console.log(data);
+  console.log("==============");
 
     return {
       success: true,
@@ -93,15 +96,13 @@ export class CategoryManagementController {
       id: randomUUID(),
       name: dto.name,
       subtitle: dto.subtitle,
-      imagePath: file
-        ? `images/categories/${file.filename}`
-        : undefined,
       sortOrder: dto.sortOrder,
     });
 
     const data =
       await this.orchestrator.createCategory({
         category,
+        imageFile: file,
       });
 
     return {
@@ -125,18 +126,12 @@ export class CategoryManagementController {
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: UpdateCategoryDetailsDto,
   ) {
-    const imagePath =
-      dto.removeImage === 'true'
-        ? null
-        : file
-        ? `images/categories/${file.filename}`
-        : undefined;
-
     const data =
       await this.orchestrator.updateCategoryDetails({
         categoryId,
         subtitle: dto.subtitle,
-        imagePath,
+        removeImage: dto.removeImage === 'true',
+        imageFile: file,
       });
 
     return {
