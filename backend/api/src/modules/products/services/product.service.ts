@@ -1,6 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import * as fs from 'fs';
-import * as path from 'path';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 
@@ -14,6 +12,9 @@ import { ProductStatus } from '../domain/enums/product-status.enum';
 import { ProductEventsService } from '../events/product-events.service';
 import { ProductImages } from '../domain/value-objects/product-images.vo';
 import { PublicProductQueryDto } from '../dtos/public-product-query.dto';
+import { UploadFolders } from '../../uploads/constants/upload-folders.constants';
+import { UploadService } from '../../uploads/services/upload.service';
+import { MulterUploadFile } from '../../uploads/interfaces/upload-file.interface';
 
 @Injectable()
 export class ProductService {
@@ -21,6 +22,7 @@ export class ProductService {
     private readonly prisma: PrismaService,
     private readonly productRepo: ProductRepository,
     private readonly productEvents: ProductEventsService,
+    private readonly uploadService: UploadService,
   ) {}
 
   /* ================================================= */
@@ -40,10 +42,10 @@ export class ProductService {
       normalized = normalized.slice(1);
     }
 
-    if (!normalized.startsWith('images/products/')) {
+    if (!normalized.startsWith(`${UploadFolders.PRODUCTS}/`)) {
       throw new ValidationError(
         'PRODUCT_INVALID_IMAGE_PATH',
-        'Image path must be under images/products/',
+        `Image path must be under ${UploadFolders.PRODUCTS}/`,
       );
     }
 
@@ -54,15 +56,16 @@ export class ProductService {
   /* READS                                            */
   /* ================================================= */
 
-async getAllProducts(query?: PublicProductQueryDto): Promise<Product[]> {
-  const rows = await this.productRepo.findAll('admin', query);
+  async getAllProducts(query?: PublicProductQueryDto): Promise<Product[]> {
+    const rows = await this.productRepo.findAll('admin', query);
 
-  return rows.map(r => r.product);
-}
+    return rows.map((r) => r.product);
+  }
 
-async getPublicProducts(query: PublicProductQueryDto) {
-  return this.productRepo.findAll('public', query);
-}
+  async getPublicProducts(query: PublicProductQueryDto) {
+    return this.productRepo.findAll('public', query);
+  }
+
   async getPublicProductsWithCategory(): Promise<
     {
       product: Product;
@@ -119,85 +122,125 @@ async getPublicProducts(query: PublicProductQueryDto) {
   }
 
   /* ================================================= */
-  /* CREATE PRODUCT (✅ FIXED)                          */
+  /* CREATE PRODUCT                                    */
   /* ================================================= */
 
-  async createProduct(product: Product): Promise<Product> {
-  // ✅ Category must exist
-  const categoryExists = await this.prisma.category.findUnique({
-    where: { id: product.categoryId },
-    select: { id: true },
-  });
-
-  if (!categoryExists) {
-    throw new ValidationError(
-      'CATEGORY_NOT_FOUND',
-      'Category does not exist',
-    );
-  }
-
-  // ✅ Stock item must exist
-  const stockExists = await this.prisma.stockItem.findUnique({
-    where: { id: product.stockItemId },
-    select: { id: true },
-  });
-
-  if (!stockExists) {
-    throw new ValidationError(
-      'STOCK_ITEM_NOT_FOUND',
-      'Stock item does not exist',
-    );
-  }
-
-  // ✅ Normalize images
-  const normalizedProduct = Product.rehydrate({
-    ...product,
-    images: ProductImages.create(
-      this.normalizeImagePath(product.images.getMain())!,
-      product.images
-        .getGallery()
-        .map((img) => this.normalizeImagePath(img)!),
-    ),
-  });
-
-  let created!: Product;
-
-  try {
-    await this.prisma.$transaction(async (tx) => {
-      created = await this.productRepo.create(
-        { product: normalizedProduct },
-        tx,
-      );
+  async createProduct(params: {
+    product: Product;
+    mainImageFile: MulterUploadFile;
+    galleryImageFiles?: MulterUploadFile[];
+  }): Promise<Product> {
+    const categoryExists = await this.prisma.category.findUnique({
+      where: { id: params.product.categoryId },
+      select: { id: true },
     });
-  } catch (e: any) {
-    /* 🔥 HANDLE UNIQUE CONSTRAINT CLEANLY */
-    if (e.code === 'P2002') {
-      const field = e.meta?.target?.[0];
 
-      if (field === 'productName') {
-        throw new ValidationError(
-          'PRODUCT_NAME_EXISTS',
-          'Product with same name already exists',
-        );
-      }
-
-      if (field === 'slug') {
-        throw new ValidationError(
-          'PRODUCT_SLUG_EXISTS',
-          'Product slug already exists',
-        );
-      }
+    if (!categoryExists) {
+      throw new ValidationError(
+        'CATEGORY_NOT_FOUND',
+        'Category does not exist',
+      );
     }
 
-    throw e;
+    const stockExists = await this.prisma.stockItem.findUnique({
+      where: { id: params.product.stockItemId },
+      select: { id: true },
+    });
+
+    if (!stockExists) {
+      throw new ValidationError(
+        'STOCK_ITEM_NOT_FOUND',
+        'Stock item does not exist',
+      );
+    }
+
+    const mainUpload = await this.uploadService.uploadSingleImage({
+      folder: UploadFolders.PRODUCTS,
+      file: params.mainImageFile,
+    });
+
+    const galleryUploads = params.galleryImageFiles?.length
+      ? await this.uploadService.uploadMultipleImages({
+          folder: UploadFolders.PRODUCTS,
+          files: params.galleryImageFiles,
+        })
+      : [];
+
+    const normalizedProduct = Product.rehydrate({
+      id: params.product.id,
+      categoryId: params.product.categoryId,
+      stockItemId: params.product.stockItemId,
+      name: params.product.name,
+      slug: params.product.slug,
+      price: params.product.price,
+      images: ProductImages.create(
+        mainUpload.objectKey,
+        galleryUploads.map((upload) => upload.objectKey),
+      ),
+      tags: params.product.tags,
+      sortOrder: params.product.sortOrder,
+      isAvailable: params.product.isAvailable,
+      unitValue: params.product.unitValue,
+      unitType: params.product.unitType,
+      ratingAverage: params.product.ratingAverage,
+      ratingCount: params.product.ratingCount,
+      shortDescription: params.product.shortDescription,
+      longDescription: params.product.longDescription,
+      status: params.product.status,
+      trendState: params.product.trendState,
+      featuredState: params.product.featuredState,
+      ingredients: params.product.ingredients,
+      benefits: params.product.benefits,
+      extraInfo1: params.product.extraInfo1,
+      extraInfo2: params.product.extraInfo2,
+      createdAt: params.product.createdAt,
+      updatedAt: params.product.updatedAt,
+      createdBy: params.product.createdBy,
+    });
+
+    let created!: Product;
+
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        created = await this.productRepo.create(
+          { product: normalizedProduct },
+          tx,
+        );
+      });
+    } catch (e: any) {
+      await this.deleteImageSafe(mainUpload.objectKey);
+      await this.deleteMultipleImagesSafe(
+        galleryUploads.map((upload) => upload.objectKey),
+      );
+
+      if (e.code === 'P2002') {
+        const field = e.meta?.target?.[0];
+
+        if (field === 'productName') {
+          throw new ValidationError(
+            'PRODUCT_NAME_EXISTS',
+            'Product with same name already exists',
+          );
+        }
+
+        if (field === 'slug') {
+          throw new ValidationError(
+            'PRODUCT_SLUG_EXISTS',
+            'Product slug already exists',
+          );
+        }
+      }
+
+      throw e;
+    }
+
+    this.productEvents.emitProductCreated({
+      productId: created.id,
+    });
+
+    return created;
   }
 
-  this.productEvents.emitProductCreated({
-    productId: created.id,
-  });
-
-  return created;
-}
   /* ================================================= */
   /* UPDATE DETAILS                                   */
   /* ================================================= */
@@ -299,237 +342,264 @@ async getPublicProducts(query: PublicProductQueryDto) {
     });
 
     this.productEvents.emitProductContentUpdated({
-  productId: updated.id,
-  ingredients: updated.ingredients ?? null,
-  benefits: updated.benefits ?? null,
-  extraInfo1: updated.extraInfo1 ?? null,
-  extraInfo2: updated.extraInfo2 ?? null,
-});
+      productId: updated.id,
+      ingredients: updated.ingredients ?? null,
+      benefits: updated.benefits ?? null,
+      extraInfo1: updated.extraInfo1 ?? null,
+      extraInfo2: updated.extraInfo2 ?? null,
+    });
 
     return updated;
   }
 
   /* ================================================= */
-    /* UPDATE IMAGES                                    */
+  /* REPLACE MAIN IMAGE                               */
   /* ================================================= */
 
-  async updateImages(params: {
+  async replaceMainImage(params: {
     productId: string;
-    mainImage?: string;
-    galleryImages?: string[];
-    replaceImage?: string; // 🔥 NEW
+    imageFile: MulterUploadFile;
   }): Promise<Product> {
-    const product = await this.getById(params.productId);
+    const product = await this.assertActiveProduct(params.productId);
+    const oldMainImage = product.images.getMain();
 
-    /* ---------------------------------- */
-    /* Product must be active             */
-    /* ---------------------------------- */
-    if (!product.isActive()) {
-      throw new ValidationError(
-        'PRODUCT_INACTIVE',
-        'Inactive product cannot be updated',
-      );
-    }
-
-    /* ---------------------------------- */
-    /* Prevent empty update               */
-    /* ---------------------------------- */
-    if (
-      params.mainImage === undefined &&
-      params.galleryImages === undefined &&
-      params.replaceImage === undefined
-    ) {
-      throw new ValidationError(
-        'NO_IMAGES_PROVIDED',
-        'No images provided to update',
-      );
-    }
-
-    /* ---------------------------------- */
-    /* Resolve next main image             */
-    /* ---------------------------------- */
-    const nextMainImage = params.mainImage
-      ? this.normalizeImagePath(params.mainImage)
-      : product.images.getMain();
-
-    if (!nextMainImage) {
-      throw new ValidationError(
-        'INVALID_MAIN_IMAGE',
-        'Main image must be a non-empty string',
-      );
-    }
-
-    /* ---------------------------------- */
-    /* Handle gallery replacement 🔥      */
-    /* ---------------------------------- */
-    let nextGalleryImages = product.images.getGallery();
-
-    if (params.replaceImage && params.galleryImages?.length === 1) {
-      const target = this.normalizeImagePath(params.replaceImage);
-      const replacement = this.normalizeImagePath(params.galleryImages[0]);
-
-      const index = nextGalleryImages.indexOf(target!);
-
-      if (index === -1) {
-        throw new ValidationError(
-          'GALLERY_IMAGE_NOT_FOUND',
-          'Image to replace was not found in gallery',
-        );
-      }
-
-      nextGalleryImages = [...nextGalleryImages];
-      nextGalleryImages[index] = replacement!;
-
-      // delete ONLY replaced image
-      this.deleteImageSafe(target!);
-    } else if (params.galleryImages !== undefined) {
-
-    /* ---------------------------------- */
-    /* Full gallery replace (optional)    */
-    /* ---------------------------------- */
-      nextGalleryImages = params.galleryImages
-        .map((img) => this.normalizeImagePath(img))
-        .filter((img): img is string => Boolean(img));
-    }
-
-    /* ---------------------------------- */
-    /* Track old images                   */
-    /* ---------------------------------- */
-    const oldImages = new Set([
-      product.images.getMain(),
-      ...product.images.getGallery(),
-    ]);
-
-    /* ---------------------------------- */
-    /* Update domain                      */
-    /* ---------------------------------- */
-    const updated = product.updateImages({
-      mainImage: nextMainImage,
-      galleryImages: nextGalleryImages,
+    const uploadResult = await this.uploadService.uploadSingleImage({
+      folder: UploadFolders.PRODUCTS,
+      file: params.imageFile,
     });
+
+    let updated!: Product;
 
     await this.prisma.$transaction(async (tx) => {
-      await this.productRepo.updateImages(updated, tx);
+      updated = await this.productRepo.updateMainImage(
+        params.productId,
+        uploadResult.objectKey,
+        tx,
+      );
     });
 
-    /* ---------------------------------- */
-    /* Delete removed files only          */
-    /* ---------------------------------- */
-    const newImages = new Set([
-      updated.images.getMain(),
-      ...updated.images.getGallery(),
-    ]);
+    if (oldMainImage !== uploadResult.objectKey) {
+      await this.deleteImageSafe(oldMainImage);
+    }
 
-    oldImages.forEach((img) => {
-      if (!newImages.has(img)) {
-        this.deleteImageSafe(img);
-      }
-    });
-
-    /* ---------------------------------- */
-    /* Emit event                         */
-    /* ---------------------------------- */
-    this.productEvents.emitProductImagesChanged({
-      productId: updated.id,
-      mainImage: updated.images.getMain(),
-      galleryImages: updated.images.getGallery(),
-    });
+    this.emitImagesChanged(updated);
 
     return updated;
   }
 
   /* ================================================= */
-  /* DELETE SINGLE GALLERY IMAGE                       */
+  /* REPLACE GALLERY IMAGE                            */
+  /* ================================================= */
+
+  async replaceGalleryImage(params: {
+    productId: string;
+    galleryImageId: string;
+    imageFile: MulterUploadFile;
+  }): Promise<Product> {
+    const product = await this.assertActiveProduct(params.productId);
+
+    const targetRecord = await this.productRepo.findGalleryRecordById(
+      params.productId,
+      params.galleryImageId,
+    );
+
+    if (!targetRecord) {
+      throw new ValidationError(
+        'GALLERY_IMAGE_NOT_FOUND',
+        'Image to replace was not found in gallery',
+      );
+    }
+
+    const uploadResult = await this.uploadService.uploadSingleImage({
+      folder: UploadFolders.PRODUCTS,
+      file: params.imageFile,
+    });
+
+    const oldObjectKey = this.normalizeImagePath(
+      targetRecord.imageUrl,
+    ) as string;
+
+    let updated!: Product;
+
+    await this.prisma.$transaction(async (tx) => {
+      updated = await this.productRepo.replaceGalleryImageById(
+        params.productId,
+        params.galleryImageId,
+        uploadResult.objectKey,
+        tx,
+      );
+    });
+
+    if (oldObjectKey !== uploadResult.objectKey) {
+      await this.deleteImageSafe(oldObjectKey);
+    }
+
+    this.emitImagesChanged(updated);
+
+    return updated;
+  }
+
+  /* ================================================= */
+  /* ADD GALLERY IMAGE                                */
+  /* ================================================= */
+
+  async addGalleryImage(params: {
+    productId: string;
+    imageFile: MulterUploadFile;
+  }): Promise<Product> {
+    const product = await this.assertActiveProduct(params.productId);
+    const currentGallery = product.images.getGallery();
+
+    if (currentGallery.length >= 6) {
+      throw new ValidationError(
+        'TOO_MANY_GALLERY_IMAGES',
+        'Maximum 6 gallery images allowed',
+      );
+    }
+
+    const uploadResult = await this.uploadService.uploadSingleImage({
+      folder: UploadFolders.PRODUCTS,
+      file: params.imageFile,
+    });
+
+    let updated!: Product;
+
+    await this.prisma.$transaction(async (tx) => {
+      updated = await this.productRepo.addGalleryImage(
+        params.productId,
+        uploadResult.objectKey,
+        currentGallery.length,
+        tx,
+      );
+    });
+
+    this.emitImagesChanged(updated);
+
+    return updated;
+  }
+
+  /* ================================================= */
+  /* DELETE GALLERY IMAGE                             */
   /* ================================================= */
 
   async deleteProductImage(params: {
     productId: string;
-    imagePath: string;
+    galleryImageId: string;
   }): Promise<Product> {
-    const product = await this.getById(params.productId);
+    const product = await this.assertActiveProduct(params.productId);
 
-    /* ---------------------------------- */
-    /* Product must be active             */
-    /* ---------------------------------- */
-    if (!product.isActive()) {
-      throw new ValidationError(
-        'PRODUCT_INACTIVE',
-        'Inactive product cannot be updated',
-      );
-    }
+    const targetRecord = await this.productRepo.findGalleryRecordById(
+      params.productId,
+      params.galleryImageId,
+    );
 
-    /* ---------------------------------- */
-    /* Normalize & validate image path    */
-    /* ---------------------------------- */
-    const normalizedPath = this.normalizeImagePath(params.imagePath);
-
-    if (!normalizedPath) {
-      throw new ValidationError('INVALID_IMAGE_PATH', 'Invalid image path');
-    }
-
-    /* ---------------------------------- */
-    /* Block main image deletion          */
-    /* ---------------------------------- */
-    if (product.images.getMain() === normalizedPath) {
-      throw new ValidationError(
-        'MAIN_IMAGE_DELETE_FORBIDDEN',
-        'Main image cannot be deleted directly',
-      );
-    }
-
-    /* ---------------------------------- */
-    /* Ensure image exists in gallery     */
-    /* ---------------------------------- */
-    const galleryImages = product.images.getGallery();
-
-    if (!galleryImages.includes(normalizedPath)) {
+    if (!targetRecord) {
       throw new ValidationError(
         'GALLERY_IMAGE_NOT_FOUND',
         'Image not found in gallery',
       );
     }
 
-    /* ---------------------------------- */
-    /* Track old images                   */
-    /* ---------------------------------- */
-    const oldImages = new Set([product.images.getMain(), ...galleryImages]);
+    const objectKey = this.normalizeImagePath(
+      targetRecord.imageUrl,
+    ) as string;
 
-    /* ---------------------------------- */
-    /* Update domain (remove image)       */
-    /* ---------------------------------- */
-    const updated = product.updateImages({
-      mainImage: product.images.getMain(),
-      galleryImages: galleryImages.filter((img) => img !== normalizedPath),
-    });
+    let updated!: Product;
 
     await this.prisma.$transaction(async (tx) => {
-      await this.productRepo.updateImages(updated, tx);
+      updated = await this.productRepo.deleteGalleryImageById(
+        params.productId,
+        params.galleryImageId,
+        tx,
+      );
     });
 
-    /* ---------------------------------- */
-    /* Delete removed file                */
-    /* ---------------------------------- */
-    const newImages = new Set([
-      updated.images.getMain(),
-      ...updated.images.getGallery(),
-    ]);
+    await this.deleteImageSafe(objectKey);
 
-    oldImages.forEach((img) => {
-      if (!newImages.has(img)) {
-        this.deleteImageSafe(img);
-      }
-    });
-
-    /* ---------------------------------- */
-    /* Emit event                         */
-    /* ---------------------------------- */
-    this.productEvents.emitProductImagesChanged({
-      productId: updated.id,
-      mainImage: updated.images.getMain(),
-      galleryImages: updated.images.getGallery(),
-    });
+    this.emitImagesChanged(updated);
 
     return updated;
+  }
+
+  /* ================================================= */
+  /* REORDER GALLERY IMAGES                           */
+  /* ================================================= */
+
+  async reorderGalleryImages(params: {
+    productId: string;
+    galleryImageIds: string[];
+  }): Promise<Product> {
+    const product = await this.assertActiveProduct(params.productId);
+    const records = await this.productRepo.findGalleryRecords(
+      params.productId,
+    );
+
+    if (params.galleryImageIds.length !== records.length) {
+      throw new ValidationError(
+        'GALLERY_REORDER_INVALID',
+        'Gallery reorder must include all gallery images',
+      );
+    }
+
+    const recordIds = new Set(records.map((record) => record.id));
+
+    for (const galleryImageId of params.galleryImageIds) {
+      if (!recordIds.has(galleryImageId)) {
+        throw new ValidationError(
+          'GALLERY_IMAGE_NOT_FOUND',
+          'One or more gallery images were not found',
+        );
+      }
+    }
+
+    const orderedKeys = params.galleryImageIds.map((galleryImageId) => {
+      const record = records.find((item) => item.id === galleryImageId);
+      return record!.imageUrl;
+    });
+
+    let updated!: Product;
+
+    await this.prisma.$transaction(async (tx) => {
+      updated = await this.productRepo.reorderGalleryImages(
+        params.productId,
+        params.galleryImageIds,
+        tx,
+      );
+    });
+
+    const reordered = product.updateImages({
+      mainImage: product.images.getMain(),
+      galleryImages: orderedKeys,
+    });
+
+    this.emitImagesChanged(reordered);
+
+    return updated;
+  }
+
+  /* ================================================= */
+  /* DELETE PRODUCT                                   */
+  /* ================================================= */
+
+  async deleteProduct(productId: string): Promise<{ id: string }> {
+    const product = await this.getById(productId);
+
+    const objectKeys = [
+      product.images.getMain(),
+      ...product.images.getGallery(),
+    ].filter(Boolean);
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.productRepo.hardDelete(productId, tx);
+    });
+
+    await this.deleteMultipleImagesSafe(objectKeys);
+
+    this.productEvents.emitProductDisabled({
+      productId: product.id,
+    });
+
+    return { id: product.id };
   }
 
   /* ================================================= */
@@ -593,7 +663,9 @@ async getPublicProducts(query: PublicProductQueryDto) {
       productId: updated.id,
       isFeatured: true,
     });
-  } async unmarkFeatured(productId: string): Promise<void> {
+  }
+
+  async unmarkFeatured(productId: string): Promise<void> {
     const product = await this.getById(productId);
 
     const updated = product.unmarkFeatured();
@@ -643,40 +715,30 @@ async getPublicProducts(query: PublicProductQueryDto) {
       return { id: product.id, status: 'ACTIVE' };
     }
 
-    // ✅ FIX: FULL REHYDRATE
     const enabled = Product.rehydrate({
       id: product.id,
       categoryId: product.categoryId,
       stockItemId: product.stockItemId,
-
       name: product.name,
       slug: product.slug,
       price: product.price,
       images: product.images,
-
       tags: product.tags,
       unitValue: product.unitValue,
       unitType: product.unitType,
-
       ratingAverage: product.ratingAverage,
       ratingCount: product.ratingCount,
-
       isAvailable: product.isAvailable,
       sortOrder: product.sortOrder,
-
       shortDescription: product.shortDescription,
       longDescription: product.longDescription,
-
       status: ProductStatus.ACTIVE,
       trendState: product.trendState,
       featuredState: product.featuredState,
-
       ingredients: product.ingredients,
       benefits: product.benefits,
-
       extraInfo1: product.extraInfo1,
       extraInfo2: product.extraInfo2,
-
       createdAt: product.createdAt,
       updatedAt: new Date(),
       createdBy: product.createdBy,
@@ -694,19 +756,74 @@ async getPublicProducts(query: PublicProductQueryDto) {
   }
 
   /* ================================================= */
-  /* FILE HELPERS                                     */
+  /* IMAGE URL RESOLUTION (PUBLIC)                     */
   /* ================================================= */
 
-  private deleteImageSafe(imagePath?: string): void {
-    if (!imagePath) return;
+  async resolvePublicImages(params: {
+    mainImage: string;
+    galleryImageKeys: string[];
+  }): Promise<{
+    mainImageUrl: string;
+    galleryImageUrls: string[];
+  }> {
+    return {
+      mainImageUrl: await this.uploadService.generatePresignedGetUrl({
+        objectKey: params.mainImage,
+      }),
+      galleryImageUrls: await Promise.all(
+        params.galleryImageKeys.map((objectKey) =>
+          this.uploadService.generatePresignedGetUrl({ objectKey }),
+        ),
+      ),
+    };
+  }
 
-    const appRoot =
-      process.env.APP_ROOT ?? path.resolve(process.cwd(), '..', '..');
+  /* ================================================= */
+  /* HELPERS                                          */
+  /* ================================================= */
 
-    const fullPath = path.join(appRoot, imagePath);
+  private async assertActiveProduct(productId: string): Promise<Product> {
+    const product = await this.getById(productId);
 
-    fs.promises.unlink(fullPath).catch(() => {
-      // silent fail (file may not exist)
+    if (!product.isActive()) {
+      throw new ValidationError(
+        'PRODUCT_INACTIVE',
+        'Inactive product cannot be updated',
+      );
+    }
+
+    return product;
+  }
+
+  private emitImagesChanged(product: Product): void {
+    this.productEvents.emitProductImagesChanged({
+      productId: product.id,
+      mainImage: product.images.getMain(),
+      galleryImages: product.images.getGallery(),
     });
+  }
+
+  private async deleteImageSafe(objectKey?: string): Promise<void> {
+    if (!objectKey) return;
+
+    try {
+      await this.uploadService.deleteObject({ objectKey });
+    } catch {
+      // silent fail (object may not exist)
+    }
+  }
+
+  private async deleteMultipleImagesSafe(
+    objectKeys: string[],
+  ): Promise<void> {
+    if (!objectKeys.length) return;
+
+    try {
+      await this.uploadService.deleteMultipleObjects({
+        objectKeys,
+      });
+    } catch {
+      // silent fail (objects may not exist)
+    }
   }
 }

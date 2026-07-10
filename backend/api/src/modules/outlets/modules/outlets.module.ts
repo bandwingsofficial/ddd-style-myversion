@@ -61,6 +61,7 @@ import { OutletPublicListener } from './../listeners/outlet-public.listener';
 /* MODULE                                         */
 /* ---------------------------------------------- */  
 import { OrdersModule } from '../../orders/modules/orders.module';
+import { ProductsModule } from '../../products/modules/products.module';
 
 
 @Module({
@@ -99,7 +100,8 @@ import { OrdersModule } from '../../orders/modules/orders.module';
     OutletPublicListener,
   ],
   imports: [
-    OrdersModule, // 👈 ADD THIS
+    OrdersModule,
+    ProductsModule,
   ],
   exports: [
     OutletUserService,

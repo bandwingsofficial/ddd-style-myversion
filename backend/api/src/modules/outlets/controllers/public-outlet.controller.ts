@@ -8,11 +8,13 @@ import {
 } from '@nestjs/common';
 
 import { OutletOrchestratorService } from '../services/outlet-orchestrator.service';
+import { ProductOrchestratorService } from '../../products/services/product-orchestrator.service';
 
 @Controller('public/outlets')
 export class PublicOutletController {
   constructor(
     private readonly orchestrator: OutletOrchestratorService,
+    private readonly productOrchestrator: ProductOrchestratorService,
   ) {}
 
   /* ================================================= */
@@ -104,40 +106,48 @@ async getOutletProducts(
     rows.length,
   );
 
-  const data = rows.map((r) => ({
-    id: r.product.id,
-    name: r.product.productName,
-    slug: r.product.slug,
+  const data = await Promise.all(
+    rows.map(async (r) => {
+      const images = await this.productOrchestrator.resolvePublicImages({
+        mainImage: r.product.mainImage,
+        galleryImageKeys:
+          r.product.galleryImages?.map((g) => g.imageUrl) ?? [],
+      });
 
-    price:
-      r.discountOverride ??
-      r.priceOverride ??
-      r.product.discountPrice ??
-      r.product.originalPrice,
+      return {
+        id: r.product.id,
+        name: r.product.productName,
+        slug: r.product.slug,
 
-    image: r.product.mainImage ?? null,
-    galleryImages:
-      r.product.galleryImages?.map((g) => g.imageUrl) ?? [],
+        price:
+          r.discountOverride ??
+          r.priceOverride ??
+          r.product.discountPrice ??
+          r.product.originalPrice,
 
-    shortDescription: r.product.shortDescription,
-    longDescription: r.product.longDescription,
+        images,
 
-    tags: r.product.tags ?? [],
-    isTrending: r.product.isTrending,
-    ratingAverage: r.product.ratingAverage,
-    ratingCount: r.product.ratingCount,
+        shortDescription: r.product.shortDescription,
+        longDescription: r.product.longDescription,
 
-    unitValue: r.product.unitValue,
-    unitType: r.product.unitType,
+        tags: r.product.tags ?? [],
+        isTrending: r.product.isTrending,
+        ratingAverage: r.product.ratingAverage,
+        ratingCount: r.product.ratingCount,
 
-    ingredients: r.product.ingredients,
-    benefits: r.product.benefits,
-    extraInfo1: r.product.extraInfo1,
-    extraInfo2: r.product.extraInfo2,
+        unitValue: r.product.unitValue,
+        unitType: r.product.unitType,
 
-    isFeatured: r.product.isFeatured,
-    available: r.isAvailable,
-  }));
+        ingredients: r.product.ingredients,
+        benefits: r.product.benefits,
+        extraInfo1: r.product.extraInfo1,
+        extraInfo2: r.product.extraInfo2,
+
+        isFeatured: r.product.isFeatured,
+        available: r.isAvailable,
+      };
+    }),
+  );
 
   console.log(
     '📤 Sending products to client =',

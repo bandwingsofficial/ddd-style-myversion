@@ -13,9 +13,6 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Ensure this matches your actual backend URL exactly
-const API_BASE_URL = "https://api.dev.local:4000";
-
 interface ProductRowProps {
   index: number;
   product: Product;
@@ -106,24 +103,7 @@ export function ProductRow({
   }, [product.categoryId]);
 
   // --- IMAGE LOGIC ---
-  const getImageUrl = () => {
-    if (!product.images) return null;
-    let path = "";
-    if (typeof product.images === 'string') {
-      path = product.images;
-    } else {
-      const imgs = product.images as any;
-      path = imgs.mainImage || imgs.url || (Array.isArray(imgs) ? imgs[0] : "");
-    }
-
-    if (!path) return null;
-    if (path.startsWith('http') || path.startsWith('https')) return path;
-
-    const cleanPath = path.startsWith('/') ? path.slice(1) : path;
-    return `${API_BASE_URL}/${cleanPath}`;
-  };
-
-  const imageUrl = getImageUrl();
+  const imageUrl = product.images?.mainImageUrl || null;
   
   useEffect(() => { setImgError(false); }, [product.id]);
 

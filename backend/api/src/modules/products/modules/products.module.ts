@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+import { UploadsModule } from '../../uploads/uploads.module';
 
 /* ---------------------------------------------- */
 /* CONTROLLERS                                    */
@@ -20,6 +21,11 @@ import { ProductOrchestratorService } from '../services/product-orchestrator.ser
 import { ProductRepository } from '../repositories/product.repository';
 
 /* ---------------------------------------------- */
+/* MAPPERS                                        */
+/* ---------------------------------------------- */
+import { ProductResponseMapper } from '../mappers/product-response.mapper';
+
+/* ---------------------------------------------- */
 /* DEPENDENCY MODULES                             */
 /* ---------------------------------------------- */
 import { StockItemsModule } from '../../stock-items/modules/stock-items.module';
@@ -35,23 +41,20 @@ import { ProductPublicListener } from '../listeners/product-public.listener';
 
 @Module({
   imports: [
-    StockItemsModule, // validate stockItemId
-    CategoriesModule, // future: category ↔ product
+    UploadsModule,
+    StockItemsModule,
+    CategoriesModule,
   ],
   controllers: [
     ProductManagementController,
     PublicProductController,
   ],
   providers: [
-    // Infrastructure
     PrismaService,
-
-    // Core
     ProductService,
     ProductOrchestratorService,
-
-    // Repositories
     ProductRepository,
+    ProductResponseMapper,
     ProductEventsService,
     ProductPublicGateway,
     ProductPublicListener,

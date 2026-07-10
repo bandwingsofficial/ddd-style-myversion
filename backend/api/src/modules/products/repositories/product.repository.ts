@@ -23,6 +23,7 @@ import { ProductPrice } from '../domain/value-objects/product-price.vo';
 import { ProductImages } from '../domain/value-objects/product-images.vo';
 import { ProductTrendState } from '../domain/value-objects/product-trend-state.vo';
 import { ProductFeaturedState } from '../domain/value-objects/product-featured-state.vo';
+import { ProductGalleryRecord } from '../mappers/product-response.mapper';
 
 @Injectable()
 export class ProductRepository {
@@ -374,8 +375,189 @@ async findByIdWithCategory(
 
 
   /* ================================================= */
-  /* UPDATE – IMAGES (UPDATE ONLY, NO AUTO TX)         */
+  /* GALLERY RECORDS                                   */
   /* ================================================= */
+
+  async findGalleryRecords(
+    productId: string,
+    tx?: PrismaTransaction,
+  ): Promise<ProductGalleryRecord[]> {
+    const client = tx ?? this.prisma;
+
+    const rows = await client.productImage.findMany({
+      where: { productId },
+      orderBy: { sortOrder: 'asc' },
+      select: {
+        id: true,
+        imageUrl: true,
+        sortOrder: true,
+      },
+    });
+
+    return rows;
+  }
+
+  async findGalleryRecordsByProductIds(
+    productIds: string[],
+    tx?: PrismaTransaction,
+  ): Promise<Map<string, ProductGalleryRecord[]>> {
+    const client = tx ?? this.prisma;
+    const map = new Map<string, ProductGalleryRecord[]>();
+
+    if (!productIds.length) {
+      return map;
+    }
+
+    const rows = await client.productImage.findMany({
+      where: { productId: { in: productIds } },
+      orderBy: [{ productId: 'asc' }, { sortOrder: 'asc' }],
+      select: {
+        id: true,
+        productId: true,
+        imageUrl: true,
+        sortOrder: true,
+      },
+    });
+
+    for (const row of rows) {
+      const existing = map.get(row.productId) ?? [];
+      existing.push({
+        id: row.id,
+        imageUrl: row.imageUrl,
+        sortOrder: row.sortOrder,
+      });
+      map.set(row.productId, existing);
+    }
+
+    return map;
+  }
+
+  async findGalleryRecordById(
+    productId: string,
+    galleryImageId: string,
+    tx?: PrismaTransaction,
+  ): Promise<ProductGalleryRecord | null> {
+    const client = tx ?? this.prisma;
+
+    const row = await client.productImage.findFirst({
+      where: {
+        id: galleryImageId,
+        productId,
+      },
+      select: {
+        id: true,
+        imageUrl: true,
+        sortOrder: true,
+      },
+    });
+
+    return row;
+  }
+
+  /* ================================================= */
+  /* UPDATE – IMAGES (SURGICAL)                        */
+  /* ================================================= */
+
+  async updateMainImage(
+    productId: string,
+    mainImage: string,
+    tx: PrismaTransaction,
+  ): Promise<Product> {
+    const row = await tx.product.update({
+      where: { id: productId },
+      data: {
+        mainImage,
+        updatedAt: new Date(),
+      },
+      include: { galleryImages: true },
+    });
+
+    return this.toDomain(row);
+  }
+
+  async replaceGalleryImageById(
+    productId: string,
+    galleryImageId: string,
+    objectKey: string,
+    tx: PrismaTransaction,
+  ): Promise<Product> {
+    await tx.productImage.update({
+      where: { id: galleryImageId },
+      data: { imageUrl: objectKey },
+    });
+
+    const row = await tx.product.update({
+      where: { id: productId },
+      data: { updatedAt: new Date() },
+      include: { galleryImages: true },
+    });
+
+    return this.toDomain(row);
+  }
+
+  async deleteGalleryImageById(
+    productId: string,
+    galleryImageId: string,
+    tx: PrismaTransaction,
+  ): Promise<Product> {
+    await tx.productImage.delete({
+      where: { id: galleryImageId },
+    });
+
+    const row = await tx.product.update({
+      where: { id: productId },
+      data: { updatedAt: new Date() },
+      include: { galleryImages: true },
+    });
+
+    return this.toDomain(row);
+  }
+
+  async addGalleryImage(
+    productId: string,
+    objectKey: string,
+    sortOrder: number,
+    tx: PrismaTransaction,
+  ): Promise<Product> {
+    await tx.productImage.create({
+      data: {
+        productId,
+        imageUrl: objectKey,
+        sortOrder,
+      },
+    });
+
+    const row = await tx.product.update({
+      where: { id: productId },
+      data: { updatedAt: new Date() },
+      include: { galleryImages: true },
+    });
+
+    return this.toDomain(row);
+  }
+
+  async reorderGalleryImages(
+    productId: string,
+    orderedGalleryImageIds: string[],
+    tx: PrismaTransaction,
+  ): Promise<Product> {
+    await Promise.all(
+      orderedGalleryImageIds.map((galleryImageId, index) =>
+        tx.productImage.update({
+          where: { id: galleryImageId },
+          data: { sortOrder: index },
+        }),
+      ),
+    );
+
+    const row = await tx.product.update({
+      where: { id: productId },
+      data: { updatedAt: new Date() },
+      include: { galleryImages: true },
+    });
+
+    return this.toDomain(row);
+  }
 
 async updateImages(
   product: Product,
@@ -404,7 +586,17 @@ async updateImages(
 
   return this.toDomain(row);
 }
- 
+
+  async hardDelete(
+    productId: string,
+    tx?: PrismaTransaction,
+  ): Promise<void> {
+    const client = tx ?? this.prisma;
+
+    await client.product.delete({
+      where: { id: productId },
+    });
+  }
 
   /* ================================================= */
   /* STATUS / TRENDING                                */

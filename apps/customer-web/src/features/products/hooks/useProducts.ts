@@ -1,19 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getProductsByOutlet } from "../api/product.api";
 import { ProductListItem } from "../types/product.types";
 import { useOutletStore } from "@/features/outlet/outlet.store";
+import { useProductSocket } from "./useProductSocket";
 
 export function useProducts() {
   const [products, setProducts] = useState<ProductListItem[]>([]);
   const [loading, setLoading] = useState(false);
-  
-  // Get selected outlet from global store
+
   const selectedOutlet = useOutletStore((state) => state.selectedOutlet);
 
-  useEffect(() => {
-    // If no outlet is selected, we cannot fetch products
+  const fetchProducts = useCallback(() => {
     if (!selectedOutlet?.id) {
       setProducts([]);
       return;
@@ -22,15 +21,20 @@ export function useProducts() {
     setLoading(true);
     getProductsByOutlet(selectedOutlet.id)
       .then((data) => {
-        // Ensure data is an array before setting
-        setProducts(Array.isArray(data) ? data : []); 
+        setProducts(Array.isArray(data) ? data : []);
       })
       .catch((err) => {
         console.error("Failed to load products for outlet", err);
         setProducts([]);
       })
       .finally(() => setLoading(false));
-  }, [selectedOutlet?.id]); // Re-run if outlet changes
+  }, [selectedOutlet?.id]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  useProductSocket(fetchProducts);
 
   return { products, loading, isOutletSelected: !!selectedOutlet };
 }

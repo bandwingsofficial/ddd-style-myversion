@@ -14,8 +14,6 @@ import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store"
 import { useOutletStore } from "@/features/outlet/outlet.store";
 import { useFavorites } from "@/providers/CustomerAuthProvider";
 
-const BACKEND_URL = "https://api.dev.local:4000";
-
 export default function ProductDetailsPage() {
   const { slug: routeSlug } = useParams<{ slug: string }>();
   const productData = useProductBySlug(routeSlug) as any;
@@ -41,25 +39,8 @@ export default function ProductDetailsPage() {
     let discountVal = parse(p.discountPrice ?? p.salePrice ?? p.price?.discountPrice ?? p.price?.salePrice);
     let current = (discountVal > 0 && discountVal < original) ? discountVal : original;
     
-    const rawImage = p.images || p.image || p.mainImage;
-    let mainImgPath = "";
-    let gallery: string[] = [];
-
-    if (Array.isArray(rawImage)) {
-      mainImgPath = rawImage[0] || "";
-      gallery = rawImage;
-    } else if (typeof rawImage === "object" && rawImage !== null) {
-      mainImgPath = rawImage.mainImage || rawImage.url || "";
-      gallery = rawImage.galleryImages || [];
-    } else if (typeof rawImage === "string") {
-      mainImgPath = rawImage;
-    }
-
-    const formatUrl = (path: string) => {
-      if (!path || path.trim() === "") return "/placeholder.jpg";
-      if (path.startsWith("http")) return path;
-      return `${BACKEND_URL}${path.startsWith("/") ? path : `/${path}`}`;
-    };
+    const mainImgPath = p.images?.mainImageUrl || "";
+    const gallery: string[] = p.images?.galleryImageUrls || [];
 
     let unitLabel = "";
     if (typeof p.unit === "object" && p.unit !== null) unitLabel = `${p.unit.value} ${p.unit.type}`;
@@ -72,8 +53,8 @@ export default function ProductDetailsPage() {
       originalPrice: original,
       savings: original - current,
       percent: original > 0 ? Math.round(((original - current) / original) * 100) : 0,
-      mainImage: formatUrl(mainImgPath),
-      gallery: gallery.map(formatUrl),
+      mainImage: mainImgPath || "/placeholder.jpg",
+      gallery: gallery.length > 0 ? gallery : (mainImgPath ? [mainImgPath] : []),
       unitLabel,
       outletId: currentOutlet?.id || p.outletId
     };

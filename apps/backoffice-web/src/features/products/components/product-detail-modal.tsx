@@ -6,8 +6,6 @@ import { Product } from "../types/product.types";
 import { X, Calendar, Tag, TrendingUp, Package, Layers, Info, DollarSign, Image as ImageIcon } from "lucide-react";
 import { motion } from "framer-motion";
 
-const API_BASE_URL = "https://api.dev.local:4000";
-
 export default function ProductDetailModal({ productId, onClose }: { productId: string, onClose: () => void }) {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,15 +24,7 @@ export default function ProductDetailModal({ productId, onClose }: { productId: 
     });
   };
 
-  // Helper to fix image URL
-  const getFullImgUrl = (path: string) => {
-    if (!path) return "";
-    if (path.startsWith('http')) return path;
-    const cleanPath = path.startsWith('/') ? path.slice(1) : path;
-    return `${API_BASE_URL}/${cleanPath}`;
-  };
-
-  const mainImageSrc = getFullImgUrl(product.images.mainImage);
+  const mainImageSrc = product.images.mainImageUrl;
 
   return (
     // 1. OVERLAY
@@ -190,9 +180,9 @@ export default function ProductDetailModal({ productId, onClose }: { productId: 
                 <ImageIcon size={14} /> Gallery
               </h4>
               <div className="flex flex-wrap gap-3">
-                {product.images.galleryImages.map((img, i) => (
-                  <div key={i} className="relative h-20 w-20 overflow-hidden rounded-xl border border-border bg-muted/10">
-                    <img src={getFullImgUrl(img)} className="h-full w-full object-cover transition-transform hover:scale-110" alt="Gallery" />
+                {product.images.galleryImages.map((img) => (
+                  <div key={img.id} className="relative h-20 w-20 overflow-hidden rounded-xl border border-border bg-muted/10">
+                    <img src={img.imageUrl} className="h-full w-full object-cover transition-transform hover:scale-110" alt="Gallery" />
                   </div>
                 ))}
               </div>

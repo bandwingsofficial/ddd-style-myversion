@@ -6,7 +6,6 @@ import {
 import { Server, Socket } from 'socket.io';
 
 import { ProductOrchestratorService } from '../services/product-orchestrator.service';
-import { PublicProductListDto } from '../dtos/public-product-list.dto';
 
 @WebSocketGateway({
   namespace: '/public/products',
@@ -15,9 +14,7 @@ import { PublicProductListDto } from '../dtos/public-product-list.dto';
     credentials: true,
   },
 })
-export class ProductPublicGateway
-  implements OnGatewayConnection
-{
+export class ProductPublicGateway implements OnGatewayConnection {
   @WebSocketServer()
   private readonly server: Server;
 
@@ -42,15 +39,11 @@ export class ProductPublicGateway
 
   async emitFullProducts(client?: Socket): Promise<void> {
     const products =
-      await this.orchestrator.getPublicProducts({});
-
-    const payload = products.map(({ product, category }) =>
-      PublicProductListDto.fromDomain(product, category),
-    );
+      await this.orchestrator.getPublicProductResponses({});
 
     const data = {
       version: Date.now(),
-      products: payload,
+      products,
     };
 
     if (client) {

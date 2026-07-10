@@ -1,9 +1,9 @@
-// features/products/hooks/use-products.ts
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { ProductsAPI } from "../services/products.api";
 import { Product } from "../types/product.types";
+import { useProductSocket } from "./use-product-socket";
 
 export function useProducts() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -26,6 +26,8 @@ export function useProducts() {
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+
+  useProductSocket(fetchProducts);
 
   return {
     products,

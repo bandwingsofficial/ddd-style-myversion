@@ -8,8 +8,12 @@ import {
   UseGuards,
   UseInterceptors,
   UploadedFiles,
+  UploadedFile,
 } from '@nestjs/common';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
 import { randomUUID } from 'crypto';
 
 import { ProductOrchestratorService } from '../services/product-orchestrator.service';
@@ -26,15 +30,16 @@ import { ActorType } from '../../auth/domain/enums/actor-type.enum';
 import { CreateProductDto } from '../dtos/create-product.dto';
 import { UpdateProductDetailsDto } from '../dtos/update-product-details.dto';
 import { UpdateProductPriceDto } from '../dtos/update-product-price.dto';
-import { UpdateProductImagesDto } from '../dtos/update-product-images.dto';
 import { UpdateProductIngredientsDto } from '../dtos/update-product-ingredients.dto';
 import { DeleteProductImageDto } from '../dtos/delete-product-image.dto';
+import { ReplaceProductGalleryImageDto } from '../dtos/replace-product-gallery-image.dto';
+import { ReorderProductGalleryDto } from '../dtos/reorder-product-gallery.dto';
 
 /* Domain */
 import { Product } from '../domain/models/product.model';
 
 /* Upload */
-import { productImageUploadOptions } from '../../../common/upload/product-image.upload';
+import { productImageUploadOptions } from '../../uploads/validators/multer-memory.options';
 import { PublicProductQueryDto } from '../dtos/public-product-query.dto';
 
 @Controller('products')
@@ -48,31 +53,26 @@ export class ProductManagementController {
   /* PRODUCT – LIST (SUPER ADMIN ONLY)                 */
   /* ================================================= */
 
-@Get()
-@Roles(ActorType.SUPER_ADMIN)
-async getAllProducts(
-  @Query() query: PublicProductQueryDto, // ✅ add this only
-) {
-  const data = await this.orchestrator.getAllProducts(query);
+  @Get()
+  @Roles(ActorType.SUPER_ADMIN)
+  async getAllProducts(@Query() query: PublicProductQueryDto) {
+    const data = await this.orchestrator.getAllProducts(query);
 
-  return {
-    success: true,
-    code: 'PRODUCTS_FETCHED',
-    message: 'Products fetched successfully',
-    data,
-  };
-}
+    return {
+      success: true,
+      code: 'PRODUCTS_FETCHED',
+      message: 'Products fetched successfully',
+      data,
+    };
+  }
 
   /* ================================================= */
   /* PRODUCT – READ                                   */
   /* ================================================= */
 
   @Get(':productId')
-  async getProductById(
-    @Param('productId') productId: string,
-  ) {
-    const data =
-      await this.orchestrator.getProductById(productId);
+  async getProductById(@Param('productId') productId: string) {
+    const data = await this.orchestrator.getProductById(productId);
 
     return {
       success: true,
@@ -107,41 +107,37 @@ async getAllProducts(
     @CurrentUser() user,
   ) {
     if (!files?.mainImage?.length) {
-      throw new Error('Main image is required');
+      throw new ValidationError(
+        'MAIN_IMAGE_REQUIRED',
+        'Main image is required',
+      );
     }
 
-    // ✅ BUILD DOMAIN OBJECT (FULL & FINAL)
     const product = Product.createNew({
       id: randomUUID(),
-
       categoryId: dto.categoryId,
       stockItemId: dto.stockItemId,
-
       productName: dto.productName,
       originalPrice: dto.originalPrice,
       discountPrice: dto.discountPrice,
-
-      mainImage: `images/products/${files.mainImage[0].filename}`,
-      galleryImages: files.galleryImages?.map(
-        (f) => `images/products/${f.filename}`,
-      ),
-
+      mainImage: 'pending',
+      galleryImages: [],
       tags: dto.tags ?? [],
-
       unitValue: dto.unitValue,
       unitType: dto.unitType,
       ratingAverage: 0,
       ratingCount: 0,
-
       shortDescription: dto.shortDescription,
       longDescription: dto.longDescription,
-
       isTrending: dto.isTrending ?? false,
       createdBy: user.actorId,
     });
 
-    const data =
-      await this.orchestrator.createProduct(product);
+    const data = await this.orchestrator.createProduct({
+      product,
+      mainImageFile: files.mainImage[0],
+      galleryImageFiles: files.galleryImages,
+    });
 
     return {
       success: true,
@@ -161,15 +157,14 @@ async getAllProducts(
     @Param('productId') productId: string,
     @Body() dto: UpdateProductDetailsDto,
   ) {
-    const data =
-      await this.orchestrator.updateProductDetails({
-        productId,
-        updates: {
-          productName: dto.productName,
-          shortDescription: dto.shortDescription,
-          longDescription: dto.longDescription,
-        },
-      });
+    const data = await this.orchestrator.updateProductDetails({
+      productId,
+      updates: {
+        productName: dto.productName,
+        shortDescription: dto.shortDescription,
+        longDescription: dto.longDescription,
+      },
+    });
 
     return {
       success: true,
@@ -178,9 +173,6 @@ async getAllProducts(
       data,
     };
   }
-
-
-  
 
   /* ================================================= */
   /* PRODUCT – UPDATE PRICE                           */
@@ -192,12 +184,11 @@ async getAllProducts(
     @Param('productId') productId: string,
     @Body() dto: UpdateProductPriceDto,
   ) {
-    const data =
-      await this.orchestrator.updateProductPrice({
-        productId,
-        originalPrice: dto.originalPrice,
-        discountPrice: dto.discountPrice,
-      });
+    const data = await this.orchestrator.updateProductPrice({
+      productId,
+      originalPrice: dto.originalPrice,
+      discountPrice: dto.discountPrice,
+    });
 
     return {
       success: true,
@@ -210,21 +201,20 @@ async getAllProducts(
   /* ================================================= */
   /* PRODUCT – UPDATE INGREDIENTS                     */
   /* ================================================= */
-  
+
   @Post(':productId/ingredients')
   @Roles(ActorType.SUPER_ADMIN)
   async updateProductIngredients(
     @Param('productId') productId: string,
     @Body() dto: UpdateProductIngredientsDto,
   ) {
-    const data =
-      await this.orchestrator.updateProductIngredients({
-        productId,
-        ingredients: dto.ingredients,
-        benefits: dto.benefits,
-        extraInfo1: dto.extraInfo1,
-        extraInfo2: dto.extraInfo2,
-      });
+    const data = await this.orchestrator.updateProductIngredients({
+      productId,
+      ingredients: dto.ingredients,
+      benefits: dto.benefits,
+      extraInfo1: dto.extraInfo1,
+      extraInfo2: dto.extraInfo2,
+    });
 
     return {
       success: true,
@@ -234,79 +224,177 @@ async getAllProducts(
     };
   }
 
+  /* ================================================= */
+  /* PRODUCT – REPLACE MAIN IMAGE                     */
+  /* ================================================= */
 
-/* ================================================= */
-/* PRODUCT – UPDATE IMAGES                          */
-/* ================================================= */
+  @Post(':productId/images/main')
+  @Roles(ActorType.SUPER_ADMIN)
+  @UseInterceptors(
+    FileInterceptor('mainImage', productImageUploadOptions),
+  )
+  async replaceMainImage(
+    @Param('productId') productId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new ValidationError(
+        'MAIN_IMAGE_REQUIRED',
+        'Main image file is required',
+      );
+    }
 
-@Post(':productId/images')
-@Roles(ActorType.SUPER_ADMIN)
-@UseInterceptors(
-  FileFieldsInterceptor(
-    [{ name: 'galleryImages', maxCount: 1 }],
-    productImageUploadOptions,
-  ),
-)
-async updateProductImages(
-  @Param('productId') productId: string,
-  @Body() dto: UpdateProductImagesDto,
-  @UploadedFiles()
-  files: { galleryImages?: Express.Multer.File[] },
-) {
-  if (!dto.replaceImage) {
-    throw new ValidationError(
-      'REPLACE_IMAGE_REQUIRED',
-      'replaceImage is required',
-    );
-  }
-
-  if (!files?.galleryImages?.length) {
-    throw new ValidationError(
-      'NEW_IMAGE_REQUIRED',
-      'New image file is required',
-    );
-  }
-
-  const newImagePath = `images/products/${files.galleryImages[0].filename}`;
-
-  const data = await this.orchestrator.updateProductImages({
-  productId,
-  replaceImage: dto.replaceImage,
-  galleryImages: [newImagePath], // ✅ MUST be array
-});
-
-  return {
-    success: true,
-    code: 'PRODUCT_IMAGE_REPLACED',
-    message: 'Gallery image replaced successfully',
-    data,
-  };
-}
-
-
-/* ================================================= */
-/* PRODUCT – DELETE GALLERY IMAGE                   */
-/* ================================================= */
-
-@Post(':productId/images/delete')
-@Roles(ActorType.SUPER_ADMIN)
-async deleteProductImage(
-  @Param('productId') productId: string,
-  @Body() dto: DeleteProductImageDto,
-) {
-  const data =
-    await this.orchestrator.deleteProductImage({
+    const data = await this.orchestrator.replaceMainImage({
       productId,
-      imagePath: dto.imagePath,
+      imageFile: file,
     });
 
-  return {
-    success: true,
-    code: 'PRODUCT_IMAGE_DELETED',
-    message: 'Product image deleted successfully',
-    data,
-  };
-}
+    return {
+      success: true,
+      code: 'PRODUCT_MAIN_IMAGE_REPLACED',
+      message: 'Main image replaced successfully',
+      data,
+    };
+  }
+
+  /* ================================================= */
+  /* PRODUCT – REPLACE GALLERY IMAGE                  */
+  /* ================================================= */
+
+  @Post(':productId/images/replace')
+  @Roles(ActorType.SUPER_ADMIN)
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [{ name: 'galleryImages', maxCount: 1 }],
+      productImageUploadOptions,
+    ),
+  )
+  async replaceGalleryImage(
+    @Param('productId') productId: string,
+    @Body() dto: ReplaceProductGalleryImageDto,
+    @UploadedFiles()
+    files: { galleryImages?: Express.Multer.File[] },
+  ) {
+    if (!files?.galleryImages?.length) {
+      throw new ValidationError(
+        'NEW_IMAGE_REQUIRED',
+        'New image file is required',
+      );
+    }
+
+    const data = await this.orchestrator.replaceGalleryImage({
+      productId,
+      galleryImageId: dto.galleryImageId,
+      imageFile: files.galleryImages[0],
+    });
+
+    return {
+      success: true,
+      code: 'PRODUCT_GALLERY_IMAGE_REPLACED',
+      message: 'Gallery image replaced successfully',
+      data,
+    };
+  }
+
+  /* ================================================= */
+  /* PRODUCT – ADD GALLERY IMAGE                      */
+  /* ================================================= */
+
+  @Post(':productId/images/add')
+  @Roles(ActorType.SUPER_ADMIN)
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [{ name: 'galleryImages', maxCount: 1 }],
+      productImageUploadOptions,
+    ),
+  )
+  async addGalleryImage(
+    @Param('productId') productId: string,
+    @UploadedFiles()
+    files: { galleryImages?: Express.Multer.File[] },
+  ) {
+    if (!files?.galleryImages?.length) {
+      throw new ValidationError(
+        'NEW_IMAGE_REQUIRED',
+        'Gallery image file is required',
+      );
+    }
+
+    const data = await this.orchestrator.addGalleryImage({
+      productId,
+      imageFile: files.galleryImages[0],
+    });
+
+    return {
+      success: true,
+      code: 'PRODUCT_GALLERY_IMAGE_ADDED',
+      message: 'Gallery image added successfully',
+      data,
+    };
+  }
+
+  /* ================================================= */
+  /* PRODUCT – DELETE GALLERY IMAGE                   */
+  /* ================================================= */
+
+  @Post(':productId/images/delete')
+  @Roles(ActorType.SUPER_ADMIN)
+  async deleteProductImage(
+    @Param('productId') productId: string,
+    @Body() dto: DeleteProductImageDto,
+  ) {
+    const data = await this.orchestrator.deleteProductImage({
+      productId,
+      galleryImageId: dto.galleryImageId,
+    });
+
+    return {
+      success: true,
+      code: 'PRODUCT_IMAGE_DELETED',
+      message: 'Product image deleted successfully',
+      data,
+    };
+  }
+
+  /* ================================================= */
+  /* PRODUCT – REORDER GALLERY                        */
+  /* ================================================= */
+
+  @Post(':productId/images/reorder')
+  @Roles(ActorType.SUPER_ADMIN)
+  async reorderGalleryImages(
+    @Param('productId') productId: string,
+    @Body() dto: ReorderProductGalleryDto,
+  ) {
+    const data = await this.orchestrator.reorderGalleryImages({
+      productId,
+      galleryImageIds: dto.galleryImageIds,
+    });
+
+    return {
+      success: true,
+      code: 'PRODUCT_GALLERY_REORDERED',
+      message: 'Gallery images reordered successfully',
+      data,
+    };
+  }
+
+  /* ================================================= */
+  /* PRODUCT – HARD DELETE                            */
+  /* ================================================= */
+
+  @Post(':productId/delete')
+  @Roles(ActorType.SUPER_ADMIN)
+  async deleteProduct(@Param('productId') productId: string) {
+    const data = await this.orchestrator.deleteProduct({ productId });
+
+    return {
+      success: true,
+      code: 'PRODUCT_DELETED',
+      message: 'Product deleted successfully',
+      data,
+    };
+  }
 
   /* ================================================= */
   /* PRODUCT – ENABLE / DISABLE                       */
@@ -314,11 +402,8 @@ async deleteProductImage(
 
   @Post(':productId/disable')
   @Roles(ActorType.SUPER_ADMIN)
-  async disableProduct(
-    @Param('productId') productId: string,
-  ) {
-    const data =
-      await this.orchestrator.disableProduct({ productId });
+  async disableProduct(@Param('productId') productId: string) {
+    const data = await this.orchestrator.disableProduct({ productId });
 
     return {
       success: true,
@@ -330,11 +415,8 @@ async deleteProductImage(
 
   @Post(':productId/enable')
   @Roles(ActorType.SUPER_ADMIN)
-  async enableProduct(
-    @Param('productId') productId: string,
-  ) {
-    const data =
-      await this.orchestrator.enableProduct({ productId });
+  async enableProduct(@Param('productId') productId: string) {
+    const data = await this.orchestrator.enableProduct({ productId });
 
     return {
       success: true,
@@ -350,12 +432,8 @@ async deleteProductImage(
 
   @Post(':productId/trending/on')
   @Roles(ActorType.SUPER_ADMIN)
-  async markTrending(
-    @Param('productId') productId: string,
-  ) {
-    await this.orchestrator.markProductTrending({
-      productId,
-    });
+  async markTrending(@Param('productId') productId: string) {
+    await this.orchestrator.markProductTrending({ productId });
 
     return {
       success: true,
@@ -367,12 +445,8 @@ async deleteProductImage(
 
   @Post(':productId/trending/off')
   @Roles(ActorType.SUPER_ADMIN)
-  async unmarkTrending(
-    @Param('productId') productId: string,
-  ) {
-    await this.orchestrator.unmarkProductTrending({
-      productId,
-    });
+  async unmarkTrending(@Param('productId') productId: string) {
+    await this.orchestrator.unmarkProductTrending({ productId });
 
     return {
       success: true,
@@ -388,12 +462,8 @@ async deleteProductImage(
 
   @Post(':productId/featured/on')
   @Roles(ActorType.SUPER_ADMIN)
-  async markFeatured(
-    @Param('productId') productId: string,
-  ) {
-    await this.orchestrator.markProductFeatured({
-      productId,
-    });
+  async markFeatured(@Param('productId') productId: string) {
+    await this.orchestrator.markProductFeatured({ productId });
 
     return {
       success: true,
@@ -405,12 +475,8 @@ async deleteProductImage(
 
   @Post(':productId/featured/off')
   @Roles(ActorType.SUPER_ADMIN)
-  async unmarkFeatured(
-    @Param('productId') productId: string,
-  ) {
-    await this.orchestrator.unmarkProductFeatured({
-      productId,
-    });
+  async unmarkFeatured(@Param('productId') productId: string) {
+    await this.orchestrator.unmarkProductFeatured({ productId });
 
     return {
       success: true,
@@ -418,5 +484,5 @@ async deleteProductImage(
       message: 'Product removed from featured',
       data: null,
     };
-  } 
+  }
 }
