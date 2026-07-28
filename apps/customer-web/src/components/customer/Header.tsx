@@ -74,6 +74,13 @@ export default function Header() {
           </div>
         </div>
 
+        {/* MOBILE LOCATION BAR (redundant "Deliver to:" label removed — LocationSelector already renders the label + address) */}
+        <div className={`sm:hidden w-full bg-gradient-to-r from-slate-50 to-slate-100/60 border-b border-slate-200/70 px-4 flex items-center transition-all duration-400 ${scrolled ? "h-0 opacity-0 overflow-hidden py-0 my-0 border-none" : "h-[48px] opacity-100 py-2.5 my-0.5"}`}>
+          <div className="w-full flex items-center gap-2 px-0.5">
+            <LocationSelector />
+          </div>
+        </div>
+
         {/* MAIN NAV */}
         <div className={`w-full transition-all duration-400 flex items-center ${scrolled ? "h-[65px]" : "h-[75px] md:h-[85px]"}`}>
           <div className="max-w-[1440px] mx-auto w-full h-full px-4 md:px-6 flex items-center justify-between gap-4">

@@ -31,7 +31,7 @@ export default function Footer() {
             <Link href="/" className="logo-link">
               <div className="logo-wrapper">
                 <Image 
-                  src="/images/canten1.png" 
+                  src="/images/Canten1.png" 
                   alt="CanTen Logo" 
                   width={140} 
                   height={50}  
@@ -92,13 +92,17 @@ export default function Footer() {
                 <span className="icon-badge">
                   <Mail size={14} />
                 </span>
-                <span className="contact-text">connect@canten.com</span>
+               <a href="mailto:cantenonline@gmail.com" className="contact-text">
+  cantenonline@gmail.com
+</a>
               </li>
               <li className="contact-item">
                 <span className="icon-badge">
                   <Phone size={14} />
                 </span>
-                <span className="contact-text">+91 98765 43211</span>
+               <a href="tel:+919902930777" className="contact-text">
+  +91 99029 30777
+</a>
               </li>
               <li className="contact-item address-item">
                 <span className="icon-badge">

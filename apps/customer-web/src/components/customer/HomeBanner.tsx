@@ -72,9 +72,6 @@ export default function HomeBanner() {
               <span aria-hidden="true">⭐</span> 4.9 Rating
             </div>
             <div className="trust-pill">
-              <span aria-hidden="true">🧃</span> 5000+ Orders
-            </div>
-            <div className="trust-pill">
               <span aria-hidden="true">⚡</span> 20 Min Delivery
             </div>
             <div className="trust-pill">

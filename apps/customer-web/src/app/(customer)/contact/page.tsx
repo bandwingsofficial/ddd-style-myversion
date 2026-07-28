@@ -46,7 +46,12 @@ export default function ContactPage() {
                     <span className="mb-1 block text-sm font-semibold uppercase tracking-wide text-[#86efac]">
                       Email Us
                     </span>
-                    <p className="text-lg text-white">connect@canten.com</p>
+                    <a
+  href="mailto:cantenonline@gmail.com"
+  className="text-lg text-white hover:underline"
+>
+  cantenonline@gmail.com
+</a>
                   </div>
                 </div>
 
@@ -59,7 +64,12 @@ export default function ContactPage() {
                     <span className="mb-1 block text-sm font-semibold uppercase tracking-wide text-[#86efac]">
                       Call Us
                     </span>
-                    <p className="text-lg text-white">+1 (555) 123-4567</p>
+                   <a
+  href="tel:+9199029307777"
+  className="text-lg text-white hover:underline"
+>
+  +91 99029 30777
+</a>
                   </div>
                 </div>
 
@@ -76,18 +86,35 @@ export default function ContactPage() {
                   </div>
                 </div>
 
-                {/* Location */}
-                <div className="flex items-center gap-4">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-[#4ade80]">
-                    <MapPin size={20} />
-                  </div>
-                  <div>
-                    <span className="mb-1 block text-sm font-semibold uppercase tracking-wide text-[#86efac]">
-                      Location
-                    </span>
-                    <p className="text-lg text-white">Malleswaram, Bengaluru, KA</p>
-                  </div>
-                </div>
+               {/* Location */}
+<div className="flex items-start gap-4">
+  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-[#4ade80]">
+    <MapPin size={20} />
+  </div>
+
+  <div className="flex-1">
+    <span className="mb-2 block text-sm font-semibold uppercase tracking-wide text-[#86efac]">
+      Location
+    </span>
+
+    <a
+      href="https://maps.google.com/?q=Sai+Dharshan,+1st+A+Main+Road,+1st+Phase,+Yelahanka+New+Town,+Bengaluru+560064"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block max-w-md text-lg leading-9 text-white transition-colors"
+    >
+      Sai Dharshan,
+      <br />
+      1st A Main Road,
+      <br />
+      1st Phase,
+      <br />
+      Yelahanka New Town,
+      <br />
+      Bengaluru - 560064
+    </a>
+  </div>
+</div>
               </div>
             </div>
 

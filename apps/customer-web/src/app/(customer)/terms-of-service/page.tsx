@@ -24,7 +24,7 @@ export default function TermsOfServicePage() {
               </span>
             </h1>
             <p className="text-sm font-medium text-slate-400 uppercase tracking-widest">
-              Last Updated: January 2026
+              Last Updated: August 2026
             </p>
           </header>
 

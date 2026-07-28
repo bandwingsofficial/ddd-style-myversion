@@ -1,4 +1,5 @@
 import CustomerAuthProvider from "@/providers/CustomerAuthProvider";
+import ClientLayoutWrapper from "@/components/layout/ClientLayoutWrapper";
 import "./globals.css";
 
 export default function RootLayout({
@@ -7,10 +8,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html>
+    <html lang="en">
       <body>
         <CustomerAuthProvider>
-          {children}
+          <ClientLayoutWrapper>
+            {children}
+          </ClientLayoutWrapper>
         </CustomerAuthProvider>
       </body>
     </html>

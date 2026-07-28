@@ -24,7 +24,7 @@ export default function PrivacyPolicyPage() {
               </span>
             </h1>
             <p className="text-sm font-medium text-slate-400 uppercase tracking-widest">
-              Last Updated: January 2026
+              Last Updated: August 2026
             </p>
           </header>
 
@@ -90,8 +90,8 @@ export default function PrivacyPolicyPage() {
                 <p className="text-slate-600 mb-2">
                   If you have questions about this policy or our data practices, please contact our Data Protection Officer:
                 </p>
-                <a href="mailto:connect@canten.com" className="text-emerald-600 font-semibold hover:underline hover:text-emerald-700 transition-colors">
-                  connect@canten.com
+                <a href="mailto:cantenonline@gmail.com" className="text-emerald-600 font-semibold hover:underline hover:text-emerald-700 transition-colors">
+                  cantenonline@gmail.com
                 </a>
               </div>
             </section>

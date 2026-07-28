@@ -23,7 +23,7 @@ export default function RefundPolicyPage() {
               Refund & Cancellation Policy
             </h1>
             <p className="text-[0.95rem] font-medium uppercase tracking-wide text-slate-400">
-              Last Updated: January 2026
+              Last Updated: August 2026
             </p>
           </header>
 
@@ -54,7 +54,7 @@ export default function RefundPolicyPage() {
                 <li className="mb-2">The package was tampered with during delivery.</li>
               </ul>
               <p className="mb-4">
-                Please report any issues to <strong className="font-semibold text-slate-900">connect@canten.com</strong> within 1 hour of delivery with photographic evidence.
+                Please report any issues to <strong className="font-semibold text-slate-900">cantenonline@gmail.com</strong> within 1 hour of delivery with photographic evidence.
               </p>
             </section>
 
