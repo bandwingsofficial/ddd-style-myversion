@@ -50,7 +50,7 @@ export default function ProductGrid() {
                 onClick={() => setOutlet(null as any)} 
             >
                 <MapPin size={14} />
-                <span>{selectedOutlet.name}({selectedOutlet.branch})</span>
+                <span>{selectedOutlet.name}</span>
                 <span className="text-[10px] underline ml-1">Change</span>
             </div>
           )}
