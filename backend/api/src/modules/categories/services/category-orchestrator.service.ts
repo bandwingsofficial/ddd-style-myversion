@@ -1,5 +1,3 @@
-// src/modules/categories/services/category-orchestrator.service.ts
-
 import { Injectable } from '@nestjs/common';
 
 import { CategoryService } from './category.service';
@@ -10,6 +8,16 @@ import {
   CategoryResponseMapper,
 } from '../mappers/category-response.mapper';
 import { MulterUploadFile } from '../../uploads/interfaces/upload-file.interface';
+import { ListCategoriesQueryDto } from '../dtos/list-categories-query.dto';
+import { CategoryStatus } from '../domain/enums/category-status.enum';
+
+export interface PaginatedCategoryResponse {
+  items: CategoryResponse[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
 
 @Injectable()
 export class CategoryOrchestratorService {
@@ -18,24 +26,26 @@ export class CategoryOrchestratorService {
     private readonly categoryResponseMapper: CategoryResponseMapper,
   ) {}
 
-  /* ================================================= */
-  /* CATEGORY – READS                                 */
-  /* ================================================= */
-
-  async getCategoryById(
-    categoryId: string,
-  ): Promise<CategoryResponse> {
+  async getCategoryById(categoryId: string): Promise<CategoryResponse> {
     const category = await this.categoryService.getById(categoryId);
 
     return this.categoryResponseMapper.toResponse(category);
   }
 
-  async getAllCategories(params?: {
-    includeInactive?: boolean;
-  }): Promise<CategoryResponse[]> {
-    const categories = await this.categoryService.getAll(params);
+  async listCategories(
+    query: ListCategoriesQueryDto,
+  ): Promise<PaginatedCategoryResponse> {
+    const result = await this.categoryService.listCategories(query);
 
-    return this.categoryResponseMapper.toResponseList(categories);
+    return {
+      items: await this.categoryResponseMapper.toResponseList(
+        result.items,
+      ),
+      page: result.page,
+      limit: result.limit,
+      total: result.total,
+      totalPages: result.totalPages,
+    };
   }
 
   async getAllCategoriesForPublic(): Promise<CategoryPublicResponse[]> {
@@ -43,78 +53,53 @@ export class CategoryOrchestratorService {
       includeInactive: false,
     });
 
-    return this.categoryResponseMapper.toPublicResponseList(
-      categories,
-    );
+    return this.categoryResponseMapper.toPublicResponseList(categories);
   }
-
-  /* ================================================= */
-  /* CATEGORY – CREATE / UPDATE                       */
-  /* ================================================= */
 
   async createCategory(params: {
     category: Category;
-    imageFile?: MulterUploadFile;
+    imageFile: MulterUploadFile;
   }): Promise<CategoryResponse> {
-    const category = await this.categoryService.createCategory(
-      params,
-    );
+    const category = await this.categoryService.createCategory(params);
 
     return this.categoryResponseMapper.toResponse(category);
   }
 
-  async renameCategory(params: {
+  async updateCategory(params: {
     categoryId: string;
-    name: string;
-  }): Promise<CategoryResponse> {
-    const category = await this.categoryService.renameCategory(
-      params,
-    );
-
-    return this.categoryResponseMapper.toResponse(category);
-  }
-
-  async updateCategoryDetails(params: {
-    categoryId: string;
+    name?: string;
     subtitle?: string;
-    imagePath?: string | null;
     imageFile?: MulterUploadFile;
     removeImage?: boolean;
   }): Promise<CategoryResponse> {
-    const category =
-      await this.categoryService.updateCategoryDetails(params);
+    const category = await this.categoryService.updateCategory(params);
 
     return this.categoryResponseMapper.toResponse(category);
   }
 
-  async disableCategory(params: {
+  async updateCategoryStatus(params: {
     categoryId: string;
-  }): Promise<{ id: string; status: 'INACTIVE' }> {
-    return this.categoryService.disableCategory(
-      params.categoryId,
-    );
-  }
-
-  async enableCategory(params: {
-    categoryId: string;
-  }): Promise<{ id: string; status: 'ACTIVE' }> {
-    return this.categoryService.enableCategory(
-      params.categoryId,
-    );
-  }
-
-  /* ================================================= */
-  /* CATEGORY – SORT ORDER                             */
-  /* ================================================= */
-
-  async changeCategorySortOrder(params: {
-    categoryId: string;
-    sortOrder: number;
+    status: CategoryStatus;
   }): Promise<CategoryResponse> {
-    const category = await this.categoryService.changeSortOrder(
+    const category = await this.categoryService.updateCategoryStatus(
       params,
     );
 
     return this.categoryResponseMapper.toResponse(category);
+  }
+
+  async reorderCategories(
+    items: { id: string; sortOrder: number }[],
+  ): Promise<CategoryResponse[]> {
+    const categories =
+      await this.categoryService.reorderCategories(items);
+
+    return this.categoryResponseMapper.toResponseList(categories);
+  }
+
+  async deleteCategory(params: {
+    categoryId: string;
+  }): Promise<{ id: string }> {
+    return this.categoryService.deleteCategory(params.categoryId);
   }
 }

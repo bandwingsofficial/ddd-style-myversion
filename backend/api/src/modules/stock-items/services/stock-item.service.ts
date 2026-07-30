@@ -1,17 +1,16 @@
-// src/modules/stock-items/services/stock-item.service.ts
-
 import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 
 import { StockItem } from '../domain/models/stock-item.model';
 import { StockItemRepository } from '../repositories/stock-item.repository';
+import { StockItemStatus } from '../domain/enums/stock-item-status.enum';
+import { Unit } from '../domain/enums/unit.enum';
 
 import { ValidationError } from '../../../common/errors';
 
-/* 🔥 EVENTS */
 import { StockItemEventsService } from '../events/stock-item-events.service';
-import { Unit } from '../domain/enums/unit.enum';
+import { ListStockItemsQueryDto } from '../dtos/list-stock-items-query.dto';
 
 @Injectable()
 export class StockItemService {
@@ -21,14 +20,8 @@ export class StockItemService {
     private readonly stockItemEvents: StockItemEventsService,
   ) {}
 
-  /* ================================================= */
-  /* READS                                            */
-  /* ================================================= */
-
   async getById(stockItemId: string): Promise<StockItem> {
-    const stockItem = await this.stockItemRepo.findById(
-      stockItemId,
-    );
+    const stockItem = await this.stockItemRepo.findById(stockItemId);
 
     if (!stockItem) {
       throw new ValidationError(
@@ -40,30 +33,57 @@ export class StockItemService {
     return stockItem;
   }
 
-  /**
-   * ✅ GET ALL (ADMIN ONLY)
-   */
-  async getAll(): Promise<StockItem[]> {
-    return this.stockItemRepo.findAll();
+  async getAll(params?: {
+    includeInactive?: boolean;
+  }): Promise<StockItem[]> {
+    return this.stockItemRepo.findAll(params?.includeInactive ?? true);
   }
 
-  /* ================================================= */
-  /* CREATE STOCK ITEM                                 */
-  /* ================================================= */
+  async listStockItems(query: ListStockItemsQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
 
-  async createStockItem(
-    stockItem: StockItem,
-  ): Promise<StockItem> {
+    const result = await this.stockItemRepo.findPaginated({
+      page,
+      limit,
+      search: query.search,
+    });
+
+    return {
+      items: result.items,
+      page,
+      limit,
+      total: result.total,
+      totalPages: Math.max(1, Math.ceil(result.total / limit)),
+    };
+  }
+
+  async createStockItem(stockItem: StockItem): Promise<StockItem> {
+    const normalizedName = StockItem.validateNameInput(stockItem.name);
+
+    const existing = await this.stockItemRepo.findByName(normalizedName);
+
+    if (existing) {
+      throw new ValidationError(
+        'STOCK_ITEM_ALREADY_EXISTS',
+        'Stock item already exists.',
+        { errors: { name: 'Stock item already exists.' } },
+      );
+    }
+
     let created!: StockItem;
 
     await this.prisma.$transaction(async (tx) => {
       created = await this.stockItemRepo.create(
-        stockItem,
+        StockItem.createNew({
+          id: stockItem.id,
+          name: normalizedName,
+          unit: stockItem.unit,
+        }),
         tx,
       );
     });
 
-    /* 🔥 EVENTS AFTER DB SUCCESS */
     this.stockItemEvents.emitStockItemCreated({
       stockItemId: created.id,
     });
@@ -71,153 +91,139 @@ export class StockItemService {
     return created;
   }
 
-  /* ================================================= */
-  /* UPDATE (RENAME)                                   */
-  /* ================================================= */
-
-  async renameStockItem(params: {
+  async updateStockItem(params: {
     stockItemId: string;
-    name: string;
+    name?: string;
+    unit?: Unit;
   }): Promise<StockItem> {
-    const stockItem = await this.stockItemRepo.findById(
-      params.stockItemId,
-    );
+    const stockItem = await this.getById(params.stockItemId);
 
-    if (!stockItem) {
+    if (stockItem.isInactive()) {
       throw new ValidationError(
-        'STOCK_ITEM_NOT_FOUND',
-        'Stock item not found',
+        'STOCK_ITEM_INACTIVE_UPDATE',
+        'Cannot edit inactive stock item. Activate it first.',
+        {
+          errors: {
+            name: 'Cannot edit inactive stock item. Activate it first.',
+          },
+        },
       );
     }
 
-    const updated = stockItem.rename(params.name);
+    let normalizedName: string | undefined;
+
+    if (params.name !== undefined) {
+      normalizedName = StockItem.validateNameInput(params.name);
+
+      const duplicate = await this.stockItemRepo.findByName(
+        normalizedName,
+        undefined,
+        stockItem.id,
+      );
+
+      if (duplicate) {
+        throw new ValidationError(
+          'STOCK_ITEM_ALREADY_EXISTS',
+          'Stock item already exists.',
+          { errors: { name: 'Stock item already exists.' } },
+        );
+      }
+    }
+
+    const updated = stockItem.update({
+      name: normalizedName,
+      unit: params.unit,
+    });
 
     await this.prisma.$transaction(async (tx) => {
       await this.stockItemRepo.update(updated, tx);
     });
 
-    /* 🔥 EVENTS */
     this.stockItemEvents.emitStockItemUpdated({
       stockItemId: updated.id,
       name: updated.name,
     });
 
+    if (params.unit && params.unit !== stockItem.unit) {
+      this.stockItemEvents.emitStockItemUnitChanged({
+        stockItemId: updated.id,
+        unit: updated.unit,
+      });
+    }
+
     return updated;
   }
 
-  /* ================================================= */
-  /* ENABLE / DISABLE                                  */
-  /* ================================================= */
-
-  async disableStockItem(stockItemId: string): Promise<{
-    id: string;
-    status: 'INACTIVE';
-  }> {
-    const stockItem = await this.stockItemRepo.findById(
-      stockItemId,
-    );
-
-    if (!stockItem) {
-      throw new ValidationError(
-        'STOCK_ITEM_NOT_FOUND',
-        'Stock item not found',
-      );
-    }
-
-    if (!stockItem.isActive()) {
-      return {
-        id: stockItem.id,
-        status: 'INACTIVE',
-      };
-    }
-
-    const disabled = stockItem.disable();
-
-    await this.prisma.$transaction(async (tx) => {
-      await this.stockItemRepo.updateStatus(disabled, tx);
-    });
-
-    /* 🔥 EVENTS */
-    this.stockItemEvents.emitStockItemDisabled({
-      stockItemId: stockItem.id,
-    });
-
-    return {
-      id: stockItem.id,
-      status: 'INACTIVE',
-    };
-  }
-
-  async enableStockItem(stockItemId: string): Promise<{
-    id: string;
-    status: 'ACTIVE';
-  }> {
-    const stockItem = await this.stockItemRepo.findById(
-      stockItemId,
-    );
-
-    if (!stockItem) {
-      throw new ValidationError(
-        'STOCK_ITEM_NOT_FOUND',
-        'Stock item not found',
-      );
-    }
-
-    if (stockItem.isActive()) {
-      return {
-        id: stockItem.id,
-        status: 'ACTIVE',
-      };
-    }
-
-    const enabled = stockItem.enable();
-
-    await this.prisma.$transaction(async (tx) => {
-      await this.stockItemRepo.updateStatus(enabled, tx);
-    });
-
-    /* 🔥 EVENTS */
-    this.stockItemEvents.emitStockItemEnabled({
-      stockItemId: stockItem.id,
-    });
-
-    return {
-      id: stockItem.id,
-      status: 'ACTIVE',
-    };
-  }
-
-  /* ================================================= */
-  /* UNIT                                             */
-  /* ================================================= */
-
-  async changeUnit(params: {
+  async updateStockItemStatus(params: {
     stockItemId: string;
-    unit: Unit;
+    status: StockItemStatus;
   }): Promise<StockItem> {
-    const stockItem = await this.stockItemRepo.findById(
-      params.stockItemId,
-    );
+    const stockItem = await this.getById(params.stockItemId);
+    const updated = stockItem.changeStatus(params.status);
 
-    if (!stockItem) {
+    if (updated.status === stockItem.status) {
+      return stockItem;
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.stockItemRepo.updateStatusOnly(updated, tx);
+    });
+
+    if (updated.isActive()) {
+      this.stockItemEvents.emitStockItemEnabled({
+        stockItemId: updated.id,
+      });
+    } else {
+      this.stockItemEvents.emitStockItemDisabled({
+        stockItemId: updated.id,
+      });
+    }
+
+    return updated;
+  }
+
+  async deleteStockItem(stockItemId: string): Promise<{ id: string }> {
+    const stockItem = await this.getById(stockItemId);
+
+    const [
+      centralInventoryCount,
+      transactionCount,
+      outletStockCount,
+    ] = await Promise.all([
+      this.stockItemRepo.countCentralInventoryByStockItemId(stockItemId),
+      this.stockItemRepo.countStockTransactionsByStockItemId(stockItemId),
+      this.stockItemRepo.countOutletStocksByStockItemId(stockItemId),
+    ]);
+
+    const blockers: string[] = [];
+
+    if (centralInventoryCount > 0) {
+      blockers.push('central inventory records exist');
+    }
+
+    if (transactionCount > 0) {
+      blockers.push('inventory transactions exist');
+    }
+
+    if (outletStockCount > 0) {
+      blockers.push('outlet stock records exist');
+    }
+
+    if (blockers.length > 0) {
       throw new ValidationError(
-        'STOCK_ITEM_NOT_FOUND',
-        'Stock item not found',
+        'STOCK_ITEM_HAS_REFERENCES',
+        `Cannot delete stock item while ${blockers.join(', ')}.`,
       );
     }
 
-    const updated = stockItem.changeUnit(params.unit);
-
     await this.prisma.$transaction(async (tx) => {
-      await this.stockItemRepo.updateUnit(updated, tx);
+      await this.stockItemRepo.deleteById(stockItemId, tx);
     });
 
-    /* 🔥 EVENTS */
-    this.stockItemEvents.emitStockItemUnitChanged({
+    this.stockItemEvents.emitStockItemDeleted({
       stockItemId: stockItem.id,
-      unit: params.unit,
     });
 
-    return updated;
+    return { id: stockItem.id };
   }
 }

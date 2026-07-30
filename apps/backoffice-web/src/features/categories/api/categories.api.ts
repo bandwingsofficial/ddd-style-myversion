@@ -1,13 +1,48 @@
 import { axiosInstance } from '@/http/axios';
 import {
   Category,
-  CategoryStatusChangeResponse,
+  PaginatedCategories,
+  ReorderCategoryItem,
 } from '../types/category.types';
 
+export interface ListCategoriesParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
 export const CategoriesApi = {
-  getAll: async (): Promise<Category[]> => {
-    const res = await axiosInstance.get('/categories');
+  list: async (
+    params: ListCategoriesParams = {},
+  ): Promise<PaginatedCategories> => {
+    const res = await axiosInstance.get('/categories', { params });
     return res.data.data;
+  },
+
+  /**
+   * Fetches all categories by paginating through GET /categories.
+   * Backend ListCategoriesQueryDto allows limit 1–100 per page.
+   */
+  getAll: async (): Promise<Category[]> => {
+    const limit = 100;
+    const firstPage = await CategoriesApi.list({ page: 1, limit });
+    const items = [...firstPage.items];
+
+    for (let page = 2; page <= firstPage.totalPages; page += 1) {
+      const nextPage = await CategoriesApi.list({ page, limit });
+      items.push(...nextPage.items);
+    }
+
+    return items;
+  },
+
+  /**
+   * Active categories for admin selection dropdowns (e.g. Product form).
+   * Uses GET /categories and filters client-side — no status query param exists.
+   */
+  listActiveForSelection: async (): Promise<Category[]> => {
+    const categories = await CategoriesApi.getAll();
+    return categories.filter((category) => category.status === 'ACTIVE');
   },
 
   getById: async (id: string): Promise<Category> => {
@@ -15,56 +50,62 @@ export const CategoriesApi = {
     return res.data.data;
   },
 
-  create: async (formData: FormData): Promise<Category> => {
+  create: async (
+    formData: FormData,
+    onUploadProgress?: (progress: number) => void,
+  ): Promise<Category> => {
     const res = await axiosInstance.post('/categories', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      onUploadProgress: (event) => {
+        if (!onUploadProgress || !event.total) {
+          return;
+        }
+
+        onUploadProgress(Math.round((event.loaded * 100) / event.total));
+      },
     });
     return res.data.data;
   },
 
-  updateDetails: async (
+  update: async (
     id: string,
     formData: FormData,
+    onUploadProgress?: (progress: number) => void,
   ): Promise<Category> => {
-    const res = await axiosInstance.post(
-      `/categories/${id}/details`,
-      formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+    const res = await axiosInstance.patch(`/categories/${id}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
       },
-    );
-    return res.data.data;
-  },
+      onUploadProgress: (event) => {
+        if (!onUploadProgress || !event.total) {
+          return;
+        }
 
-  rename: async (id: string, name: string): Promise<Category> => {
-    const res = await axiosInstance.post(`/categories/${id}/rename`, {
-      name,
+        onUploadProgress(Math.round((event.loaded * 100) / event.total));
+      },
     });
     return res.data.data;
   },
 
-  changeSortOrder: async (
+  updateStatus: async (
     id: string,
-    sortOrder: number,
+    status: 'ACTIVE' | 'INACTIVE',
   ): Promise<Category> => {
-    const res = await axiosInstance.post(
-      `/categories/${id}/sort-order`,
-      { sortOrder },
-    );
+    const res = await axiosInstance.patch(`/categories/${id}/status`, {
+      status,
+    });
     return res.data.data;
   },
 
-  enable: async (id: string): Promise<CategoryStatusChangeResponse> => {
-    const res = await axiosInstance.post(`/categories/${id}/enable`);
+  reorder: async (items: ReorderCategoryItem[]): Promise<Category[]> => {
+    const res = await axiosInstance.patch('/categories/reorder', items);
     return res.data.data;
   },
 
-  disable: async (id: string): Promise<CategoryStatusChangeResponse> => {
-    const res = await axiosInstance.post(`/categories/${id}/disable`);
+  delete: async (id: string): Promise<{ id: string }> => {
+    const res = await axiosInstance.delete(`/categories/${id}`);
     return res.data.data;
   },
 };

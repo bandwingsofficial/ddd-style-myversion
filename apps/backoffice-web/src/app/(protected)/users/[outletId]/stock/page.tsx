@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Package, Loader2, Scale, Tag, Store, AlertCircle } from 'lucide-react';
 import { UsersService } from '@/features/users/users.service';
+import { StockItemsApi } from '@/features/stock-items/api/stock-items.api';
 import { axiosInstance } from '@/http/axios';
 
 interface StockItem {
@@ -49,12 +50,12 @@ export default function OutletStockPage() {
       const stockPromise = UsersService.getOutletStock(outletId);
       
       // 2. Fetch Master Stock Items (for mapping IDs to Names)
-      const masterListPromise = axiosInstance.get('/stock-items'); 
+      const masterListPromise = StockItemsApi.getAll();
 
       // 3. Fetch Outlet Details
       const outletPromise = axiosInstance.get(`/outlets/${outletId}`);
 
-      const [stockRes, masterRes, outletRes] = await Promise.all([
+      const [stockRes, masterItems, outletRes] = await Promise.all([
         stockPromise, 
         masterListPromise,
         outletPromise
@@ -62,8 +63,6 @@ export default function OutletStockPage() {
 
       // --- Process Data ---
       setStock(stockRes.data.data || []);
-
-      const masterItems: MasterStockItem[] = masterRes.data.data || [];
       const nameMap: Record<string, string> = {};
       masterItems.forEach(item => {
         nameMap[item.id] = item.name;

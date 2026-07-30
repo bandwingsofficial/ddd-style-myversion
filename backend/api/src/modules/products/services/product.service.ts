@@ -12,6 +12,7 @@ import { ProductStatus } from '../domain/enums/product-status.enum';
 import { ProductEventsService } from '../events/product-events.service';
 import { ProductImages } from '../domain/value-objects/product-images.vo';
 import { PublicProductQueryDto } from '../dtos/public-product-query.dto';
+import { ListProductsQueryDto } from '../dtos/list-products-query.dto';
 import { UploadFolders } from '../../uploads/constants/upload-folders.constants';
 import { UploadService } from '../../uploads/services/upload.service';
 import { MulterUploadFile } from '../../uploads/interfaces/upload-file.interface';
@@ -60,6 +61,27 @@ export class ProductService {
     const rows = await this.productRepo.findAll('admin', query);
 
     return rows.map((r) => r.product);
+  }
+
+  async listProducts(query: ListProductsQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    const result = await this.productRepo.findPaginatedAdmin({
+      page,
+      limit,
+      search: query.search,
+      categoryId: query.categoryId,
+      status: query.status as ProductStatus | undefined,
+    });
+
+    return {
+      items: result.items,
+      page,
+      limit,
+      total: result.total,
+      totalPages: Math.max(1, Math.ceil(result.total / limit)),
+    };
   }
 
   async getPublicProducts(query: PublicProductQueryDto) {
@@ -130,27 +152,49 @@ export class ProductService {
     mainImageFile: MulterUploadFile;
     galleryImageFiles?: MulterUploadFile[];
   }): Promise<Product> {
-    const categoryExists = await this.prisma.category.findUnique({
+    const category = await this.prisma.category.findUnique({
       where: { id: params.product.categoryId },
-      select: { id: true },
+      select: { id: true, status: true },
     });
 
-    if (!categoryExists) {
+    if (!category) {
       throw new ValidationError(
         'CATEGORY_NOT_FOUND',
         'Category does not exist',
+        { errors: { categoryId: 'Category does not exist.' } },
       );
     }
 
-    const stockExists = await this.prisma.stockItem.findUnique({
-      where: { id: params.product.stockItemId },
-      select: { id: true },
-    });
-
-    if (!stockExists) {
+    if (category.status !== 'ACTIVE') {
       throw new ValidationError(
-        'STOCK_ITEM_NOT_FOUND',
-        'Stock item does not exist',
+        'CATEGORY_INACTIVE',
+        'Only active categories can be assigned to products.',
+        { errors: { categoryId: 'Only active categories can be assigned.' } },
+      );
+    }
+
+    const normalizedName = params.product.name.getValue();
+    const existingByName = await this.productRepo.findByProductName(
+      normalizedName,
+    );
+
+    if (existingByName) {
+      throw new ValidationError(
+        'PRODUCT_ALREADY_EXISTS',
+        'Product with this name already exists.',
+        { errors: { productName: 'Product with this name already exists.' } },
+      );
+    }
+
+    const existingBySlug = await this.productRepo.findBySlug(
+      params.product.slug.getValue(),
+    );
+
+    if (existingBySlug) {
+      throw new ValidationError(
+        'PRODUCT_ALREADY_EXISTS',
+        'Product with this name already exists.',
+        { errors: { productName: 'Product with this name already exists.' } },
       );
     }
 
@@ -169,7 +213,6 @@ export class ProductService {
     const normalizedProduct = Product.rehydrate({
       id: params.product.id,
       categoryId: params.product.categoryId,
-      stockItemId: params.product.stockItemId,
       name: params.product.name,
       slug: params.product.slug,
       price: params.product.price,
@@ -214,21 +257,11 @@ export class ProductService {
       );
 
       if (e.code === 'P2002') {
-        const field = e.meta?.target?.[0];
-
-        if (field === 'productName') {
-          throw new ValidationError(
-            'PRODUCT_NAME_EXISTS',
-            'Product with same name already exists',
-          );
-        }
-
-        if (field === 'slug') {
-          throw new ValidationError(
-            'PRODUCT_SLUG_EXISTS',
-            'Product slug already exists',
-          );
-        }
+        throw new ValidationError(
+          'PRODUCT_ALREADY_EXISTS',
+          'Product with this name already exists.',
+          { errors: { productName: 'Product with this name already exists.' } },
+        );
       }
 
       throw e;
@@ -257,8 +290,13 @@ export class ProductService {
 
     if (!product.isActive()) {
       throw new ValidationError(
-        'PRODUCT_INACTIVE',
-        'Inactive product cannot be updated',
+        'PRODUCT_INACTIVE_UPDATE',
+        'Cannot edit inactive product. Activate it first.',
+        {
+          errors: {
+            productName: 'Cannot edit inactive product. Activate it first.',
+          },
+        },
       );
     }
 
@@ -290,8 +328,8 @@ export class ProductService {
 
     if (!product.isActive()) {
       throw new ValidationError(
-        'PRODUCT_INACTIVE',
-        'Inactive product cannot be updated',
+        'PRODUCT_INACTIVE_UPDATE',
+        'Cannot edit inactive product. Activate it first.',
       );
     }
 
@@ -325,8 +363,8 @@ export class ProductService {
 
     if (!product.isActive()) {
       throw new ValidationError(
-        'PRODUCT_INACTIVE',
-        'Inactive product cannot be updated',
+        'PRODUCT_INACTIVE_UPDATE',
+        'Cannot edit inactive product. Activate it first.',
       );
     }
 
@@ -584,22 +622,79 @@ export class ProductService {
   async deleteProduct(productId: string): Promise<{ id: string }> {
     const product = await this.getById(productId);
 
+    const [cartCount, orderCount, outletCount] = await Promise.all([
+      this.productRepo.countCartItemsByProductId(productId),
+      this.productRepo.countOrderItemsByProductId(productId),
+      this.productRepo.countOutletProductsByProductId(productId),
+    ]);
+
+    const blockers: string[] = [];
+
+    if (cartCount > 0) {
+      blockers.push('cart items reference it');
+    }
+
+    if (orderCount > 0) {
+      blockers.push('order items reference it');
+    }
+
+    if (outletCount > 0) {
+      blockers.push('outlet product assignments exist');
+    }
+
+    if (blockers.length > 0) {
+      throw new ValidationError(
+        'PRODUCT_HAS_REFERENCES',
+        `Cannot delete product while ${blockers.join(', ')}.`,
+      );
+    }
+
     const objectKeys = [
       product.images.getMain(),
       ...product.images.getGallery(),
-    ].filter(Boolean);
+    ].filter(Boolean) as string[];
 
     await this.prisma.$transaction(async (tx) => {
       await this.productRepo.hardDelete(productId, tx);
-    });
 
-    await this.deleteMultipleImagesSafe(objectKeys);
+      for (const objectKey of objectKeys) {
+        await this.uploadService.deleteObject({ objectKey });
+      }
+    });
 
     this.productEvents.emitProductDisabled({
       productId: product.id,
     });
 
     return { id: product.id };
+  }
+
+  async updateProductStatus(params: {
+    productId: string;
+    status: ProductStatus;
+  }): Promise<Product> {
+    const product = await this.getById(params.productId);
+    const updated = product.changeStatus(params.status);
+
+    if (updated.status === product.status) {
+      return product;
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.productRepo.updateStatus(updated, tx);
+    });
+
+    if (updated.isActive()) {
+      this.productEvents.emitProductEnabled({
+        productId: updated.id,
+      });
+    } else {
+      this.productEvents.emitProductDisabled({
+        productId: updated.id,
+      });
+    }
+
+    return updated;
   }
 
   /* ================================================= */
@@ -611,8 +706,8 @@ export class ProductService {
 
     if (!product.isActive()) {
       throw new ValidationError(
-        'PRODUCT_INACTIVE',
-        'Inactive product cannot be marked trending',
+        'PRODUCT_INACTIVE_UPDATE',
+        'Cannot edit inactive product. Activate it first.',
       );
     }
 
@@ -629,7 +724,7 @@ export class ProductService {
   }
 
   async unmarkTrending(productId: string): Promise<void> {
-    const product = await this.getById(productId);
+    const product = await this.assertActiveProduct(productId);
 
     const updated = product.unmarkTrending();
 
@@ -648,8 +743,8 @@ export class ProductService {
 
     if (!product.isActive()) {
       throw new ValidationError(
-        'PRODUCT_INACTIVE',
-        'Inactive product cannot be marked featured',
+        'PRODUCT_INACTIVE_UPDATE',
+        'Cannot edit inactive product. Activate it first.',
       );
     }
 
@@ -684,75 +779,26 @@ export class ProductService {
   /* ENABLE / DISABLE                                 */
   /* ================================================= */
 
-  async disableProduct(
-    productId: string,
-  ): Promise<{ id: string; status: 'INACTIVE' }> {
-    const product = await this.getById(productId);
-
-    if (!product.isActive()) {
-      return { id: product.id, status: 'INACTIVE' };
-    }
-
-    const disabled = product.disable();
-
-    await this.prisma.$transaction(async (tx) => {
-      await this.productRepo.updateStatus(disabled, tx);
-    });
-
-    this.productEvents.emitProductDisabled({
-      productId: product.id,
-    });
-
-    return { id: product.id, status: 'INACTIVE' };
-  }
-
   async enableProduct(
     productId: string,
   ): Promise<{ id: string; status: 'ACTIVE' }> {
-    const product = await this.getById(productId);
-
-    if (product.isActive()) {
-      return { id: product.id, status: 'ACTIVE' };
-    }
-
-    const enabled = Product.rehydrate({
-      id: product.id,
-      categoryId: product.categoryId,
-      stockItemId: product.stockItemId,
-      name: product.name,
-      slug: product.slug,
-      price: product.price,
-      images: product.images,
-      tags: product.tags,
-      unitValue: product.unitValue,
-      unitType: product.unitType,
-      ratingAverage: product.ratingAverage,
-      ratingCount: product.ratingCount,
-      isAvailable: product.isAvailable,
-      sortOrder: product.sortOrder,
-      shortDescription: product.shortDescription,
-      longDescription: product.longDescription,
+    const updated = await this.updateProductStatus({
+      productId,
       status: ProductStatus.ACTIVE,
-      trendState: product.trendState,
-      featuredState: product.featuredState,
-      ingredients: product.ingredients,
-      benefits: product.benefits,
-      extraInfo1: product.extraInfo1,
-      extraInfo2: product.extraInfo2,
-      createdAt: product.createdAt,
-      updatedAt: new Date(),
-      createdBy: product.createdBy,
     });
 
-    await this.prisma.$transaction(async (tx) => {
-      await this.productRepo.updateStatus(enabled, tx);
+    return { id: updated.id, status: 'ACTIVE' };
+  }
+
+  async disableProduct(
+    productId: string,
+  ): Promise<{ id: string; status: 'INACTIVE' }> {
+    const updated = await this.updateProductStatus({
+      productId,
+      status: ProductStatus.INACTIVE,
     });
 
-    this.productEvents.emitProductEnabled({
-      productId: product.id,
-    });
-
-    return { id: product.id, status: 'ACTIVE' };
+    return { id: updated.id, status: 'INACTIVE' };
   }
 
   /* ================================================= */
@@ -787,8 +833,8 @@ export class ProductService {
 
     if (!product.isActive()) {
       throw new ValidationError(
-        'PRODUCT_INACTIVE',
-        'Inactive product cannot be updated',
+        'PRODUCT_INACTIVE_UPDATE',
+        'Cannot edit inactive product. Activate it first.',
       );
     }
 

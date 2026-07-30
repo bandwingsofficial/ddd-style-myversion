@@ -1,24 +1,13 @@
-import {
-  IsInt,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  Min,
-} from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateCategoryDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(100)
   name: string;
 
   @IsOptional()
   @IsString()
+  @MaxLength(150)
   subtitle?: string;
-
-  @IsOptional()
-  @Type(() => Number) // 🔥 THIS IS THE FIX
-  @IsInt()
-  @Min(0)
-  sortOrder?: number;
 }

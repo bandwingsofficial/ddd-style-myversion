@@ -74,4 +74,13 @@ export class StockItemPublicListener {
       unit: event.unit,
     });
   }
+
+  @OnEvent(StockItemEvents.STOCK_ITEM_DELETED)
+  handleStockItemDeleted(
+    event: StockItemLifecycleEvent,
+  ): void {
+    this.gateway.emitStockItemDeleted({
+      stockItemId: event.stockItemId,
+    });
+  }
 }

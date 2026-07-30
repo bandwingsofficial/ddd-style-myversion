@@ -70,4 +70,13 @@ export class StockItemEventsService {
       payload,
     );
   }
+
+  emitStockItemDeleted(
+    payload: StockItemLifecycleEvent,
+  ): void {
+    this.eventEmitter.emit(
+      StockItemEvents.STOCK_ITEM_DELETED,
+      payload,
+    );
+  }
 }

@@ -1,84 +1,84 @@
-// src/modules/stock-items/services/stock-item-orchestrator.service.ts
-
 import { Injectable } from '@nestjs/common';
 
 import { StockItemService } from './stock-item.service';
 import { StockItem } from '../domain/models/stock-item.model';
+import {
+  StockItemResponse,
+  StockItemResponseMapper,
+} from '../mappers/stock-item-response.mapper';
+import { ListStockItemsQueryDto } from '../dtos/list-stock-items-query.dto';
+import { StockItemStatus } from '../domain/enums/stock-item-status.enum';
 import { Unit } from '../domain/enums/unit.enum';
 
-/**
- * Orchestrator = controller-facing layer
- * --------------------------------------------------
- * - Controllers talk ONLY to this class
- * - No domain logic
- * - No validation rules
- * - No data mutation
- * - Delegates to services
- */
+export interface PaginatedStockItemResponse {
+  items: StockItemResponse[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 @Injectable()
 export class StockItemOrchestratorService {
   constructor(
     private readonly stockItemService: StockItemService,
+    private readonly stockItemResponseMapper: StockItemResponseMapper,
   ) {}
 
-  /* ================================================= */
-  /* STOCK ITEM – READS                               */
-  /* ================================================= */
+  async getStockItemById(stockItemId: string): Promise<StockItemResponse> {
+    const stockItem = await this.stockItemService.getById(stockItemId);
 
-  async getStockItemById(stockItemId: string) {
-    return this.stockItemService.getById(stockItemId);
+    return this.stockItemResponseMapper.toResponse(stockItem);
   }
 
-  /**
-   * ✅ GET ALL (ADMIN ONLY)
-   */
-  async getAllStockItems() {
-    return this.stockItemService.getAll();
-  }
+  async listStockItems(
+    query: ListStockItemsQueryDto,
+  ): Promise<PaginatedStockItemResponse> {
+    const result = await this.stockItemService.listStockItems(query);
 
-  /* ================================================= */
-  /* STOCK ITEM – CREATE / UPDATE / ENABLE / DISABLE  */
-  /* ================================================= */
+    return {
+      items: this.stockItemResponseMapper.toResponseList(result.items),
+      page: result.page,
+      limit: result.limit,
+      total: result.total,
+      totalPages: result.totalPages,
+    };
+  }
 
   async createStockItem(params: {
-    stockItem: StockItem; // ✅ typed aggregate
-  }) {
-    return this.stockItemService.createStockItem(
+    stockItem: StockItem;
+  }): Promise<StockItemResponse> {
+    const stockItem = await this.stockItemService.createStockItem(
       params.stockItem,
     );
+
+    return this.stockItemResponseMapper.toResponse(stockItem);
   }
 
-  async renameStockItem(params: {
+  async updateStockItem(params: {
     stockItemId: string;
-    name: string;
-  }) {
-    return this.stockItemService.renameStockItem(params);
+    name?: string;
+    unit?: Unit;
+  }): Promise<StockItemResponse> {
+    const stockItem = await this.stockItemService.updateStockItem(params);
+
+    return this.stockItemResponseMapper.toResponse(stockItem);
   }
 
-  async disableStockItem(params: {
+  async updateStockItemStatus(params: {
     stockItemId: string;
-  }) {
-    return this.stockItemService.disableStockItem(
-      params.stockItemId,
+    status: StockItemStatus;
+  }): Promise<StockItemResponse> {
+    const stockItem = await this.stockItemService.updateStockItemStatus(
+      params,
     );
+
+    return this.stockItemResponseMapper.toResponse(stockItem);
   }
 
-  async enableStockItem(params: {
+  async deleteStockItem(params: {
     stockItemId: string;
-  }) {
-    return this.stockItemService.enableStockItem(
-      params.stockItemId,
-    );
-  }
-
-  /* ================================================= */
-  /* STOCK ITEM – UNIT                                */
-  /* ================================================= */
-
-  async changeStockItemUnit(params: {
-    stockItemId: string;
-    unit: Unit;
-  }) {
-    return this.stockItemService.changeUnit(params);
+  }): Promise<{ id: string }> {
+    return this.stockItemService.deleteStockItem(params.stockItemId);
   }
 }

@@ -27,6 +27,8 @@ import { StockItemEventsService } from '../events/stock-item-events.service';
 import { StockItemPublicGateway } from '../gateways/stock-item-public.gateway';
 import { StockItemPublicListener } from '../listeners/stock-item-public.listener';
 
+import { StockItemResponseMapper } from '../mappers/stock-item-response.mapper';
+
 @Module({
   controllers: [StockItemManagementController],
   providers: [
@@ -41,6 +43,9 @@ import { StockItemPublicListener } from '../listeners/stock-item-public.listener
 
     // Repository
     StockItemRepository,
+
+    // Mappers
+    StockItemResponseMapper,
 
     // 🔥 EVENTS / REALTIME
     StockItemEventsService,

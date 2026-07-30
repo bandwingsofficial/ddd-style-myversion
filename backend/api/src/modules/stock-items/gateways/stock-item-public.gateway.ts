@@ -55,9 +55,12 @@ export class StockItemPublicGateway {
     stockItemId: string;
     unit: string;
   }): void {
-    this.server.emit(
-      'stock_item.unit.changed',
-      payload,
-    );
+    this.server.emit('stock_item.unit.changed', payload);
+  }
+
+  emitStockItemDeleted(payload: {
+    stockItemId: string;
+  }): void {
+    this.server.emit('stock_item.deleted', payload);
   }
 }

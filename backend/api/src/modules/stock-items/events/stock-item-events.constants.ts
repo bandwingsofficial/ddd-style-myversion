@@ -4,4 +4,5 @@ export const StockItemEvents = {
   STOCK_ITEM_ENABLED: 'stock_item.enabled',
   STOCK_ITEM_DISABLED: 'stock_item.disabled',
   STOCK_ITEM_UNIT_CHANGED: 'stock_item.unit.changed',
+  STOCK_ITEM_DELETED: 'stock_item.deleted',
 } as const;

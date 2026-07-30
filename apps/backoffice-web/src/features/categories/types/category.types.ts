@@ -11,17 +11,21 @@ export interface Category {
   updatedAt: string;
 }
 
-export interface CategoryStatusChangeResponse {
-  id: string;
-  status: CategoryStatus;
+export interface PaginatedCategories {
+  items: Category[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
 
-export interface CategoriesUpdatedSocketPayload {
-  version: number;
-  categories: Array<{
-    id: string;
-    name: string;
-    imagePath?: string;
-    sortOrder: number;
-  }>;
+export interface ReorderCategoryItem {
+  id: string;
+  sortOrder: number;
+}
+
+export interface CategoryFormErrors {
+  name?: string;
+  subtitle?: string;
+  image?: string;
 }

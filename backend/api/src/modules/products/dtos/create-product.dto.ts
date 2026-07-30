@@ -24,9 +24,6 @@ export class CreateProductDto {
   /* ================================================= */
 
   @IsUUID()
-  stockItemId: string;
-
-  @IsUUID()
   categoryId: string;
 
   /* ================================================= */

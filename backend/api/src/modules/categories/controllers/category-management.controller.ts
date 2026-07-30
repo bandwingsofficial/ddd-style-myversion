@@ -1,13 +1,15 @@
-// src/modules/categories/controllers/category-management.controller.ts
-
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
+  ParseArrayPipe,
+  Patch,
   Post,
-  UseGuards,
+  Query,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -18,20 +20,17 @@ import { CategoryOrchestratorService } from '../services/category-orchestrator.s
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
 import { Roles } from '../../../common/decorators/roles.decorator';
-import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 
 import { ActorType } from '../../auth/domain/enums/actor-type.enum';
+import { ValidationError } from '../../../common/errors';
 
-/* DTOs */
 import { CreateCategoryDto } from '../dtos/create-category.dto';
-import { RenameCategoryDto } from '../dtos/rename-category.dto';
-import { ChangeCategorySortOrderDto } from '../dtos/change-category-sort-order.dto';
-import { UpdateCategoryDetailsDto } from '../dtos/update-category-details.dto';
+import { UpdateCategoryDto } from '../dtos/update-category.dto';
+import { UpdateCategoryStatusDto } from '../dtos/update-category-status.dto';
+import { ReorderCategoryItemDto } from '../dtos/reorder-categories.dto';
+import { ListCategoriesQueryDto } from '../dtos/list-categories-query.dto';
 
-/* Domain */
 import { Category } from '../domain/models/category.model';
-
-/* Upload */
 import { categoryImageUploadOptions } from '../../uploads/validators/multer-memory.options';
 
 @Controller('categories')
@@ -42,46 +41,45 @@ export class CategoryManagementController {
     private readonly orchestrator: CategoryOrchestratorService,
   ) {}
 
-  /* ================================================= */
-  /* CATEGORY – READS (ADMIN)                          */
-  /* ================================================= */
-
   @Get()
-  async getAllCategoriesForAdmin() {
-    const data =
-      await this.orchestrator.getAllCategories({
-        includeInactive: true,
-      });
-        console.log("==============");
-  console.log(data);
-  console.log("==============");
+  async listCategories(@Query() query: ListCategoriesQueryDto) {
+    const data = await this.orchestrator.listCategories(query);
 
     return {
       success: true,
-      code: 'CATEGORIES_FETCHED_ADMIN',
-      message: 'All categories fetched successfully',
+      message: 'Categories fetched successfully',
+      data,
+    };
+  }
+
+  @Patch('reorder')
+  async reorderCategories(
+    @Body(
+      new ParseArrayPipe({
+        items: ReorderCategoryItemDto,
+      }),
+    )
+    items: ReorderCategoryItemDto[],
+  ) {
+    const data = await this.orchestrator.reorderCategories(items);
+
+    return {
+      success: true,
+      message: 'Categories reordered successfully',
       data,
     };
   }
 
   @Get(':categoryId')
-  async getCategoryById(
-    @Param('categoryId') categoryId: string,
-  ) {
-    const data =
-      await this.orchestrator.getCategoryById(categoryId);
+  async getCategoryById(@Param('categoryId') categoryId: string) {
+    const data = await this.orchestrator.getCategoryById(categoryId);
 
     return {
       success: true,
-      code: 'CATEGORY_FETCHED',
       message: 'Category fetched successfully',
       data,
     };
   }
-
-  /* ================================================= */
-  /* CATEGORY – CREATE (WITH IMAGE)                    */
-  /* ================================================= */
 
   @Post()
   @UseInterceptors(
@@ -90,130 +88,81 @@ export class CategoryManagementController {
   async createCategory(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: CreateCategoryDto,
-    @CurrentUser() user,
   ) {
+    if (!file) {
+      throw new ValidationError(
+        'CATEGORY_IMAGE_REQUIRED',
+        'Cover image is required',
+      );
+    }
+
     const category = Category.createNew({
       id: randomUUID(),
       name: dto.name,
       subtitle: dto.subtitle,
-      sortOrder: dto.sortOrder,
+      sortOrder: 1,
     });
 
-    const data =
-      await this.orchestrator.createCategory({
-        category,
-        imageFile: file,
-      });
+    const data = await this.orchestrator.createCategory({
+      category,
+      imageFile: file,
+    });
 
     return {
       success: true,
-      code: 'CATEGORY_CREATED',
       message: 'Category created successfully',
       data,
     };
   }
 
-  /* ================================================= */
-  /* CATEGORY – UPDATE DETAILS                         */
-  /* ================================================= */
-
-  @Post(':categoryId/details')
+  @Patch(':categoryId')
   @UseInterceptors(
     FileInterceptor('image', categoryImageUploadOptions),
   )
-  async updateCategoryDetails(
+  async updateCategory(
     @Param('categoryId') categoryId: string,
     @UploadedFile() file: Express.Multer.File,
-    @Body() dto: UpdateCategoryDetailsDto,
+    @Body() dto: UpdateCategoryDto,
   ) {
-    const data =
-      await this.orchestrator.updateCategoryDetails({
-        categoryId,
-        subtitle: dto.subtitle,
-        removeImage: dto.removeImage === 'true',
-        imageFile: file,
-      });
+    const data = await this.orchestrator.updateCategory({
+      categoryId,
+      name: dto.name,
+      subtitle: dto.subtitle,
+      imageFile: file,
+      removeImage: dto.removeImage === 'true',
+    });
 
     return {
       success: true,
-      code: 'CATEGORY_UPDATED',
       message: 'Category updated successfully',
       data,
     };
   }
 
-  /* ================================================= */
-  /* CATEGORY – UPDATE (EXISTING ROUTES)               */
-  /* ================================================= */
-
-  @Post(':categoryId/rename')
-  async renameCategory(
+  @Patch(':categoryId/status')
+  async updateCategoryStatus(
     @Param('categoryId') categoryId: string,
-    @Body() dto: RenameCategoryDto,
+    @Body() dto: UpdateCategoryStatusDto,
   ) {
-    const data =
-      await this.orchestrator.renameCategory({
-        categoryId,
-        name: dto.name,
-      });
+    const data = await this.orchestrator.updateCategoryStatus({
+      categoryId,
+      status: dto.status,
+    });
 
     return {
       success: true,
-      code: 'CATEGORY_UPDATED',
-      message: 'Category renamed successfully',
+      message: 'Category status updated successfully',
       data,
     };
   }
 
-  @Post(':categoryId/disable')
-  async disableCategory(
-    @Param('categoryId') categoryId: string,
-  ) {
-    const data =
-      await this.orchestrator.disableCategory({
-        categoryId,
-      });
+  @Delete(':categoryId')
+  async deleteCategory(@Param('categoryId') categoryId: string) {
+    const data = await this.orchestrator.deleteCategory({ categoryId });
 
     return {
       success: true,
-      code: 'CATEGORY_DISABLED',
-      message: 'Category disabled successfully',
-      data,
-    };
-  }
-
-  @Post(':categoryId/enable')
-  async enableCategory(
-    @Param('categoryId') categoryId: string,
-  ) {
-    const data =
-      await this.orchestrator.enableCategory({
-        categoryId,
-      });
-
-    return {
-      success: true,
-      code: 'CATEGORY_ENABLED',
-      message: 'Category enabled successfully',
-      data,
-    };
-  }
-
-  @Post(':categoryId/sort-order')
-  async changeSortOrder(
-    @Param('categoryId') categoryId: string,
-    @Body() dto: ChangeCategorySortOrderDto,
-  ) {
-    const data =
-      await this.orchestrator.changeCategorySortOrder({
-        categoryId,
-        sortOrder: dto.sortOrder,
-      });
-
-    return {
-      success: true,
-      code: 'CATEGORY_SORT_ORDER_UPDATED',
-      message: 'Category sort order updated successfully',
+      message: 'Category deleted permanently',
       data,
     };
   }

@@ -24,7 +24,7 @@ export interface ProductPublicImagesResponse {
 export interface ProductResponse {
   id: string;
   categoryId: string;
-  stockItemId: string;
+  categoryName?: string;
   name: { value: string };
   slug: { value: string };
   price: {
@@ -104,7 +104,6 @@ export class ProductResponseMapper {
     return {
       id: product.id,
       categoryId: product.categoryId,
-      stockItemId: product.stockItemId,
       name: { value: product.name.getValue() },
       slug: { value: product.slug.getValue() },
       price: {

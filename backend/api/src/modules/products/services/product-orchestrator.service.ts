@@ -11,6 +11,16 @@ import {
   ProductResponseMapper,
 } from '../mappers/product-response.mapper';
 import { MulterUploadFile } from '../../uploads/interfaces/upload-file.interface';
+import { ListProductsQueryDto } from '../dtos/list-products-query.dto';
+import { ProductStatus } from '../domain/enums/product-status.enum';
+
+export interface PaginatedProductResponse {
+  items: ProductResponse[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
 
 @Injectable()
 export class ProductOrchestratorService {
@@ -23,6 +33,38 @@ export class ProductOrchestratorService {
   /* ================================================= */
   /* PRODUCT – READS (ADMIN / INTERNAL)                */
   /* ================================================= */
+
+  async listProducts(
+    query: ListProductsQueryDto,
+  ): Promise<PaginatedProductResponse> {
+    const result = await this.productService.listProducts(query);
+    const galleryRecordsMap =
+      await this.productRepository.findGalleryRecordsByProductIds(
+        result.items.map(({ product }) => product.id),
+      );
+
+    const items = await Promise.all(
+      result.items.map(async ({ product, category }) => {
+        const response = await this.productResponseMapper.toResponse(
+          product,
+          galleryRecordsMap.get(product.id) ?? [],
+        );
+
+        return {
+          ...response,
+          categoryName: category.name,
+        };
+      }),
+    );
+
+    return {
+      items,
+      page: result.page,
+      limit: result.limit,
+      total: result.total,
+      totalPages: result.totalPages,
+    };
+  }
 
   async getAllProducts(
     query?: PublicProductQueryDto,
@@ -285,6 +327,17 @@ export class ProductOrchestratorService {
   /* ================================================= */
   /* PRODUCT – ENABLE / DISABLE                       */
   /* ================================================= */
+
+  async updateProductStatus(params: {
+    productId: string;
+    status: ProductStatus;
+  }): Promise<ProductResponse> {
+    const updated = await this.productService.updateProductStatus(params);
+    const galleryRecords =
+      await this.productRepository.findGalleryRecords(updated.id);
+
+    return this.productResponseMapper.toResponse(updated, galleryRecords);
+  }
 
   async disableProduct(params: {
     productId: string;

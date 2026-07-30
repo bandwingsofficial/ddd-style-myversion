@@ -2,6 +2,7 @@
 
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
+
 import { useCategories } from '../hooks/use-categories';
 import CategoryTable from '../components/category-table';
 import CreateCategoryModal from '../components/create-category-modal';
@@ -11,8 +12,13 @@ export default function CategoriesPage() {
     categories,
     loading,
     error,
+    page,
+    totalPages,
+    total,
+    search,
+    setSearch,
+    setPage,
     refresh,
-    updateCategoryLocally,
   } = useCategories();
   const [open, setOpen] = useState(false);
 
@@ -23,6 +29,9 @@ export default function CategoriesPage() {
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Categories
           </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage category visibility, ordering, and cover images.
+          </p>
         </div>
 
         <button
@@ -36,15 +45,21 @@ export default function CategoriesPage() {
         </button>
       </div>
 
-      <div className="fade-in animate-in duration-500">
-        <CategoryTable
-          categories={categories}
-          loading={loading}
-          error={error}
-          onRefresh={refresh}
-          onOptimisticUpdate={updateCategoryLocally}
-        />
-      </div>
+      <CategoryTable
+        categories={categories}
+        loading={loading}
+        error={error}
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        search={search}
+        onSearchChange={(value) => {
+          setSearch(value);
+          setPage(1);
+        }}
+        onPageChange={setPage}
+        onRefresh={refresh}
+      />
 
       <CreateCategoryModal
         open={open}

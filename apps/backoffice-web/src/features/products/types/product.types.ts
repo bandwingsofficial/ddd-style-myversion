@@ -1,4 +1,4 @@
-// features/products/types/product.types.ts
+export type ProductStatus = 'ACTIVE' | 'INACTIVE';
 
 export interface ProductGalleryImage {
   id: string;
@@ -9,7 +9,7 @@ export interface ProductGalleryImage {
 export interface Product {
   id: string;
   categoryId: string;
-  stockItemId: string;
+  categoryName?: string;
   name: { value: string };
   slug: { value: string };
   price: {
@@ -25,7 +25,11 @@ export interface Product {
   tags: string[];
   shortDescription?: string;
   longDescription?: string;
-  status: "ACTIVE" | "INACTIVE" | "DISABLED";
+  ingredients?: string;
+  benefits?: string;
+  extraInfo1?: string;
+  extraInfo2?: string;
+  status: ProductStatus;
   trendState: {
     trending: boolean;
   };
@@ -39,7 +43,40 @@ export interface Product {
   createdBy?: string;
 }
 
+export interface PaginatedProducts {
+  items: Product[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface ProductFormErrors {
+  categoryId?: string;
+  productName?: string;
+  originalPrice?: string;
+  discountPrice?: string;
+  unitValue?: string;
+  unitType?: string;
+  mainImage?: string;
+}
+
 export interface ProductsUpdatedSocketPayload {
   version: number;
   products: unknown[];
 }
+
+export const PRODUCT_TAGS = [
+  'FRESH',
+  'ORGANIC',
+  'NO_SUGAR',
+  'COLD_PRESSED',
+  'NATURAL',
+  'FARM_FRESH',
+  'PRESERVATIVE_FREE',
+  'VEGAN',
+] as const;
+
+export const UNIT_TYPES = ['PCS', 'KG', 'LTR', 'GM', 'ML'] as const;
+
+export type ProductTag = (typeof PRODUCT_TAGS)[number];

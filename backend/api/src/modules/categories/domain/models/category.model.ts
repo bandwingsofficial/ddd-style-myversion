@@ -7,7 +7,7 @@ export interface CategoryProps {
   id: string;
   name: string;
   subtitle?: string;
-  imagePath?: string; // S3 object key: categories/image/*
+  imagePath?: string;
   status: CategoryStatus;
   sortOrder: number;
   createdAt: Date;
@@ -24,33 +24,33 @@ export class Category {
   readonly createdAt: Date;
   readonly updatedAt: Date;
 
+  private static readonly MIN_NAME_LENGTH = 2;
+  private static readonly MAX_NAME_LENGTH = 100;
+  private static readonly MAX_SUBTITLE_LENGTH = 150;
+
   private constructor(props: CategoryProps) {
     Object.assign(this, props);
     this.assertValidState();
     Object.freeze(this);
   }
 
-  /* ---------------------------------------------- */
-  /* FACTORIES                                      */
-  /* ---------------------------------------------- */
-
   static createNew(params: {
     id: string;
     name: string;
     subtitle?: string;
     imagePath?: string;
-    sortOrder?: number;
+    sortOrder: number;
     now?: Date;
   }): Category {
     const now = params.now ?? new Date();
 
     return new Category({
       id: params.id,
-      name: Category.normalizeName(params.name),
-      subtitle: params.subtitle?.trim(),
+      name: Category.validateNameInput(params.name),
+      subtitle: Category.normalizeSubtitle(params.subtitle),
       imagePath: params.imagePath,
       status: CategoryStatus.ACTIVE,
-      sortOrder: params.sortOrder ?? 0,
+      sortOrder: params.sortOrder,
       createdAt: now,
       updatedAt: now,
     });
@@ -59,14 +59,10 @@ export class Category {
   static rehydrate(props: CategoryProps): Category {
     return new Category({
       ...props,
-      name: Category.normalizeName(props.name),
-      subtitle: props.subtitle?.trim(),
+      name: props.name.trim(),
+      subtitle: Category.normalizeSubtitle(props.subtitle),
     });
   }
-
-  /* ---------------------------------------------- */
-  /* DOMAIN QUERIES                                 */
-  /* ---------------------------------------------- */
 
   isActive(): boolean {
     return this.status === CategoryStatus.ACTIVE;
@@ -80,50 +76,30 @@ export class Category {
     return this.isActive();
   }
 
-  /* ---------------------------------------------- */
-  /* DOMAIN TRANSITIONS (CRUD SAFE)                  */
-  /* ---------------------------------------------- */
-
-  rename(name: string, now = new Date()): Category {
-    if (this.isInactive()) {
-      throw new ValidationError(
-        'CATEGORY_INACTIVE_RENAME',
-        'Cannot rename an inactive category',
-      );
-    }
-
-    const normalized = Category.normalizeName(name);
-
-    if (normalized === this.name) {
-      return this;
-    }
-
-    return new Category({
-      ...this,
-      name: normalized,
-      updatedAt: now,
-    });
-  }
-
-  updateDetails(
+  update(
     params: {
+      name?: string;
       subtitle?: string;
-      imagePath?: string | null; // null = remove image
+      imagePath?: string | null;
     },
     now = new Date(),
   ): Category {
     if (this.isInactive()) {
       throw new ValidationError(
         'CATEGORY_INACTIVE_UPDATE',
-        'Cannot update an inactive category',
+        'Cannot edit inactive category. Activate category first.',
       );
     }
 
     return new Category({
       ...this,
+      name:
+        params.name !== undefined
+          ? Category.validateNameInput(params.name)
+          : this.name,
       subtitle:
         params.subtitle !== undefined
-          ? params.subtitle?.trim()
+          ? Category.normalizeSubtitle(params.subtitle)
           : this.subtitle,
       imagePath:
         params.imagePath === null
@@ -133,65 +109,28 @@ export class Category {
     });
   }
 
-  changeSortOrder(sortOrder: number, now = new Date()): Category {
-    if (this.isInactive()) {
-      throw new ValidationError(
-        'CATEGORY_INACTIVE_SORT_ORDER_CHANGE',
-        'Cannot change sort order of an inactive category',
-      );
-    }
-
-    if (sortOrder === this.sortOrder) {
+  changeStatus(status: CategoryStatus, now = new Date()): Category {
+    if (this.status === status) {
       return this;
     }
 
     return new Category({
       ...this,
-      sortOrder,
+      status,
       updatedAt: now,
     });
   }
-
-  disable(now = new Date()): Category {
-    if (this.isInactive()) {
-      return this;
-    }
-
-    return new Category({
-      ...this,
-      status: CategoryStatus.INACTIVE,
-      updatedAt: now,
-    });
-  }
-
-  enable(now = new Date()): Category {
-    if (this.isActive()) {
-      return this;
-    }
-
-    return new Category({
-      ...this,
-      status: CategoryStatus.ACTIVE,
-      updatedAt: now,
-    });
-  }
-
-  /* ---------------------------------------------- */
-  /* INVARIANTS                                     */
-  /* ---------------------------------------------- */
 
   private assertValidState(): void {
-    if (!this.name || this.name.length < 3) {
-      throw new ValidationError(
-        'CATEGORY_INVALID_NAME',
-        'Category name must be at least 3 characters',
-      );
-    }
+    Category.assertName(this.name);
 
-    if (this.subtitle && this.subtitle.length < 3) {
+    if (
+      this.subtitle !== undefined &&
+      this.subtitle.length > Category.MAX_SUBTITLE_LENGTH
+    ) {
       throw new ValidationError(
         'CATEGORY_INVALID_SUBTITLE',
-        'Subtitle must be at least 3 characters',
+        `Subtitle must be at most ${Category.MAX_SUBTITLE_LENGTH} characters`,
       );
     }
 
@@ -213,7 +152,58 @@ export class Category {
     }
   }
 
-  private static normalizeName(name: string): string {
-    return name.trim();
+  static assertName(name: string): void {
+    if (!name || name.length < Category.MIN_NAME_LENGTH) {
+      throw new ValidationError(
+        'CATEGORY_INVALID_NAME',
+        'Category name must be at least 2 characters.',
+      );
+    }
+
+    if (name.length > Category.MAX_NAME_LENGTH) {
+      throw new ValidationError(
+        'CATEGORY_INVALID_NAME',
+        'Category name must be at most 100 characters.',
+      );
+    }
+  }
+
+  static validateNameInput(raw: string): string {
+    const trimmed = raw.trim();
+
+    if (!trimmed) {
+      throw new ValidationError(
+        'CATEGORY_NAME_REQUIRED',
+        'Category name is required.',
+      );
+    }
+
+    if (raw !== trimmed) {
+      throw new ValidationError(
+        'CATEGORY_NAME_WHITESPACE',
+        'Category name cannot have leading or trailing spaces.',
+      );
+    }
+
+    if (trimmed.length < Category.MIN_NAME_LENGTH) {
+      throw new ValidationError(
+        'CATEGORY_INVALID_NAME',
+        'Category name must be at least 2 characters.',
+      );
+    }
+
+    if (trimmed.length > Category.MAX_NAME_LENGTH) {
+      throw new ValidationError(
+        'CATEGORY_INVALID_NAME',
+        'Category name must be at most 100 characters.',
+      );
+    }
+
+    return trimmed;
+  }
+
+  private static normalizeSubtitle(subtitle?: string): string | undefined {
+    const trimmed = subtitle?.trim();
+    return trimmed ? trimmed : undefined;
   }
 }

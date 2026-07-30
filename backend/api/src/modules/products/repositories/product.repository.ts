@@ -13,6 +13,7 @@ import { PublicProductQuery } from '../types/public-product-query.type';
 import { PublicProductQueryDto } from '../dtos/public-product-query.dto';
 
 import { ProductStatus } from '../domain/enums/product-status.enum';
+import { ProductTag } from '../domain/enums/product-tag.enum';
 import { ProductStatusMapper } from '../mappers/product-status.mapper';
 import { ProductTagMapper } from '../mappers/product-tag.mapper';
 import { UnitTypeMapper } from '../mappers/unit-type.mapper';
@@ -58,7 +59,7 @@ async findAll(
     }),
 
     ...(query?.search && {
-      name: {
+      productName: {
         contains: query.search,
         mode: 'insensitive',
       },
@@ -253,7 +254,6 @@ async findByIdWithCategory(
         id: product.id,
 
         categoryId: product.categoryId,
-        stockItemId: product.stockItemId,
 
         productName: product.name.getValue(),
         slug: product.slug.getValue(),
@@ -692,6 +692,136 @@ async updateSortOrder(
   return this.toDomain(row);
 }
 
+  async findPaginatedAdmin(params: {
+    page: number;
+    limit: number;
+    search?: string;
+    categoryId?: string;
+    status?: ProductStatus;
+  }): Promise<{
+    items: {
+      product: Product;
+      category: { id: string; name: string };
+    }[];
+    total: number;
+  }> {
+    const where = this.buildAdminSearchWhere(params);
+
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.product.findMany({
+        where,
+        include: {
+          galleryImages: true,
+          category: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: [{ status: 'asc' }, { sortOrder: 'asc' }, { createdAt: 'desc' }],
+        skip: (params.page - 1) * params.limit,
+        take: params.limit,
+      }),
+      this.prisma.product.count({ where }),
+    ]);
+
+    return {
+      items: rows.map((row) => ({
+        product: this.toDomain(row),
+        category: row.category,
+      })),
+      total,
+    };
+  }
+
+  async findByProductName(
+    name: string,
+    excludeId?: string,
+  ): Promise<Product | null> {
+    const row = await this.prisma.product.findFirst({
+      where: {
+        productName: {
+          equals: name.trim(),
+          mode: 'insensitive',
+        },
+        ...(excludeId ? { NOT: { id: excludeId } } : {}),
+      },
+      include: { galleryImages: true },
+    });
+
+    return row ? this.toDomain(row) : null;
+  }
+
+  async countCartItemsByProductId(productId: string): Promise<number> {
+    return this.prisma.cartItem.count({ where: { productId } });
+  }
+
+  async countOrderItemsByProductId(productId: string): Promise<number> {
+    return this.prisma.orderItem.count({ where: { productId } });
+  }
+
+  async countOutletProductsByProductId(productId: string): Promise<number> {
+    return this.prisma.outletProduct.count({ where: { productId } });
+  }
+
+  private buildAdminSearchWhere(params: {
+    search?: string;
+    categoryId?: string;
+    status?: ProductStatus;
+  }): Prisma.ProductWhereInput {
+    const trimmed = params.search?.trim();
+    const normalizedSearch = trimmed?.toLowerCase() ?? '';
+
+    const matchingTags = trimmed
+      ? (Object.values(ProductTag) as ProductTag[]).filter(
+          (tag) =>
+            tag.toLowerCase().includes(normalizedSearch) ||
+            tag.replace(/_/g, ' ').toLowerCase().includes(normalizedSearch),
+        )
+      : [];
+
+    return {
+      ...(params.categoryId && { categoryId: params.categoryId }),
+      ...(params.status && {
+        status: ProductStatusMapper.toPrisma(params.status),
+      }),
+      ...(trimmed && {
+        OR: [
+          {
+            productName: {
+              contains: trimmed,
+              mode: 'insensitive',
+            },
+          },
+          {
+            slug: {
+              contains: trimmed,
+              mode: 'insensitive',
+            },
+          },
+          {
+            category: {
+              name: {
+                contains: trimmed,
+                mode: 'insensitive',
+              },
+            },
+          },
+          ...(matchingTags.length > 0
+            ? [
+                {
+                  tags: {
+                    hasSome: ProductTagMapper.toPrisma(matchingTags),
+                  },
+                },
+              ]
+            : []),
+        ],
+      }),
+    };
+  }
+
   /* ================================================= */
   /* PRIVATE MAPPER                                   */
   /* ================================================= */
@@ -699,7 +829,6 @@ async updateSortOrder(
   private toDomain(row: {
     id: string;
     categoryId: string;
-    stockItemId: string;
 
     productName: string;
     slug: string;
@@ -744,7 +873,6 @@ async updateSortOrder(
     return Product.rehydrate({
       id: row.id,
       categoryId: row.categoryId,
-      stockItemId: row.stockItemId,
 
       name: ProductName.create(row.productName),
       slug: ProductSlug.fromString(row.slug),

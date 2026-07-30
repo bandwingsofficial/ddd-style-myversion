@@ -4,14 +4,33 @@ import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 
 import { Category } from '../domain/models/category.model';
 import { CategoryRepository } from '../repositories/category.repository';
+import { CategoryStatus } from '../domain/enums/category-status.enum';
 
 import { ValidationError } from '../../../common/errors';
 
-/* 🔥 EVENTS */
 import { CategoryEventsService } from '../events/category-events.service';
 import { UploadFolders } from '../../uploads/constants/upload-folders.constants';
 import { UploadService } from '../../uploads/services/upload.service';
 import { MulterUploadFile } from '../../uploads/interfaces/upload-file.interface';
+import { ListCategoriesQueryDto } from '../dtos/list-categories-query.dto';
+
+const CATEGORY_IMAGE_MIME_TYPES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/webp',
+  'image/svg+xml',
+] as const;
+
+const CATEGORY_IMAGE_EXTENSIONS = [
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.webp',
+  '.svg',
+] as const;
+
+const CATEGORY_MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 
 @Injectable()
 export class CategoryService {
@@ -21,37 +40,6 @@ export class CategoryService {
     private readonly categoryEvents: CategoryEventsService,
     private readonly uploadService: UploadService,
   ) {}
-
-  /* ================================================= */
-  /* 🔒 IMAGE PATH NORMALIZATION                       */
-  /* ================================================= */
-
-  private normalizeImagePath(
-    imagePath?: string | null,
-  ): string | null | undefined {
-    if (!imagePath) return imagePath;
-
-    let normalized = imagePath.trim();
-
-    normalized = normalized.replace(/^https?:\/\/[^/]+\//, '');
-
-    if (normalized.startsWith('/')) {
-      normalized = normalized.slice(1);
-    }
-
-    if (!normalized.startsWith(`${UploadFolders.CATEGORIES}/`)) {
-      throw new ValidationError(
-        'CATEGORY_INVALID_IMAGE_PATH',
-        `Image path must be under ${UploadFolders.CATEGORIES}/`,
-      );
-    }
-
-    return normalized;
-  }
-
-  /* ================================================= */
-  /* READS                                            */
-  /* ================================================= */
 
   async getById(categoryId: string): Promise<Category> {
     const category = await this.categoryRepo.findById(categoryId);
@@ -69,97 +57,91 @@ export class CategoryService {
   async getAll(params?: {
     includeInactive?: boolean;
   }): Promise<Category[]> {
-    return this.categoryRepo.findAll(
-      params?.includeInactive ?? false,
-    );
+    return this.categoryRepo.findAll(params?.includeInactive ?? false);
   }
 
-  /* ================================================= */
-  /* CREATE CATEGORY                                   */
-  /* ================================================= */
+  async listCategories(query: ListCategoriesQueryDto) {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    const result = await this.categoryRepo.findPaginated({
+      page,
+      limit,
+      search: query.search,
+    });
+
+    return {
+      items: result.items,
+      page,
+      limit,
+      total: result.total,
+      totalPages: Math.max(1, Math.ceil(result.total / limit)),
+    };
+  }
 
   async createCategory(params: {
     category: Category;
-    imageFile?: MulterUploadFile;
+    imageFile: MulterUploadFile;
   }): Promise<Category> {
-    let result!: Category;
-
-    let objectKey: string | undefined;
-
-    if (params.imageFile) {
-      const uploadResult = await this.uploadService.uploadSingleImage({
-        folder: UploadFolders.CATEGORIES,
-        file: params.imageFile,
-      });
-
-      objectKey = uploadResult.objectKey;
-    } else if (params.category.imagePath) {
-      objectKey = this.normalizeImagePath(
-        params.category.imagePath,
-      ) as string;
+    if (!params.imageFile) {
+      throw new ValidationError(
+        'CATEGORY_IMAGE_REQUIRED',
+        'Cover image is required',
+      );
     }
 
-    const normalizedCategory = params.category.updateDetails({
-      subtitle: params.category.subtitle,
-      imagePath: objectKey,
+    const normalizedName = Category.validateNameInput(params.category.name);
+
+    const existing = await this.categoryRepo.findByName(normalizedName);
+
+    if (existing) {
+      throw new ValidationError(
+        'CATEGORY_ALREADY_EXISTS',
+        'Category already exists',
+      );
+    }
+
+    const uploadResult = await this.uploadService.uploadSingleImage({
+      folder: UploadFolders.CATEGORIES,
+      file: params.imageFile,
+      allowedMimeTypes: [...CATEGORY_IMAGE_MIME_TYPES],
+      allowedExtensions: [...CATEGORY_IMAGE_EXTENSIONS],
+      maxSizeBytes: CATEGORY_MAX_IMAGE_SIZE_BYTES,
     });
 
-    await this.prisma.$transaction(async (tx) => {
-      await this.categoryRepo.normalizeActiveSortOrders(tx);
+    let created!: Category;
 
-      const existing = await this.categoryRepo.findByName(
-        normalizedCategory.name,
-        tx,
-      );
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        const nextSortOrder =
+          await this.categoryRepo.getNextActiveSortOrder(tx);
 
-      if (existing && existing.isActive()) {
-        throw new ValidationError(
-          'CATEGORY_ALREADY_EXISTS',
-          'Category with this name already exists',
-        );
-      }
+        const category = Category.createNew({
+          id: params.category.id,
+          name: params.category.name,
+          subtitle: params.category.subtitle,
+          imagePath: uploadResult.objectKey,
+          sortOrder: nextSortOrder,
+        });
 
-      if (existing && existing.isInactive()) {
-        await this.categoryRepo.shiftActiveSortOrdersFrom(
-          normalizedCategory.sortOrder,
-          tx,
-        );
-
-        const restored = existing
-          .enable()
-          .changeSortOrder(normalizedCategory.sortOrder)
-          .updateDetails({
-            subtitle: normalizedCategory.subtitle,
-            imagePath: normalizedCategory.imagePath,
-          });
-
-        result = await this.categoryRepo.update(restored, tx);
-        return;
-      }
-
-      await this.categoryRepo.shiftActiveSortOrdersFrom(
-        normalizedCategory.sortOrder,
-        tx,
-      );
-
-      result = await this.categoryRepo.create(normalizedCategory, tx);
-    });
+        created = await this.categoryRepo.create(category, tx);
+      });
+    } catch (error) {
+      await this.deleteImageStrict(uploadResult.objectKey);
+      throw error;
+    }
 
     this.categoryEvents.emitCategoryCreated({
-      categoryId: result.id,
+      categoryId: created.id,
     });
 
-    return result;
+    return created;
   }
 
-  /* ================================================= */
-  /* UPDATE DETAILS (IMAGE / SUBTITLE)                 */
-  /* ================================================= */
-
-  async updateCategoryDetails(params: {
+  async updateCategory(params: {
     categoryId: string;
+    name?: string;
     subtitle?: string;
-    imagePath?: string | null;
     imageFile?: MulterUploadFile;
     removeImage?: boolean;
   }): Promise<Category> {
@@ -168,39 +150,75 @@ export class CategoryService {
     if (category.isInactive()) {
       throw new ValidationError(
         'CATEGORY_INACTIVE_UPDATE',
-        'Cannot update an inactive category',
+        'Cannot edit inactive category. Activate category first.',
       );
     }
 
-    const oldImage = category.imagePath;
-    let nextImagePath: string | null | undefined = params.imagePath;
+    let normalizedName: string | undefined;
 
-    if (params.removeImage) {
-      nextImagePath = null;
-    } else if (params.imageFile) {
+    if (params.name !== undefined) {
+      normalizedName = Category.validateNameInput(params.name);
+
+      const duplicate = await this.categoryRepo.findByName(
+        normalizedName,
+        undefined,
+        category.id,
+      );
+
+      if (duplicate) {
+        throw new ValidationError(
+          'CATEGORY_ALREADY_EXISTS',
+          'Category already exists',
+        );
+      }
+    }
+
+    const oldImage = category.imagePath;
+    let uploadedObjectKey: string | undefined;
+
+    if (params.imageFile) {
       const uploadResult = await this.uploadService.uploadSingleImage({
         folder: UploadFolders.CATEGORIES,
         file: params.imageFile,
+        allowedMimeTypes: [...CATEGORY_IMAGE_MIME_TYPES],
+        allowedExtensions: [...CATEGORY_IMAGE_EXTENSIONS],
+        maxSizeBytes: CATEGORY_MAX_IMAGE_SIZE_BYTES,
       });
 
-      nextImagePath = uploadResult.objectKey;
+      uploadedObjectKey = uploadResult.objectKey;
     }
 
-    const updated = category.updateDetails({
+    let nextImagePath: string | null | undefined = undefined;
+
+    if (params.removeImage) {
+      nextImagePath = null;
+    } else if (uploadedObjectKey) {
+      nextImagePath = uploadedObjectKey;
+    }
+
+    const updated = category.update({
+      name: normalizedName,
       subtitle: params.subtitle,
-      imagePath:
-        nextImagePath === undefined
-          ? undefined
-          : this.normalizeImagePath(nextImagePath),
+      imagePath: nextImagePath,
     });
 
-    await this.prisma.$transaction(async (tx) => {
-      await this.categoryRepo.update(updated, tx);
-    });
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        await this.categoryRepo.update(updated, tx);
 
-    if (oldImage && oldImage !== updated.imagePath) {
-      await this.deleteImageSafe(oldImage);
+        if (oldImage && oldImage !== updated.imagePath) {
+          await this.deleteImageStrict(oldImage);
+        }
+      });
+    } catch (error) {
+      if (uploadedObjectKey) {
+        await this.deleteImageStrict(uploadedObjectKey);
+      }
 
+      throw error;
+    }
+
+    if (oldImage !== updated.imagePath) {
       if (updated.imagePath) {
         this.categoryEvents.emitCategoryImageUpdated({
           categoryId: updated.id,
@@ -215,160 +233,157 @@ export class CategoryService {
 
     this.categoryEvents.emitCategoryUpdated({
       categoryId: updated.id,
-    });
-
-    return updated;
-  }
-
-  /* ================================================= */
-  /* RENAME                                           */
-  /* ================================================= */
-
-  async renameCategory(params: {
-    categoryId: string;
-    name: string;
-  }): Promise<Category> {
-    const category = await this.getById(params.categoryId);
-
-    if (category.isInactive()) {
-      throw new ValidationError(
-        'CATEGORY_INACTIVE_RENAME',
-        'Cannot rename an inactive category',
-      );
-    }
-
-    const updated = category.rename(params.name);
-
-    await this.prisma.$transaction(async (tx) => {
-      await this.categoryRepo.update(updated, tx);
-    });
-
-    this.categoryEvents.emitCategoryUpdated({
-      categoryId: updated.id,
       name: updated.name,
     });
 
     return updated;
   }
 
- /* ================================================= */
-/* ENABLE / DISABLE                                  */
-/* ================================================= */
-
-async disableCategory(categoryId: string): Promise<{
-  id: string;
-  status: 'INACTIVE';
-}> {
-  const category = await this.getById(categoryId);
-
-  if (category.isInactive()) {
-    return {
-      id: category.id,
-      status: 'INACTIVE',
-    };
-  }
-
-  const disabled = category.disable();
-
-  await this.prisma.$transaction(async (tx) => {
-    await this.categoryRepo.updateStatus(disabled, tx);
-
-    await this.categoryRepo.normalizeActiveSortOrders(tx);
-  });
-
-  this.categoryEvents.emitCategoryDisabled({
-    categoryId: category.id,
-  });
-
-  return {
-    id: category.id,
-    status: 'INACTIVE',
-  };
-}
-
-async enableCategory(categoryId: string): Promise<{
-  id: string;
-  status: 'ACTIVE';
-}> {
-  const category = await this.getById(categoryId);
-
-  if (category.isActive()) {
-    return {
-      id: category.id,
-      status: 'ACTIVE',
-    };
-  }
-
-  const enabled = category.enable();
-
-  await this.prisma.$transaction(async (tx) => {
-    await this.categoryRepo.updateStatus(enabled, tx);
-
-    await this.categoryRepo.normalizeActiveSortOrders(tx);
-  });
-
-  this.categoryEvents.emitCategoryEnabled({
-    categoryId: category.id,
-  });
-
-  return {
-    id: category.id,
-    status: 'ACTIVE',
-  };
-}
-
-  /* ================================================= */
-  /* SORT ORDER                                       */
-  /* ================================================= */
-
-  async changeSortOrder(params: {
+  async updateCategoryStatus(params: {
     categoryId: string;
-    sortOrder: number;
+    status: CategoryStatus;
   }): Promise<Category> {
     const category = await this.getById(params.categoryId);
+    const updated = category.changeStatus(params.status);
 
-    if (category.isInactive()) {
-      throw new ValidationError(
-        'CATEGORY_INACTIVE_SORT_ORDER_CHANGE',
-        'Cannot change sort order of an inactive category',
-      );
+    if (updated.status === category.status) {
+      return category;
     }
 
-    let updated!: Category;
-
     await this.prisma.$transaction(async (tx) => {
-      await this.categoryRepo.normalizeActiveSortOrders(tx);
-      await this.categoryRepo.shiftActiveSortOrdersFrom(
-        params.sortOrder,
-        tx,
-      );
-
-      updated = category.changeSortOrder(
-        params.sortOrder,
-      );
-
-      await this.categoryRepo.update(updated, tx);
+      await this.categoryRepo.updateStatusOnly(updated, tx);
     });
 
-    this.categoryEvents.emitCategorySortOrderChanged({
-      categoryId: updated.id,
-      sortOrder: params.sortOrder,
-    });
+    if (updated.isActive()) {
+      this.categoryEvents.emitCategoryEnabled({
+        categoryId: updated.id,
+      });
+    } else {
+      this.categoryEvents.emitCategoryDisabled({
+        categoryId: updated.id,
+      });
+    }
 
     return updated;
   }
 
-  /* ================================================= */
-  /* STORAGE HELPERS                                  */
-  /* ================================================= */
+  async reorderCategories(
+    items: { id: string; sortOrder: number }[],
+  ): Promise<Category[]> {
+    const activeCategories =
+      await this.categoryRepo.findActiveCategories();
 
-  private async deleteImageSafe(objectKey?: string): Promise<void> {
-    if (!objectKey) return;
-
-    try {
-      await this.uploadService.deleteObject({ objectKey });
-    } catch {
-      // silent fail (object may not exist)
+    if (items.length !== activeCategories.length) {
+      throw new ValidationError(
+        'CATEGORY_REORDER_INVALID',
+        'Reorder payload must include all active categories',
+      );
     }
+
+    const activeIds = new Set(activeCategories.map((c) => c.id));
+    const payloadIds = items.map((item) => item.id);
+    const payloadSortOrders = items.map((item) => item.sortOrder);
+
+    if (new Set(payloadIds).size !== payloadIds.length) {
+      throw new ValidationError(
+        'CATEGORY_REORDER_DUPLICATE_IDS',
+        'Duplicate category ids in reorder payload',
+      );
+    }
+
+    if (new Set(payloadSortOrders).size !== payloadSortOrders.length) {
+      throw new ValidationError(
+        'CATEGORY_REORDER_DUPLICATE_SORT',
+        'Duplicate sort order values in reorder payload',
+      );
+    }
+
+    for (const item of items) {
+      if (!activeIds.has(item.id)) {
+        throw new ValidationError(
+          'CATEGORY_REORDER_INVALID_ID',
+          'Reorder payload contains invalid category id',
+        );
+      }
+
+      if (item.sortOrder < 1 || item.sortOrder > items.length) {
+        throw new ValidationError(
+          'CATEGORY_REORDER_INVALID_SORT',
+          'Reorder sort order values must be consecutive starting from 1',
+        );
+      }
+    }
+
+    const expectedSortOrders = Array.from(
+      { length: items.length },
+      (_, index) => index + 1,
+    ).sort((a, b) => a - b);
+
+    const sortedPayloadSortOrders = [...payloadSortOrders].sort(
+      (a, b) => a - b,
+    );
+
+    if (
+      sortedPayloadSortOrders.some(
+        (value, index) => value !== expectedSortOrders[index],
+      )
+    ) {
+      throw new ValidationError(
+        'CATEGORY_REORDER_MISSING_SORT',
+        'Reorder payload has missing sort order values',
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.categoryRepo.updateSortOrders(items, tx);
+      await this.categoryRepo.normalizeActiveSortOrders(tx);
+    });
+
+    const reordered = await this.categoryRepo.findActiveCategories();
+
+    this.categoryEvents.emitCategorySortOrderChanged({
+      categoryId: reordered[0]?.id ?? items[0].id,
+      sortOrder: reordered[0]?.sortOrder ?? 1,
+    });
+
+    return reordered;
+  }
+
+  async deleteCategory(categoryId: string): Promise<{ id: string }> {
+    const category = await this.getById(categoryId);
+
+    const productCount =
+      await this.categoryRepo.countProductsByCategoryId(categoryId);
+
+    if (productCount > 0) {
+      throw new ValidationError(
+        'CATEGORY_HAS_PRODUCTS',
+        'Cannot delete category while products are assigned to it',
+      );
+    }
+
+    const imagePath = category.imagePath;
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.categoryRepo.deleteById(categoryId, tx);
+
+      if (imagePath) {
+        await this.deleteImageStrict(imagePath);
+      }
+
+      if (category.isActive()) {
+        await this.categoryRepo.normalizeActiveSortOrders(tx);
+      }
+    });
+
+    this.categoryEvents.emitCategoryDisabled({
+      categoryId: category.id,
+    });
+
+    return { id: category.id };
+  }
+
+  private async deleteImageStrict(objectKey: string): Promise<void> {
+    await this.uploadService.deleteObject({ objectKey });
   }
 }

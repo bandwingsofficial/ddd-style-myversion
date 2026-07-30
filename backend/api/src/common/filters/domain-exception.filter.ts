@@ -103,9 +103,10 @@ export class DomainExceptionFilter
 
     return response.status(status).json({
       success: false,
-      code: exception.code,
       message: exception.message,
-      metadata: exception.metadata ?? null,
+      ...(exception.metadata?.errors
+        ? { errors: exception.metadata.errors }
+        : {}),
     });
   }
 }

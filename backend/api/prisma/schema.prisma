@@ -460,7 +460,6 @@ model StockItem {
   centralInventory CentralInventory?
   transactions     StockTransaction[]
   outletStocks     OutletStock[]
-  products         Product[]
 }
 
 //////////////////////////////////////////////////////
@@ -608,9 +607,6 @@ model Product {
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
 
-  stockItemId String
-  stockItem   StockItem @relation(fields: [stockItemId], references: [id])
-
   productName String @unique @db.VarChar(150)
   slug        String @unique @db.VarChar(180)
 
@@ -669,7 +665,6 @@ model Product {
   @@index([isTrending])
   @@index([isFeatured])
   @@index([productName])
-  @@index([stockItemId])
 }
 
 //////////////////////////////////////////////////////

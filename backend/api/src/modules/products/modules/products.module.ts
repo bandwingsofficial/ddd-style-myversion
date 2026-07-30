@@ -28,7 +28,6 @@ import { ProductResponseMapper } from '../mappers/product-response.mapper';
 /* ---------------------------------------------- */
 /* DEPENDENCY MODULES                             */
 /* ---------------------------------------------- */
-import { StockItemsModule } from '../../stock-items/modules/stock-items.module';
 import { CategoriesModule } from '../../categories/modules/categories.module';
 
 /* ---------------------------------------------- */
@@ -42,7 +41,6 @@ import { ProductPublicListener } from '../listeners/product-public.listener';
 @Module({
   imports: [
     UploadsModule,
-    StockItemsModule,
     CategoriesModule,
   ],
   controllers: [

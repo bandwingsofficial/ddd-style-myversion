@@ -22,7 +22,6 @@ export interface ProductProps {
   id: string;
 
   categoryId: string;
-  stockItemId: string;
 
   name: ProductName;
   slug: ProductSlug;
@@ -66,7 +65,6 @@ export class Product {
   readonly id: string;
 
   readonly categoryId: string;
-  readonly stockItemId: string;
 
   readonly name: ProductName;
   readonly slug: ProductSlug;
@@ -114,7 +112,6 @@ export class Product {
   static createNew(params: {
     id: string;
     categoryId: string;
-    stockItemId: string;
 
     productName: string;
     originalPrice: number;
@@ -162,7 +159,6 @@ export class Product {
     return new Product({
       id: params.id,
       categoryId: params.categoryId,
-      stockItemId: params.stockItemId,
 
       name,
       slug,
@@ -208,6 +204,22 @@ export class Product {
 
   isActive(): boolean {
     return this.status === ProductStatus.ACTIVE;
+  }
+
+  isInactive(): boolean {
+    return this.status === ProductStatus.INACTIVE;
+  }
+
+  changeStatus(status: ProductStatus, now = new Date()): Product {
+    if (this.status === status) {
+      return this;
+    }
+
+    return new Product({
+      ...this,
+      status,
+      updatedAt: now,
+    });
   }
 
   canBeShown(): boolean {
@@ -384,37 +396,18 @@ addRating(newRating: number, now = new Date()): Product {
 
 
   disable(now = new Date()): Product {
-    if (this.status === ProductStatus.INACTIVE) {
-      return this;
-    }
-
-    return new Product({
-      ...this,
-      status: ProductStatus.INACTIVE,
-      updatedAt: now,
-    });
+    return this.changeStatus(ProductStatus.INACTIVE, now);
   }
 
   enable(now = new Date()): Product {
-  return new Product({
-    ...this,
-    status: ProductStatus.ACTIVE,
-    updatedAt: now,
-  });
-}
+    return this.changeStatus(ProductStatus.ACTIVE, now);
+  }
 
   /* ---------------------------------------------- */
   /* INVARIANTS                                     */
   /* ---------------------------------------------- */
 
   private assertValidState(): void {
-    if (!this.stockItemId) {
-      throw new ValidationError(
-        'PRODUCT_INVALID_STOCK_ITEM',
-        'Stock item is required for product',
-      );
-    }
-
     if (!this.categoryId) {
       throw new ValidationError(
         'PRODUCT_INVALID_CATEGORY',

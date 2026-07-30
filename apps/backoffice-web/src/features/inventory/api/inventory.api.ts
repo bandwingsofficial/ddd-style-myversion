@@ -1,12 +1,14 @@
-import { axiosInstance } from "@/http/axios/instance";
+import { axiosInstance } from '@/http/axios/instance';
+import { StockItemsApi } from '@/features/stock-items/api/stock-items.api';
 
 export const InventoryAPI = {
   getCentralInventory() {
-    return axiosInstance.get("/inventory");
+    return axiosInstance.get('/inventory');
   },
 
-  getAllStockItems() {
-    return axiosInstance.get("/stock-items");
+  async getAllStockItems() {
+    const items = await StockItemsApi.getAll();
+    return { data: { data: items } };
   },
 
   // ADDED: Fetch outlets for the transfer dropdown

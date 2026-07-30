@@ -1,9 +1,11 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Query,
   Param,
+  Patch,
   Post,
   UseGuards,
   UseInterceptors,
@@ -41,9 +43,12 @@ import { Product } from '../domain/models/product.model';
 /* Upload */
 import { productImageUploadOptions } from '../../uploads/validators/multer-memory.options';
 import { PublicProductQueryDto } from '../dtos/public-product-query.dto';
+import { ListProductsQueryDto } from '../dtos/list-products-query.dto';
+import { UpdateProductStatusDto } from '../dtos/update-product-status.dto';
 
 @Controller('products')
 @UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(ActorType.SUPER_ADMIN)
 export class ProductManagementController {
   constructor(
     private readonly orchestrator: ProductOrchestratorService,
@@ -54,13 +59,11 @@ export class ProductManagementController {
   /* ================================================= */
 
   @Get()
-  @Roles(ActorType.SUPER_ADMIN)
-  async getAllProducts(@Query() query: PublicProductQueryDto) {
-    const data = await this.orchestrator.getAllProducts(query);
+  async listProducts(@Query() query: ListProductsQueryDto) {
+    const data = await this.orchestrator.listProducts(query);
 
     return {
       success: true,
-      code: 'PRODUCTS_FETCHED',
       message: 'Products fetched successfully',
       data,
     };
@@ -116,7 +119,6 @@ export class ProductManagementController {
     const product = Product.createNew({
       id: randomUUID(),
       categoryId: dto.categoryId,
-      stockItemId: dto.stockItemId,
       productName: dto.productName,
       originalPrice: dto.originalPrice,
       discountPrice: dto.discountPrice,
@@ -383,45 +385,30 @@ export class ProductManagementController {
   /* PRODUCT – HARD DELETE                            */
   /* ================================================= */
 
-  @Post(':productId/delete')
-  @Roles(ActorType.SUPER_ADMIN)
+  @Patch(':productId/status')
+  async updateProductStatus(
+    @Param('productId') productId: string,
+    @Body() dto: UpdateProductStatusDto,
+  ) {
+    const data = await this.orchestrator.updateProductStatus({
+      productId,
+      status: dto.status,
+    });
+
+    return {
+      success: true,
+      message: 'Product status updated successfully',
+      data,
+    };
+  }
+
+  @Delete(':productId')
   async deleteProduct(@Param('productId') productId: string) {
     const data = await this.orchestrator.deleteProduct({ productId });
 
     return {
       success: true,
-      code: 'PRODUCT_DELETED',
-      message: 'Product deleted successfully',
-      data,
-    };
-  }
-
-  /* ================================================= */
-  /* PRODUCT – ENABLE / DISABLE                       */
-  /* ================================================= */
-
-  @Post(':productId/disable')
-  @Roles(ActorType.SUPER_ADMIN)
-  async disableProduct(@Param('productId') productId: string) {
-    const data = await this.orchestrator.disableProduct({ productId });
-
-    return {
-      success: true,
-      code: 'PRODUCT_DISABLED',
-      message: 'Product disabled successfully',
-      data,
-    };
-  }
-
-  @Post(':productId/enable')
-  @Roles(ActorType.SUPER_ADMIN)
-  async enableProduct(@Param('productId') productId: string) {
-    const data = await this.orchestrator.enableProduct({ productId });
-
-    return {
-      success: true,
-      code: 'PRODUCT_ENABLED',
-      message: 'Product enabled successfully',
+      message: 'Product deleted permanently',
       data,
     };
   }

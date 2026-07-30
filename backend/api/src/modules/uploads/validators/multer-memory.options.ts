@@ -23,7 +23,7 @@ export function createMemoryImageUploadOptions(
 }
 
 export const categoryImageUploadOptions = createMemoryImageUploadOptions({
-  maxFileSizeBytes: UPLOAD_DEFAULTS.MAX_SINGLE_IMAGE_SIZE_BYTES,
+  maxFileSizeBytes: 10 * 1024 * 1024,
 });
 
 export const productImageUploadOptions = createMemoryImageUploadOptions({
