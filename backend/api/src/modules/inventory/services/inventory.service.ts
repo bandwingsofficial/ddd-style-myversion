@@ -182,6 +182,8 @@ export class InventoryService {
         stockItemId: params.stockItemId,
         inventoryId: inventory.id,
         quantity: qty,
+        previousAvailable: inventory.availableQty,
+        newAvailable: updated.availableQty,
         performedBy: params.performedBy,
         remarks: params.remarks,
       });
@@ -198,7 +200,8 @@ export class InventoryService {
 
   async adjustAvailableStock(params: {
     stockItemId: string;
-    newAvailableQty: number;
+    adjustmentType: 'ADD' | 'DEDUCT';
+    adjustmentQuantity: number;
     performedBy?: string;
     remarks: string;
   }): Promise<CentralInventory> {
@@ -206,7 +209,7 @@ export class InventoryService {
     // ✅ EARLY VALIDATION
     await this.ensureStockItemExists(params.stockItemId);
 
-    const newQty = Quantity.create(params.newAvailableQty);
+    const adjustmentQty = Quantity.create(params.adjustmentQuantity);
 
     return this.prisma.$transaction(async (tx) => {
       const inventory =
@@ -223,6 +226,25 @@ export class InventoryService {
       }
 
       InventoryActivePolicy.ensure(inventory);
+
+      const currentAvailable = inventory.availableQty.getRaw();
+      const newAvailableRaw =
+        params.adjustmentType === 'ADD'
+          ? currentAvailable + adjustmentQty.getRaw()
+          : currentAvailable - adjustmentQty.getRaw();
+
+      if (newAvailableRaw < 0) {
+        throw new ValidationError(
+          'INSUFFICIENT_STOCK',
+          'Adjustment quantity exceeds current available stock',
+          {
+            available: currentAvailable,
+            requested: adjustmentQty.getRaw(),
+          },
+        );
+      }
+
+      const newQty = Quantity.create(newAvailableRaw);
       InventoryAdjustPolicy.ensure(inventory, newQty);
 
       const updated =
@@ -234,7 +256,8 @@ export class InventoryService {
         id: randomUUID(),
         stockItemId: params.stockItemId,
         inventoryId: inventory.id,
-        quantity: newQty,
+        previousAvailable: inventory.availableQty,
+        newAvailable: updated.availableQty,
         performedBy: params.performedBy,
         remarks: params.remarks,
       });
@@ -334,6 +357,8 @@ export class InventoryService {
           inventoryId: inventory.id,
           outletId: params.outletId,
           quantity: qty,
+          previousAvailable: inventory.availableQty,
+          newAvailable: updatedInventory.availableQty,
           performedBy: params.performedBy,
         });
 

@@ -150,7 +150,8 @@ async getOutletStock(
     const data =
       await this.orchestrator.adjustAvailableStock({
         stockItemId: dto.stockItemId,
-        newAvailableQty: dto.newAvailableQty,
+        adjustmentType: dto.adjustmentType,
+        adjustmentQuantity: dto.adjustmentQuantity,
         remarks: dto.remarks,
         performedBy: user.id,
       });

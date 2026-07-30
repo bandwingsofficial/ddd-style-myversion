@@ -20,13 +20,26 @@ export const StockItemsApi = {
     return res.data.data;
   },
 
+  /**
+   * Fetches all stock items by paginating through GET /stock-items.
+   * Backend ListStockItemsQueryDto allows limit 1–100 per page.
+   */
   getAll: async (): Promise<StockItem[]> => {
-    const data = await StockItemsApi.list({
-      page: 1,
-      limit: 1000,
-    });
+    const limit = 100;
+    const firstPage = await StockItemsApi.list({ page: 1, limit });
+    const items = [...firstPage.items];
 
-    return data.items;
+    for (let page = 2; page <= firstPage.totalPages; page += 1) {
+      const nextPage = await StockItemsApi.list({ page, limit });
+      items.push(...nextPage.items);
+    }
+
+    return items;
+  },
+
+  listActiveForSelection: async (): Promise<StockItem[]> => {
+    const items = await StockItemsApi.getAll();
+    return items.filter((item) => item.status === 'ACTIVE');
   },
 
   getById: async (id: string): Promise<StockItem> => {

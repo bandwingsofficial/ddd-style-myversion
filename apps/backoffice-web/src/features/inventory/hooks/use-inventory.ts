@@ -1,58 +1,106 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { InventoryAPI } from "../api/inventory.api";
-import { InventoryItem } from "../types/inventory.types";
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
-// Extend the type locally to include the stock name
-export interface MergedInventoryItem extends InventoryItem {
-  stockName?: string;
+import { InventoryApi } from '../api/inventory.api';
+import { InventoryListItem } from '../types/inventory.types';
+
+const PAGE_SIZE = 20;
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedValue(value);
+    }, delayMs);
+
+    return () => window.clearTimeout(timer);
+  }, [value, delayMs]);
+
+  return debouncedValue;
 }
 
 export function useInventory() {
-  const [inventory, setInventory] = useState<MergedInventoryItem[]>([]);
+  const [items, setItems] = useState<InventoryListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search, 300);
 
-  const fetchInventory = async () => {
-    setLoading(true);
-    try {
-      // Fetch both the central inventory and the stock items list
-      const [inventoryRes, stocksRes] = await Promise.all([
-        InventoryAPI.getCentralInventory(),
-        InventoryAPI.getAllStockItems(),
-      ]);
-
-      const inventoryData = inventoryRes.data.data;
-      const stocksData = stocksRes.data.data;
-
-      // Merge: Match the inventory record with its corresponding stock item
-      const mergedData = inventoryData.map((inv: InventoryItem) => {
-        const matchingStock = stocksData.find((s: any) => s.id === inv.stockItemId);
-        
-        return {
-          ...inv,
-          // Use the name from stock table, fallback to ID
-          stockName: matchingStock ? matchingStock.name : inv.stockItemId,
-          // Force the status to match the stock item's real status
-          status: matchingStock ? matchingStock.status : inv.status,
-        };
-      });
-
-      setInventory(mergedData);
-    } catch (error) {
-      console.error("Failed to sync inventory and stock data", error);
-    } finally {
-      setLoading(false);
+  const fetchInventory = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true);
     }
-  };
 
-  useEffect(() => {
-    fetchInventory();
+    setError(null);
+
+    try {
+      const merged = await InventoryApi.listMerged();
+      setItems(merged);
+    } catch (err: unknown) {
+      const axiosError = err as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+
+      setError(
+        axiosError?.response?.data?.message ||
+          axiosError?.message ||
+          'Failed to fetch inventory',
+      );
+    } finally {
+      if (!silent) {
+        setLoading(false);
+      }
+    }
   }, []);
 
+  useEffect(() => {
+    fetchInventory(false);
+  }, [fetchInventory]);
+
+  const filteredItems = useMemo(() => {
+    const query = debouncedSearch.trim().toLowerCase();
+
+    if (!query) {
+      return items;
+    }
+
+    return items.filter(
+      (item) =>
+        item.stockName.toLowerCase().includes(query) ||
+        item.stockItemId.toLowerCase().includes(query),
+    );
+  }, [items, debouncedSearch]);
+
+  const total = filteredItems.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const paginatedItems = useMemo(() => {
+    const safePage = Math.min(page, totalPages);
+    const start = (safePage - 1) * PAGE_SIZE;
+    return filteredItems.slice(start, start + PAGE_SIZE);
+  }, [filteredItems, page, totalPages]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
   return {
-    inventory,
+    items: paginatedItems,
+    allItems: items,
     loading,
-    refresh: fetchInventory,
+    error,
+    page,
+    totalPages,
+    total,
+    search,
+    setSearch,
+    setPage,
+    refresh: () => fetchInventory(false),
   };
 }

@@ -31,6 +31,7 @@ import { StockTransactionRepository } from '../repositories/stock-transaction.re
 /* ---------------------------------------------- */
 import { StockItemsModule } from '../../stock-items/modules/stock-items.module';
 import { OutletsModule } from '../../outlets/modules/outlets.module';
+import { InventoryResponseMapper } from '../mappers/inventory-response.mapper';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { OutletsModule } from '../../outlets/modules/outlets.module';
     // Core
     InventoryService,
     InventoryOrchestratorService,
+    InventoryResponseMapper,
 
     // Repositories
     CentralInventoryRepository,

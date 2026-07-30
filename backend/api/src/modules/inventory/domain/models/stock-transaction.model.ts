@@ -16,7 +16,12 @@ export interface StockTransactionProps {
   inventoryId: string;
 
   type: StockTransactionType;
+  /** Legacy absolute magnitude kept for backward compatibility */
   quantity: Quantity;
+  previousQuantity: Quantity;
+  newQuantity: Quantity;
+  /** Signed delta applied during this transaction */
+  quantityChange: number;
 
   source: StockSource;
   destination: StockDestination;
@@ -26,6 +31,9 @@ export interface StockTransactionProps {
   remarks?: string;
 
   createdAt: Date;
+
+  /** Allows loading legacy ADJUST rows that stored ending balance instead of delta */
+  skipStrictValidation?: boolean;
 }
 
 /* ---------------------------------------------- */
@@ -40,6 +48,9 @@ export class StockTransaction {
 
   readonly type: StockTransactionType;
   readonly quantity: Quantity;
+  readonly previousQuantity: Quantity;
+  readonly newQuantity: Quantity;
+  readonly quantityChange: number;
 
   readonly source: StockSource;
   readonly destination: StockDestination;
@@ -50,10 +61,46 @@ export class StockTransaction {
 
   readonly createdAt: Date;
 
+  private readonly skipStrictValidation: boolean;
+
   private constructor(props: StockTransactionProps) {
+    this.skipStrictValidation = props.skipStrictValidation ?? false;
     Object.assign(this, props);
     this.assertValidState();
     Object.freeze(this);
+  }
+
+  private static createRecord(params: {
+    id: string;
+    stockItemId: string;
+    inventoryId: string;
+    type: StockTransactionType;
+    previousQuantity: Quantity;
+    newQuantity: Quantity;
+    quantityChange: number;
+    source: StockSource;
+    destination: StockDestination;
+    outletId?: string;
+    performedBy?: string;
+    remarks?: string;
+    createdAt?: Date;
+  }): StockTransaction {
+    return new StockTransaction({
+      id: params.id,
+      stockItemId: params.stockItemId,
+      inventoryId: params.inventoryId,
+      type: params.type,
+      previousQuantity: params.previousQuantity,
+      newQuantity: params.newQuantity,
+      quantityChange: params.quantityChange,
+      quantity: Quantity.create(Math.abs(params.quantityChange)),
+      source: params.source,
+      destination: params.destination,
+      outletId: params.outletId,
+      performedBy: params.performedBy,
+      remarks: params.remarks,
+      createdAt: params.createdAt ?? new Date(),
+    });
   }
 
   /* ---------------------------------------------- */
@@ -68,19 +115,20 @@ export class StockTransaction {
     performedBy?: string;
     now?: Date;
   }): StockTransaction {
-    return new StockTransaction({
+    const change = params.quantity.getRaw();
+
+    return StockTransaction.createRecord({
       id: params.id,
       stockItemId: params.stockItemId,
       inventoryId: params.inventoryId,
-
       type: StockTransactionType.INITIALIZE,
-      quantity: params.quantity,
-
+      previousQuantity: Quantity.create(0),
+      newQuantity: params.quantity,
+      quantityChange: change,
       source: StockSource.ADJUSTMENT,
       destination: StockDestination.CENTRAL,
-
       performedBy: params.performedBy,
-      createdAt: params.now ?? new Date(),
+      createdAt: params.now,
     });
   }
 
@@ -89,24 +137,25 @@ export class StockTransaction {
     stockItemId: string;
     inventoryId: string;
     quantity: Quantity;
+    previousAvailable: Quantity;
+    newAvailable: Quantity;
     performedBy?: string;
     remarks?: string;
     now?: Date;
   }): StockTransaction {
-    return new StockTransaction({
+    return StockTransaction.createRecord({
       id: params.id,
       stockItemId: params.stockItemId,
       inventoryId: params.inventoryId,
-
       type: StockTransactionType.ADD,
-      quantity: params.quantity,
-
+      previousQuantity: params.previousAvailable,
+      newQuantity: params.newAvailable,
+      quantityChange: params.quantity.getRaw(),
       source: StockSource.ADJUSTMENT,
       destination: StockDestination.CENTRAL,
-
       performedBy: params.performedBy,
       remarks: params.remarks,
-      createdAt: params.now ?? new Date(),
+      createdAt: params.now,
     });
   }
 
@@ -114,25 +163,29 @@ export class StockTransaction {
     id: string;
     stockItemId: string;
     inventoryId: string;
-    quantity: Quantity;
+    previousAvailable: Quantity;
+    newAvailable: Quantity;
     performedBy?: string;
     remarks: string;
     now?: Date;
   }): StockTransaction {
-    return new StockTransaction({
+    const change =
+      params.newAvailable.getRaw() -
+      params.previousAvailable.getRaw();
+
+    return StockTransaction.createRecord({
       id: params.id,
       stockItemId: params.stockItemId,
       inventoryId: params.inventoryId,
-
       type: StockTransactionType.ADJUST,
-      quantity: params.quantity,
-
+      previousQuantity: params.previousAvailable,
+      newQuantity: params.newAvailable,
+      quantityChange: change,
       source: StockSource.ADJUSTMENT,
       destination: StockDestination.CENTRAL,
-
       performedBy: params.performedBy,
       remarks: params.remarks,
-      createdAt: params.now ?? new Date(),
+      createdAt: params.now,
     });
   }
 
@@ -142,23 +195,24 @@ export class StockTransaction {
     inventoryId: string;
     outletId: string;
     quantity: Quantity;
+    previousAvailable: Quantity;
+    newAvailable: Quantity;
     performedBy?: string;
     now?: Date;
   }): StockTransaction {
-    return new StockTransaction({
+    return StockTransaction.createRecord({
       id: params.id,
       stockItemId: params.stockItemId,
       inventoryId: params.inventoryId,
-
       type: StockTransactionType.TRANSFER,
-      quantity: params.quantity,
-
+      previousQuantity: params.previousAvailable,
+      newQuantity: params.newAvailable,
+      quantityChange: -params.quantity.getRaw(),
       source: StockSource.CENTRAL,
       destination: StockDestination.OUTLET,
-
       outletId: params.outletId,
       performedBy: params.performedBy,
-      createdAt: params.now ?? new Date(),
+      createdAt: params.now,
     });
   }
 
@@ -203,12 +257,27 @@ export class StockTransaction {
       );
     }
 
-    if (this.quantity.getRaw() <= 0) {
+    if (this.skipStrictValidation) {
+      return;
+    }
+
+    if (this.quantityChange === 0) {
       throw new ValidationError(
         'STOCK_TRANSACTION_INVALID_QUANTITY',
-        'Transaction quantity must be greater than zero',
+        'Transaction quantity change cannot be zero',
+        {
+          quantityChange: this.quantityChange,
+        },
+      );
+    }
+
+    if (this.quantity.getRaw() !== Math.abs(this.quantityChange)) {
+      throw new ValidationError(
+        'STOCK_TRANSACTION_INVALID_QUANTITY',
+        'Transaction quantity must match absolute quantity change',
         {
           quantity: this.quantity.getRaw(),
+          quantityChange: this.quantityChange,
         },
       );
     }

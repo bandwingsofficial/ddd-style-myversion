@@ -530,6 +530,10 @@ model StockTransaction {
   type     StockTransactionType
   quantity Decimal              @db.Decimal(12, 3)
 
+  previousQuantity Decimal @default(0) @db.Decimal(12, 3)
+  newQuantity      Decimal @default(0) @db.Decimal(12, 3)
+  quantityChange   Decimal @default(0) @db.Decimal(12, 3)
+
   source      StockSource
   destination StockDestination
 
