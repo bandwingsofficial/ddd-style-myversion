@@ -11,11 +11,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { IconActionButton } from '@/components/ui/icon-action-button';
+import SmartDeleteDialogs from '@/components/ui/smart-delete-dialogs';
+import { useSmartDelete } from '@/hooks/use-smart-delete';
 import { StockItemsApi } from '../api/stock-items.api';
 import { StockItem } from '../types/stock-item.types';
 import StockItemsTableSkeleton from './stock-items-table-skeleton';
 import EditStockItemModal from './edit-stock-item-modal';
-import DeleteStockItemDialog from './delete-stock-item-dialog';
 
 interface Props {
   stockItems: StockItem[];
@@ -151,9 +153,22 @@ export default function StockItemsTable({
   onRefresh,
 }: Props) {
   const [editingItem, setEditingItem] = useState<StockItem | null>(null);
-  const [deletingItem, setDeletingItem] = useState<StockItem | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const deleteConfirm = useSmartDelete<StockItem>({
+    deleteFn: (item, options) =>
+      StockItemsApi.delete(item.id, { force: options?.force }),
+    successMessage: 'Stock item deleted successfully.',
+    errorMessage: 'Failed to delete stock item.',
+    getItemLabel: (item) => item.name,
+    onSuccess: () => {
+      if (stockItems.length === 1 && page > 1) {
+        onPageChange(page - 1);
+      } else {
+        onRefresh();
+      }
+    },
+  });
 
   const { activeItems, inactiveItems } = useMemo(() => {
     const active = stockItems.filter((item) => item.status === 'ACTIVE');
@@ -189,29 +204,7 @@ export default function StockItemsTable({
   };
 
   const handleDelete = async () => {
-    if (!deletingItem || deleteLoading) {
-      return;
-    }
-
-    setDeleteLoading(true);
-
-    try {
-      await StockItemsApi.delete(deletingItem.id);
-      toast.success('Stock item deleted successfully.');
-      setDeletingItem(null);
-
-      if (stockItems.length === 1 && page > 1) {
-        onPageChange(page - 1);
-      } else {
-        onRefresh();
-      }
-    } catch (err: any) {
-      toast.error(
-        err?.response?.data?.message || 'Failed to delete stock item.',
-      );
-    } finally {
-      setDeleteLoading(false);
-    }
+    await deleteConfirm.confirm();
   };
 
   if (loading) {
@@ -291,7 +284,7 @@ export default function StockItemsTable({
                       onDeactivate={(target) =>
                         handleStatusChange(target, 'INACTIVE')
                       }
-                      onDelete={setDeletingItem}
+                      onDelete={deleteConfirm.open}
                       showEdit
                       actionLoadingId={actionLoadingId}
                     />
@@ -305,7 +298,7 @@ export default function StockItemsTable({
                       onActivate={(target) =>
                         handleStatusChange(target, 'ACTIVE')
                       }
-                      onDelete={setDeletingItem}
+                      onDelete={deleteConfirm.open}
                       actionLoadingId={actionLoadingId}
                     />
                   </tr>
@@ -344,11 +337,24 @@ export default function StockItemsTable({
         onSuccess={onRefresh}
       />
 
-      <DeleteStockItemDialog
-        stockItem={deletingItem}
-        loading={deleteLoading}
-        onCancel={() => setDeletingItem(null)}
-        onConfirm={handleDelete}
+      <SmartDeleteDialogs
+        entityName="Stock Item"
+        itemLabel={deleteConfirm.itemLabel}
+        showInitial={
+          !!deleteConfirm.target &&
+          !deleteConfirm.forceAnalysis &&
+          !deleteConfirm.blockedAnalysis
+        }
+        initialDescription="This action is permanent. Any associated uploaded files or images will also be deleted."
+        forceAnalysis={deleteConfirm.forceAnalysis}
+        blockedAnalysis={deleteConfirm.blockedAnalysis}
+        blockedMessage={deleteConfirm.blockedMessage}
+        loading={deleteConfirm.loading}
+        onCancel={deleteConfirm.close}
+        onConfirm={() => void deleteConfirm.confirm()}
+        onConfirmForce={() => void deleteConfirm.confirmForce()}
+        onCloseBlocked={deleteConfirm.closeBlocked}
+        onCloseForce={deleteConfirm.closeForce}
       />
     </>
   );

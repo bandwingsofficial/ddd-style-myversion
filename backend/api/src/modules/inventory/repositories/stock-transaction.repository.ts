@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
@@ -9,6 +10,7 @@ import { QuantityMapper } from '../mappers/quantity.mapper';
 import { StockTransactionTypeMapper } from '../mappers/stock-transaction-type.mapper';
 import { StockSourceMapper } from '../mappers/stock-source.mapper';
 import { StockDestinationMapper } from '../mappers/stock-destination.mapper';
+import { StockTransactionType } from '../domain/enums/stock-transaction-type.enum';
 
 @Injectable()
 export class StockTransactionRepository {
@@ -38,6 +40,14 @@ export class StockTransactionRepository {
         quantity: QuantityMapper.toPrisma(
           transaction.quantity,
         ),
+
+        previousQuantity: QuantityMapper.toPrisma(
+          transaction.previousQuantity,
+        ),
+        newQuantity: QuantityMapper.toPrisma(
+          transaction.newQuantity,
+        ),
+        quantityChange: new Prisma.Decimal(transaction.quantityChange),
 
         source: StockSourceMapper.toPrisma(
           transaction.source,
@@ -156,6 +166,9 @@ export class StockTransactionRepository {
 
     type: any;
     quantity: any;
+    previousQuantity: any;
+    newQuantity: any;
+    quantityChange: any;
 
     source: any;
     destination: any;
@@ -166,17 +179,25 @@ export class StockTransactionRepository {
 
     createdAt: Date;
   }): StockTransaction {
+    const quantityChange = row.quantityChange.toNumber();
+    const type = StockTransactionTypeMapper.toDomain(row.type);
+    const skipStrictValidation =
+      type === StockTransactionType.ADJUST && quantityChange === 0;
+
     return StockTransaction.rehydrate({
       id: row.id,
 
       stockItemId: row.stockItemId,
       inventoryId: row.inventoryId,
 
-      type: StockTransactionTypeMapper.toDomain(
-        row.type,
-      ),
+      type,
 
       quantity: QuantityMapper.toDomain(row.quantity),
+      previousQuantity: QuantityMapper.toDomain(
+        row.previousQuantity,
+      ),
+      newQuantity: QuantityMapper.toDomain(row.newQuantity),
+      quantityChange,
 
       source: StockSourceMapper.toDomain(row.source),
       destination: StockDestinationMapper.toDomain(
@@ -188,6 +209,7 @@ export class StockTransactionRepository {
       remarks: row.remarks ?? undefined,
 
       createdAt: row.createdAt,
+      skipStrictValidation,
     });
   }
 }

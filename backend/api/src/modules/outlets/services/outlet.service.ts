@@ -23,6 +23,10 @@ import { OutletStatus } from '../domain/enums/outlet-status.enum';
 /* 🔥 ADD */
 import { OutletEventsService } from '../events/outlet-events.service';
 import { OutletWorkingStatus } from '../domain/enums/outlet-working-status.enum';
+import {
+  DeleteAnalysis,
+  DELETE_ERROR_CODES,
+} from '../../../common/types/delete-analysis.types';
 
 @Injectable()
 export class OutletService {
@@ -505,4 +509,214 @@ private calculateDistanceKm(
 
   return R * c;
 }
+
+  async configureCamera(params: {
+    outletId: string;
+    enabled: boolean;
+    streamUrl?: string;
+    adminId: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }): Promise<Outlet> {
+    const outlet = await this.outletRepo.findById(params.outletId);
+    if (!outlet) {
+      throw new ValidationError('OUTLET_NOT_FOUND', 'Outlet not found');
+    }
+
+    OutletActivePolicy.enforce(outlet);
+
+    const updated = outlet.configureCamera({
+      enabled: params.enabled,
+      streamUrl: params.streamUrl,
+    });
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.outletRepo.updateCameraState(updated, tx);
+
+      await this.auditRepo.create(
+        {
+          actorType: ActorType.SUPER_ADMIN,
+          actorId: params.adminId,
+          action: params.enabled
+            ? AuditAction.OUTLET_CAMERA_ON
+            : AuditAction.OUTLET_CAMERA_OFF,
+          metadata: {
+            outletId: outlet.id,
+            configured: true,
+          },
+          ipAddress: params.ipAddress,
+          userAgent: params.userAgent,
+        },
+        tx,
+      );
+    });
+
+    return updated;
+  }
+
+  async analyzeOutletDelete(outletId: string): Promise<DeleteAnalysis> {
+    await this.getById(outletId);
+
+    const [
+      orderCount,
+      transactionCount,
+      productCount,
+      stockCount,
+      userCount,
+      cartCount,
+    ] = await Promise.all([
+      this.outletRepo.countOrdersByOutletId(outletId),
+      this.outletRepo.countStockTransactionsByOutletId(outletId),
+      this.outletRepo.countOutletProductsByOutletId(outletId),
+      this.outletRepo.countOutletStocksByOutletId(outletId),
+      this.outletRepo.countOutletUsersByOutletId(outletId),
+      this.outletRepo.countCartsByOutletId(outletId),
+    ]);
+
+    const permanentBlockers = [];
+    const removableDependencies = [];
+
+    if (orderCount > 0) {
+      permanentBlockers.push({
+        type: 'ORDERS',
+        label: 'Orders',
+        count: orderCount,
+      });
+    }
+
+    if (transactionCount > 0) {
+      permanentBlockers.push({
+        type: 'STOCK_TRANSACTIONS',
+        label: 'Inventory Transactions',
+        count: transactionCount,
+      });
+    }
+
+    if (productCount > 0) {
+      removableDependencies.push({
+        type: 'OUTLET_PRODUCTS',
+        label: 'Outlet Product Assignments',
+        count: productCount,
+      });
+    }
+
+    if (stockCount > 0) {
+      removableDependencies.push({
+        type: 'OUTLET_STOCK',
+        label: 'Outlet Stock Records',
+        count: stockCount,
+      });
+    }
+
+    if (userCount > 0) {
+      removableDependencies.push({
+        type: 'OUTLET_USERS',
+        label: 'Outlet Users',
+        count: userCount,
+      });
+    }
+
+    if (cartCount > 0) {
+      removableDependencies.push({
+        type: 'CARTS',
+        label: 'Active Carts',
+        count: cartCount,
+      });
+    }
+
+    const canDelete =
+      permanentBlockers.length === 0 && removableDependencies.length === 0;
+    const canForceDelete =
+      permanentBlockers.length === 0 && removableDependencies.length > 0;
+
+    return {
+      canDelete,
+      canForceDelete,
+      permanentBlockers,
+      removableDependencies,
+      forceDeleteActions: canForceDelete
+        ? [
+            'Remove outlet product assignments',
+            'Remove outlet stock records',
+            'Remove outlet users and carts',
+            'Permanently delete the outlet',
+          ]
+        : undefined,
+    };
+  }
+
+  async deleteOutlet(
+    outletId: string,
+    params: {
+      adminId: string;
+      force?: boolean;
+      ipAddress?: string;
+      userAgent?: string;
+    },
+  ): Promise<{ id: string }> {
+    const outlet = await this.getById(outletId);
+    const analysis = await this.analyzeOutletDelete(outletId);
+
+    if (!analysis.canDelete && !params.force) {
+      if (analysis.canForceDelete) {
+        throw new ValidationError(
+          DELETE_ERROR_CODES.REQUIRES_FORCE,
+          `This outlet is referenced by ${analysis.removableDependencies
+            .map((item) => `${item.count} ${item.label.toLowerCase()}`)
+            .join(' and ')}.`,
+          { deleteAnalysis: analysis },
+        );
+      }
+
+      throw new ValidationError(
+        DELETE_ERROR_CODES.BLOCKED,
+        this.buildPermanentOutletDeleteMessage(analysis),
+        { deleteAnalysis: analysis },
+      );
+    }
+
+    if (params.force && analysis.permanentBlockers.length > 0) {
+      throw new ValidationError(
+        DELETE_ERROR_CODES.BLOCKED,
+        this.buildPermanentOutletDeleteMessage(analysis),
+        { deleteAnalysis: analysis },
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      if (params.force) {
+        await this.outletRepo.deleteRemovableOutletDependencies(outletId, tx);
+      }
+
+      await this.outletRepo.hardDelete(outletId, tx);
+
+      await this.auditRepo.create(
+        {
+          actorType: ActorType.SUPER_ADMIN,
+          actorId: params.adminId,
+          action: AuditAction.OUTLET_DISABLED,
+          metadata: { outletId, deleted: true },
+          ipAddress: params.ipAddress,
+          userAgent: params.userAgent,
+        },
+        tx,
+      );
+    });
+
+    return { id: outlet.id };
+  }
+
+  private buildPermanentOutletDeleteMessage(
+    analysis: DeleteAnalysis,
+  ): string {
+    if (analysis.permanentBlockers.length === 0) {
+      return 'Cannot delete this outlet.';
+    }
+
+    const details = analysis.permanentBlockers
+      .map((blocker) => `${blocker.count} ${blocker.label}`)
+      .join(', ');
+
+    return `Cannot delete this outlet because it has permanent business records: ${details}. Those records must be retained.`;
+  }
 }

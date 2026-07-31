@@ -403,8 +403,14 @@ export class ProductManagementController {
   }
 
   @Delete(':productId')
-  async deleteProduct(@Param('productId') productId: string) {
-    const data = await this.orchestrator.deleteProduct({ productId });
+  async deleteProduct(
+    @Param('productId') productId: string,
+    @Query('force') force?: string,
+  ) {
+    const data = await this.orchestrator.deleteProduct({
+      productId,
+      force: force === 'true',
+    });
 
     return {
       success: true,

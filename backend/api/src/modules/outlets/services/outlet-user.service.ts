@@ -6,20 +6,25 @@ import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { PasswordHelper } from '../../../infrastructure/security/password.helper';
 
 import { OutletUser } from '../domain/models/outlet-user.model';
+import { OutletUserRole } from '../domain/enums/outlet-user-role.enum';
 import { OutletUserRepository } from '../repositories/outlet-user.repository';
 import { OutletRepository } from '../repositories/outlet.repository';
-import { OutletUserActivePolicy } from '../policies/outlet-user-active.policy';
 
 import { AuditLogRepository } from '../../auth/repositories/audit-log.repository';
+import { AuthSessionRepository } from '../../auth/repositories/auth-session.repository';
+import { RefreshTokenRepository } from '../../auth/repositories/refresh-token.repository';
 import { ActorType } from '../../auth/domain/enums/actor-type.enum';
 import { AuditAction } from '../../auth/domain/enums/audit-action.enum';
 
-import {
-  ValidationError,
-  InvariantViolationError,
-} from '../../../common/errors';
+import { ValidationError } from '../../../common/errors';
 
 const PASSWORD_SALT_ROUNDS = 12;
+
+function normalizePhone(phone?: string): string | undefined {
+  const trimmed = phone?.trim();
+  if (!trimmed) return undefined;
+  return trimmed.replace(/\s/g, '');
+}
 
 @Injectable()
 export class OutletUserService {
@@ -28,11 +33,9 @@ export class OutletUserService {
     private readonly outletRepo: OutletRepository,
     private readonly outletUserRepo: OutletUserRepository,
     private readonly auditRepo: AuditLogRepository,
+    private readonly sessionRepo: AuthSessionRepository,
+    private readonly refreshTokenRepo: RefreshTokenRepository,
   ) {}
-
-  /* ================================================= */
-  /* READS                                             */
-  /* ================================================= */
 
   async getById(userId: string): Promise<OutletUser | null> {
     return this.outletUserRepo.findById(userId);
@@ -42,30 +45,21 @@ export class OutletUserService {
     return this.outletUserRepo.findByOutlet(outletId);
   }
 
-  /* ================================================= */
-  /* CREATE OUTLET USER (ADMIN)                         */
-  /* ================================================= */
-
   async createUser(params: {
     outletId: string;
+    name: string;
     email: string;
+    phone?: string;
+    role: OutletUserRole;
     rawPassword: string;
     adminId: string;
     ipAddress?: string;
     userAgent?: string;
-  }): Promise<{
-    id: string;
-    outletId: string;
-    email: string;
-    createdAt: Date;
-    updatedAt: Date;
-  }> {
+  }): Promise<OutletUser> {
     const email = params.email.trim().toLowerCase();
+    const phone = normalizePhone(params.phone);
 
-    /* ---------- 1️⃣ OUTLET MUST EXIST ---------- */
-    const outlet = await this.outletRepo.findById(
-      params.outletId,
-    );
+    const outlet = await this.outletRepo.findById(params.outletId);
 
     if (!outlet) {
       throw new ValidationError(
@@ -74,18 +68,26 @@ export class OutletUserService {
       );
     }
 
-    /* ---------- 2️⃣ EMAIL MUST BE UNIQUE ---------- */
-    const existingUser =
-      await this.outletUserRepo.findByEmail(email);
+    const existingEmail = await this.outletUserRepo.findByEmail(email);
 
-    if (existingUser) {
+    if (existingEmail) {
       throw new ValidationError(
         'OUTLET_USER_ALREADY_EXISTS',
         'Email already exists. Use a different email.',
       );
     }
 
-    /* ---------- 3️⃣ HASH PASSWORD ---------- */
+    if (phone) {
+      const existingPhone = await this.outletUserRepo.findByPhone(phone);
+
+      if (existingPhone) {
+        throw new ValidationError(
+          'OUTLET_USER_PHONE_EXISTS',
+          'Phone number already exists. Use a different phone number.',
+        );
+      }
+    }
+
     const passwordHash = await PasswordHelper.hash(
       params.rawPassword,
       PASSWORD_SALT_ROUNDS,
@@ -93,17 +95,18 @@ export class OutletUserService {
 
     let createdUser!: OutletUser;
 
-    /* ---------- 4️⃣ TRANSACTION ---------- */
     try {
       await this.prisma.$transaction(async (tx) => {
         const user = OutletUser.createNew({
           outletId: params.outletId,
+          name: params.name,
+          phone,
+          role: params.role,
           email,
           passwordHash,
         });
 
-        createdUser =
-          await this.outletUserRepo.create(user, tx);
+        createdUser = await this.outletUserRepo.create(user, tx);
 
         await this.auditRepo.create(
           {
@@ -121,43 +124,33 @@ export class OutletUserService {
           tx,
         );
       });
-    } catch (err: any) {
-      if (err.code === 'P2002') {
+    } catch (err: unknown) {
+      const prismaError = err as { code?: string };
+
+      if (prismaError.code === 'P2002') {
         throw new ValidationError(
           'OUTLET_USER_ALREADY_EXISTS',
-          'Email already exists. Use a different email.',
+          'Email or phone already exists. Use different values.',
         );
       }
+
       throw err;
     }
 
-    return {
-      id: createdUser.id,
-      outletId: createdUser.outletId,
-      email: createdUser.email,
-      createdAt: createdUser.createdAt,
-      updatedAt: createdUser.updatedAt,
-    };
+    return createdUser;
   }
 
-  /* ================================================= */
-  /* RESET PASSWORD (ADMIN)                             */
-  /* ================================================= */
-
-  async resetPassword(params: {
-    email: string;
-    newRawPassword: string;
+  async updateUser(params: {
+    outletUserId: string;
+    name: string;
+    phone?: string;
+    role: OutletUserRole;
+    outletId: string;
     adminId: string;
     ipAddress?: string;
     userAgent?: string;
-  }): Promise<{
-    email: string;
-    updatedAt: Date;
-  }> {
-    const email = params.email.trim().toLowerCase();
-
-    const user =
-      await this.outletUserRepo.findByEmail(email);
+  }): Promise<OutletUser> {
+    const user = await this.outletUserRepo.findById(params.outletUserId);
 
     if (!user) {
       throw new ValidationError(
@@ -166,13 +159,72 @@ export class OutletUserService {
       );
     }
 
-    /* ---------- DOMAIN POLICY ---------- */
-    try {
-      OutletUserActivePolicy.enforce(user);
-    } catch {
-      throw new InvariantViolationError(
-        'OUTLET_USER_DISABLED',
-        'Outlet user is disabled',
+    const outlet = await this.outletRepo.findById(params.outletId);
+
+    if (!outlet) {
+      throw new ValidationError('OUTLET_NOT_FOUND', 'Outlet not found');
+    }
+
+    const phone = normalizePhone(params.phone);
+
+    if (phone) {
+      const existingPhone = await this.outletUserRepo.findByPhone(phone);
+
+      if (existingPhone && existingPhone.id !== user.id) {
+        throw new ValidationError(
+          'OUTLET_USER_PHONE_EXISTS',
+          'Phone number already exists. Use a different phone number.',
+        );
+      }
+    }
+
+    const updatedUser = user.updateDetails({
+      name: params.name,
+      phone,
+      role: params.role,
+      outletId: params.outletId,
+    });
+
+    let savedUser!: OutletUser;
+
+    await this.prisma.$transaction(async (tx) => {
+      savedUser = await this.outletUserRepo.updateDetails(updatedUser, tx);
+
+      await this.auditRepo.create(
+        {
+          actorType: ActorType.SUPER_ADMIN,
+          actorId: params.adminId,
+          action: AuditAction.OUTLET_USER_ENABLED,
+          metadata: {
+            outletUserId: user.id,
+            email: user.email,
+            updated: true,
+          },
+          ipAddress: params.ipAddress,
+          userAgent: params.userAgent,
+        },
+        tx,
+      );
+    });
+
+    return savedUser;
+  }
+
+  async resetPassword(params: {
+    email: string;
+    newRawPassword: string;
+    adminId: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }): Promise<{ email: string; updatedAt: Date }> {
+    const email = params.email.trim().toLowerCase();
+
+    const user = await this.outletUserRepo.findByEmail(email);
+
+    if (!user) {
+      throw new ValidationError(
+        'OUTLET_USER_NOT_FOUND',
+        'Outlet user not found',
       );
     }
 
@@ -188,18 +240,13 @@ export class OutletUserService {
     let savedUser!: OutletUser;
 
     await this.prisma.$transaction(async (tx) => {
-      savedUser =
-        await this.outletUserRepo.updatePassword(
-          updatedUser,
-          tx,
-        );
+      savedUser = await this.outletUserRepo.updatePassword(updatedUser, tx);
 
       await this.auditRepo.create(
         {
           actorType: ActorType.SUPER_ADMIN,
           actorId: params.adminId,
-          action:
-            AuditAction.OUTLET_USER_PASSWORD_RESET,
+          action: AuditAction.OUTLET_USER_PASSWORD_RESET,
           metadata: {
             outletUserId: savedUser.id,
             email,
@@ -217,19 +264,13 @@ export class OutletUserService {
     };
   }
 
-  /* ================================================= */
-  /* DISABLE / ENABLE OUTLET USER (SOFT DELETE)        */
-  /* ================================================= */
-
   async disableUser(params: {
     outletUserId: string;
     adminId: string;
     ipAddress?: string;
     userAgent?: string;
   }): Promise<{ id: string; isActive: false }> {
-    const user = await this.outletUserRepo.findById(
-      params.outletUserId,
-    );
+    const user = await this.outletUserRepo.findById(params.outletUserId);
 
     if (!user) {
       throw new ValidationError(
@@ -245,10 +286,7 @@ export class OutletUserService {
     const disabledUser = user.disable();
 
     await this.prisma.$transaction(async (tx) => {
-      await this.outletUserRepo.updateStatus(
-        disabledUser,
-        tx,
-      );
+      await this.outletUserRepo.updateStatus(disabledUser, tx);
 
       await this.auditRepo.create(
         {
@@ -275,9 +313,7 @@ export class OutletUserService {
     ipAddress?: string;
     userAgent?: string;
   }): Promise<{ id: string; isActive: true }> {
-    const user = await this.outletUserRepo.findById(
-      params.outletUserId,
-    );
+    const user = await this.outletUserRepo.findById(params.outletUserId);
 
     if (!user) {
       throw new ValidationError(
@@ -293,10 +329,7 @@ export class OutletUserService {
     const enabledUser = user.enable();
 
     await this.prisma.$transaction(async (tx) => {
-      await this.outletUserRepo.updateStatus(
-        enabledUser,
-        tx,
-      );
+      await this.outletUserRepo.updateStatus(enabledUser, tx);
 
       await this.auditRepo.create(
         {
@@ -315,5 +348,67 @@ export class OutletUserService {
     });
 
     return { id: user.id, isActive: true };
+  }
+
+  async deleteUser(params: {
+    outletUserId: string;
+    adminId: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }): Promise<{ id: string }> {
+    const user = await this.outletUserRepo.findById(params.outletUserId);
+
+    if (!user) {
+      throw new ValidationError(
+        'OUTLET_USER_NOT_FOUND',
+        'Outlet user not found',
+      );
+    }
+
+    if (user.isActive) {
+      throw new ValidationError(
+        'OUTLET_USER_ACTIVE',
+        'Deactivate the user before deleting.',
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const activeSessions = await this.sessionRepo.findActiveByActor(
+        ActorType.OUTLET_USER,
+        user.id,
+        tx,
+      );
+
+      for (const session of activeSessions) {
+        await this.refreshTokenRepo.revokeBySessionId(session.id, tx);
+      }
+
+      if (activeSessions.length > 0) {
+        await this.sessionRepo.revokeAllForActor(
+          ActorType.OUTLET_USER,
+          user.id,
+          tx,
+        );
+      }
+
+      await this.outletUserRepo.deleteById(user.id, tx);
+
+      await this.auditRepo.create(
+        {
+          actorType: ActorType.SUPER_ADMIN,
+          actorId: params.adminId,
+          action: AuditAction.OUTLET_USER_DELETED,
+          metadata: {
+            outletUserId: user.id,
+            email: user.email,
+          },
+          ipAddress: params.ipAddress,
+          userAgent: params.userAgent,
+        },
+        tx,
+      );
+    });
+
+    return { id: user.id };
   }
 }

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { InventoryService } from './inventory.service';
 import { Unit } from '../../stock-items/domain/enums/unit.enum';
+import { InventoryResponseMapper } from '../mappers/inventory-response.mapper';
 
 /**
  * Orchestrator = controller-facing layer
@@ -16,6 +17,7 @@ import { Unit } from '../../stock-items/domain/enums/unit.enum';
 export class InventoryOrchestratorService {
   constructor(
     private readonly inventoryService: InventoryService,
+    private readonly inventoryResponseMapper: InventoryResponseMapper,
   ) {}
 
   /* ================================================= */
@@ -28,9 +30,11 @@ export class InventoryOrchestratorService {
     quantity: number;
     performedBy?: string;
   }) {
-    return this.inventoryService.initializeInventory(
+    const inventory = await this.inventoryService.initializeInventory(
       params,
     );
+
+    return this.inventoryResponseMapper.toResponse(inventory);
   }
 
   /* ================================================= */
@@ -43,7 +47,9 @@ export class InventoryOrchestratorService {
     performedBy?: string;
     remarks?: string;
   }) {
-    return this.inventoryService.addStock(params);
+    const inventory = await this.inventoryService.addStock(params);
+
+    return this.inventoryResponseMapper.toResponse(inventory);
   }
 
   /* ================================================= */
@@ -52,13 +58,16 @@ export class InventoryOrchestratorService {
 
   async adjustAvailableStock(params: {
     stockItemId: string;
-    newAvailableQty: number;
+    adjustmentType: 'ADD' | 'DEDUCT';
+    adjustmentQuantity: number;
     performedBy?: string;
     remarks: string;
   }) {
-    return this.inventoryService.adjustAvailableStock(
+    const inventory = await this.inventoryService.adjustAvailableStock(
       params,
     );
+
+    return this.inventoryResponseMapper.toResponse(inventory);
   }
 
   /* ================================================= */
@@ -71,9 +80,15 @@ export class InventoryOrchestratorService {
     quantity: number;
     performedBy?: string;
   }) {
-    return this.inventoryService.transferToOutlet(
+    const result = await this.inventoryService.transferToOutlet(
       params,
     );
+
+    return {
+      inventory: this.inventoryResponseMapper.toResponse(
+        result.inventory,
+      ),
+    };
   }
 
   /* ================================================= */
@@ -81,16 +96,28 @@ export class InventoryOrchestratorService {
   /* ================================================= */
 
   async getCentralInventory() {
-    return this.inventoryService.getCentralInventory();
+    const inventories = await this.inventoryService.getCentralInventory();
+
+    return this.inventoryResponseMapper.toResponseList(inventories);
   }
 
   async getInventoryTransactions(stockItemId: string) {
-    return this.inventoryService.getInventoryTransactions(
-      stockItemId,
+    const transactions =
+      await this.inventoryService.getInventoryTransactions(
+        stockItemId,
+      );
+
+    return this.inventoryResponseMapper.toTransactionResponseList(
+      transactions,
     );
   }
 
   async getOutletStock(outletId: string) {
-    return this.inventoryService.getOutletStock(outletId);
+    const outletStock =
+      await this.inventoryService.getOutletStock(outletId);
+
+    return this.inventoryResponseMapper.toOutletStockResponseList(
+      outletStock,
+    );
   }
 }

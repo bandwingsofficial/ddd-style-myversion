@@ -15,12 +15,13 @@ import { toast } from 'sonner';
 
 import { IconActionButton } from '@/components/ui/icon-action-button';
 import { Select } from '@/components/ui/select';
+import SmartDeleteDialogs from '@/components/ui/smart-delete-dialogs';
+import { useSmartDelete } from '@/hooks/use-smart-delete';
 import { Category } from '@/features/categories/types/category.types';
 import { ProductsApi } from '../api/products.api';
 import { Product, ProductStatus } from '../types/product.types';
 import ProductsTableSkeleton from './products-table-skeleton';
 import EditProductModal from './edit-product-modal';
-import DeleteProductDialog from './delete-product-dialog';
 
 interface Props {
   products: Product[];
@@ -216,9 +217,22 @@ export default function ProductsTable({
   onCreateClick,
 }: Props) {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const deleteConfirm = useSmartDelete<Product>({
+    deleteFn: (product, options) =>
+      ProductsApi.delete(product.id, { force: options?.force }),
+    successMessage: 'Product deleted successfully.',
+    errorMessage: 'Failed to delete product.',
+    getItemLabel: (product) => product.name.value,
+    onSuccess: () => {
+      if (products.length === 1 && page > 1) {
+        onPageChange(page - 1);
+      } else {
+        onRefresh();
+      }
+    },
+  });
 
   const categoryFilterOptions = useMemo(
     () => [
@@ -300,34 +314,13 @@ export default function ProductsTable({
   };
 
   const handleDelete = async () => {
-    if (!deletingProduct || deleteLoading) {
-      return;
-    }
-
-    setDeleteLoading(true);
-
-    try {
-      await ProductsApi.delete(deletingProduct.id);
-      toast.success('Product deleted successfully.');
-      setDeletingProduct(null);
-
-      if (products.length === 1 && page > 1) {
-        onPageChange(page - 1);
-      } else {
-        onRefresh();
-      }
-    } catch (err: unknown) {
-      const axiosError = err as {
-        response?: { data?: { message?: string } };
-      };
-
-      toast.error(
-        axiosError?.response?.data?.message || 'Failed to delete product.',
-      );
-    } finally {
-      setDeleteLoading(false);
-    }
+    await deleteConfirm.confirm();
   };
+
+  const showInitialDeleteDialog =
+    !!deleteConfirm.target &&
+    !deleteConfirm.forceAnalysis &&
+    !deleteConfirm.blockedAnalysis;
 
   if (loading) {
     return <ProductsTableSkeleton />;
@@ -448,7 +441,7 @@ export default function ProductsTable({
                       onDeactivate={(target) =>
                         handleStatusChange(target, 'INACTIVE')
                       }
-                      onDelete={setDeletingProduct}
+                      onDelete={deleteConfirm.open}
                       onTrendingToggle={handleTrendingToggle}
                       showEdit
                       actionLoadingId={actionLoadingId}
@@ -463,7 +456,7 @@ export default function ProductsTable({
                       onActivate={(target) =>
                         handleStatusChange(target, 'ACTIVE')
                       }
-                      onDelete={setDeletingProduct}
+                      onDelete={deleteConfirm.open}
                       onTrendingToggle={handleTrendingToggle}
                       actionLoadingId={actionLoadingId}
                     />
@@ -504,11 +497,20 @@ export default function ProductsTable({
         onSuccess={onRefresh}
       />
 
-      <DeleteProductDialog
-        product={deletingProduct}
-        loading={deleteLoading}
-        onCancel={() => setDeletingProduct(null)}
+      <SmartDeleteDialogs
+        entityName="Product"
+        itemLabel={deleteConfirm.itemLabel}
+        showInitial={showInitialDeleteDialog}
+        initialDescription="This action is permanent. All associated images and uploads will also be deleted."
+        forceAnalysis={deleteConfirm.forceAnalysis}
+        blockedAnalysis={deleteConfirm.blockedAnalysis}
+        blockedMessage={deleteConfirm.blockedMessage}
+        loading={deleteConfirm.loading}
+        onCancel={deleteConfirm.close}
         onConfirm={handleDelete}
+        onConfirmForce={() => void deleteConfirm.confirmForce()}
+        onCloseBlocked={deleteConfirm.closeBlocked}
+        onCloseForce={deleteConfirm.closeForce}
       />
     </>
   );

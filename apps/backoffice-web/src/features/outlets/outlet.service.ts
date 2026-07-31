@@ -1,80 +1,28 @@
-import { axiosInstance } from "@/http/axios";
-import { WorkingStatus } from "./type";
+import { OutletsApi } from './api/outlets.api';
+import {
+  Outlet,
+  OutletStatus,
+  WorkingStatus,
+} from './types/outlet.types';
+
+export type { Outlet, OutletStatus, WorkingStatus };
 
 export const OutletService = {
-  getAll: async () => {
-    const res = await axiosInstance.get("/outlets");
-    return res.data.data;
-  },
+  getAll: () => OutletsApi.list(),
 
-  create: async (payload: any) => {
-    return axiosInstance.post("/outlets", payload);
-  },
+  getById: (id: string) => OutletsApi.getById(id),
 
-  //reset password for outlet user
-   resetPassword: async (payload: {
-    email: string;
-    newPassword: string;
-  }) => {
-    return axiosInstance.post(
-      "/outlets/users/reset-password",
-      payload
-    );
-  },
+  create: OutletsApi.create,
 
-   createUser: async (payload: {
-    outletId: string;
-    email: string;
-    password: string;
-    adminId: string;
-  }) => {
-    return axiosInstance.post("/outlets/users", payload);
-  },
+  update: OutletsApi.update,
 
-  isableUser: async (userId: string) => {
-    return axiosInstance.post(
-      `/outlets/users/${userId}/disable`
-    );
-  },
+  disable: OutletsApi.disable,
 
-  enableUser: async (userId: string) => {
-    return axiosInstance.post(
-      `/outlets/users/${userId}/enable`
-    );
-  },
+  enable: OutletsApi.enable,
 
-  update: async (id: string, payload: any) => {
-    return axiosInstance.post(`/outlets/${id}/update`, payload);
-  },
+  updateWorkingStatus: OutletsApi.updateWorkingStatus,
 
-  disable: async (id: string) => {
-    return axiosInstance.post(`/outlets/${id}/disable`);
-  },
+  cameraOn: OutletsApi.cameraOn,
 
-  enable: async (id: string) => {
-    return axiosInstance.post(`/outlets/${id}/enable`);
-  },
-
-  updateWorkingStatus: async (
-    id: string,
-    status: WorkingStatus
-  ) => {
-    return axiosInstance.post(
-      `/outlets/${id}/working-status`,
-      { status }
-    );
-  },
-
-  cameraOn: async (id: string, streamUrl: string) => {
-    return axiosInstance.post(
-      `/outlets/${id}/camera/on`,
-      { streamUrl }
-    );
-  },
-
-  cameraOff: async (id: string) => {
-    return axiosInstance.post(
-      `/outlets/${id}/camera/off`
-    );
-  },
+  cameraOff: OutletsApi.cameraOff,
 };

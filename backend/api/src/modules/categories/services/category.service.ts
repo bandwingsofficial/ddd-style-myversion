@@ -13,6 +13,10 @@ import { UploadFolders } from '../../uploads/constants/upload-folders.constants'
 import { UploadService } from '../../uploads/services/upload.service';
 import { MulterUploadFile } from '../../uploads/interfaces/upload-file.interface';
 import { ListCategoriesQueryDto } from '../dtos/list-categories-query.dto';
+import {
+  DeleteAnalysis,
+  DELETE_ERROR_CODES,
+} from '../../../common/types/delete-analysis.types';
 
 const CATEGORY_IMAGE_MIME_TYPES = [
   'image/jpeg',
@@ -356,9 +360,23 @@ export class CategoryService {
       await this.categoryRepo.countProductsByCategoryId(categoryId);
 
     if (productCount > 0) {
+      const deleteAnalysis: DeleteAnalysis = {
+        canDelete: false,
+        canForceDelete: false,
+        permanentBlockers: [
+          {
+            type: 'PRODUCTS',
+            label: 'Products',
+            count: productCount,
+          },
+        ],
+        removableDependencies: [],
+      };
+
       throw new ValidationError(
-        'CATEGORY_HAS_PRODUCTS',
-        'Cannot delete category while products are assigned to it',
+        DELETE_ERROR_CODES.BLOCKED,
+        `Cannot delete this category because ${productCount} product${productCount === 1 ? '' : 's'} ${productCount === 1 ? 'is' : 'are'} assigned to it. Reassign or delete those products first.`,
+        { deleteAnalysis },
       );
     }
 

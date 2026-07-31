@@ -10,6 +10,7 @@ import * as express from 'express';
 
 import { AppModule } from './app.module';
 import { DomainExceptionFilter } from './common/filters/domain-exception.filter';
+import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
 
@@ -50,7 +51,10 @@ async function bootstrap() {
   /* FILTERS / INTERCEPTORS                             */
   /* -------------------------------------------------- */
 
-  app.useGlobalFilters(new DomainExceptionFilter());
+  app.useGlobalFilters(
+    new DomainExceptionFilter(),
+    new PrismaExceptionFilter(),
+  );
   app.useGlobalInterceptors(new ResponseInterceptor());
 
   /* -------------------------------------------------- */

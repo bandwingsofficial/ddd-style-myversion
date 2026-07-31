@@ -9,14 +9,14 @@ export class SmsProvider {
   constructor(private readonly httpService: HttpService) {}
 
   async sendOtp(phone: string, otp: string): Promise<void> {
-    if (process.env.NODE_ENV !== 'production') {
-      this.logger.log(`[DEV SMS] ${phone} → OTP: ${otp}`);
-      return;
-    }
+    if (process.env.SMS_ENABLED !== 'true') {
+  this.logger.log(`[DEV SMS] ${phone} → OTP: ${otp}`);
+  return;
+}
 
     const formattedPhone = this.formatPhone(phone);
 
-    const message = `Dear Customer, OTP is ${otp}, Thank you for using our service.- BhashSMS`;
+    const message = `Dear Customer ${otp} is the OTP for your login at CANTEN. In case you have not requested this, please contact us at https://canten.online`;
 
     try {
       const response = await firstValueFrom(
@@ -25,7 +25,7 @@ export class SmsProvider {
             user: process.env.SMS_USERNAME,
             pass: process.env.SMS_PASSWORD,
             sender: process.env.SMS_SENDER,
-            phone: formattedPhone, // WITHOUT 91
+            phone: formattedPhone,
             text: message,
             priority: process.env.SMS_PRIORITY || 'ndnd',
             stype: process.env.SMS_STYPE || 'normal',
@@ -36,7 +36,14 @@ export class SmsProvider {
 
       const result = String(response.data).trim();
 
-      // Success formats: 12345 or S.12345
+      this.logger.debug(`SMS Gateway Response: ${result}`);
+
+      /**
+       * Gateway success examples:
+       * 123456
+       * S.123456
+       */
+
       const successRegex = /^(S\.)?\d+$/;
 
       if (!successRegex.test(result)) {
@@ -48,9 +55,9 @@ export class SmsProvider {
         ? result.substring(2)
         : result;
 
-      this.logger.log(`SMS successfully sent to ${formattedPhone}`);
-      this.logger.debug(`SMS messageId: ${messageId}`);
-
+      this.logger.log(
+        `SMS successfully sent to ${formattedPhone}. MessageId: ${messageId}`,
+      );
     } catch (error: any) {
       this.logger.error(
         `Failed to send OTP to ${formattedPhone}`,
@@ -61,7 +68,9 @@ export class SmsProvider {
     }
   }
 
-  // BhashSMS requires mobile WITHOUT 91
+  /**
+   * Gateway requires only 10 digit mobile number.
+   */
   private formatPhone(phone: string): string {
     const cleaned = phone.replace(/\D/g, '');
 

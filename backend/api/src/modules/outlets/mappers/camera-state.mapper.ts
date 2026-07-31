@@ -26,7 +26,9 @@ export class CameraStateMapper {
 
       case 'OFF':
       default:
-        return CameraState.enabledButOff();
+        return CameraState.enabledButOff(
+          params.cameraStreamUrl ?? undefined,
+        );
     }
   }
 

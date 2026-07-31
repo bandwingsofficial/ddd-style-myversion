@@ -183,10 +183,24 @@ export class Outlet {
   }
 
   turnCameraOff(now = new Date()): Outlet {
+    const streamUrl = this.cameraState.getRaw().cameraStreamUrl;
+
     return new Outlet({
       ...this,
-      cameraState: CameraState.enabledButOff(),
+      cameraState: CameraState.enabledButOff(streamUrl),
       updatedAt: now,
+    });
+  }
+
+  configureCamera(params: {
+    enabled: boolean;
+    streamUrl?: string;
+    now?: Date;
+  }): Outlet {
+    return new Outlet({
+      ...this,
+      cameraState: CameraState.configure(params),
+      updatedAt: params.now ?? new Date(),
     });
   }
 

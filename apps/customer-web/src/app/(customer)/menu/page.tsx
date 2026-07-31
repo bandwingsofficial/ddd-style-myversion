@@ -9,7 +9,7 @@ import ProductSkeleton from "@/components/product/ProductSkeleton";
 import { Search, Filter, X } from "lucide-react";
 
 export default function MenuPage() {
-  const { products, loading } = useProducts();
+  const { products, loading, isOutletSelected, error, refresh } = useProducts();
   
   // --- Filter States ---
   const [searchQuery, setSearchQuery] = useState("");
@@ -128,6 +128,23 @@ export default function MenuPage() {
           </header>
 
           {/* Grid Layout */}
+          {!isOutletSelected && !loading ? (
+            <div className="py-20 text-center text-slate-500">
+              <p className="font-semibold text-slate-700">Select an outlet to view products</p>
+              <p className="mt-2 text-sm">Choose your branch from the home page or update your location in the header.</p>
+            </div>
+          ) : error ? (
+            <div className="py-20 flex flex-col items-center justify-center text-center">
+              <p className="text-sm font-medium text-red-600">{error}</p>
+              <button
+                type="button"
+                onClick={() => void refresh()}
+                className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                Retry
+              </button>
+            </div>
+          ) : (
           <div className="grid grid-cols-2 gap-3 md:gap-5 lg:grid-cols-4 xl:grid-cols-5 min-[380px]:grid-cols-2 max-[379px]:grid-cols-1">
             {loading
               ? Array.from({ length: 10 }).map((_, i) => (
@@ -137,9 +154,10 @@ export default function MenuPage() {
                   <ProductCard key={product.id} product={product} />
                 ))}
           </div>
+          )}
 
           {/* Empty State */}
-          {!loading && filteredProducts.length === 0 && (
+          {!loading && !error && isOutletSelected && filteredProducts.length === 0 && (
             <div className="py-20 flex flex-col items-center justify-center text-center">
               <div className="bg-slate-50 p-6 rounded-full mb-4">
                 <Search size={40} className="text-slate-300" />

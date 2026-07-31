@@ -3,6 +3,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -12,6 +13,7 @@ import {
 import { OutletOrchestratorService } from '../services/outlet-orchestrator.service';
 
 import { CreateOutletUserDto } from '../dtos/create-outlet-user.dto';
+import { UpdateOutletUserDto } from '../dtos/update-outlet-user.dto';
 import { ResetOutletUserPasswordDto } from '../dtos/reset-outlet-user-password.dto';
 
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
@@ -20,6 +22,10 @@ import { Roles } from '../../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 
 import { ActorType } from '../../auth/domain/enums/actor-type.enum';
+import {
+  toOutletUserResponse,
+  toOutletUserResponseList,
+} from '../mappers/outlet-user.mapper';
 
 @Controller('outlets')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -43,7 +49,7 @@ export class OutletController {
       success: true,
       code: 'OUTLET_USER_FETCHED',
       message: 'Outlet user fetched successfully',
-      data,
+      data: data ? toOutletUserResponse(data) : null,
     };
   }
 
@@ -60,7 +66,7 @@ export class OutletController {
       success: true,
       code: 'OUTLET_USERS_FETCHED',
       message: 'Outlet users fetched successfully',
-      data,
+      data: toOutletUserResponseList(data),
     };
   }
 
@@ -77,7 +83,10 @@ export class OutletController {
     const data =
       await this.orchestrator.createOutletUser({
         outletId: dto.outletId,
+        name: dto.name,
         email: dto.email,
+        phone: dto.phone,
+        role: dto.role,
         rawPassword: dto.password,
         adminId: user.actorId,
       });
@@ -86,6 +95,49 @@ export class OutletController {
       success: true,
       code: 'OUTLET_USER_CREATED',
       message: 'Outlet user created successfully',
+      data: toOutletUserResponse(data),
+    };
+  }
+
+  @Post('users/:userId/update')
+  @Roles(ActorType.SUPER_ADMIN)
+  async updateOutletUser(
+    @Param('userId') userId: string,
+    @Body() dto: UpdateOutletUserDto,
+    @CurrentUser() user,
+  ) {
+    const data = await this.orchestrator.updateOutletUser({
+      outletUserId: userId,
+      name: dto.name,
+      phone: dto.phone,
+      role: dto.role,
+      outletId: dto.outletId,
+      adminId: user.actorId,
+    });
+
+    return {
+      success: true,
+      code: 'OUTLET_USER_UPDATED',
+      message: 'Outlet user updated successfully',
+      data: toOutletUserResponse(data),
+    };
+  }
+
+  @Delete('users/:userId')
+  @Roles(ActorType.SUPER_ADMIN)
+  async deleteOutletUser(
+    @Param('userId') userId: string,
+    @CurrentUser() user,
+  ) {
+    const data = await this.orchestrator.deleteOutletUser({
+      outletUserId: userId,
+      adminId: user.actorId,
+    });
+
+    return {
+      success: true,
+      code: 'OUTLET_USER_DELETED',
+      message: 'Outlet user deleted permanently',
       data,
     };
   }

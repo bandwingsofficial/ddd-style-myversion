@@ -1,6 +1,8 @@
-import { create } from "zustand";
-import { OutletService } from "./outlet.service";
-import { Outlet, WorkingStatus } from "./type";
+import { create } from 'zustand';
+
+import { OutletsApi } from './api/outlets.api';
+import { Outlet, WorkingStatus } from './types/outlet.types';
+import { getOutletStreamUrl } from './utils/outlet-validation';
 
 interface OutletState {
   outlets: Outlet[];
@@ -8,13 +10,9 @@ interface OutletState {
   error: string | null;
 
   fetchOutlets: () => Promise<void>;
-
-  // 🔹 ADDED (work-mode actions)
   updateWorkingStatus: (id: string, status: WorkingStatus) => Promise<void>;
   toggleCamera: (outlet: Outlet) => Promise<void>;
   toggleOutletStatus: (outlet: Outlet) => Promise<void>;
-
-  // 🔹 ADDED (non-breaking helpers)
   fetchOutletById: (outletId: string) => Promise<Outlet | null>;
   getOutletById: (outletId: string) => Outlet | undefined;
   refresh: () => Promise<void>;
@@ -29,78 +27,76 @@ export const useOutletStore = create<OutletState>((set, get) => ({
     set({ loading: true, error: null });
 
     try {
-      const data = await OutletService.getAll();
+      const data = await OutletsApi.list();
       set({
         outlets: Array.isArray(data) ? data : [],
         error: null,
       });
-    } catch (err) {
-      console.error("FETCH OUTLETS FAILED", err);
+    } catch {
       set({
         outlets: [],
-        error: "Failed to load outlets",
+        error: 'Failed to load outlets',
       });
     } finally {
       set({ loading: false });
     }
   },
 
-  // ✅ WORKING STATUS (already working, now centralized)
   updateWorkingStatus: async (id, status) => {
-    await OutletService.updateWorkingStatus(id, status);
+    await OutletsApi.updateWorkingStatus(id, status);
     await get().fetchOutlets();
   },
 
-  // ✅ CAMERA ON / OFF (real backend logic)
   toggleCamera: async (outlet) => {
-    if (outlet.cameraState.status === "ON") {
-      await OutletService.cameraOff(outlet.id);
+    if (outlet.cameraState?.status === 'ON') {
+      await OutletsApi.cameraOff(outlet.id);
     } else {
-      await OutletService.cameraOn(
-        outlet.id,
-        "rtsp://192.168.1.100/live"
-      );
+      const streamUrl = getOutletStreamUrl(outlet);
+
+      if (!streamUrl) {
+        throw new Error('Camera stream URL is not configured for this outlet.');
+      }
+
+      await OutletsApi.cameraOn(outlet.id, streamUrl);
     }
+
     await get().fetchOutlets();
   },
 
-  // ✅ OUTLET ENABLE / DISABLE
   toggleOutletStatus: async (outlet) => {
-    if (outlet.status === "ACTIVE") {
-      await OutletService.disable(outlet.id);
+    if (outlet.status === 'ACTIVE') {
+      await OutletsApi.disable(outlet.id);
     } else {
-      await OutletService.enable(outlet.id);
+      await OutletsApi.enable(outlet.id);
     }
+
     await get().fetchOutlets();
   },
 
-  // 🔹 NEW: Fetch single outlet safely (no breaking change)
   fetchOutletById: async (outletId: string) => {
-    const existing = get().outlets.find(o => o.id === outletId);
-    if (existing) return existing;
+    const existing = get().outlets.find((outlet) => outlet.id === outletId);
+    if (existing) {
+      return existing;
+    }
 
     try {
-      const res = await OutletService.getAll(); // backend has GET /outlets/:id, but this is safe fallback
-      const found = Array.isArray(res)
-        ? res.find((o: Outlet) => o.id === outletId)
-        : null;
+      const outlet = await OutletsApi.getById(outletId);
 
-      if (found) {
-        set({ outlets: [...get().outlets, found] });
-        return found;
+      if (outlet) {
+        set({ outlets: [...get().outlets, outlet] });
+        return outlet;
       }
+
       return null;
     } catch {
       return null;
     }
   },
 
-  // 🔹 NEW: Selector helper (used in pages)
   getOutletById: (outletId: string) => {
-    return get().outlets.find(o => o.id === outletId);
+    return get().outlets.find((outlet) => outlet.id === outletId);
   },
 
-  // 🔹 NEW: Semantic alias (optional)
   refresh: async () => {
     await get().fetchOutlets();
   },

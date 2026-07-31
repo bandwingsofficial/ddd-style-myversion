@@ -1,138 +1,223 @@
-"use client";
+'use client';
 
-import { useInventory } from "../hooks/use-inventory";
-import InventoryRowActions from "./inventory-row-actions";
-import { RefreshCw, Layers, SearchX, PackageOpen } from "lucide-react";
+import { useState } from 'react';
+import { PackageOpen, Search, X } from 'lucide-react';
 
-interface InventoryTableProps {
-  searchQuery?: string;
+import { InventoryListItem } from '../types/inventory.types';
+import { getQuantityValue } from '../utils/inventory-validation';
+import InventoryTableSkeleton from './inventory-table-skeleton';
+import InventoryRowActions from './inventory-row-actions';
+
+interface Props {
+  items: InventoryListItem[];
+  loading: boolean;
+  error?: string | null;
+  page: number;
+  totalPages: number;
+  total: number;
+  search: string;
+  onSearchChange: (value: string) => void;
+  onPageChange: (page: number) => void;
+  onRefresh: () => void;
 }
 
-export default function InventoryTable({ searchQuery = "" }: InventoryTableProps) {
-  const { inventory, loading, refresh } = useInventory();
+export default function InventoryTable({
+  items,
+  loading,
+  error,
+  page,
+  totalPages,
+  total,
+  search,
+  onSearchChange,
+  onPageChange,
+  onRefresh,
+}: Props) {
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
-  // Filter inventory based on search query
-  const filteredInventory = inventory.filter((item: any) =>
-    item.stockName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.stockItemId?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // 1. LOADING STATE
   if (loading) {
+    return <InventoryTableSkeleton />;
+  }
+
+  if (error) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-        <RefreshCw size={32} className="mb-3 animate-spin text-primary" />
-        <p className="font-medium animate-pulse">Syncing Inventory Levels...</p>
+      <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-6 text-center">
+        <p className="text-sm font-medium text-destructive">{error}</p>
+        <button
+          type="button"
+          onClick={onRefresh}
+          className="mt-4 rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+        >
+          Retry
+        </button>
       </div>
     );
   }
 
-  // 2. EMPTY STATE (When API returns empty array initially)
-  if (!loading && inventory.length === 0) {
-     return (
-        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-           <div className="mb-4 rounded-full bg-muted p-4">
-              <PackageOpen size={40} className="text-muted-foreground/50" />
-           </div>
-           <h3 className="text-lg font-bold text-foreground">No Inventory Yet</h3>
-           <p className="text-sm">Initialize your first stock item to get started.</p>
-        </div>
-     )
-  }
-
-  // 3. TABLE RENDER
   return (
-    <div className="w-full overflow-x-auto">
-      <table className="w-full min-w-[800px] text-left text-sm">
-        {/* HEADER */}
-        <thead>
-          <tr className="border-b border-border bg-muted/40">
-            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Stock Item</th>
-            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Unit</th>
-            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Available</th>
-            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Total</th>
-            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground">Status</th>
-            <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-muted-foreground">Actions</th>
-          </tr>
-        </thead>
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="relative min-w-0 flex-1">
+          <Search
+            size={16}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+          />
+          <input
+            type="text"
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder="Search inventory..."
+            className="h-11 w-full rounded-xl border border-input bg-background pl-10 pr-10 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-primary focus:ring-4 focus:ring-primary/10"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => onSearchChange('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
 
-        {/* BODY */}
-        <tbody className="divide-y divide-border">
-          {filteredInventory.map((item) => {
-            const isLow = item.availableQty.value < 10;
-            const isActive = item.status === "ACTIVE";
+        <div className="text-sm text-muted-foreground lg:whitespace-nowrap">
+          {total} item{total === 1 ? '' : 's'}
+        </div>
+      </div>
 
-            return (
-              <tr 
-                key={item.id} 
-                className="group bg-background transition-colors hover:bg-muted/30"
-              >
-                {/* NAME */}
-                <td className="px-6 py-4 align-middle">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <Layers size={14} />
-                    </div>
-                    <span className="font-bold text-foreground">{item.stockName}</span>
-                  </div>
-                </td>
+      {items.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-card py-16 text-center">
+          <div className="mb-4 rounded-full bg-muted p-4">
+            <PackageOpen size={32} className="text-muted-foreground/50" />
+          </div>
+          <h3 className="text-lg font-bold text-foreground">
+            {search ? 'No matching inventory' : 'No inventory yet'}
+          </h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {search
+              ? 'Try adjusting your search terms.'
+              : 'Initialize your first stock item to get started.'}
+          </p>
+        </div>
+      ) : (
+        <div className="w-full overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px] text-left text-sm">
+              <thead className="border-b border-border bg-muted/50">
+                <tr>
+                  {[
+                    'Stock Item',
+                    'Unit',
+                    'Available',
+                    'Total',
+                    'Status',
+                    'Actions',
+                  ].map((column) => (
+                    <th
+                      key={column}
+                      className={`px-4 py-4 text-xs font-bold uppercase tracking-wider text-muted-foreground ${
+                        column === 'Actions' ? 'text-right' : ''
+                      }`}
+                    >
+                      {column}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {items.map((item) => {
+                  const available = getQuantityValue(item.availableQty);
+                  const totalQty = getQuantityValue(item.totalQty);
+                  const isLow = available < 10;
+                  const isActive = item.status === 'ACTIVE';
 
-                {/* UNIT */}
-                <td className="px-6 py-4 align-middle">
-                  <span className="inline-flex items-center rounded-md bg-muted px-2.5 py-1 text-xs font-bold text-muted-foreground uppercase">
-                    {item.unit}
-                  </span>
-                </td>
+                  return (
+                    <tr
+                      key={item.id}
+                      className={`transition-colors hover:bg-muted/30 ${
+                        isActive ? 'bg-background' : 'bg-muted/20'
+                      }`}
+                    >
+                      <td className="px-4 py-3 align-middle">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-foreground">
+                            {item.stockName}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Current: {item.currentQuantity}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 align-middle">
+                        <span className="inline-flex rounded-md bg-muted px-2 py-0.5 text-xs font-bold uppercase text-muted-foreground">
+                          {item.unit}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 align-middle">
+                        <span
+                          className={`font-bold ${
+                            isLow ? 'text-destructive' : 'text-foreground'
+                          }`}
+                        >
+                          {available}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 align-middle font-semibold text-muted-foreground">
+                        {totalQty}
+                      </td>
+                      <td className="px-4 py-3 align-middle">
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold ${
+                            isActive
+                              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                              : 'border-border bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {isActive ? 'ACTIVE' : 'INACTIVE'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 align-middle">
+                        <InventoryRowActions
+                          item={item}
+                          disabled={actionLoadingId === item.id}
+                          onActionStart={() => setActionLoadingId(item.id)}
+                          onActionComplete={() => {
+                            setActionLoadingId(null);
+                            onRefresh();
+                          }}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
-                {/* AVAILABLE */}
-                <td className="px-6 py-4 align-middle">
-                  <div className={`font-bold ${isLow ? 'text-destructive' : 'text-foreground'}`}>
-                    {item.availableQty.value}
-                    {isLow && (
-                       <span className="ml-2 inline-block h-2 w-2 rounded-full bg-destructive animate-pulse" title="Low Stock Warning" />
-                    )}
-                  </div>
-                </td>
-
-                {/* TOTAL */}
-                <td className="px-6 py-4 align-middle">
-                  <div className="font-semibold text-muted-foreground">
-                    {item.totalQty.value}
-                  </div>
-                </td>
-
-                {/* STATUS */}
-                <td className="px-6 py-4 align-middle">
-                  <span className={`
-                    inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide
-                    ${isActive 
-                      ? "bg-green-500/10 text-green-600" 
-                      : "bg-slate-100 text-slate-500"}
-                  `}>
-                    <span className={`h-1.5 w-1.5 rounded-full ${isActive ? "bg-green-500" : "bg-slate-400"}`} />
-                    {item.status}
-                  </span>
-                </td>
-
-                {/* ACTIONS */}
-                <td className="px-6 py-4 align-middle">
-                   {/* We wrap the actions component to ensure it aligns right */}
-                   <div className="flex justify-end">
-                      <InventoryRowActions item={item} onActionComplete={refresh} />
-                   </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-
-      {/* 4. EMPTY SEARCH RESULTS */}
-      {!loading && inventory.length > 0 && filteredInventory.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-          <SearchX size={48} className="mb-4 text-muted-foreground/30" />
-          <p className="font-medium text-foreground">No items found matching "{searchQuery}"</p>
-          <p className="text-sm">Try adjusting your search terms.</p>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => onPageChange(Math.max(1, page - 1))}
+            disabled={page <= 1}
+            className="rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <span className="text-sm text-muted-foreground">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+            disabled={page >= totalPages}
+            className="rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Next
+          </button>
         </div>
       )}
     </div>

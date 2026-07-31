@@ -235,7 +235,7 @@ export const DropdownSelect = forwardRef<HTMLButtonElement, DropdownSelectProps>
                   left: position.left,
                   width: position.width,
                   maxHeight: position.maxHeight,
-                  zIndex: 9999,
+                  zIndex: 9000,
                 }}
                 className="overflow-hidden rounded-xl border border-border bg-popover shadow-lg"
               >

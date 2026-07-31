@@ -1,22 +1,39 @@
-import { axiosInstance } from "@/http/axios";
-import { CreateOutletUserPayload } from "./users.types";
+import { axiosInstance } from '@/http/axios';
+import { OutletsApi } from '@/features/outlets/api/outlets.api';
+import { Outlet } from '@/features/outlets/types/outlet.types';
+import { ProductsApi } from '@/features/products/api/products.api';
+import { Product } from '@/features/products/types/product.types';
+import { unwrapApiList } from '@/lib/unwrap-api-list';
+import { CreateOutletUserPayload, OutletProduct, OutletUser } from './users.types';
+
+export interface OutletStockRecord {
+  id: string;
+  stockItemId: string;
+  unit: string;
+  quantity: { value: number } | number;
+  updatedAt?: string;
+}
 
 export const UsersService = {
-  // --- Existing Outlet/User Methods ---
-  getOutlets() {
-    return axiosInstance.get("/outlets");
+  getOutlets: async (): Promise<Outlet[]> => {
+    return OutletsApi.list();
   },
 
-  getUsersByOutlet(outletId: string) {
-    return axiosInstance.get(`/outlets/${outletId}/users`);
+  getOutletById: async (outletId: string): Promise<Outlet | null> => {
+    return OutletsApi.getById(outletId);
+  },
+
+  getUsersByOutlet: async (outletId: string): Promise<OutletUser[]> => {
+    const res = await axiosInstance.get(`/outlets/${outletId}/users`);
+    return unwrapApiList<OutletUser>(res.data?.data);
   },
 
   createUser(payload: CreateOutletUserPayload) {
-    return axiosInstance.post("/outlets/users", payload);
+    return axiosInstance.post('/outlets/users', payload);
   },
 
   resetPassword(email: string, newPassword: string) {
-    return axiosInstance.post("/outlets/users/reset-password", {
+    return axiosInstance.post('/outlets/users/reset-password', {
       email,
       newPassword,
     });
@@ -30,49 +47,54 @@ export const UsersService = {
     return axiosInstance.post(`/outlets/users/${userId}/disable`);
   },
 
-  getOutletStock(outletId: string) {
-    return axiosInstance.get(`/inventory/outlet/${outletId}`);
+  getOutletStock: async (outletId: string): Promise<OutletStockRecord[]> => {
+    const res = await axiosInstance.get(`/inventory/outlet/${outletId}`);
+    return unwrapApiList<OutletStockRecord>(res.data?.data);
   },
 
-  // --- NEW: Outlet Product Methods ---
-
-  // Get all products assigned to an outlet
-  getOutletProducts(outletId: string) {
-    return axiosInstance.get(`/outlets/${outletId}/products`);
+  getOutletProducts: async (outletId: string): Promise<OutletProduct[]> => {
+    const res = await axiosInstance.get(`/outlets/${outletId}/products`);
+    return unwrapApiList<OutletProduct>(res.data?.data);
   },
 
-  // Get master list of all available products (to select from when assigning)
-  // Assuming you have an endpoint to get the "Master Product List" to choose from.
-  // If not, you might need to fetch this from a different service.
-  getMasterProducts() {
-    return axiosInstance.get(`/products`); 
+  getMasterProducts: async (): Promise<Product[]> => {
+    return ProductsApi.getAll();
   },
 
-  // Assign a product to an outlet
   assignProductToOutlet(outletId: string, productId: string) {
     return axiosInstance.post(`/outlets/${outletId}/products`, { productId });
   },
 
-  // Enable a product for an outlet
   enableOutletProduct(outletId: string, productId: string) {
-    return axiosInstance.post(`/outlets/${outletId}/products/${productId}/enable`);
+    return axiosInstance.post(
+      `/outlets/${outletId}/products/${productId}/enable`,
+    );
   },
 
-  // Disable a product for an outlet
   disableOutletProduct(outletId: string, productId: string) {
-    return axiosInstance.post(`/outlets/${outletId}/products/${productId}/disable`);
+    return axiosInstance.post(
+      `/outlets/${outletId}/products/${productId}/disable`,
+    );
   },
 
-  // Override price/discount
-  overrideProductPrice(outletId: string, productId: string, price: number, discount: number) {
-    return axiosInstance.post(`/outlets/${outletId}/products/${productId}/pricing`, {
-      priceOverride: price,
-      discountOverride: discount
-    });
+  overrideProductPrice(
+    outletId: string,
+    productId: string,
+    price: number,
+    discount: number,
+  ) {
+    return axiosInstance.post(
+      `/outlets/${outletId}/products/${productId}/pricing`,
+      {
+        priceOverride: price,
+        discountOverride: discount,
+      },
+    );
   },
 
-  // Remove product from outlet
   removeProductFromOutlet(outletId: string, productId: string) {
-    return axiosInstance.delete(`/outlets/${outletId}/products/${productId}`);
-  }
+    return axiosInstance.delete(
+      `/outlets/${outletId}/products/${productId}`,
+    );
+  },
 };

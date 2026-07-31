@@ -212,6 +212,28 @@ export class StockItemRepository {
     });
   }
 
+  async deleteCentralInventoryByStockItemId(
+    stockItemId: string,
+    tx?: PrismaTransaction,
+  ): Promise<number> {
+    const client = tx ?? this.prisma;
+    const result = await client.centralInventory.deleteMany({
+      where: { stockItemId },
+    });
+    return result.count;
+  }
+
+  async deleteOutletStocksByStockItemId(
+    stockItemId: string,
+    tx?: PrismaTransaction,
+  ): Promise<number> {
+    const client = tx ?? this.prisma;
+    const result = await client.outletStock.deleteMany({
+      where: { stockItemId },
+    });
+    return result.count;
+  }
+
   private buildSearchWhere(search?: string): Prisma.StockItemWhereInput {
     const trimmed = search?.trim();
 

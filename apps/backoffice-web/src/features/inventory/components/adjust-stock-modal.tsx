@@ -1,205 +1,313 @@
-"use client";
+'use client';
 
-import React, { useState } from "react";
-import { InventoryItem } from "../types/inventory.types";
-import { InventoryAPI } from "../api/inventory.api";
-import { motion, AnimatePresence } from "framer-motion";
-import { X, AlertTriangle, AlertCircle, CheckCircle, Loader2, Calculator } from "lucide-react";
+import { useState } from 'react';
+import { AlertTriangle, Loader2, Minus, Plus, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { toast } from 'sonner';
+
+import {
+  NumericInput,
+  parseNumericInputValue,
+} from '@/components/ui/numeric-input';
+import {
+  InventoryAdjustmentType,
+  InventoryListItem,
+} from '../types/inventory.types';
+import { InventoryApi } from '../api/inventory.api';
+import {
+  formInputClassName,
+  formTextareaClassName,
+  formatTransactionDelta,
+  getAdjustmentDelta,
+  getQuantityValue,
+  mapServerFieldErrors,
+  UNEXPECTED_ERROR_TOAST,
+  validateAdjustmentQuantity,
+  validateRemarks,
+} from '../utils/inventory-validation';
 
 interface Props {
-  item: InventoryItem;
+  item: InventoryListItem;
   onClose: () => void;
   onSuccess: () => void;
 }
 
 export default function AdjustStockModal({ item, onClose, onSuccess }: Props) {
-  // Logic: User enters the amount they want to subtract from the current available balance
-  const [adjustmentAmt, setAdjustmentAmt] = useState<number | ''>(0);
-  const [remarks, setRemarks] = useState("");
-  const [formError, setFormError] = useState<string | null>(null);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const currentStock = getQuantityValue(item.availableQty);
+  const totalStock = getQuantityValue(item.totalQty);
+
+  const [adjustmentType, setAdjustmentType] =
+    useState<InventoryAdjustmentType>('DEDUCT');
+  const [adjustmentInput, setAdjustmentInput] = useState('');
+  const [remarks, setRemarks] = useState('');
+  const [errors, setErrors] = useState<{
+    adjustmentQuantity?: string;
+    remarks?: string;
+  }>({});
+  const [submitting, setSubmitting] = useState(false);
+
+  const parsedAdjustment = parseNumericInputValue(adjustmentInput);
+  const delta = getAdjustmentDelta(adjustmentType, parsedAdjustment);
+  const newStock =
+    delta === null ? null : Math.max(0, currentStock + delta);
 
   const submit = async () => {
-    const val = Number(adjustmentAmt);
-    
-    // Calculation logic: Current Available - Adjustment Amount
-    const newAvailable = item.availableQty.value - val;
+    const nextErrors = {
+      adjustmentQuantity: validateAdjustmentQuantity(
+        parsedAdjustment,
+        adjustmentType,
+        currentStock,
+        totalStock,
+      ),
+      remarks: validateRemarks(remarks),
+    };
 
-    // Validation
-    if (val <= 0) {
-      setFormError("Please enter a positive adjustment amount to deduct.");
+    setErrors(nextErrors);
+
+    if (Object.values(nextErrors).some(Boolean) || submitting) {
       return;
     }
 
-    if (newAvailable < 0) {
-      setFormError(`Insufficient available stock. You only have ${item.availableQty.value} available.`);
-      return;
-    }
+    setSubmitting(true);
 
     try {
-      setIsSubmitting(true);
-      setFormError(null);
-
-      await InventoryAPI.adjustStock({ 
-        stockItemId: item.stockItemId, 
-        newAvailableQty: newAvailable, 
-        remarks: remarks.trim() || `Deducted ${val} from available stock`
+      await InventoryApi.adjustStock({
+        stockItemId: item.stockItemId,
+        adjustmentType,
+        adjustmentQuantity: parsedAdjustment!,
+        remarks: remarks.trim(),
       });
 
-      setIsSuccess(true);
-      
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 1500);
+      toast.success('Stock adjusted successfully.');
+      onSuccess();
+    } catch (err: unknown) {
+      const axiosError = err as {
+        response?: {
+          data?: { message?: string | string[]; errors?: Record<string, string> };
+        };
+      };
 
-    } catch (err: any) {
-      setFormError(err.response?.data?.message || "Failed to save adjustment.");
-      setIsSubmitting(false);
+      const fieldErrors = mapServerFieldErrors(axiosError.response?.data);
+      if (Object.keys(fieldErrors).length > 0) {
+        setErrors((current) => ({ ...current, ...fieldErrors }));
+        return;
+      }
+
+      toast.error(
+        (Array.isArray(axiosError.response?.data?.message)
+          ? axiosError.response?.data?.message[0]
+          : axiosError.response?.data?.message) || UNEXPECTED_ERROR_TOAST,
+      );
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    // 1. OVERLAY
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" 
-      onClick={onClose}
-    >
-      
-      {/* 2. MODAL CARD */}
-      <motion.div 
-        initial={{ scale: 0.95, opacity: 0 }} 
-        animate={{ scale: 1, opacity: 1 }} 
-        className="w-full max-w-md overflow-hidden rounded-3xl bg-background p-8 shadow-2xl ring-1 ring-border"
-        onClick={e => e.stopPropagation()}
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-[1px]"
+        onClick={onClose}
       >
-        
-        {/* HEADER */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600">
-              <AlertTriangle size={20} />
-            </div>
-            <h2 className="text-xl font-bold text-foreground">Adjust Stock</h2>
-          </div>
-          <button 
-            onClick={onClose} 
-            className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-          >
-            <X size={20}/>
-          </button>
-        </div>
-
-        {/* BODY */}
-        <div className="flex flex-col gap-6">
-          
-          {/* FEEDBACK BANNERS */}
-          <AnimatePresence mode="wait">
-            {formError && (
-              <motion.div 
-                initial={{ height: 0, opacity: 0 }} 
-                animate={{ height: 'auto', opacity: 1 }} 
-                exit={{ height: 0, opacity: 0 }} 
-                className="flex items-center gap-3 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm font-medium text-destructive"
-              >
-                <AlertCircle size={18} />
-                <span>{formError}</span>
-              </motion.div>
-            )}
-            {isSuccess && (
-              <motion.div 
-                initial={{ height: 0, opacity: 0 }} 
-                animate={{ height: 'auto', opacity: 1 }} 
-                className="flex items-center gap-3 rounded-xl border border-green-500/20 bg-green-500/10 p-3 text-sm font-medium text-green-600"
-              >
-                <CheckCircle size={18} />
-                <span>Stock adjusted successfully!</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* SUMMARY BOX (Live Calculation) */}
-          <div className="rounded-2xl border border-border bg-muted/30 p-5 space-y-3">
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground font-medium">Total Stock:</span>
-              <span className="font-bold text-foreground">{item.totalQty.value} {item.unit}</span>
-            </div>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground font-medium">Current Available:</span>
-              <span className="font-bold text-foreground">{item.availableQty.value} {item.unit}</span>
-            </div>
-            
-            <div className="border-t border-border pt-3 flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <Calculator size={14} className="text-blue-500" />
-                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">New Balance</span>
+        <motion.div
+          initial={{ opacity: 0, y: 16, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 8, scale: 0.98 }}
+          role="dialog"
+          aria-modal="true"
+          className="flex max-h-[90vh] w-full max-w-[700px] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="flex shrink-0 items-start justify-between border-b border-border px-5 py-4 sm:px-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10 text-blue-600">
+                <AlertTriangle size={20} />
               </div>
-              <span className="text-lg font-bold text-blue-600">
-                {item.availableQty.value - Number(adjustmentAmt)} {item.unit}
-              </span>
+              <div>
+                <h2 className="text-lg font-bold text-foreground">Adjust Stock</h2>
+                <p className="text-sm text-muted-foreground">
+                  Add or deduct available stock for {item.stockName}.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              aria-label="Close"
+              className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
+            <div className="space-y-4">
+              <div className="rounded-xl border border-border bg-muted/30 p-4">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Current Stock</span>
+                  <span className="font-semibold text-foreground">
+                    {currentStock} {item.unit}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-foreground">
+                  Adjustment Type
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => {
+                      setAdjustmentType('ADD');
+                      setErrors((current) => ({
+                        ...current,
+                        adjustmentQuantity: undefined,
+                      }));
+                    }}
+                    className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
+                      adjustmentType === 'ADD'
+                        ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+                        : 'border-input bg-background text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <Plus size={16} />
+                    Add Stock
+                  </button>
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => {
+                      setAdjustmentType('DEDUCT');
+                      setErrors((current) => ({
+                        ...current,
+                        adjustmentQuantity: undefined,
+                      }));
+                    }}
+                    className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-semibold transition-all ${
+                      adjustmentType === 'DEDUCT'
+                        ? 'border-blue-300 bg-blue-50 text-blue-700'
+                        : 'border-input bg-background text-muted-foreground hover:bg-muted'
+                    }`}
+                  >
+                    <Minus size={16} />
+                    Deduct Stock
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-foreground">
+                  Adjustment Quantity ({item.unit})
+                </label>
+                <NumericInput
+                  autoFocus
+                  value={adjustmentInput}
+                  onChange={(nextValue) => {
+                    setAdjustmentInput(nextValue);
+                    setErrors((current) => ({
+                      ...current,
+                      adjustmentQuantity: validateAdjustmentQuantity(
+                        parseNumericInputValue(nextValue),
+                        adjustmentType,
+                        currentStock,
+                        totalStock,
+                      ),
+                    }));
+                  }}
+                  disabled={submitting}
+                  className={formInputClassName}
+                />
+                {errors.adjustmentQuantity && (
+                  <p className="text-sm text-destructive">
+                    {errors.adjustmentQuantity}
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Preview
+                </p>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Current Stock</span>
+                  <span className="font-medium text-foreground">
+                    {currentStock} {item.unit}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Adjustment</span>
+                  <span
+                    className={`font-bold ${
+                      delta === null
+                        ? 'text-muted-foreground'
+                        : delta >= 0
+                          ? 'text-emerald-600'
+                          : 'text-blue-600'
+                    }`}
+                  >
+                    {delta === null
+                      ? '—'
+                      : `${formatTransactionDelta(delta)} ${item.unit}`}
+                  </span>
+                </div>
+                <div className="flex justify-between border-t border-border pt-2 text-sm">
+                  <span className="font-semibold text-muted-foreground">
+                    New Stock
+                  </span>
+                  <span className="font-bold text-foreground">
+                    {newStock === null ? '—' : `${newStock} ${item.unit}`}
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-foreground">
+                  Remarks <span className="text-destructive">*</span>
+                </label>
+                <textarea
+                  value={remarks}
+                  onChange={(event) => {
+                    setRemarks(event.target.value);
+                    setErrors((current) => ({ ...current, remarks: undefined }));
+                  }}
+                  disabled={submitting}
+                  placeholder="e.g. Spillage, expiry, or internal usage"
+                  className={formTextareaClassName}
+                />
+                {errors.remarks && (
+                  <p className="text-sm text-destructive">{errors.remarks}</p>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* FORM INPUTS */}
-          <div className="space-y-4">
-            
-            {/* Amount Input */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Amount to Subtract
-              </label>
-              <input 
-                type="number" 
-                disabled={isSuccess || isSubmitting}
-                value={adjustmentAmt} 
-                onChange={(e) => {
-                    const val = e.target.value === '' ? '' : Number(e.target.value);
-                    setAdjustmentAmt(val);
-                    if (formError) setFormError(null);
-                }}
-                className="w-full rounded-xl border border-input bg-background px-4 py-3 text-lg font-bold outline-none transition-all placeholder:font-normal placeholder:text-muted-foreground focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:opacity-50"
-              />
-            </div>
-
-            {/* Remarks Input */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Remarks / Reason
-              </label>
-              <textarea 
-                disabled={isSuccess || isSubmitting}
-                placeholder="e.g. Spillage, expiry, or internal usage" 
-                value={remarks} 
-                onChange={(e) => setRemarks(e.target.value)}
-                className="w-full min-h-[80px] rounded-xl border border-input bg-background px-4 py-3 text-sm outline-none transition-all placeholder:text-muted-foreground focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 disabled:opacity-50 resize-none"
-              />
-            </div>
+          <div className="flex shrink-0 gap-3 border-t border-border px-5 py-4 sm:px-6">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="h-11 flex-1 rounded-xl border border-input bg-background text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void submit()}
+              disabled={submitting}
+              className="flex h-11 flex-[2] items-center justify-center gap-2 rounded-xl bg-blue-600 text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {submitting && <Loader2 size={16} className="animate-spin" />}
+              {submitting ? 'Saving...' : 'Confirm Adjustment'}
+            </button>
           </div>
-
-          {/* SUBMIT BUTTON */}
-          <button 
-            disabled={isSuccess || isSubmitting}
-            onClick={submit} 
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-4 text-base font-bold text-white shadow-lg shadow-blue-500/25 transition-all hover:bg-blue-700 hover:shadow-blue-500/40 active:scale-98 disabled:opacity-70 disabled:cursor-not-allowed disabled:shadow-none"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 size={18} className="animate-spin" />
-                Saving...
-              </>
-            ) : isSuccess ? (
-              <>
-                <CheckCircle size={18} />
-                Done
-              </>
-            ) : (
-              "Confirm Adjustment"
-            )}
-          </button>
-
-        </div>
+        </motion.div>
       </motion.div>
-    </div>
+    </AnimatePresence>
   );
 }

@@ -23,8 +23,35 @@ export class CameraState {
     return new CameraState(false, CameraStatus.OFF);
   }
 
-  static enabledButOff(): CameraState {
-    return new CameraState(true, CameraStatus.OFF);
+  static enabledButOff(streamUrl?: string): CameraState {
+    return new CameraState(true, CameraStatus.OFF, streamUrl);
+  }
+
+  static configure(params: {
+    enabled: boolean;
+    streamUrl?: string;
+  }): CameraState {
+    if (!params.enabled) {
+      return CameraState.disabled();
+    }
+
+    const trimmedUrl = params.streamUrl?.trim();
+
+    if (!trimmedUrl) {
+      throw new ValidationError(
+        'OUTLET_CAMERA_STREAM_REQUIRED',
+        'Camera stream URL is required when live camera is enabled',
+      );
+    }
+
+    if (!/^(rtsp|rtsps|http|https):\/\/.+$/i.test(trimmedUrl)) {
+      throw new ValidationError(
+        'OUTLET_CAMERA_STREAM_INVALID',
+        'Stream URL must start with rtsp://, rtsps://, http://, or https://',
+      );
+    }
+
+    return new CameraState(true, CameraStatus.OFF, trimmedUrl);
   }
 
   static turnOn(streamUrl: string): CameraState {

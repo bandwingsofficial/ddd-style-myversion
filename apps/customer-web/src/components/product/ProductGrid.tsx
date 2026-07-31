@@ -22,7 +22,7 @@ const itemVariants: Variants = {
 };
 
 export default function ProductGrid() {
-  const { products, loading, isOutletSelected } = useProducts();
+  const { products, loading, isOutletSelected, error, refresh } = useProducts();
   const { selectedOutlet, setOutlet } = useOutletStore();
 
   return (
@@ -63,8 +63,7 @@ export default function ProductGrid() {
           className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-4 xl:gap-6"
           variants={containerVariants}
           initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
+          animate="visible"
         >
           {loading ? (
              // Loading Skeletons
@@ -73,6 +72,17 @@ export default function ProductGrid() {
              // No Outlet Selected State
              <div className="col-span-full text-center py-20 text-slate-400">
                No Near by outlets find to selected destination.you can change the location in header.
+             </div>
+          ) : error ? (
+             <div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
+               <p className="text-sm font-medium text-red-600">{error}</p>
+               <button
+                 type="button"
+                 onClick={() => void refresh()}
+                 className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+               >
+                 Retry
+               </button>
              </div>
           ) : products.length === 0 ? (
              // Empty Products State

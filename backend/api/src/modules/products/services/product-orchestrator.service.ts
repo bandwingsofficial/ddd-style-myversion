@@ -320,8 +320,11 @@ export class ProductOrchestratorService {
 
   async deleteProduct(params: {
     productId: string;
+    force?: boolean;
   }): Promise<{ id: string }> {
-    return this.productService.deleteProduct(params.productId);
+    return this.productService.deleteProduct(params.productId, {
+      force: params.force,
+    });
   }
 
   /* ================================================= */

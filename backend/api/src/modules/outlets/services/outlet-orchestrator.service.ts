@@ -3,6 +3,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { OutletUserService } from './outlet-user.service';
+import { OutletUserRole } from '../domain/enums/outlet-user-role.enum';
 import { OutletService } from './outlet.service';
 import { OutletProductService } from './outlet-product.service';
 import { OutletProfileService } from './outlet-profile.service';
@@ -153,6 +154,32 @@ async getNearbyOutlets(
     return this.outletService.turnCameraOff(params);
   }
 
+  async configureOutletCamera(params: {
+    outletId: string;
+    enabled: boolean;
+    streamUrl?: string;
+    adminId: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }) {
+    return this.outletService.configureCamera(params);
+  }
+
+  async deleteOutlet(params: {
+    outletId: string;
+    adminId: string;
+    force?: boolean;
+    ipAddress?: string;
+    userAgent?: string;
+  }) {
+    return this.outletService.deleteOutlet(params.outletId, {
+      adminId: params.adminId,
+      force: params.force,
+      ipAddress: params.ipAddress,
+      userAgent: params.userAgent,
+    });
+  }
+
   /* ================================================= */
   /* OUTLET PRODUCT – READS                            */
   /* ================================================= */
@@ -239,13 +266,38 @@ async getNearbyOutlets(
 
   async createOutletUser(params: {
     outletId: string;
+    name: string;
     email: string;
+    phone?: string;
+    role: OutletUserRole;
     rawPassword: string;
     adminId: string;
     ipAddress?: string;
     userAgent?: string;
   }) {
     return this.outletUserService.createUser(params);
+  }
+
+  async updateOutletUser(params: {
+    outletUserId: string;
+    name: string;
+    phone?: string;
+    role: OutletUserRole;
+    outletId: string;
+    adminId: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }) {
+    return this.outletUserService.updateUser(params);
+  }
+
+  async deleteOutletUser(params: {
+    outletUserId: string;
+    adminId: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }) {
+    return this.outletUserService.deleteUser(params);
   }
 
   async resetOutletUserPassword(params: {

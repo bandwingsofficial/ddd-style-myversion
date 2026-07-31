@@ -16,7 +16,8 @@ import { useFavorites } from "@/providers/CustomerAuthProvider";
 
 export default function ProductDetailsPage() {
   const { slug: routeSlug } = useParams<{ slug: string }>();
-  const productData = useProductBySlug(routeSlug) as any;
+  const { product: productData, loading: productLoading, error: productError } =
+    useProductBySlug(routeSlug);
   
   const { items, addItem, updateItem, removeItem } = useCartStore();
   const isAuthenticated = useCustomerAuthStore((s) => s.isAuthenticated);
@@ -27,8 +28,8 @@ export default function ProductDetailsPage() {
 
   const product = useMemo(() => {
     if (!productData) return null;
-    
-    const p = productData;
+
+    const p = productData as any;
     const name = p.name?.value || p.name || "Unknown Product";
     
     const parse = (val: any) => {
@@ -91,13 +92,25 @@ export default function ProductDetailsPage() {
 
   const activeImageUrl = selectedImage || product?.mainImage || "/placeholder.jpg";
 
-  if (!productData) {
+  if (productLoading) {
     return (
       <div className="min-h-screen bg-white flex flex-col">
         <Header />
         <main className="flex-grow flex flex-col items-center justify-center text-emerald-600">
           <Loader2 className="w-10 h-10 animate-spin mb-4" />
           <p className="font-semibold">Squeezing the details...</p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (productError || !productData) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col">
+        <Header />
+        <main className="flex-grow flex flex-col items-center justify-center px-4 text-center">
+          <p className="font-semibold text-slate-800">{productError ?? "Product not found."}</p>
         </main>
         <Footer />
       </div>

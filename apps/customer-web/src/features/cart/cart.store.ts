@@ -6,8 +6,8 @@ import {
   setLocalCart,
   clearLocalCart,
 } from "@/features/cart/cart.local";
-// ✅ IMPORT OUTLET STORE
 import { useOutletStore } from "@/features/outlet/outlet.store";
+import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
 
 interface CartState {
   items: CartItem[];
@@ -42,9 +42,19 @@ export const useCartStore = create<CartState>((set, get) => ({
       return;
     }
 
+    const currentOutletId = useOutletStore.getState().selectedOutlet?.id;
+    if (!currentOutletId) {
+      const local = getLocalCart();
+      set({
+        items: local.items || [],
+        hydrated: true,
+        isLoading: false,
+      });
+      return;
+    }
+
     try {
       const local = getLocalCart();
-      const currentOutletId = useOutletStore.getState().selectedOutlet?.id; // Get ID
 
       // Sync Logic
       if (local.items && local.items.length > 0) {
@@ -73,12 +83,25 @@ export const useCartStore = create<CartState>((set, get) => ({
       set({ items: backendCart?.items || [], hydrated: true });
 
     } catch (error: any) {
-      if (error.response && error.response.status === 401) {
-        console.warn("Session expired (401). Clearing cart view.");
-        set({ items: [], hydrated: true, isMerging: false });
+      const status = error?.response?.status;
+
+      if (status === 401 || status === 403) {
+        console.warn(`Cart auth failed (${status}). Falling back to guest cart.`);
+        useCustomerAuthStore.getState().clearSession();
+        const local = getLocalCart();
+        set({
+          items: local.items || [],
+          hydrated: true,
+          isMerging: false,
+        });
       } else {
         console.error("Failed to load cart", error);
-        set({ items: [], hydrated: true, isMerging: false });
+        const local = getLocalCart();
+        set({
+          items: local.items || [],
+          hydrated: true,
+          isMerging: false,
+        });
       }
     } finally {
       set({ isLoading: false });

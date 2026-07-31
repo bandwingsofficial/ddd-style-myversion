@@ -1,17 +1,20 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom'; // Added for FlashMessage
+import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, Plus, Search, Trash2, Edit2, CheckCircle2, 
   XCircle, IndianRupee, Tag, ShoppingBag, Loader2, Store,
-  AlertTriangle 
+  AlertTriangle, ChevronLeft, ChevronRight, X
 } from 'lucide-react';
 import { UsersService } from '@/features/users/users.service';
 import { OutletProduct } from '@/features/users/users.types';
-import { axiosInstance } from '@/http/axios';
+import { Product } from '@/features/products/types/product.types';
+import { Select } from '@/components/ui/select';
+
+const PAGE_SIZE = 20;
 
 // --- HELPER COMPONENTS ---
 
@@ -46,9 +49,11 @@ export default function OutletProductsPage() {
   const outletId = Array.isArray(params?.outletId) ? params.outletId[0] : params?.outletId as string;
 
   const [products, setProducts] = useState<OutletProduct[]>([]);
-  const [masterProducts, setMasterProducts] = useState<any[]>([]); 
+  const [masterProducts, setMasterProducts] = useState<Product[]>([]); 
   const [outletName, setOutletName] = useState('');
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
   
   // Modal States
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -85,7 +90,7 @@ export default function OutletProductsPage() {
   }, [flashMessage]);
 
   // --- SAFE NAME EXTRACTOR ---
-  const getSafeName = (product: any) => {
+  const getSafeName = (product: { name?: string | { value?: string } }) => {
     if (!product) return 'Unknown Product';
     if (typeof product.name === 'string') return product.name;
     if (typeof product.name === 'object' && product.name?.value) return product.name.value;
@@ -96,28 +101,34 @@ export default function OutletProductsPage() {
     try {
       setLoading(true);
 
-      const [outletRes, masterRes, outletDetailsRes] = await Promise.all([
+      const [outletData, masterData, outletDetails] = await Promise.all([
         UsersService.getOutletProducts(outletId),
         UsersService.getMasterProducts(),
-        axiosInstance.get(`/outlets/${outletId}`)
+        UsersService.getOutletById(outletId),
       ]);
 
-      const outletData = outletRes.data.data || [];
-      const masterData = masterRes.data.data || [];
-      const outletDetails = outletDetailsRes.data.data || outletDetailsRes.data;
+      const safeOutletProducts = Array.isArray(outletData) ? outletData : [];
+      const safeMasterProducts = Array.isArray(masterData) ? masterData : [];
 
-      setProducts(outletData);
-      setMasterProducts(masterData);
-      setOutletName(outletDetails.name || 'Unknown Outlet');
+      setProducts(safeOutletProducts);
+      setMasterProducts(safeMasterProducts);
+      setOutletName(outletDetails?.name || 'Unknown Outlet');
 
       const map: Record<string, string> = {};
-      masterData.forEach((p: any) => { 
-        map[p.id] = getSafeName(p); 
+      safeMasterProducts.forEach((product) => {
+        map[product.id] = getSafeName(product);
       });
       setProductMap(map);
-
     } catch (error) {
-      console.error("Failed to fetch data", error);
+      console.error('Failed to fetch data', error);
+      setProducts([]);
+      setMasterProducts([]);
+      setProductMap({});
+      setFlashMessage({
+        type: 'error',
+        title: 'Load Failed',
+        text: 'Could not load outlet products. Please try again.',
+      });
     } finally {
       setLoading(false);
     }
@@ -216,41 +227,90 @@ export default function OutletProductsPage() {
     }
   };
 
-  const availableToAdd = masterProducts.filter(
-    mp => !products.find(op => op.productId === mp.id)
+  const filteredProducts = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    if (!query) {
+      return products;
+    }
+
+    return products.filter((item) => {
+      const name = productMap[item.productId] ?? '';
+      return (
+        name.toLowerCase().includes(query) ||
+        item.productId.toLowerCase().includes(query)
+      );
+    });
+  }, [products, productMap, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+  const paginatedProducts = useMemo(() => {
+    const safePage = Math.min(page, totalPages);
+    const start = (safePage - 1) * PAGE_SIZE;
+    return filteredProducts.slice(start, start + PAGE_SIZE);
+  }, [filteredProducts, page, totalPages]);
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  const availableToAdd = useMemo(() => {
+    if (!Array.isArray(masterProducts)) {
+      return [];
+    }
+
+    return masterProducts.filter(
+      (masterProduct) =>
+        !products.find(
+          (outletProduct) => outletProduct.productId === masterProduct.id,
+        ),
+    );
+  }, [masterProducts, products]);
+
+  const productSelectOptions = useMemo(
+    () =>
+      availableToAdd.map((product) => ({
+        value: product.id,
+        label: getSafeName(product),
+      })),
+    [availableToAdd],
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 p-2 font-sans md:p-4">
+    <div className="min-h-screen bg-background p-3 md:p-4 font-sans">
       <div className="mx-auto max-w-6xl">
         
         {/* HEADER */}
         <div className="mb-8">
             <button 
-              onClick={() => router.back()}
-              className="mb-6 flex items-center gap-2 text-sm font-medium text-slate-500 transition-colors hover:text-slate-900"
+              type="button"
+              onClick={() => router.push('/users')}
+              className="mb-6 flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               <ArrowLeft size={16} /> Back to Directory
             </button>
 
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
                 <div className="flex items-center gap-5">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 shadow-sm border border-emerald-100">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-sm border border-primary/20">
                         <Store size={28} />
                     </div>
                     <div>
-                        <h1 className="text-2xl font-extrabold text-slate-900">
+                        <h1 className="text-2xl font-bold text-foreground">
                             {loading ? 'Loading...' : outletName}
                         </h1>
-                        <p className="text-sm font-medium text-slate-500">
+                        <p className="text-sm font-medium text-muted-foreground">
                             Manage catalog availability for this location
                         </p>
                     </div>
                 </div>
               
                 <button
+                    type="button"
                     onClick={() => setShowCreateModal(true)}
-                    className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-200 transition-all hover:bg-emerald-700 active:scale-95"
+                    className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-95"
                 >
                     <Plus size={18} strokeWidth={2.5} /> Create Product
                 </button>
@@ -258,7 +318,38 @@ export default function OutletProductsPage() {
         </div>
 
         {/* LIST TABLE */}
-        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+          <div className="border-b border-slate-200 px-6 py-4">
+            <div className="relative max-w-md">
+              <Search
+                size={16}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search products..."
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-9 text-sm text-slate-800 outline-none transition-all placeholder:text-slate-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearch('');
+                    setPage(1);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  aria-label="Clear search"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          </div>
           {loading ? (
              <div className="flex h-64 flex-col items-center justify-center">
                <Loader2 size={32} className="animate-spin text-emerald-500"/>
@@ -276,7 +367,7 @@ export default function OutletProductsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {products.map((item) => (
+                  {paginatedProducts.map((item) => (
                     <motion.tr 
                       key={item.id}
                       initial={{ opacity: 0 }}
@@ -351,15 +442,47 @@ export default function OutletProductsPage() {
                       </td>
                     </motion.tr>
                   ))}
-                  {products.length === 0 && (
+                  {!loading && filteredProducts.length === 0 && (
                     <tr>
                       <td colSpan={4} className="py-12 text-center text-slate-500">
-                        No products assigned. Click "Create Product" to add one.
+                        {search
+                          ? 'No products match your search.'
+                          : 'No products assigned. Click "Create Product" to add one.'}
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
+            </div>
+          )}
+          {!loading && totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4">
+              <p className="text-xs font-medium text-slate-500">
+                {filteredProducts.length} product{filteredProducts.length === 1 ? '' : 's'}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage(Math.max(1, page - 1))}
+                  disabled={page <= 1}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-40"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="min-w-[7rem] text-center text-xs font-semibold text-slate-600">
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPage(Math.min(totalPages, page + 1))}
+                  disabled={page >= totalPages}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition-colors hover:bg-slate-50 disabled:opacity-40"
+                  aria-label="Next page"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -378,21 +501,14 @@ export default function OutletProductsPage() {
 
               <div>
                 <label className="mb-2 block text-xs font-bold uppercase text-slate-500">Select Product</label>
-                <div className="relative">
-                  <select 
-                    className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm font-semibold text-slate-800 outline-none transition-all focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10"
-                    value={selectedProductId}
-                    onChange={(e) => setSelectedProductId(e.target.value)}
-                  >
-                    <option value="">-- Choose Product --</option>
-                    {availableToAdd.map(p => (
-                      <option key={p.id} value={p.id}>{getSafeName(p)}</option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
-                    <Search size={18} />
-                  </div>
-                </div>
+                <Select
+                  value={selectedProductId}
+                  onChange={setSelectedProductId}
+                  options={productSelectOptions}
+                  placeholder="Choose product..."
+                  searchable
+                  leadingIcon={<Search size={16} />}
+                />
               </div>
 
               <button 

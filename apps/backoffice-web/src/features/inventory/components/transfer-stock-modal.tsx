@@ -1,243 +1,254 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
-import { InventoryItem } from "../types/inventory.types";
-import { InventoryAPI } from "../api/inventory.api";
-import { motion, AnimatePresence } from "framer-motion";
-import { X, Truck, AlertCircle, CheckCircle, Package, Store, Loader2, ArrowRight } from "lucide-react";
+import { useEffect, useMemo, useState } from 'react';
+import { Loader2, Package, Store, Truck, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { toast } from 'sonner';
+
+import { Select } from '@/components/ui/select';
+import {
+  NumericInput,
+  parseNumericInputValue,
+} from '@/components/ui/numeric-input';
+import { InventoryListItem } from '../types/inventory.types';
+import { InventoryApi } from '../api/inventory.api';
+import {
+  formInputClassName,
+  getQuantityValue,
+  mapServerFieldErrors,
+  UNEXPECTED_ERROR_TOAST,
+  validateOutletSelection,
+  validatePositiveQuantity,
+} from '../utils/inventory-validation';
 
 interface Props {
-  item: InventoryItem & { stockName?: string }; // Include stockName for display
+  item: InventoryListItem;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-interface Outlet {
+interface OutletOption {
   id: string;
   name: string;
-  branch: string;
-  status: string;
+  branch?: string;
+  status?: string;
 }
 
 export default function TransferStockModal({ item, onClose, onSuccess }: Props) {
-  const [outlets, setOutlets] = useState<Outlet[]>([]);
-  const [outletId, setOutletId] = useState("");
-  const [quantity, setQuantity] = useState<number | ''>('');
-  const [formError, setFormError] = useState<string | null>(null);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingOutlets, setIsLoadingOutlets] = useState(true);
+  const available = getQuantityValue(item.availableQty);
 
-  // Fetch outlets on component mount
+  const [outlets, setOutlets] = useState<OutletOption[]>([]);
+  const [outletId, setOutletId] = useState('');
+  const [quantityInput, setQuantityInput] = useState('');
+  const [errors, setErrors] = useState<{
+    outletId?: string;
+    quantity?: string;
+  }>({});
+  const [loadingOutlets, setLoadingOutlets] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  const parsedQuantity = parseNumericInputValue(quantityInput);
+
   useEffect(() => {
-    const fetchOutlets = async () => {
-      try {
-        const res = await InventoryAPI.getAllOutlets();
-        // Filter to show only ACTIVE outlets
-        const activeOutlets = res.data.data.filter((o: Outlet) => o.status === "ACTIVE");
-        setOutlets(activeOutlets);
-      } catch (err) {
-        setFormError("Failed to load destination outlets.");
-      } finally {
-        setIsLoadingOutlets(false);
-      }
-    };
-    fetchOutlets();
+    InventoryApi.listActiveOutlets()
+      .then(setOutlets)
+      .catch(() => {
+        toast.error('Failed to load outlets.');
+      })
+      .finally(() => setLoadingOutlets(false));
   }, []);
 
-  const submit = async () => {
-    const qtyVal = Number(quantity);
+  const outletOptions = useMemo(
+    () =>
+      outlets.map((outlet) => ({
+        value: outlet.id,
+        label: outlet.branch
+          ? `${outlet.name} (${outlet.branch})`
+          : outlet.name,
+      })),
+    [outlets],
+  );
 
-    if (!outletId) {
-      setFormError("Please select a destination outlet.");
+  const submit = async () => {
+    const nextErrors = {
+      outletId: validateOutletSelection(outletId),
+      quantity: validatePositiveQuantity(parsedQuantity),
+    };
+
+    if (parsedQuantity !== null && parsedQuantity > available) {
+      nextErrors.quantity = `Insufficient stock. Max transfer is ${available} ${item.unit}.`;
+    }
+
+    setErrors(nextErrors);
+
+    if (Object.values(nextErrors).some(Boolean) || submitting) {
       return;
     }
-    if (qtyVal <= 0) {
-      setFormError("Quantity must be greater than 0.");
-      return;
-    }
-    if (qtyVal > item.availableQty.value) {
-        setFormError(`Insufficient stock. Max transfer is ${item.availableQty.value} ${item.unit}.`);
-        return;
-    }
+
+    setSubmitting(true);
 
     try {
-      setIsSubmitting(true);
-      setFormError(null);
-      
-      await InventoryAPI.transferStock({ 
-        stockItemId: item.stockItemId, 
-        outletId: outletId, 
-        quantity: qtyVal 
+      await InventoryApi.transferStock({
+        stockItemId: item.stockItemId,
+        outletId,
+        quantity: parsedQuantity!,
       });
 
-      setIsSuccess(true);
-      
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 1500);
+      toast.success('Stock transferred successfully.');
+      onSuccess();
+    } catch (err: unknown) {
+      const axiosError = err as {
+        response?: {
+          data?: { message?: string | string[]; errors?: Record<string, string> };
+        };
+      };
 
-    } catch (err: any) {
-      setFormError(err.response?.data?.message || "Failed to process transfer.");
-      setIsSubmitting(false);
+      const fieldErrors = mapServerFieldErrors(axiosError.response?.data);
+      if (Object.keys(fieldErrors).length > 0) {
+        setErrors((current) => ({ ...current, ...fieldErrors }));
+        return;
+      }
+
+      toast.error(
+        (Array.isArray(axiosError.response?.data?.message)
+          ? axiosError.response?.data?.message[0]
+          : axiosError.response?.data?.message) || UNEXPECTED_ERROR_TOAST,
+      );
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    // 1. OVERLAY
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
-      onClick={onClose}
-    >
-      
-      {/* 2. MODAL CARD */}
-      <motion.div 
-        initial={{ scale: 0.95, opacity: 0 }} 
-        animate={{ scale: 1, opacity: 1 }} 
-        className="w-full max-w-md overflow-hidden rounded-3xl bg-background p-8 shadow-2xl ring-1 ring-border"
-        onClick={e => e.stopPropagation()}
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-[1px]"
+        onClick={onClose}
       >
-        
-        {/* HEADER */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
-              <Truck size={20} />
-            </div>
-            <div>
-               <h2 className="text-xl font-bold text-foreground">Transfer Stock</h2>
-               <p className="text-xs text-muted-foreground">Move inventory to an outlet</p>
-            </div>
-          </div>
-          <button 
-            onClick={onClose} 
-            className="rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-          >
-            <X size={20}/>
-          </button>
-        </div>
-
-        {/* BODY */}
-        <div className="flex flex-col gap-6">
-          
-          {/* ITEM DISPLAY */}
-          <div className="flex items-center justify-between rounded-2xl border border-border bg-muted/30 p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 16, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 8, scale: 0.98 }}
+          role="dialog"
+          aria-modal="true"
+          className="flex max-h-[90vh] w-full max-w-[700px] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-2xl"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="flex shrink-0 items-start justify-between border-b border-border px-5 py-4 sm:px-6">
             <div className="flex items-center gap-3">
-               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-background border border-border text-muted-foreground">
-                  <Package size={16} />
-               </div>
-               <div className="flex flex-col">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Item Name</span>
-                  <span className="text-sm font-bold text-foreground">{item.stockName || item.stockItemId}</span>
-               </div>
-            </div>
-            <div className="text-right">
-               <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Available</span>
-               <div className="text-sm font-bold text-foreground">{item.availableQty.value} {item.unit}</div>
-            </div>
-          </div>
-
-          {/* FEEDBACK BANNERS */}
-          <AnimatePresence>
-            {formError && (
-              <motion.div 
-                initial={{ height: 0, opacity: 0 }} 
-                animate={{ height: 'auto', opacity: 1 }} 
-                exit={{ height: 0, opacity: 0 }}
-                className="flex items-center gap-3 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm font-medium text-destructive"
-              >
-                <AlertCircle size={18} />
-                <span>{formError}</span>
-              </motion.div>
-            )}
-            {isSuccess && (
-              <motion.div 
-                initial={{ height: 0, opacity: 0 }} 
-                animate={{ height: 'auto', opacity: 1 }} 
-                className="flex items-center gap-3 rounded-xl border border-green-500/20 bg-green-500/10 p-3 text-sm font-medium text-green-600"
-              >
-                <CheckCircle size={18} />
-                <span>Stock transferred successfully!</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* FORM INPUTS */}
-          <div className="space-y-4">
-            
-            {/* DESTINATION OUTLET */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Destination Outlet <span className="text-destructive">*</span>
-              </label>
-              <div className="relative">
-                <Store size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <select 
-                  disabled={isSuccess || isSubmitting || isLoadingOutlets}
-                  value={outletId} 
-                  onChange={(e) => {
-                    setOutletId(e.target.value);
-                    if (formError) setFormError(null);
-                  }}
-                  className="w-full appearance-none rounded-xl border border-input bg-background py-3 pl-11 pr-4 text-sm font-medium text-foreground outline-none transition-all focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 disabled:opacity-50"
-                >
-                  <option value="">{isLoadingOutlets ? "Loading..." : "-- Select Outlet --"}</option>
-                  {outlets.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.name} {o.branch ? `(${o.branch})` : ''}
-                    </option>
-                  ))}
-                </select>
-                {/* Arrow Icon */}
-                <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">
-                   <ArrowRight size={14} className="rotate-90" />
-                </div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 text-amber-600">
+                <Truck size={20} />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-foreground">Transfer Stock</h2>
+                <p className="text-sm text-muted-foreground">
+                  Move inventory from central stock to an outlet.
+                </p>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              aria-label="Close"
+              className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <X size={18} />
+            </button>
+          </div>
 
-            {/* QUANTITY INPUT */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Quantity to Transfer ({item.unit})
-              </label>
-              <input 
-                type="number" 
-                disabled={isSuccess || isSubmitting}
-                value={quantity} 
-                onChange={(e) => {
-                  setQuantity(e.target.value === '' ? '' : Number(e.target.value));
-                  if (formError) setFormError(null);
-                }} 
-                placeholder="0"
-                className="w-full rounded-xl border border-input bg-background px-4 py-3 text-lg font-bold text-foreground outline-none transition-all placeholder:font-normal placeholder:text-muted-foreground focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 disabled:opacity-50"
-              />
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-4">
+                <div className="flex items-center gap-3">
+                  <Package size={18} className="text-muted-foreground" />
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      Stock Item
+                    </p>
+                    <p className="text-sm font-semibold text-foreground">
+                      {item.stockName}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Available
+                  </p>
+                  <p className="text-sm font-semibold text-foreground">
+                    {available} {item.unit}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-foreground">
+                  Destination Outlet <span className="text-destructive">*</span>
+                </label>
+                <Select
+                  value={outletId}
+                  onChange={(value) => {
+                    setOutletId(value);
+                    setErrors((current) => ({ ...current, outletId: undefined }));
+                  }}
+                  options={outletOptions}
+                  placeholder={
+                    loadingOutlets ? 'Loading outlets...' : 'Select outlet'
+                  }
+                  searchable
+                  disabled={submitting || loadingOutlets}
+                  hasError={!!errors.outletId}
+                  leadingIcon={<Store size={16} />}
+                />
+                {errors.outletId && (
+                  <p className="text-sm text-destructive">{errors.outletId}</p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-semibold text-foreground">
+                  Quantity to Transfer ({item.unit})
+                </label>
+                <NumericInput
+                  value={quantityInput}
+                  onChange={(nextValue) => {
+                    setQuantityInput(nextValue);
+                    setErrors((current) => ({ ...current, quantity: undefined }));
+                  }}
+                  disabled={submitting}
+                  className={formInputClassName}
+                />
+                {errors.quantity && (
+                  <p className="text-sm text-destructive">{errors.quantity}</p>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* SUBMIT BUTTON */}
-          <button 
-            disabled={isSuccess || isSubmitting || isLoadingOutlets} 
-            onClick={submit} 
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 py-4 text-base font-bold text-white shadow-lg shadow-amber-500/25 transition-all hover:bg-amber-600 hover:shadow-amber-500/40 active:scale-98 disabled:opacity-70 disabled:cursor-not-allowed disabled:shadow-none"
-          >
-            {isSubmitting ? (
-               <>
-                 <Loader2 size={18} className="animate-spin" />
-                 Processing...
-               </>
-            ) : isSuccess ? (
-               <>
-                 <CheckCircle size={18} />
-                 Success
-               </>
-            ) : (
-               "Process Transfer"
-            )}
-          </button>
-        </div>
-
+          <div className="flex shrink-0 gap-3 border-t border-border px-5 py-4 sm:px-6">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="h-11 flex-1 rounded-xl border border-input bg-background text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void submit()}
+              disabled={submitting || loadingOutlets}
+              className="flex h-11 flex-[2] items-center justify-center gap-2 rounded-xl bg-amber-500 text-sm font-bold text-white shadow-lg shadow-amber-500/20 transition-all hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {submitting && <Loader2 size={16} className="animate-spin" />}
+              {submitting ? 'Processing...' : 'Process Transfer'}
+            </button>
+          </div>
+        </motion.div>
       </motion.div>
-    </div>
+    </AnimatePresence>
   );
 }
