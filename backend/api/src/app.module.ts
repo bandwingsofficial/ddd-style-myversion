@@ -25,6 +25,7 @@ import { ProductsModule } from './modules/products/modules/products.module';
 import { SavedAddressModule } from './modules/saved-address/modules/saved-address.module';
 import { StockItemsModule } from './modules/stock-items/modules/stock-items.module';
 import { CustomersModule } from './modules/customers/modules/customers.module';
+import { DashboardModule } from './modules/dashboard/modules/dashboard.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 
 import { SmsProvider } from './infrastructure/providers/sms/sms.provider';
@@ -61,6 +62,7 @@ import { OtpWorker } from './workers/otp.worker';
     DeliveryModule,
     DeliveryConfigModule,
     CustomersModule,
+    DashboardModule,
   ],
   providers: [OtpWorker, SmsProvider],
 })

@@ -13,7 +13,7 @@ interface SidebarProps {
 }
 
 const menuItems = [
-  { label: 'Dashboard', path: '/', icon: LayoutDashboard },
+  { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { label: 'Outlets', path: '/outlets', icon: Store },
   { label: 'Outlet Management', path: '/users', icon: Users },
   { label: 'Products', path: '/products', icon: Package },
@@ -61,8 +61,8 @@ export function Sidebar({ isOpen }: SidebarProps) {
       <nav className="flex-1 overflow-y-auto px-4 py-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         <div className="flex flex-col gap-3">
           {menuItems.map((item) => {
-            const isActive = item.path === '/' 
-              ? pathname === '/' 
+            const isActive = item.path === '/dashboard'
+              ? pathname === '/dashboard'
               : pathname.startsWith(item.path);
             
             const Icon = item.icon;

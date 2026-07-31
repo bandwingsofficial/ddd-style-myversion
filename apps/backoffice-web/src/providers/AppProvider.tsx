@@ -1,13 +1,13 @@
 'use client';
 
-import { PropsWithChildren, useEffect, useRef } from 'react';
+import { PropsWithChildren, useEffect, useRef, useState } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'sonner';
+
 import { HttpProvider } from './HttpProvider';
 import { AuthProvider } from '@/features/auth/context/AuthProvider';
 import { useSession } from '@/features/auth/hooks/useSession';
 
-/**
- * Bootstraps auth session ONCE globally
- */
 function BootstrapAuth({ children }: PropsWithChildren) {
   const { fetchSession } = useSession();
   const bootstrapped = useRef(false);
@@ -16,8 +16,7 @@ function BootstrapAuth({ children }: PropsWithChildren) {
     if (bootstrapped.current) return;
     bootstrapped.current = true;
 
-    // 🔒 Async wrapper ensures future safety
-    (async () => {
+    void (async () => {
       try {
         await fetchSession();
       } catch (err) {
@@ -29,20 +28,29 @@ function BootstrapAuth({ children }: PropsWithChildren) {
   return <>{children}</>;
 }
 
-/**
- * AppProvider
- *
- * - HttpProvider → AuthProvider → BootstrapAuth
- * - Global providers for the app
- */
 export function AppProvider({ children }: PropsWithChildren) {
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            refetchOnWindowFocus: true,
+            retry: 1,
+          },
+        },
+      }),
+  );
+
   return (
-    <HttpProvider>
-      <AuthProvider>
-        <BootstrapAuth>
-          {children}
-        </BootstrapAuth>
-      </AuthProvider>
-    </HttpProvider>
+    <QueryClientProvider client={queryClient}>
+      <HttpProvider>
+        <AuthProvider>
+          <BootstrapAuth>
+            {children}
+            <Toaster richColors position="top-right" />
+          </BootstrapAuth>
+        </AuthProvider>
+      </HttpProvider>
+    </QueryClientProvider>
   );
 }

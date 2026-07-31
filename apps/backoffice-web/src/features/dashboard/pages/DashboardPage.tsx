@@ -1,108 +1,193 @@
 'use client';
 
-import { useAuth } from '@/features/auth/hooks/useAuth';
-import { Activity, Shield, Key, User, Laptop } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import {
+  AlertCircle,
+  CreditCard,
+  IndianRupee,
+  Package,
+  ShoppingBag,
+  Store,
+  TrendingUp,
+  Truck,
+  Users,
+} from 'lucide-react';
+import { toast } from 'sonner';
+
+import { DashboardApi } from '../api/dashboard.api';
+import { DashboardFilters } from '../types/dashboard.types';
+import { useDashboard } from '../hooks/use-dashboard';
+import { DashboardFiltersBar } from '../components/DashboardFiltersBar';
+import { DashboardChartsSection } from '../components/DashboardChartsSection';
+import { KpiCard } from '../components/KpiCard';
+import {
+  ExportMenu,
+  LowStockPanel,
+  QuickActions,
+  RecentOrdersTable,
+  RecentPaymentsTable,
+  TopCategoriesList,
+  TopOutletsList,
+  TopProductsTable,
+} from '../components/DashboardTables';
+
+function formatCurrency(value?: number) {
+  return `₹${(value ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+}
 
 export function DashboardPage() {
-  const { actorType, actorId, sessionId } = useAuth();
+  const [filters, setFilters] = useState<DashboardFilters>({
+    period: 'LAST_7_DAYS',
+    topLimit: 10,
+  });
+
+  const {
+    summary,
+    charts,
+    recentOrders,
+    recentPayments,
+    topProducts,
+    topOutlets,
+    topCategories,
+    lowStock,
+    loading,
+    error,
+    refresh,
+  } = useDashboard(filters);
+
+  const kpiGroups = useMemo(
+    () => [
+      {
+        title: 'Revenue',
+        cards: [
+          { title: 'Total Revenue', value: formatCurrency(summary?.revenue.totalRevenue), icon: IndianRupee, accent: 'emerald' as const },
+          { title: "Today's Revenue", value: formatCurrency(summary?.revenue.todaysRevenue), icon: TrendingUp, accent: 'blue' as const },
+          { title: 'Weekly Revenue', value: formatCurrency(summary?.revenue.weeklyRevenue), icon: TrendingUp, accent: 'violet' as const },
+          { title: 'Monthly Revenue', value: formatCurrency(summary?.revenue.monthlyRevenue), icon: TrendingUp, accent: 'amber' as const },
+        ],
+      },
+      {
+        title: 'Orders',
+        cards: [
+          { title: 'Total Orders', value: summary?.orders.totalOrders ?? 0, icon: ShoppingBag, accent: 'blue' as const },
+          { title: 'Delivered', value: summary?.orders.deliveredOrders ?? 0, icon: Truck, accent: 'emerald' as const },
+          { title: 'Pending', value: summary?.orders.pendingOrders ?? 0, icon: Package, accent: 'amber' as const },
+          { title: 'Avg Order Value', value: formatCurrency(summary?.orders.averageOrderValue), icon: IndianRupee, accent: 'violet' as const },
+        ],
+      },
+      {
+        title: 'Customers & Catalog',
+        cards: [
+          { title: 'Total Customers', value: summary?.customers.totalCustomers ?? 0, icon: Users, accent: 'blue' as const },
+          { title: 'New Customers', value: summary?.customers.newCustomers ?? 0, icon: Users, accent: 'emerald' as const },
+          { title: 'Active Products', value: summary?.catalog.activeProducts ?? 0, icon: Package, accent: 'amber' as const },
+          { title: 'Active Outlets', value: summary?.catalog.activeOutlets ?? 0, icon: Store, accent: 'slate' as const },
+        ],
+      },
+      {
+        title: 'Payments',
+        cards: [
+          { title: 'Successful Payments', value: summary?.payments.successfulPayments ?? 0, icon: CreditCard, accent: 'emerald' as const },
+          { title: 'Failed Payments', value: summary?.payments.failedPayments ?? 0, icon: AlertCircle, accent: 'rose' as const },
+          { title: 'Pending Payments', value: summary?.payments.pendingPayments ?? 0, icon: CreditCard, accent: 'amber' as const },
+          { title: 'Success Rate', value: `${summary?.payments.paymentSuccessRate ?? 0}%`, icon: TrendingUp, accent: 'violet' as const },
+        ],
+      },
+    ],
+    [summary],
+  );
+
+  const handleExport = async (section: string) => {
+    try {
+      const blob = await DashboardApi.exportCsv(filters, section);
+      const url = window.URL.createObjectURL(new Blob([blob]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `dashboard-${section}.csv`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('Export downloaded');
+    } catch (exportError) {
+      console.error(exportError);
+      toast.error('Export failed');
+    }
+  };
 
   return (
-    // 1. PAGE CONTAINER (Matches Categories Page)
-    <div className="min-h-screen bg-background p-6 md:p-8 font-sans animate-in fade-in duration-500">
-      
-      {/* 2. HEADER */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">
-          Dashboard Overview
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          System health and active session data
-        </p>
+    <div className="min-h-screen bg-background p-3 md:p-4 font-sans animate-in fade-in duration-500 print:p-0">
+      <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-foreground">
+            Executive Dashboard
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Real-time business intelligence across revenue, orders, payments, and inventory.
+          </p>
+          {summary?.filters?.label && (
+            <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-primary">
+              {summary.filters.label}
+            </p>
+          )}
+        </div>
+        <ExportMenu onExport={handleExport} />
       </div>
 
-      {/* 3. STATS GRID */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        
-        {/* CARD 1: SESSION STATUS */}
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm transition-all hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Session Status
-            </div>
-            <Activity className="h-4 w-4 text-primary" />
-          </div>
-          <div className="mt-4">
-            <div className="text-2xl font-bold text-foreground">Active</div>
-            {/* Decorative Bar */}
-            <div className="mt-3 h-1.5 w-full max-w-[60px] rounded-full bg-primary" />
-          </div>
-        </div>
-
-        {/* CARD 2: ROLE TYPE */}
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm transition-all hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Role Type
-            </div>
-            <Shield className="h-4 w-4 text-blue-500" />
-          </div>
-          <div className="mt-4">
-            <div className="text-2xl font-bold text-foreground capitalize">
-              {actorType || 'Unknown'}
-            </div>
-            {/* Decorative Bar (Blue) */}
-            <div className="mt-3 h-1.5 w-full max-w-[60px] rounded-full bg-blue-500" />
-          </div>
-        </div>
-        
+      <div className="mb-6 space-y-6">
+        <DashboardFiltersBar
+          filters={filters}
+          onChange={setFilters}
+          onRefresh={refresh}
+          loading={loading}
+        />
+        <QuickActions />
       </div>
 
-      {/* 4. DETAILED INFO SECTION */}
-      <div className="mt-8 rounded-xl border border-border bg-card shadow-sm">
-        {/* Section Header */}
-        <div className="border-b border-border bg-muted/30 px-6 py-4">
-          <div className="flex items-center gap-2">
-            <Laptop className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-bold uppercase tracking-wider text-foreground">
-              Active Session Details
-            </h3>
-          </div>
+      {error && (
+        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          Failed to load dashboard data. Please refresh.
+        </div>
+      )}
+
+      <div className="space-y-8">
+        {kpiGroups.map((group) => (
+          <section key={group.title}>
+            <h2 className="mb-4 text-sm font-bold uppercase tracking-wider text-muted-foreground">
+              {group.title}
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {group.cards.map((card) => (
+                <KpiCard
+                  key={card.title}
+                  title={card.title}
+                  value={card.value}
+                  icon={card.icon}
+                  accent={card.accent}
+                  loading={loading}
+                />
+              ))}
+            </div>
+          </section>
+        ))}
+
+        <DashboardChartsSection charts={charts} loading={loading} />
+
+        <div className="grid gap-6 xl:grid-cols-2">
+          <RecentOrdersTable orders={recentOrders} loading={loading} />
+          <RecentPaymentsTable payments={recentPayments} loading={loading} />
         </div>
 
-        {/* Section Body */}
-        <div className="p-6">
-          <div className="flex flex-col gap-6 md:flex-row">
-            
-            {/* DATA POINT 1: Actor ID */}
-            <div className="flex-1 rounded-lg border border-border bg-muted/20 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <User size={14} className="text-muted-foreground" />
-                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Actor Identifier
-                </span>
-              </div>
-              <div className="font-mono text-sm font-semibold text-foreground break-all">
-                {actorId}
-              </div>
-            </div>
-
-            {/* DATA POINT 2: Session Token */}
-            <div className="flex-1 rounded-lg border border-border bg-muted/20 p-4">
-               <div className="flex items-center gap-2 mb-2">
-                <Key size={14} className="text-muted-foreground" />
-                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Session Token
-                </span>
-              </div>
-              <div className="font-mono text-sm font-bold text-primary break-all">
-                {sessionId}
-              </div>
-            </div>
-
+        <div className="grid gap-6 xl:grid-cols-3">
+          <div className="xl:col-span-2">
+            <TopProductsTable products={topProducts} loading={loading} />
           </div>
+          <LowStockPanel items={lowStock} loading={loading} />
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <TopOutletsList outlets={topOutlets} />
+          <TopCategoriesList categories={topCategories} />
         </div>
       </div>
-
     </div>
   );
 }
