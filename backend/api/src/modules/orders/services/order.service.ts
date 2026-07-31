@@ -198,7 +198,6 @@ export class OrderService {
 
       const itemRows = cart.items.map((item) => ({
         id: uuid(),
-        orderId: existing.id,
         productId: item.productId,
         productName: item.productName,
         productImage: item.productImage,
