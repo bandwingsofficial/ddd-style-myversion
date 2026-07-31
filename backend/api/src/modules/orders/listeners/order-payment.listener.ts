@@ -1,53 +1,56 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { PaymentEvents } from '../../payments/events/payment-events.constants';
 
 import { OrderStatusService } from '../services/order-status.service';
 import { CartOrchestratorService } from '../../cart/services/cart-orchestrator.service';
-import { OrderRepository } from '../repositories/order.repository';
 
 @Injectable()
 export class OrderPaymentListener {
+  private readonly logger = new Logger(OrderPaymentListener.name);
+
   constructor(
     private readonly orderStatusService: OrderStatusService,
     private readonly cartOrchestrator: CartOrchestratorService,
-    private readonly orderRepo: OrderRepository,
   ) {}
 
   @OnEvent(PaymentEvents.PAYMENT_SUCCESS)
   async handlePaymentSuccess(payload: {
     orderId: string;
+    paymentId?: string;
   }): Promise<void> {
-    let order;
+    this.logger.log(
+      `[Payment Updated] Finalizing order after payment success orderId=${payload.orderId} paymentId=${payload.paymentId ?? 'n/a'}`,
+    );
 
-    try {
-      order = await this.orderStatusService.markPaid(payload.orderId);
-    } catch (err: any) {
-      if (err?.message?.includes('Cannot mark paid')) {
-        return;
-      }
-      throw err;
-    }
+    const order = await this.orderStatusService.markPaidAndConfirm(
+      payload.orderId,
+    );
 
-    try {
-      await this.cartOrchestrator.clearCart({
-        customerId: order.customerId,
-        outletId: order.outletId,
-      });
-    } catch {
-      // Cart may already be cleared after successful checkout
-    }
+    this.logger.log(
+      `[Order Updated] orderId=${order.id} orderStatus=${order.status}`,
+    );
+
+    const cleared = await this.cartOrchestrator.clearCartAfterPayment({
+      customerId: order.customerId,
+      outletId: order.outletId,
+    });
+
+    this.logger.log(
+      cleared
+        ? `[Cart Cleared] cartId=${cleared.id} customerId=${order.customerId}`
+        : `[Cart Cleared] No open cart for customerId=${order.customerId}`,
+    );
   }
 
-  /**
-   * Payment attempt failed — checkout stays active for unlimited retries.
-   * Do NOT unlock cart or fail the order.
-   */
   @OnEvent(PaymentEvents.PAYMENT_FAILED)
-  async handlePaymentFailed(_payload: {
+  async handlePaymentFailed(payload: {
     orderId: string;
+    paymentId?: string;
   }): Promise<void> {
-    // Intentionally no-op: order remains PAYMENT_PENDING, cart stays locked.
+    this.logger.warn(
+      `[Payment Failed] orderId=${payload.orderId} paymentId=${payload.paymentId ?? 'n/a'} — checkout remains active for retry`,
+    );
   }
 }

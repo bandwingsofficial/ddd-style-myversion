@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ValidationError } from '../../../common/errors';
 
@@ -26,6 +26,8 @@ export interface PaymentVerificationResult {
 
 @Injectable()
 export class PaymentGatewayService {
+  private readonly logger = new Logger(PaymentGatewayService.name);
+
   constructor(
     private readonly config: ConfigService, // 🔥 ADD THIS
   ) {}
@@ -80,6 +82,9 @@ export class PaymentGatewayService {
     const env = this.config.get<string>('NODE_ENV');
 
     if (env !== 'production') {
+      this.logger.warn(
+        `[Signature Verification] Non-production mock success paymentId=${params.providerPaymentId}`,
+      );
       return {
         success: true,
         providerPaymentId: params.providerPaymentId,
@@ -87,14 +92,27 @@ export class PaymentGatewayService {
       };
     }
 
+    if (!params.signature) {
+      this.logger.error(
+        `[Signature Verification] Missing signature for paymentId=${params.providerPaymentId}`,
+      );
+      return {
+        success: false,
+        providerPaymentId: params.providerPaymentId,
+        raw: { reason: 'SIGNATURE_REQUIRED' },
+      };
+    }
+
     if (
-      params.signature &&
       !verifyRazorpayCheckoutSignature({
         orderId: params.providerOrderId,
         paymentId: params.providerPaymentId,
         signature: params.signature,
       })
     ) {
+      this.logger.error(
+        `[Signature Verification] Invalid signature orderId=${params.providerOrderId} paymentId=${params.providerPaymentId}`,
+      );
       return {
         success: false,
         providerPaymentId: params.providerPaymentId,
@@ -105,13 +123,20 @@ export class PaymentGatewayService {
     try {
       const payment = await fetchRazorpayPayment(params.providerPaymentId);
 
+      const success =
+        payment.status === 'captured' || payment.status === 'authorized';
+
+      this.logger.log(
+        `[Signature Verification] Razorpay status=${payment.status} success=${success} paymentId=${params.providerPaymentId}`,
+      );
+
       return {
-        success: payment.status === 'captured' || payment.status === 'authorized',
+        success,
         providerPaymentId: params.providerPaymentId,
         raw: payment,
       };
     } catch (err) {
-      console.error('❌ Razorpay verify failed:', err);
+      this.logger.error('Razorpay verify failed:', err);
 
       return {
         success: false,

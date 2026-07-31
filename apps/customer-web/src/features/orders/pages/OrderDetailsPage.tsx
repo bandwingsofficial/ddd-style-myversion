@@ -60,13 +60,9 @@ export default function OrderDetailsPage() {
     );
   }
 
-  const canCancel =
-    ![
-      "DELIVERED",
-      "CANCELLED",
-      "SHIPPED",
-      "OUT_FOR_DELIVERY",
-    ].includes(order.status.toUpperCase());
+  const canCancel = ["PAYMENT_PENDING", "FAILED"].includes(
+    order.status.toUpperCase(),
+  );
 
   return (
     <div className="min-h-screen bg-slate-50">

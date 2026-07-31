@@ -146,7 +146,10 @@ export class CartOrchestratorService {
     return this.cartService.lockCart(params, tx);
   }
 
-  async unlockCart(params: any, tx?: PrismaTransaction): Promise<Cart | null> {
-    return this.cartService.unlockCart(params, tx);
+  async clearCartAfterPayment(
+    params: { customerId: string; outletId: string },
+    tx?: PrismaTransaction,
+  ): Promise<Cart | null> {
+    return this.cartService.clearCartAfterPayment(params, tx);
   }
 }

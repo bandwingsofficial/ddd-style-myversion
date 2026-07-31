@@ -1,7 +1,7 @@
 import React from 'react';
 import { Order } from '../types';
-import { format } from 'date-fns';
 import { Clock, MapPin, User } from 'lucide-react';
+import { formatTimeIST } from '@/lib/format-datetime';
 
 interface OrderCardProps {
   order: Order;
@@ -34,7 +34,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onAction }) => {
         <div className="text-right">
           <div className="flex items-center text-xs text-gray-500 gap-1">
             <Clock size={12} />
-            {format(new Date(order.createdAt), 'h:mm a')}
+            {formatTimeIST(order.createdAt)}
           </div>
         </div>
       </div>

@@ -648,4 +648,38 @@ for (const item of cart.items) {
 
     return tx ? run(tx) : this.prisma.$transaction(run);
   }
+
+  /**
+   * Clears the checkout cart after verified payment, including LOCKED carts.
+   */
+  async clearCartAfterPayment(
+    params: {
+      customerId: string;
+      outletId: string;
+    },
+    tx?: PrismaTransaction,
+  ): Promise<Cart | null> {
+    const run = async (client: PrismaTransaction): Promise<Cart | null> => {
+      const cart = await this.cartRepo.findOpenByCustomerAndOutlet(
+        params.customerId,
+        params.outletId,
+        client,
+      );
+
+      if (!cart) {
+        return null;
+      }
+
+      await this.cartRepo.clearItems(cart.id, client);
+
+      const unlocked =
+        cart.status === CartStatus.LOCKED ? cart.unlock() : cart;
+
+      await this.cartRepo.update(unlocked, client);
+
+      return this.recalcTotals(cart.id, client);
+    };
+
+    return tx ? run(tx) : this.prisma.$transaction(run);
+  }
 }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
@@ -19,6 +19,8 @@ import { OrderStatus } from '../../orders/domain/enums/order-status.enum';
 
 @Injectable()
 export class PaymentService {
+  private readonly logger = new Logger(PaymentService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly paymentRepo: PaymentRepository,
@@ -114,6 +116,10 @@ async createPayment(params: {
     currency: 'INR',
   });
 
+  this.logger.log(
+    `[Razorpay Order Created] orderId=${payment.orderId} paymentId=${payment.id} razorpayOrderId=${session.providerPaymentId} amount=${amount}`,
+  );
+
   const amountInPaise = Math.round(amount * 100);
 
   /* ================================================= */
@@ -169,6 +175,9 @@ async confirmPayment(params: {
   }
 
   if (payment.isSuccess()) {
+    this.logger.log(
+      `[Payment Callback] Already verified paymentId=${payment.id} orderId=${payment.orderId}`,
+    );
     return payment;
   }
 
@@ -189,11 +198,19 @@ async confirmPayment(params: {
     );
   }
 
+  this.logger.log(
+    `[Payment Callback] paymentId=${payment.id} orderId=${payment.orderId} razorpayPaymentId=${razorpayPaymentId} razorpayOrderId=${params.razorpayOrderId ?? payment.providerRefId}`,
+  );
+
   const verification = await this.gateway.verifyPayment({
     providerOrderId: params.razorpayOrderId ?? payment.providerRefId,
     providerPaymentId: razorpayPaymentId,
     signature: params.razorpaySignature,
   });
+
+  this.logger.log(
+    `[Signature Verification] paymentId=${payment.id} success=${verification.success} reason=${JSON.stringify(verification.raw ?? null)}`,
+  );
 
   /* ================================================= */
   /* DB UPDATE (atomic)                                */
@@ -230,6 +247,9 @@ async confirmPayment(params: {
   /* ================================================= */
 
   if (updatedPayment.isSuccess()) {
+    this.logger.log(
+      `[Payment Updated] paymentId=${updatedPayment.id} orderId=${updatedPayment.orderId} status=SUCCESS`,
+    );
     this.paymentEvents.emitPaymentSuccess({
       paymentId: updatedPayment.id,
       orderId: updatedPayment.orderId,
@@ -238,12 +258,20 @@ async confirmPayment(params: {
       occurredAt: new Date(),
     });
   } else {
+    this.logger.warn(
+      `[Payment Updated] paymentId=${updatedPayment.id} orderId=${updatedPayment.orderId} status=FAILED`,
+    );
     this.paymentEvents.emitPaymentFailed({
       paymentId: updatedPayment.id,
       orderId: updatedPayment.orderId,
       amount: updatedPayment.amount.toNumber(),
       occurredAt: new Date(),
     });
+
+    throw new ValidationError(
+      'PAYMENT_VERIFICATION_FAILED',
+      'Payment verification failed',
+    );
   }
 
   return updatedPayment;
@@ -298,10 +326,27 @@ async handleWebhook(params: {
       await this.paymentRepo.findByProviderRefId(razorpayOrderId);
 
     if (!payment) {
+      this.logger.warn(
+        `[Webhook Ignored] No payment for razorpayOrderId=${razorpayOrderId} event=${event}`,
+      );
+      return;
+    }
+
+    if (payment.isSuccess()) {
+      this.logger.log(
+        `[Webhook Ignored] Payment already SUCCESS paymentId=${payment.id} event=${event}`,
+      );
       return;
     }
 
     if (event === 'payment.failed') {
+      if (payment.isSuccess()) {
+        this.logger.log(
+          `[Webhook Ignored] Ignoring payment.failed for successful paymentId=${payment.id}`,
+        );
+        return;
+      }
+
       await this.prisma.payment.update({
         where: { id: payment.id },
         data: {
@@ -323,13 +368,24 @@ async handleWebhook(params: {
       return;
     }
 
-    await this.confirmPayment({
-      paymentId: payment.id,
-      razorpayOrderId,
-      razorpayPaymentId,
-    });
+    this.logger.log(
+      `[Webhook Applied] event=${event} paymentId=${payment.id} orderId=${payment.orderId}`,
+    );
+
+    try {
+      await this.confirmPayment({
+        paymentId: payment.id,
+        razorpayOrderId,
+        razorpayPaymentId,
+      });
+    } catch (confirmErr) {
+      this.logger.error(
+        `[Webhook Applied] confirmPayment failed paymentId=${payment.id}`,
+        confirmErr,
+      );
+    }
   } catch (err) {
-    console.error('[PAYMENT WEBHOOK ERROR]', err);
+    this.logger.error('[PAYMENT WEBHOOK ERROR]', err);
   }
 }
 

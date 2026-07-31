@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { formatDateIST } from "@/lib/format-datetime";
 import {
   ArrowRight,
   Calendar,
@@ -95,11 +96,7 @@ export default function OrderCard({ order }: OrderCardProps) {
                   Ordered On
                 </p>
                 <p className="text-sm font-semibold text-slate-700">
-                  {new Date(order.createdAt).toLocaleDateString("en-IN", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })}
+                  {formatDateIST(order.createdAt)}
                 </p>
               </div>
             </div>

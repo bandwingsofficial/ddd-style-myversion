@@ -164,12 +164,18 @@ export default function CheckoutPage() {
       setCheckoutOpen(false);
     };
 
+    const razorpayLogo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/images/Canten1.png`
+        : undefined;
+
     const options = {
       key: razorpayKey,
       amount: data.razorpayAmount,
       currency: data.currency,
-      name: "CaneTen",
-      description: "Order Payment",
+      name: "CANTEN",
+      description: "Fresh Sugarcane Juice",
+      image: razorpayLogo,
       order_id: data.razorpayOrderId,
       handler: function (response: any) {
         closeCheckout();

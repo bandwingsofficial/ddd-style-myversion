@@ -30,11 +30,9 @@ import { OrderEventsService } from '../events/order-events.service';
 import { OrderPublicGateway } from '../gateways/order-public.gateway';
 import { OrderPublicListener } from '../listeners/order-public.listener';
 import { OrderPaymentListener } from '../listeners/order-payment.listener';
-
-/* ---------------------------------------------- */
-/* MODULE                                         */
-/* ---------------------------------------------- */
+import { OrderResponseMapper } from '../mappers/order-response.mapper';
 import { CartModule } from '../../cart/modules/cart.module';
+import { UploadsModule } from '../../uploads/uploads.module';
 
 
 @Module({
@@ -44,8 +42,9 @@ import { CartModule } from '../../cart/modules/cart.module';
   ],
 
   imports: [
-  CartModule, // 👈 ADD THIS
-],
+    CartModule,
+    UploadsModule,
+  ],
   providers: [
     /* Infrastructure */
     PrismaService,
@@ -58,6 +57,7 @@ import { CartModule } from '../../cart/modules/cart.module';
     OrderService,
     OrderStatusService,
     OrderOrchestratorService,
+    OrderResponseMapper,
 
     /* Events */
     OrderEventsService,

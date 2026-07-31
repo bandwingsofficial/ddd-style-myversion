@@ -4,6 +4,7 @@ import { useOrders } from '../hooks/useOrders';
 import { fetchOrderById } from '../api/orders';
 import { Order } from '../types';
 import { Search, X, User, MapPin, ShoppingBag, RotateCw } from 'lucide-react';
+import { formatDateIST, formatTimeIST } from '@/lib/format-datetime';
 
 export const OrderHistory = () => {
   const { columns, loading, refresh } = useOrders();
@@ -238,7 +239,7 @@ const HistoryRow = ({ initialOrder }: { initialOrder: Order }) => {
       </td>
       <td className="p-4">
         <div className="text-sm font-medium text-gray-700">
-          {new Date(order.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+          {formatDateIST(order.createdAt)}
         </div>
         <div className="text-[11px] text-gray-400">
           {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

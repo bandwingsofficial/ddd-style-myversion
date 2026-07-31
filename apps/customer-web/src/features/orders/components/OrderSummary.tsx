@@ -6,6 +6,8 @@ import {
   MapPin,
 } from "lucide-react";
 
+import { formatDateTimeIST } from "@/lib/format-datetime";
+
 import { OrderDetails } from "@/features/checkout/checkout.types";
 import { OrderSummaryBreakdown } from "@/features/orders/components/OrderSummaryBreakdown";
 
@@ -53,14 +55,13 @@ export default function OrderSummary({
         <div className="mt-6 flex items-center gap-2 text-sm text-slate-500">
           <Calendar size={16} />
 
-          {new Date(
-            order.createdAt,
-          ).toLocaleString("en-IN", {
+          {formatDateTimeIST(order.createdAt, {
             day: "2-digit",
             month: "short",
             year: "numeric",
             hour: "2-digit",
             minute: "2-digit",
+            hour12: true,
           })}
         </div>
       </div>

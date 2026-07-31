@@ -4,6 +4,7 @@ import { useOrders } from '../hooks/useOrders';
 import { fetchOrderById } from '../api/orders'; // Assuming the service we discussed
 import { Order } from '../types';
 import { RotateCw, User, MapPin, ShoppingBag } from 'lucide-react';
+import { formatDateIST, formatTimeIST } from '@/lib/format-datetime';
 
 export const OrdersTable = () => {
   const { columns, loading, handleStatusChange, refresh } = useOrders();
@@ -139,10 +140,10 @@ const TableRow = ({ initialOrder, activeTab, onAction }: { initialOrder: Order; 
       {/* Time */}
       <td className="p-4 align-top">
         <div className="text-sm font-bold text-gray-700">
-          {order.createdAt ? new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+          {order.createdAt ? formatTimeIST(order.createdAt) : '--:--'}
         </div>
         <div className="text-[11px] text-gray-400 font-medium">
-          {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'No date'}
+          {order.createdAt ? formatDateIST(order.createdAt) : 'No date'}
         </div>
       </td>
 

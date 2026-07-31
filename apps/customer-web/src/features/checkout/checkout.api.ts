@@ -27,10 +27,17 @@ export const CheckoutApi = {
   },
 
   confirmPayment: async (payload: PaymentVerificationRequest) => {
-    const { data } = await customerAxios.post<{ data: any }>(
-        `/payments/${payload.paymentId}/confirm`, 
-        payload 
-    );
+    const { data } = await customerAxios.post<{
+      data: {
+        id: string;
+        orderId: string;
+        status: string;
+      };
+    }>(`/payments/${payload.paymentId}/confirm`, {
+      razorpayPaymentId: payload.razorpayPaymentId,
+      razorpayOrderId: payload.razorpayOrderId,
+      razorpaySignature: payload.razorpaySignature,
+    });
     return data.data;
   },
 

@@ -12,7 +12,8 @@ import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
 import { OrderEventsService } from '../events/order-events.service';
 
 import { OrderEventType } from '@prisma/client';
-import { ActorType } from '../../auth/domain/enums/actor-type.enum'; // ✅ NEW
+import { ActorType } from '../../auth/domain/enums/actor-type.enum';
+import { OrderStatus } from '../domain/enums/order-status.enum';
 
 @Injectable()
 export class OrderStatusService {
@@ -136,6 +137,44 @@ export class OrderStatusService {
       ...this.basePayload(order),
       amount: order.grandTotal.toNumber(),
     });
+
+    return order;
+  }
+
+  /**
+   * Finalize a paid order after successful payment verification.
+   * Idempotent: safe for client confirm + webhook retries.
+   */
+  async markPaidAndConfirm(orderId: string, tx?: PrismaTransaction) {
+    const existing = await this.orderRepo.findById(orderId, tx);
+
+    if (!existing) {
+      throw new ValidationError('ORDER_NOT_FOUND', 'Order not found');
+    }
+
+    if (
+      existing.status === OrderStatus.CONFIRMED ||
+      existing.status === OrderStatus.PREPARING ||
+      existing.status === OrderStatus.OUT_FOR_DELIVERY ||
+      existing.status === OrderStatus.DELIVERED
+    ) {
+      return existing;
+    }
+
+    let order = existing;
+
+    if (existing.status === OrderStatus.PAYMENT_PENDING) {
+      order = await this.markPaid(orderId, tx);
+    } else if (existing.status !== OrderStatus.PAID) {
+      throw new ValidationError(
+        'INVALID_ORDER_STATE',
+        `Cannot finalize order in status ${existing.status}`,
+      );
+    }
+
+    if (order.status === OrderStatus.PAID) {
+      order = await this.confirm(orderId, tx);
+    }
 
     return order;
   }
