@@ -6,7 +6,9 @@ import { Request } from 'express';
 import { ActorType } from '../../modules/auth/domain/enums/actor-type.enum';
 import { SessionService } from '../../modules/auth/services/session.service';
 import { AuthPayload } from '../../modules/auth/types/auth-payload.type';
+import { AuthErrors } from '../../modules/auth/constants/auth-errors';
 import { OutletUserRepository } from '../../modules/outlets/repositories/outlet-user.repository';
+import { OutletRepository } from '../../modules/outlets/repositories/outlet.repository';
 
 /**
  * ✅ Extract JWT from HttpOnly cookie (WEB)
@@ -24,6 +26,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     private readonly sessionService: SessionService,
     private readonly outletUserRepo: OutletUserRepository,
+    private readonly outletRepo: OutletRepository,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
@@ -51,7 +54,26 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     if (payload.at === ActorType.OUTLET_USER) {
       const outletUser = await this.outletUserRepo.findById(payload.sub);
-      outletId = outletUser?.outletId;
+
+      if (!outletUser) {
+        throw new UnauthorizedException('SESSION_INVALID');
+      }
+
+      if (outletUser.tokenVersion !== payload.tv) {
+        throw new UnauthorizedException('SESSION_INVALID');
+      }
+
+      if (!outletUser.isActive) {
+        throw new UnauthorizedException(AuthErrors.ACCOUNT_INACTIVE);
+      }
+
+      const outlet = await this.outletRepo.findById(outletUser.outletId);
+
+      if (!outlet || !outlet.isActive()) {
+        throw new UnauthorizedException(AuthErrors.OUTLET_INACTIVE);
+      }
+
+      outletId = outletUser.outletId;
     }
 
     /**

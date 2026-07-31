@@ -8,6 +8,8 @@ export const ProductEvents = {
   PRODUCT_CREATED: 'product.created',
   PRODUCT_ENABLED: 'product.enabled',
   PRODUCT_DISABLED: 'product.disabled',
+  PRODUCT_INACTIVATED: 'product.inactivated',
+  OUTLET_ASSIGNMENTS_REMOVED: 'product.outlet-assignments.removed',
 
   /* ================================================= */
   /* UPDATE                                           */

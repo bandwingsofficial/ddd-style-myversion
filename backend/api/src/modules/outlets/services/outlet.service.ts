@@ -23,6 +23,7 @@ import { OutletStatus } from '../domain/enums/outlet-status.enum';
 /* 🔥 ADD */
 import { OutletEventsService } from '../events/outlet-events.service';
 import { OutletWorkingStatus } from '../domain/enums/outlet-working-status.enum';
+import { OutletUserService } from './outlet-user.service';
 import {
   DeleteAnalysis,
   DELETE_ERROR_CODES,
@@ -36,6 +37,7 @@ export class OutletService {
     private readonly auditRepo: AuditLogRepository,
     /* 🔥 ADD */
     private readonly outletEvents: OutletEventsService,
+    private readonly outletUserService: OutletUserService,
   ) {}
 
   /* ================================================= */
@@ -229,15 +231,35 @@ if (
 
     const disabled = outlet.disable();
 
+    let syncResult = {
+      userIds: [] as string[],
+      usersInactivated: 0,
+      sessionsRevoked: 0,
+    };
+
     await this.prisma.$transaction(async (tx) => {
       await this.outletRepo.updateStatus(disabled, tx);
+
+      syncResult = await this.outletUserService.inactivateAllUsersForOutlet(
+        {
+          outletId: outlet.id,
+          adminId: params.adminId,
+          ipAddress: params.ipAddress,
+          userAgent: params.userAgent,
+        },
+        tx,
+      );
 
       await this.auditRepo.create(
         {
           actorType: ActorType.SUPER_ADMIN,
           actorId: params.adminId,
           action: AuditAction.OUTLET_DISABLED,
-          metadata: { outletId: outlet.id },
+          metadata: {
+            outletId: outlet.id,
+            usersInactivated: syncResult.usersInactivated,
+            sessionsRevoked: syncResult.sessionsRevoked,
+          },
           ipAddress: params.ipAddress,
           userAgent: params.userAgent,
         },
@@ -245,8 +267,24 @@ if (
       );
     });
 
-    /* 🔥 ADD */
     this.outletEvents.emitOutletDisabled({ outletId: outlet.id });
+    this.outletEvents.emitOutletInactivated({ outletId: outlet.id });
+
+    if (syncResult.usersInactivated > 0) {
+      this.outletEvents.emitOutletUsersInactivated({
+        outletId: outlet.id,
+        userIds: syncResult.userIds,
+        usersInactivated: syncResult.usersInactivated,
+      });
+    }
+
+    if (syncResult.sessionsRevoked > 0) {
+      this.outletEvents.emitUserSessionsInvalidated({
+        outletId: outlet.id,
+        actorType: 'OUTLET_USER',
+        sessionsRevoked: syncResult.sessionsRevoked,
+      });
+    }
 
     return { id: outlet.id, status: 'INACTIVE' };
   }
@@ -290,6 +328,7 @@ if (
 
     /* 🔥 ADD */
     this.outletEvents.emitOutletEnabled({ outletId: outlet.id });
+    this.outletEvents.emitOutletActivated({ outletId: outlet.id });
 
     return { id: outlet.id, status: 'ACTIVE' };
   }

@@ -60,6 +60,8 @@ export class DomainExceptionFilter
 
       case 'FORBIDDEN':
       case 'ACCOUNT_LOCKED':
+      case 'ACCOUNT_INACTIVE':
+      case 'OUTLET_INACTIVE':
       case 'OTP_BLOCKED':
         status = HttpStatus.FORBIDDEN;
         break;

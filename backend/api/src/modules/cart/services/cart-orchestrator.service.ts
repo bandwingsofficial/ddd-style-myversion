@@ -22,11 +22,11 @@ export class CartOrchestratorService {
     params: {
       customerId?: string;
       sessionId?: string;
-      outletId: string; // 🔥 REQUIRED
+      outletId: string;
     },
     tx?: PrismaTransaction,
-  ): Promise<Cart | null> {
-    return this.cartService.getActiveCart(params, tx);
+  ): Promise<{ cart: Cart | null; removedInactiveCount: number }> {
+    return this.cartService.syncActiveCart(params, tx);
   }
 
   /* ================================================= */
@@ -61,16 +61,18 @@ export class CartOrchestratorService {
       /* 🔥 Step 2 — get customer cart (same outlet) */
       /* ===================================== */
 
-      const customerCart = await this.cartService.getActiveCart(
+      const customerCart = await this.cartService.syncActiveCart(
         { customerId, outletId },
         tx,
       );
+
+      const customerCartData = customerCart.cart;
 
       /* ===================================== */
       /* 🔥 Step 3 — only guest exists → transfer */
       /* ===================================== */
 
-      if (!customerCart) {
+      if (!customerCartData) {
         await tx.cart.update({
           where: { id: guestCart.id },
           data: {

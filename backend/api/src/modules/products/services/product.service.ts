@@ -762,8 +762,21 @@ export class ProductService {
       return product;
     }
 
+    let outletAssignmentsRemoved = 0;
+    let cartItemsRemoved = 0;
+
     await this.prisma.$transaction(async (tx) => {
       await this.productRepo.updateStatus(updated, tx);
+
+      if (updated.isInactive()) {
+        outletAssignmentsRemoved =
+          await this.productRepo.deleteOutletProductsByProductId(
+            updated.id,
+            tx,
+          );
+        cartItemsRemoved =
+          await this.productRepo.deleteCartItemsByProductId(updated.id, tx);
+      }
     });
 
     if (updated.isActive()) {
@@ -771,9 +784,18 @@ export class ProductService {
         productId: updated.id,
       });
     } else {
-      this.productEvents.emitProductDisabled({
+      this.productEvents.emitProductInactivated({
         productId: updated.id,
+        outletAssignmentsRemoved,
+        cartItemsRemoved,
       });
+
+      if (outletAssignmentsRemoved > 0) {
+        this.productEvents.emitOutletAssignmentsRemoved({
+          productId: updated.id,
+          count: outletAssignmentsRemoved,
+        });
+      }
     }
 
     return updated;

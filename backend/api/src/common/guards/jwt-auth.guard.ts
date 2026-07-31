@@ -50,6 +50,10 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     console.log('🛡️ user:', user || 'NONE');
 
     if (err || !user) {
+      if (err instanceof UnauthorizedException) {
+        throw err;
+      }
+
       if (info instanceof TokenExpiredError) {
         console.log('❌ TOKEN EXPIRED');
         throw new UnauthorizedException('TOKEN_EXPIRED');

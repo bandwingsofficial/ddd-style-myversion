@@ -18,12 +18,21 @@ const transformCartResponse = (data: any): Cart => {
   };
 };
 
-export const fetchCart = async (outletId?: string): Promise<Cart> => {
+export const fetchCart = async (
+  outletId?: string,
+): Promise<{ cart: Cart; notice?: string }> => {
   const params: Record<string, string> = {};
   if (outletId) params.outletId = outletId;
 
   const res = await customerAxios.get("/cart", { params });
-  return transformCartResponse(res.data.data);
+
+  return {
+    cart: transformCartResponse(res.data.data),
+    notice:
+      res.data?.code === "CART_ITEMS_REMOVED"
+        ? (res.data.message as string | undefined)
+        : undefined,
+  };
 };
 
 export const addToCart = async (item: CartItem, forceReplace: boolean = false): Promise<Cart> => {

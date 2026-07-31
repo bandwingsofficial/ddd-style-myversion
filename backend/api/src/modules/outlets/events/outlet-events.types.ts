@@ -15,3 +15,15 @@ export interface OutletCameraStatusChangedEvent {
 export interface OutletLifecycleEvent {
   outletId: string;
 }
+
+export interface OutletUsersInactivatedEvent {
+  outletId: string;
+  userIds: string[];
+  usersInactivated: number;
+}
+
+export interface UserSessionsInvalidatedEvent {
+  outletId: string;
+  actorType: 'OUTLET_USER';
+  sessionsRevoked: number;
+}

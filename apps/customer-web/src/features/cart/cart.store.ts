@@ -8,6 +8,7 @@ import {
 } from "@/features/cart/cart.local";
 import { useOutletStore } from "@/features/outlet/outlet.store";
 import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
+import { toast } from "sonner";
 
 interface CartState {
   items: CartItem[];
@@ -79,7 +80,10 @@ export const useCartStore = create<CartState>((set, get) => ({
       }
 
       // Fetch
-      const backendCart = await cartApi.fetchCart(currentOutletId);
+      const { cart: backendCart, notice } = await cartApi.fetchCart(currentOutletId);
+      if (notice) {
+        toast.info(notice);
+      }
       set({ items: backendCart?.items || [], hydrated: true });
 
     } catch (error: any) {

@@ -7,12 +7,14 @@ import { CustomerRepository } from '../repositories/customer.repository';
 import { DeliveryPartnerRepository } from '../repositories/delivery-partner.repository';
 import { OutletUserRepository } from '../repositories/outlet-user.repository';
 import { SuperAdminRepository } from '../repositories/super-admin.repository';
+import { OutletRepository } from '../../outlets/repositories/outlet.repository';
 
 import { DeliveryApprovedPolicy } from '../policies/delivery-approved.policy';
 import { IdentityActivePolicy } from '../policies/identity-active.policy';
 
-import { UnauthorizedError } from '../../../common/errors';
+import { ForbiddenError, UnauthorizedError } from '../../../common/errors';
 import { AuthErrors } from '../constants/auth-errors';
+import { OutletUser } from '../domain/models/outlet-user.model';
 
 @Injectable()
 export class IdentityService {
@@ -21,6 +23,7 @@ export class IdentityService {
     private readonly deliveryRepo: DeliveryPartnerRepository,
     private readonly outletUserRepo: OutletUserRepository,
     private readonly superAdminRepo: SuperAdminRepository,
+    private readonly outletRepo: OutletRepository,
   ) {}
 
   /* ================================================= */
@@ -130,7 +133,7 @@ export class IdentityService {
           );
         }
 
-        IdentityActivePolicy.check(user);
+        await this.assertOutletUserCanAuthenticate(user);
 
         return {
           actorId: user.id,
@@ -225,12 +228,46 @@ export class IdentityService {
       );
     }
 
-    IdentityActivePolicy.check(user);
+    await this.assertOutletUserCanAuthenticate(user);
 
     return {
       actorId: user.id,
       tokenVersion: user.tokenVersion,
     };
+  }
+
+  /**
+   * Outlet status is master: both outlet and user must be active to authenticate.
+   */
+  private async assertOutletUserCanAuthenticate(
+    user: OutletUser,
+  ): Promise<void> {
+    const outlet = await this.outletRepo.findById(user.outletId);
+
+    if (!outlet || !outlet.isActive()) {
+      throw new ForbiddenError(
+        AuthErrors.OUTLET_INACTIVE,
+        'This outlet has been disabled by the administrator.',
+        { outletId: user.outletId },
+      );
+    }
+
+    if (!user.isActive) {
+      throw new ForbiddenError(
+        AuthErrors.ACCOUNT_INACTIVE,
+        'Your account has been disabled. Please contact the administrator.',
+      );
+    }
+
+    if (user.isLocked()) {
+      throw new ForbiddenError(
+        AuthErrors.ACCOUNT_LOCKED,
+        'Account temporarily locked',
+        {
+          lockedUntil: user.lockedUntil,
+        },
+      );
+    }
   }
 
   private async resolveSuperAdmin(

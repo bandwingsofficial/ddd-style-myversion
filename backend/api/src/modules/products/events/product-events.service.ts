@@ -10,6 +10,8 @@ import {
   ProductImagesChangedEvent,
   ProductFeaturedChangedEvent,
   ProductContentUpdatedEvent,
+  ProductInactivatedEvent,
+  OutletAssignmentsRemovedEvent,
 } from './product-events.types';
 
 @Injectable()
@@ -45,6 +47,28 @@ export class ProductEventsService {
   ): void {
     this.eventEmitter.emit(
       ProductEvents.PRODUCT_DISABLED,
+      payload,
+    );
+  }
+
+  emitProductInactivated(
+    payload: ProductInactivatedEvent,
+  ): void {
+    this.eventEmitter.emit(
+      ProductEvents.PRODUCT_INACTIVATED,
+      payload,
+    );
+    this.eventEmitter.emit(
+      ProductEvents.PRODUCT_DISABLED,
+      { productId: payload.productId },
+    );
+  }
+
+  emitOutletAssignmentsRemoved(
+    payload: OutletAssignmentsRemovedEvent,
+  ): void {
+    this.eventEmitter.emit(
+      ProductEvents.OUTLET_ASSIGNMENTS_REMOVED,
       payload,
     );
   }

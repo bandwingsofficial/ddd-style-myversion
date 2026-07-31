@@ -6,6 +6,17 @@ export interface ProductLifecycleEvent {
   productId: string;
 }
 
+export interface ProductInactivatedEvent {
+  productId: string;
+  outletAssignmentsRemoved: number;
+  cartItemsRemoved: number;
+}
+
+export interface OutletAssignmentsRemovedEvent {
+  productId: string;
+  count: number;
+}
+
 /* ================================================= */
 /* DETAILS UPDATE                                    */
 /* ================================================= */

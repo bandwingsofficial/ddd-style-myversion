@@ -8,6 +8,8 @@ import {
   OutletWorkingStatusChangedEvent,
   OutletCameraStatusChangedEvent,
   OutletLifecycleEvent,
+  OutletUsersInactivatedEvent,
+  UserSessionsInvalidatedEvent,
 } from './outlet-events.types';
 
 @Injectable()
@@ -54,6 +56,38 @@ export class OutletEventsService {
   emitOutletDisabled(payload: OutletLifecycleEvent): void {
     this.eventEmitter.emit(
       OutletEvents.OUTLET_DISABLED,
+      payload,
+    );
+  }
+
+  emitOutletActivated(payload: OutletLifecycleEvent): void {
+    this.eventEmitter.emit(
+      OutletEvents.OUTLET_ACTIVATED,
+      payload,
+    );
+  }
+
+  emitOutletInactivated(payload: OutletLifecycleEvent): void {
+    this.eventEmitter.emit(
+      OutletEvents.OUTLET_INACTIVATED,
+      payload,
+    );
+  }
+
+  emitOutletUsersInactivated(
+    payload: OutletUsersInactivatedEvent,
+  ): void {
+    this.eventEmitter.emit(
+      OutletEvents.OUTLET_USERS_INACTIVATED,
+      payload,
+    );
+  }
+
+  emitUserSessionsInvalidated(
+    payload: UserSessionsInvalidatedEvent,
+  ): void {
+    this.eventEmitter.emit(
+      OutletEvents.USER_SESSIONS_INVALIDATED,
       payload,
     );
   }

@@ -13,6 +13,7 @@ import { ActorType } from '../../auth/domain/enums/actor-type.enum';
 import { AuditAction } from '../../auth/domain/enums/audit-action.enum';
 
 import { ValidationError } from '../../../common/errors';
+import { ProductService } from '../../products/services/product.service';
 
 @Injectable()
 export class OutletProductService {
@@ -21,6 +22,7 @@ export class OutletProductService {
     private readonly outletRepo: OutletRepository,
     private readonly repo: OutletProductRepository,
     private readonly auditRepo: AuditLogRepository,
+    private readonly productService: ProductService,
   ) {}
 
   /* ================================================= */
@@ -59,6 +61,10 @@ export class OutletProductService {
     if (!outlet) {
       throw new ValidationError('OUTLET_NOT_FOUND', 'Outlet not found');
     }
+
+    await this.assertProductIsActive(params.productId, {
+      assign: true,
+    });
 
     // ✅ prevent duplicate assignment
     const existing = await this.repo.findOne(
@@ -110,6 +116,8 @@ export class OutletProductService {
     ipAddress?: string;
     userAgent?: string;
   }): Promise<void> {
+    await this.assertProductIsActive(params.productId, { activate: true });
+
     const entity = await this.getExisting(params);
 
     await this.persistAvailability(
@@ -146,6 +154,8 @@ export class OutletProductService {
     discountOverride?: number | null;
     adminId: string;
   }): Promise<OutletProduct> {
+    await this.assertProductIsActive(params.productId);
+
     const existing = await this.getExisting(params);
 
     const updated = existing.updatePricing({
@@ -189,6 +199,36 @@ export class OutletProductService {
     }
 
     return entity;
+  }
+
+  private async assertProductIsActive(
+    productId: string,
+    options?: { assign?: boolean; activate?: boolean },
+  ): Promise<void> {
+    const product = await this.productService.getById(productId);
+
+    if (product.isActive()) {
+      return;
+    }
+
+    if (options?.activate) {
+      throw new ValidationError(
+        'PRODUCT_ADMIN_DISABLED',
+        'This product has been disabled by the administrator and cannot be activated.',
+      );
+    }
+
+    if (options?.assign) {
+      throw new ValidationError(
+        'PRODUCT_INACTIVE',
+        'Cannot assign an inactive product to an outlet. Activate the product first.',
+      );
+    }
+
+    throw new ValidationError(
+      'PRODUCT_INACTIVE',
+      'This product has been disabled by the administrator.',
+    );
   }
 
   private async persistAvailability(

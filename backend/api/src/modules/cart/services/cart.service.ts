@@ -83,14 +83,52 @@ export class CartService {
   /* READS                                             */
   /* ================================================= */
 
-  async getActiveCart(
+  private async purgeInactiveItems(
+    cart: Cart,
+    tx: PrismaTransaction,
+  ): Promise<number> {
+    if (!cart.items.length) {
+      return 0;
+    }
+
+    const products = await tx.product.findMany({
+      where: {
+        id: { in: cart.items.map((item) => item.productId) },
+      },
+      select: { id: true, status: true, isAvailable: true },
+    });
+
+    const productStatus = new Map(products.map((product) => [product.id, product.status]));
+    const productAvailability = new Map(
+      products.map((product) => [product.id, product.isAvailable]),
+    );
+    const inactiveProductIds = cart.items
+      .filter((item) => {
+        const status = productStatus.get(item.productId);
+        const available = productAvailability.get(item.productId);
+        return status !== 'ACTIVE' || available === false;
+      })
+      .map((item) => item.productId);
+
+    if (inactiveProductIds.length === 0) {
+      return 0;
+    }
+
+    for (const productId of inactiveProductIds) {
+      await this.cartRepo.removeItem(cart.id, productId, tx);
+    }
+
+    return inactiveProductIds.length;
+  }
+
+  async syncActiveCart(
     params: {
       customerId?: string;
       sessionId?: string;
-      outletId: string; // 🔥 REQUIRED now
+      outletId: string;
     },
     tx?: PrismaTransaction,
-  ) {
+  ): Promise<{ cart: Cart | null; removedInactiveCount: number }> {
     const client = tx ?? this.prisma;
 
     const cart = params.customerId
@@ -105,9 +143,26 @@ export class CartService {
           client,
         );
 
-    if (!cart) return null;
+    if (!cart) {
+      return { cart: null, removedInactiveCount: 0 };
+    }
 
-    return this.recalcTotals(cart.id, client);
+    const removedInactiveCount = await this.purgeInactiveItems(cart, client);
+    const syncedCart = await this.recalcTotals(cart.id, client);
+
+    return { cart: syncedCart, removedInactiveCount };
+  }
+
+  async getActiveCart(
+    params: {
+      customerId?: string;
+      sessionId?: string;
+      outletId: string;
+    },
+    tx?: PrismaTransaction,
+  ) {
+    const { cart } = await this.syncActiveCart(params, tx);
+    return cart;
   }
   /* ================================================= */
   /* INTERNAL GET OR CREATE                            */
@@ -214,7 +269,7 @@ export class CartService {
         where: { id: params.product.id },
       });
 
-      if (!product || product.status !== 'ACTIVE') {
+      if (!product || product.status !== 'ACTIVE' || !product.isAvailable) {
         throw new ValidationError(
           'PRODUCT_NOT_AVAILABLE',
           'Product not available',
@@ -408,13 +463,12 @@ export class CartService {
     params: {
       customerId?: string;
       sessionId?: string;
-      outletId: string; // 🔥 REQUIRED
+      outletId: string;
     },
     tx?: PrismaTransaction,
   ): Promise<Cart> {
     const run = async (client: PrismaTransaction): Promise<Cart> => {
-      /* 🔥 outlet-aware fetch */
-      const cart = await this.getActiveCart(
+      const { cart, removedInactiveCount } = await this.syncActiveCart(
         {
           customerId: params.customerId,
           sessionId: params.sessionId,
@@ -425,6 +479,13 @@ export class CartService {
 
       if (!cart) {
         throw new ValidationError('CART_NOT_FOUND', 'Cart not found');
+      }
+
+      if (removedInactiveCount > 0 && !cart.hasItems()) {
+        throw new ValidationError(
+          'CART_ITEMS_REMOVED',
+          'One or more products were removed because they are no longer available.',
+        );
       }
 
       if (cart.status !== CartStatus.ACTIVE) {
@@ -450,7 +511,7 @@ const productMap = new Map(products.map(p => [p.id, p]));
 for (const item of cart.items) {
   const product = productMap.get(item.productId);
 
-  if (!product || product.status !== 'ACTIVE') {
+  if (!product || product.status !== 'ACTIVE' || !product.isAvailable) {
     throw new ValidationError(
       'PRODUCT_NOT_AVAILABLE',
       `${item.productName} is unavailable`,

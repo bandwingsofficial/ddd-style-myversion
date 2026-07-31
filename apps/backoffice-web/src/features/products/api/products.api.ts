@@ -59,8 +59,20 @@ export const ProductsApi = {
   },
 
   listActiveForSelection: async (): Promise<Product[]> => {
-    const products = await ProductsApi.getAll();
-    return products.filter((product) => product.status === 'ACTIVE');
+    const limit = 100;
+    const firstPage = await ProductsApi.list({
+      page: 1,
+      limit,
+      status: 'ACTIVE',
+    });
+    const items = [...firstPage.items];
+
+    for (let page = 2; page <= firstPage.totalPages; page += 1) {
+      const nextPage = await ProductsApi.list({ page, limit, status: 'ACTIVE' });
+      items.push(...nextPage.items);
+    }
+
+    return items;
   },
 
   create: async (payload: CreateProductPayload): Promise<Product> => {

@@ -42,16 +42,21 @@ export class CartManagementController {
       throw new ValidationError('OUTLET_ID_REQUIRED', 'Outlet id is required');
     }
 
-    const data = await this.orchestrator.getActiveCart({
+    const { cart, removedInactiveCount } = await this.orchestrator.getActiveCart({
       customerId: user.actorId,
       outletId,
     });
 
     return {
       success: true,
-      code: 'CART_FETCHED',
-      message: 'Cart fetched successfully',
-      data,
+      code:
+        removedInactiveCount > 0 ? 'CART_ITEMS_REMOVED' : 'CART_FETCHED',
+      message:
+        removedInactiveCount > 0
+          ? 'One or more products were removed because they are no longer available.'
+          : 'Cart fetched successfully',
+      data: cart,
+      meta: { removedInactiveCount },
     };
   }
 

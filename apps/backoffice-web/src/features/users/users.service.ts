@@ -58,7 +58,7 @@ export const UsersService = {
   },
 
   getMasterProducts: async (): Promise<Product[]> => {
-    return ProductsApi.getAll();
+    return ProductsApi.listActiveForSelection();
   },
 
   assignProductToOutlet(outletId: string, productId: string) {

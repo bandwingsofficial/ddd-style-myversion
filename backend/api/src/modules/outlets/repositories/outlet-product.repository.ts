@@ -55,7 +55,10 @@ export class OutletProductRepository {
     const client = tx ?? this.prisma;
 
     const rows = await client.outletProduct.findMany({
-      where: { outletId },
+      where: {
+        outletId,
+        product: { status: 'ACTIVE' },
+      },
       orderBy: { createdAt: 'asc' },
     });
 
@@ -72,6 +75,10 @@ export class OutletProductRepository {
       where: {
         outletId,
         isAvailable: true,
+        product: {
+          status: 'ACTIVE',
+          isAvailable: true,
+        },
       },
       orderBy: { createdAt: 'asc' },
     });
@@ -97,6 +104,10 @@ export class OutletProductRepository {
       where: {
         outletId,
         isAvailable: true,
+        product: {
+          status: 'ACTIVE',
+          isAvailable: true,
+        },
       },
       include: {
   product: {

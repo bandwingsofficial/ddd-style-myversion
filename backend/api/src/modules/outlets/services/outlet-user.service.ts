@@ -3,6 +3,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
 import { PasswordHelper } from '../../../infrastructure/security/password.helper';
 
 import { OutletUser } from '../domain/models/outlet-user.model';
@@ -43,6 +44,86 @@ export class OutletUserService {
 
   async getByOutlet(outletId: string): Promise<OutletUser[]> {
     return this.outletUserRepo.findByOutlet(outletId);
+  }
+
+  /**
+   * Deactivates every active outlet user and revokes their sessions.
+   * Used when an outlet is inactivated (outlet status is master).
+   */
+  async inactivateAllUsersForOutlet(
+    params: {
+      outletId: string;
+      adminId: string;
+      ipAddress?: string;
+      userAgent?: string;
+    },
+    tx: PrismaTransaction,
+  ): Promise<{
+    userIds: string[];
+    usersInactivated: number;
+    sessionsRevoked: number;
+  }> {
+    const users = await this.outletUserRepo.findByOutlet(params.outletId, tx);
+    const userIds: string[] = [];
+    let usersInactivated = 0;
+    let sessionsRevoked = 0;
+
+    for (const user of users) {
+      if (!user.isActive) {
+        continue;
+      }
+
+      const disabledUser = user.disable();
+      await this.outletUserRepo.updateStatus(disabledUser, tx);
+      usersInactivated++;
+      userIds.push(user.id);
+
+      sessionsRevoked += await this.revokeAllSessionsForUser(user.id, tx);
+
+      await this.auditRepo.create(
+        {
+          actorType: ActorType.SUPER_ADMIN,
+          actorId: params.adminId,
+          action: AuditAction.OUTLET_USER_DISABLED,
+          metadata: {
+            outletUserId: user.id,
+            email: user.email,
+            outletId: params.outletId,
+            reason: 'OUTLET_INACTIVATED',
+          },
+          ipAddress: params.ipAddress,
+          userAgent: params.userAgent,
+        },
+        tx,
+      );
+    }
+
+    return { userIds, usersInactivated, sessionsRevoked };
+  }
+
+  private async revokeAllSessionsForUser(
+    userId: string,
+    tx: PrismaTransaction,
+  ): Promise<number> {
+    const activeSessions = await this.sessionRepo.findActiveByActor(
+      ActorType.OUTLET_USER,
+      userId,
+      tx,
+    );
+
+    for (const session of activeSessions) {
+      await this.refreshTokenRepo.revokeBySessionId(session.id, tx);
+    }
+
+    if (activeSessions.length === 0) {
+      return 0;
+    }
+
+    return this.sessionRepo.revokeAllForActor(
+      ActorType.OUTLET_USER,
+      userId,
+      tx,
+    );
   }
 
   async createUser(params: {
@@ -287,6 +368,8 @@ export class OutletUserService {
 
     await this.prisma.$transaction(async (tx) => {
       await this.outletUserRepo.updateStatus(disabledUser, tx);
+
+      await this.revokeAllSessionsForUser(user.id, tx);
 
       await this.auditRepo.create(
         {

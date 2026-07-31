@@ -5,4 +5,8 @@ export const OutletEvents = {
   CAMERA_STATUS_CHANGED: 'outlet.camera.status.changed',
   OUTLET_ENABLED: 'outlet.enabled',
   OUTLET_DISABLED: 'outlet.disabled',
+  OUTLET_ACTIVATED: 'outlet.activated',
+  OUTLET_INACTIVATED: 'outlet.inactivated',
+  OUTLET_USERS_INACTIVATED: 'outlet-users.inactivated',
+  USER_SESSIONS_INVALIDATED: 'user-sessions.invalidated',
 } as const;
