@@ -108,9 +108,25 @@ export default function CheckoutPage() {
         outletId: currentOutletId,
       });
 
+      const razorpayKey = data.key ?? process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+
+      console.log("[Razorpay Checkout]", {
+        customerId: data.customerId,
+        customerName: data.customerName,
+        customerEmail: data.customerEmail,
+        customerPhone: data.customerPhone,
+        checkoutId: data.checkoutId,
+        subtotal: data.subtotal,
+        discount: data.discount,
+        deliveryFee: data.deliveryFee,
+        grandTotal: data.grandTotal,
+        razorpayAmount: data.razorpayAmount,
+        isRetry: data.isRetry,
+      });
+
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: data.amount,
+        key: razorpayKey,
+        amount: data.razorpayAmount,
         currency: data.currency,
         name: "CaneTen",
         description: "Order Payment",
@@ -123,15 +139,16 @@ export default function CheckoutPage() {
             rzp_payment_id: response.razorpay_payment_id,
             rzp_order_id: response.razorpay_order_id,
             rzp_signature: response.razorpay_signature,
-            amount: summary.grandTotal.toString(),
+            amount: data.grandTotal.toString(),
             addressId: addressId,
           });
 
           router.replace(`/payment/process?${params.toString()}`);
         },
         prefill: {
-          name: "Customer",
-          contact: "9999999999",
+          name: data.customerName,
+          email: data.customerEmail || undefined,
+          contact: data.customerPhone,
         },
         theme: { color: "#10B981" },
         modal: {

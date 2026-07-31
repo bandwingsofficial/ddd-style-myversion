@@ -45,6 +45,17 @@ export class OrderOrchestratorService {
     return this.orderService.createFromCart(params, tx);
   }
 
+  async resyncPendingOrderFromCart(
+    params: {
+      orderId: string;
+      cart: Cart;
+      address: SavedAddress;
+    },
+    tx?: PrismaTransaction,
+  ): Promise<Order> {
+    return this.orderService.resyncPendingOrderFromCart(params, tx);
+  }
+
   /* ================================================= */
   /* STATUS TRANSITIONS (TX SAFE)                      */
   /* ================================================= */

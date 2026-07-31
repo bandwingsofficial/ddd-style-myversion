@@ -35,7 +35,8 @@ async createPayment(params: {
   orderId: string;
 }): Promise<{
   payment: Payment;
-  razorpayOrderId: string;   // 🔥 NEW
+  razorpayOrderId: string;
+  amountInPaise: number;
   checkoutUrl: string | null;
 }> {
 
@@ -113,6 +114,8 @@ async createPayment(params: {
     currency: 'INR',
   });
 
+  const amountInPaise = Math.round(amount * 100);
+
   /* ================================================= */
   /* PHASE 3 — SAVE PROVIDER REF                        */
   /* ================================================= */
@@ -131,9 +134,8 @@ async createPayment(params: {
 
   return {
     payment: updated,
-
-    razorpayOrderId: session.providerPaymentId, // ✅ new
-
+    razorpayOrderId: session.providerPaymentId,
+    amountInPaise,
     checkoutUrl: session.checkoutUrl ?? null,
   };
 }

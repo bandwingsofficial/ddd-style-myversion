@@ -38,15 +38,27 @@ export interface CheckoutStartRequest {
   savedAddressId: string;
 }
 
-// ✅ UPDATED: Includes Razorpay Order Details and OrderNumber for UI
+// Includes Razorpay order details, checkout totals, and authenticated customer contact
 export interface CheckoutStartResponse {
-  orderId: string;        // The UUID (Internal)
-  orderNumber: string;   // The readable ID (e.g., CNT-2026...)
+  checkoutId: string;
+  orderId: string;
+  orderNumber: string;
   paymentId: string;
-  razorpayOrderId: string; // "order_..." from Razorpay
-  amount: number;          // Amount in paisa
+  razorpayOrderId: string;
+  /** Amount in paise (grandTotal × 100) */
+  amount: number;
+  razorpayAmount: number;
   currency: string;
-  key?: string;            // Backend might send key
+  key?: string;
+  isRetry?: boolean;
+  customerId: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  subtotal: number;
+  discount: number;
+  deliveryFee: number;
+  grandTotal: number;
 }
 
 // ✅ NEW: Payload to verify the signature on backend

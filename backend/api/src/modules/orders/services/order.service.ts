@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { v4 as uuid } from 'uuid';
 
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
 import { Decimal } from '@prisma/client/runtime/library';
 
 import { OrderRepository } from '../repositories/order.repository';
-import { OrderEventRepository } from '../repositories/order-event.repository'; // ✅ NEW
+import { OrderEventRepository } from '../repositories/order-event.repository';
 
 import { Cart } from '../../cart/domain/models/cart.model';
 import { SavedAddress } from '../../saved-address/domain/models/saved-address.model';
@@ -18,6 +19,8 @@ import { Money } from '../domain/value-objects/money.vo';
 
 import { ValidationError } from '../../../common/errors';
 import { CartStatus } from '@/modules/cart/domain/enums/cart-status.enum';
+import { OrderStatus } from '../domain/enums/order-status.enum';
+import { OrderMapper } from '../mappers/order.mapper';
 
 /* ================================================= */
 /* HELPERS                                           */
@@ -28,8 +31,9 @@ const toNumber = (d?: Decimal | null): number => (d == null ? 0 : Number(d));
 @Injectable()
 export class OrderService {
   constructor(
+    private readonly prisma: PrismaService,
     private readonly orderRepo: OrderRepository,
-    private readonly orderEventRepo: OrderEventRepository, // ✅ NEW
+    private readonly orderEventRepo: OrderEventRepository,
   ) {}
 
   /* ================================================= */
@@ -155,6 +159,101 @@ export class OrderService {
 
   return saved;
 }
+
+  /**
+   * Refresh a PAYMENT_PENDING order snapshot from the current locked cart.
+   * Ensures Razorpay amount matches the latest checkout totals on retry.
+   */
+  async resyncPendingOrderFromCart(
+    params: {
+      orderId: string;
+      cart: Cart;
+      address: SavedAddress;
+    },
+    tx?: PrismaTransaction,
+  ): Promise<Order> {
+    const run = async (client: PrismaTransaction): Promise<Order> => {
+      const existing = await this.orderRepo.findById(params.orderId, client);
+
+      if (!existing) {
+        throw new ValidationError('ORDER_NOT_FOUND', 'Order not found');
+      }
+
+      if (existing.status !== OrderStatus.PAYMENT_PENDING) {
+        throw new ValidationError(
+          'ORDER_NOT_RESYNCABLE',
+          'Only payment-pending orders can be resynced from cart',
+        );
+      }
+
+      if (!params.cart.hasItems()) {
+        throw new ValidationError('EMPTY_CART', 'Cart is empty');
+      }
+
+      const { cart, address } = params;
+
+      await client.orderItem.deleteMany({
+        where: { orderId: existing.id },
+      });
+
+      const itemRows = cart.items.map((item) => ({
+        id: uuid(),
+        orderId: existing.id,
+        productId: item.productId,
+        productName: item.productName,
+        productImage: item.productImage,
+        quantity: item.quantity,
+        unitPrice: toNumber(item.unitPrice),
+        discountPrice:
+          item.discountPrice != null ? toNumber(item.discountPrice) : null,
+        totalPrice: toNumber(item.getLineTotal()),
+      }));
+
+      const deliveryFee = toNumber(cart.deliveryFee);
+
+      const row = await client.order.update({
+        where: { id: existing.id },
+        data: {
+          cartId: cart.id,
+          addressLabel: address.label,
+          addressText: address.addressText,
+          latitude: address.latitude ?? null,
+          longitude: address.longitude ?? null,
+          subtotal: toNumber(cart.subtotal),
+          discount: toNumber(cart.discount),
+          afterDiscountTotal: toNumber(cart.afterDiscountTotal),
+          deliveryFee,
+          grandTotal: toNumber(cart.grandTotal),
+          itemCount: cart.itemCount,
+          deliveryRuleId: cart.deliveryRuleId ?? null,
+          deliveryRuleName: cart.deliveryRuleName ?? null,
+          deliveryRuleMinimumOrderAmount:
+            cart.deliveryRuleMinimumOrderAmount != null
+              ? toNumber(cart.deliveryRuleMinimumOrderAmount)
+              : null,
+          isFreeDelivery: deliveryFee === 0,
+          version: existing.version + 1,
+          updatedAt: new Date(),
+          items: {
+            create: itemRows,
+          },
+        },
+        include: {
+          items: true,
+          customer: {
+            include: {
+              profile: true,
+            },
+          },
+        },
+      });
+
+      return OrderMapper.toDomain(row);
+    };
+
+    return tx ? run(tx) : this.prisma.$transaction(run);
+  }
+
   /* ================================================= */
   /* GET OUTLET ORDERS                                 */
   async getOutletOrders(outletId: string): Promise<Order[]> {

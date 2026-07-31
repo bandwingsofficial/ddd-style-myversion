@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { CheckoutService } from './checkout.service';
 import { CheckoutSummaryDto } from '../mappers/checkout-summary.mapper';
+import { CheckoutStartResult } from '../types/checkout-start-response.types';
 
 @Injectable()
 export class CheckoutOrchestratorService {
@@ -32,16 +33,7 @@ async startCheckout(params: {
   customerId: string;
   outletId: string;
   savedAddressId: string;
-}): Promise<{
-  orderId: string;
-  orderNumber: string;
-  paymentId: string;
-  razorpayOrderId: string;
-  amount: number;
-  currency: string;
-  key: string;
-  isRetry: boolean;
-}> {
+}): Promise<CheckoutStartResult> {
   return this.checkoutService.startCheckout(params);
 }
 }

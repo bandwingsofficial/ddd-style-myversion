@@ -24,7 +24,8 @@ async createPayment(params: {
   orderId: string;
 }): Promise<{
   payment: Payment;
-  razorpayOrderId: string;   // 🔥 NEW
+  razorpayOrderId: string;
+  amountInPaise: number;
   checkoutUrl: string | null;
 }> {
 
