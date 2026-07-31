@@ -142,10 +142,14 @@ export class OrderStatusService {
   }
 
   /**
-   * Finalize a paid order after successful payment verification.
+   * Finalize payment on an order after successful verification.
+   * Transitions PAYMENT_PENDING → PAID only. Outlet accept remains manual.
    * Idempotent: safe for client confirm + webhook retries.
    */
-  async markPaidAndConfirm(orderId: string, tx?: PrismaTransaction) {
+  async finalizeAfterSuccessfulPayment(
+    orderId: string,
+    tx?: PrismaTransaction,
+  ) {
     const existing = await this.orderRepo.findById(orderId, tx);
 
     if (!existing) {
@@ -153,6 +157,7 @@ export class OrderStatusService {
     }
 
     if (
+      existing.status === OrderStatus.PAID ||
       existing.status === OrderStatus.CONFIRMED ||
       existing.status === OrderStatus.PREPARING ||
       existing.status === OrderStatus.OUT_FOR_DELIVERY ||
@@ -161,22 +166,19 @@ export class OrderStatusService {
       return existing;
     }
 
-    let order = existing;
-
     if (existing.status === OrderStatus.PAYMENT_PENDING) {
-      order = await this.markPaid(orderId, tx);
-    } else if (existing.status !== OrderStatus.PAID) {
-      throw new ValidationError(
-        'INVALID_ORDER_STATE',
-        `Cannot finalize order in status ${existing.status}`,
-      );
+      return this.markPaid(orderId, tx);
     }
 
-    if (order.status === OrderStatus.PAID) {
-      order = await this.confirm(orderId, tx);
-    }
+    throw new ValidationError(
+      'INVALID_ORDER_STATE',
+      `Cannot finalize order in status ${existing.status}`,
+    );
+  }
 
-    return order;
+  /** @deprecated Use finalizeAfterSuccessfulPayment — no longer auto-confirms */
+  async markPaidAndConfirm(orderId: string, tx?: PrismaTransaction) {
+    return this.finalizeAfterSuccessfulPayment(orderId, tx);
   }
 
   async confirm(orderId: string, tx?: PrismaTransaction) {

@@ -16,6 +16,10 @@ import Header from "@/components/customer/Header";
 import OrderItems from "../components/OrderItems";
 import OrderSummary from "../components/OrderSummary";
 import OrderTracking from "../components/OrderTracking";
+import SupportCard, {
+  EstimatedPrepTime,
+  PaymentSuccessBanner,
+} from "../components/SupportCard";
 import { useOrder } from "../hooks/useOrders";
 
 export default function OrderDetailsPage() {
@@ -64,6 +68,18 @@ export default function OrderDetailsPage() {
     order.status.toUpperCase(),
   );
 
+  const showPaymentSuccess = [
+    "PAID",
+    "CONFIRMED",
+    "PREPARING",
+    "OUT_FOR_DELIVERY",
+  ].includes(order.status.toUpperCase());
+
+  const deliveredAt =
+    order.status.toUpperCase() === "DELIVERED"
+      ? order.updatedAt ?? order.createdAt
+      : null;
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Header />
@@ -81,7 +97,9 @@ export default function OrderDetailsPage() {
           </Link>
 
           <span className="rounded-full bg-emerald-100 px-4 py-2 text-xs font-bold uppercase tracking-wider text-emerald-700">
-            {order.status.replaceAll("_", " ")}
+            {order.paymentStatus === "PAID" && order.status === "PAID"
+              ? "PAID · AWAITING OUTLET"
+              : order.status.replaceAll("_", " ")}
           </span>
 
         </div>
@@ -89,6 +107,14 @@ export default function OrderDetailsPage() {
         <div className="grid gap-6 lg:grid-cols-3">
 
           <div className="space-y-6 lg:col-span-2">
+
+            {showPaymentSuccess && (
+              <EstimatedPrepTime />
+            )}
+
+            {showPaymentSuccess && (
+              <PaymentSuccessBanner orderNumber={order.orderNumber} />
+            )}
 
             <div className="rounded-2xl border bg-white p-6">
 
@@ -131,6 +157,7 @@ export default function OrderDetailsPage() {
 
                 <OrderTracking
                   status={order.status}
+                  deliveredAt={deliveredAt}
                 />
 
               </div>
@@ -148,24 +175,7 @@ export default function OrderDetailsPage() {
               order={order}
             />
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
-
-              <h3 className="mb-3 text-lg font-bold text-slate-900">
-                Need Help?
-              </h3>
-
-              <p className="mb-6 text-sm leading-6 text-slate-500">
-                If you have any questions regarding this order,
-                our support team is here to help.
-              </p>
-
-              <button
-                className="w-full rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
-              >
-                Contact Support
-              </button>
-
-            </div>
+            <SupportCard />
 
           </div>
 

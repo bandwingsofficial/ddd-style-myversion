@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { UploadService } from '../../uploads/services/upload.service';
 import { Order } from '../domain/models/order.model';
+import { OrderStatus } from '../domain/enums/order-status.enum';
 
 @Injectable()
 export class OrderResponseMapper {
@@ -48,10 +49,27 @@ export class OrderResponseMapper {
         order.deliveryRuleMinimumOrderAmount?.toNumber() ?? null,
       isFreeDelivery: order.isFreeDelivery,
       status: order.status,
+      paymentStatus: this.derivePaymentStatus(order.status),
       items,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
     };
+  }
+
+  private derivePaymentStatus(
+    status: OrderStatus,
+  ): 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' {
+    switch (status) {
+      case OrderStatus.PAYMENT_PENDING:
+      case OrderStatus.CREATED:
+        return 'PENDING';
+      case OrderStatus.FAILED:
+        return 'FAILED';
+      case OrderStatus.CANCELLED:
+        return 'CANCELLED';
+      default:
+        return 'PAID';
+    }
   }
 
   private async resolveImageUrl(imageRef?: string | null): Promise<string> {

@@ -62,8 +62,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onAction }) => {
 
       {/* Actions */}
       <div className="grid gap-2">
-        {/* New Order Actions */}
-        {(status === 'PENDING' || status === 'PAYMENT_PENDING' || !status) && (
+        {status === 'PAID' && (
           <div className="grid grid-cols-2 gap-2">
              <button 
                onClick={() => onAction(order.id, 'reject')}

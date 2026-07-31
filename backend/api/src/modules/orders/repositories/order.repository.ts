@@ -119,7 +119,12 @@ async findById(
     tx?: PrismaTransaction,
   ): Promise<Order[]> {
     const rows = await (tx ?? this.prisma).order.findMany({
-      where: { outletId },
+      where: {
+        outletId,
+        status: {
+          notIn: ['CREATED', 'PAYMENT_PENDING'],
+        },
+      },
       include: {
         items: true,
         customer: {

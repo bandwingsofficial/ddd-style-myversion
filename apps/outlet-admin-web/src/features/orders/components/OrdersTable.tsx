@@ -108,6 +108,10 @@ const TableRow = ({ initialOrder, activeTab, onAction }: { initialOrder: Order; 
   const [order, setOrder] = useState<Order>(initialOrder);
   const [isFetching, setIsFetching] = useState(false);
 
+  useEffect(() => {
+    setOrder(initialOrder);
+  }, [initialOrder]);
+
   // Lazy load product details and address because summary API doesn't provide them
   useEffect(() => {
     const loadFullDetails = async () => {
@@ -188,19 +192,26 @@ const TableRow = ({ initialOrder, activeTab, onAction }: { initialOrder: Order; 
       {/* Amount & Status Badge */}
       <td className="p-4 align-top">
         <div className="text-sm font-black text-gray-800">₹{order.grandTotal}</div>
-        <div className={`text-[10px] inline-block px-2 py-0.5 rounded mt-2 font-black uppercase tracking-widest ${
-            order.status === 'CONFIRMED' ? 'bg-blue-100 text-blue-700' :
-            order.status === 'PREPARING' ? 'bg-amber-100 text-amber-700' :
-            order.status === 'PAYMENT_PENDING' ? 'bg-gray-100 text-gray-500' :
-            'bg-emerald-50 text-emerald-600'
-        }`}>
-            {order.status}
+        <div className="mt-2 flex flex-wrap gap-1">
+          <div className={`text-[10px] inline-block px-2 py-0.5 rounded font-black uppercase tracking-widest ${
+              order.status === 'CONFIRMED' ? 'bg-blue-100 text-blue-700' :
+              order.status === 'PREPARING' ? 'bg-amber-100 text-amber-700' :
+              order.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' :
+              'bg-gray-100 text-gray-600'
+          }`}>
+              {order.status}
+          </div>
+          {(order.paymentStatus === 'PAID' || order.status === 'PAID') && (
+            <div className="text-[10px] inline-block rounded bg-green-100 px-2 py-0.5 font-black uppercase tracking-widest text-green-700">
+              PAID
+            </div>
+          )}
         </div>
       </td>
 
       {/* Actions */}
       <td className="p-4 align-top">
-        {activeTab === 'NEW' && (
+        {activeTab === 'NEW' && order.status?.toUpperCase() === 'PAID' && (
           <div className="flex gap-2">
             <button 
               onClick={() => onAction(order.id, 'accept')}
@@ -217,7 +228,7 @@ const TableRow = ({ initialOrder, activeTab, onAction }: { initialOrder: Order; 
 
         {activeTab === 'PREPARING' && (
           <div className="space-y-2">
-            {order.status === 'CONFIRMED' || order.status === 'ACCEPTED' ? (
+            {order.status === 'CONFIRMED' ? (
                 <button 
                     onClick={() => onAction(order.id, 'prepare')}
                     className="w-full px-3 py-2.5 bg-blue-600 text-white text-[10px] font-black rounded hover:bg-blue-700 shadow-sm flex items-center justify-center gap-2 transition-all">

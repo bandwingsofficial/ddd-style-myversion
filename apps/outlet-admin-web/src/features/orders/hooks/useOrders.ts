@@ -2,14 +2,18 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Order } from '../types';
 import * as orderApi from '../api/orders';
+import { useOrderSocket } from './useOrderSocket';
 
 export const useOrders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch orders from the API
-  const loadOrders = useCallback(async () => {
+  const loadOrders = useCallback(async (silent = false) => {
     try {
+      if (!silent) {
+        setLoading(true);
+      }
+
       const data = await orderApi.fetchOutletOrders();
       if (data && Array.isArray(data)) {
          setOrders(data);
@@ -19,18 +23,28 @@ export const useOrders = () => {
     } catch (error) {
       console.error("Failed to fetch orders", error);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, []);
 
-  // Initial load and Real-time Polling (every 30 seconds)
   useEffect(() => {
-    loadOrders();
-    const interval = setInterval(loadOrders, 30000); 
+    void loadOrders(false);
+  }, [loadOrders]);
+
+  useOrderSocket(() => {
+    void loadOrders(true);
+  });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void loadOrders(true);
+    }, 30000);
+
     return () => clearInterval(interval);
   }, [loadOrders]);
 
-  // Handle Order Actions (Accept, Reject, Cook, Dispatch, etc.)
   const handleStatusChange = async (
     orderId: string, 
     action: 'accept' | 'reject' | 'prepare' | 'deliver' | 'complete'
@@ -43,35 +57,28 @@ export const useOrders = () => {
         case 'deliver': await orderApi.setOutForDelivery(orderId); break;
         case 'complete': await orderApi.setDelivered(orderId); break;
       }
-      // Immediately reload to reflect the change
-      await loadOrders(); 
+      await loadOrders(true);
     } catch (error) {
       toast.error('Failed to update order status. Please try again.');
       console.error(error);
     }
   };
 
-  // Organize orders into columns for the UI
   const columns = {
-    // 1. NEW: Includes your specific backend status PAYMENT_PENDING
-    NEW: orders.filter(o => 
-      !o.status || 
-      ['PENDING', 'ORDER_PLACED', 'PAID', 'CREATED', 'PAYMENT_PENDING'].includes(o.status.toUpperCase())
+    NEW: orders.filter((order) =>
+      order.status?.toUpperCase() === 'PAID',
     ),
 
-    // 2. KITCHEN: Orders that are confirmed or being prepared
-    PREPARING: orders.filter(o => 
-      ['CONFIRMED', 'PREPARING', 'ACCEPTED', 'READY'].includes(o.status?.toUpperCase())
+    PREPARING: orders.filter((order) =>
+      ['CONFIRMED', 'PREPARING'].includes(order.status?.toUpperCase() ?? ''),
     ),
 
-    // 3. DISPATCH: Orders out for delivery
-    DISPATCH: orders.filter(o => 
-      ['OUT_FOR_DELIVERY', 'DISPATCHED', 'DISPATCH'].includes(o.status?.toUpperCase())
+    DISPATCH: orders.filter((order) =>
+      order.status?.toUpperCase() === 'OUT_FOR_DELIVERY',
     ),
 
-    // 4. COMPLETED: Finished or Cancelled orders for History view
-    COMPLETED: orders.filter(o => 
-      ['DELIVERED', 'COMPLETED', 'CANCELLED', 'REJECTED'].includes(o.status?.toUpperCase())
+    COMPLETED: orders.filter((order) =>
+      ['DELIVERED', 'CANCELLED', 'FAILED'].includes(order.status?.toUpperCase() ?? ''),
     ),
   };
 
@@ -80,6 +87,6 @@ export const useOrders = () => {
     columns, 
     loading, 
     handleStatusChange, 
-    refresh: loadOrders 
+    refresh: () => loadOrders(false),
   };
 };

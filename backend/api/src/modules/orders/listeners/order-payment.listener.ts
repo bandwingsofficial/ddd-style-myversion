@@ -24,7 +24,7 @@ export class OrderPaymentListener {
       `[Payment Updated] Finalizing order after payment success orderId=${payload.orderId} paymentId=${payload.paymentId ?? 'n/a'}`,
     );
 
-    const order = await this.orderStatusService.markPaidAndConfirm(
+    const order = await this.orderStatusService.finalizeAfterSuccessfulPayment(
       payload.orderId,
     );
 

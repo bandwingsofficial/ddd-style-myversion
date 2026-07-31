@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Package, ShoppingBag, Search, SlidersHorizontal, RefreshCw } from "lucide-react";
 import Header from "@/components/customer/Header";
 import OrderCard from "../components/OrderCard";
+import SupportCard from "../components/SupportCard";
 import { useOrders } from "../hooks/useOrders";
 
 type FilterStatus = "ALL" | "DELIVERED" | "PENDING" | "CANCELLED";
@@ -169,6 +170,12 @@ export default function OrdersPage() {
                 <OrderCard order={order} />
               </div>
             ))}
+          </div>
+        )}
+        
+        {orders && orders.length > 0 && (
+          <div className="mt-10">
+            <SupportCard compact />
           </div>
         )}
       </main>

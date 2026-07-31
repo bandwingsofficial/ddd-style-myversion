@@ -7,17 +7,19 @@ import {
 } from "react";
 
 import { OrdersApi } from "../api/orders.api";
-import { Order } from "../types/order.types";
 import { OrderDetails } from "@/features/checkout/checkout.types";
+import { useOrderSocket } from "./useOrderSocket";
 
 export function useOrders() {
   const [orders, setOrders] =
   useState<OrderDetails[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchOrders = useCallback(async () => {
+  const fetchOrders = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
 
       const response =
         await OrdersApi.getOrders();
@@ -29,18 +31,32 @@ export function useOrders() {
         error,
       );
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    fetchOrders();
+    fetchOrders(false);
+  }, [fetchOrders]);
+
+  useOrderSocket(() => {
+    void fetchOrders(true);
+  });
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void fetchOrders(true);
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, [fetchOrders]);
 
   return {
     orders,
     loading,
-    refetch: fetchOrders,
+    refetch: () => fetchOrders(false),
   };
 }
 
@@ -57,7 +73,6 @@ export function useOrder(orderId: string) {
   const fetchOrder = useCallback(
     async (silent = false) => {
       try {
-        // Show loader only on first load
         if (!silent) {
           setLoading(true);
         }
@@ -80,14 +95,19 @@ export function useOrder(orderId: string) {
     [orderId],
   );
 
-  // Initial Load
   useEffect(() => {
     if (!orderId) return;
 
     fetchOrder(false);
   }, [orderId, fetchOrder]);
 
-  // Polling
+  useOrderSocket(
+    () => {
+      void fetchOrder(true);
+    },
+    { orderId },
+  );
+
   useEffect(() => {
     if (!orderId) return;
 
@@ -98,12 +118,12 @@ export function useOrder(orderId: string) {
           currentOrder.status !== "DELIVERED" &&
           currentOrder.status !== "CANCELLED"
         ) {
-          fetchOrder(true);
+          void fetchOrder(true);
         }
 
         return currentOrder;
       });
-    }, 10000);
+    }, 15000);
 
     return () => clearInterval(interval);
   }, [orderId, fetchOrder]);

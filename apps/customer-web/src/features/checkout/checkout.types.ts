@@ -92,6 +92,7 @@ export interface OrderDetails {
   outletId: string;
   cartId: string;
   status: "PAYMENT_PENDING" | "PAID" | "CONFIRMED" | "PREPARING" | "OUT_FOR_DELIVERY" | "FAILED" | "CANCELLED" | "DELIVERED";
+  paymentStatus?: "PENDING" | "PAID" | "FAILED" | "CANCELLED";
   address: {
     id?: string;
     label: string;

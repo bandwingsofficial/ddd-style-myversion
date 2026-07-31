@@ -46,7 +46,7 @@ export default function DashboardPage() {
     // Stats Calculation - Updated to include PAYMENT_PENDING in pending count
     const revenue = filtered.reduce((sum, o) => String(o.status) === 'DELIVERED' ? sum + o.grandTotal : sum, 0);
     const pendingCount = filtered.filter(o => 
-      ['NEW', 'PREPARING', 'PAYMENT_PENDING'].includes(String(o.status))
+      ['PAID', 'CONFIRMED', 'PREPARING', 'OUT_FOR_DELIVERY'].includes(String(o.status))
     ).length;
 
     // Chart Points Calculation

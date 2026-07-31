@@ -74,6 +74,7 @@ import { OrdersModule } from '../../orders/modules/orders.module';
   exports: [
     PaymentOrchestratorService,
     PaymentService,
+    PaymentRepository,
   ],
 })
 export class PaymentsModule {}

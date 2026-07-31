@@ -1,15 +1,23 @@
 export type OrderStatus = 
   | 'PAYMENT_PENDING' 
+  | 'PAID'
   | 'PENDING' 
   | 'CONFIRMED' 
-  | 'ACCEPTED'      // Added to fix the red error in image 4
+  | 'ACCEPTED'
   | 'PREPARING' 
-  | 'READY'         // Added to match your hook logic
-  | 'DISPATCH'      // Added to match your hook logic
+  | 'READY'
+  | 'DISPATCH'
   | 'OUT_FOR_DELIVERY' 
   | 'DELIVERED' 
   | 'CANCELLED'
+  | 'FAILED'
   | 'REJECTED';
+
+export type OutletPaymentStatus =
+  | 'PENDING'
+  | 'PAID'
+  | 'FAILED'
+  | 'CANCELLED';
 
 export interface OrderItem {
   id: string;
@@ -43,7 +51,8 @@ export interface Order {
   grandTotal: number;
   itemCount: number;
   status: OrderStatus;
-  items?: OrderItem[]; 
+  paymentStatus?: OutletPaymentStatus;
+  items?: OrderItem[];
   createdAt: string;
   updatedAt?: string;
 }

@@ -106,6 +106,31 @@ export class PaymentRepository {
     return row ? PaymentMapper.toDomain(row) : null;
   }
 
+  async findLatestByOrderIds(
+    orderIds: string[],
+    tx?: PrismaTransaction,
+  ): Promise<Map<string, Payment>> {
+    const uniqueIds = [...new Set(orderIds.filter(Boolean))];
+    const result = new Map<string, Payment>();
+
+    if (uniqueIds.length === 0) {
+      return result;
+    }
+
+    const rows = await (tx ?? this.prisma).payment.findMany({
+      where: { orderId: { in: uniqueIds } },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    for (const row of rows) {
+      if (!result.has(row.orderId)) {
+        result.set(row.orderId, PaymentMapper.toDomain(row));
+      }
+    }
+
+    return result;
+  }
+
   /* ================================================= */
   /* READ (ALL BY ORDER ID)                             */
   /* ================================================= */

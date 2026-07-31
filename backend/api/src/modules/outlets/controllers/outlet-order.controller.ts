@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 
 import { OrderOrchestratorService } from '../../orders/services/order-orchestrator.service';
+import { PaymentRepository } from '../../payments/repositories/payment.repository';
 
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
@@ -23,9 +24,12 @@ import { OutletOrderResponseDto } from '../dtos/outlet-order-response.dto';
 export class OutletOrderController {
   constructor(
     private readonly orderOrchestrator: OrderOrchestratorService,
+    private readonly paymentRepo: PaymentRepository,
   ) {}
 
-  private toDetailedResponse(order: any) {
+  private async toDetailedResponse(order: any) {
+  const latestPayment = await this.paymentRepo.findLatestByOrderId(order.id);
+
   return {
     id: order.id,
     orderNumber: order.orderNumber,
@@ -48,6 +52,10 @@ export class OutletOrderController {
     itemCount: order.itemCount,
 
     status: order.status,
+    paymentStatus: OutletOrderResponseDto.resolvePaymentStatus(
+      order.status,
+      latestPayment,
+    ),
 
     items: order.items.map((item: any) => ({
       id: item.id,
@@ -79,11 +87,18 @@ async getOrders(@CurrentUser() user: any) {
   const orders =
     await this.orderOrchestrator.getOutletOrders(user.outletId);
 
+  const paymentMap = await this.paymentRepo.findLatestByOrderIds(
+    orders.map((order) => order.id),
+  );
+
   return {
     success: true,
     code: 'OUTLET_ORDERS_FETCHED',
     message: 'Outlet orders fetched successfully',
-    data: orders.map(order => new OutletOrderResponseDto(order)),
+    data: orders.map(
+      (order) =>
+        new OutletOrderResponseDto(order, paymentMap.get(order.id) ?? null),
+    ),
   };
 }
 
@@ -106,7 +121,7 @@ async getOrderById(
     success: true,
     code: 'OUTLET_ORDER_FETCHED',
     message: 'Order fetched successfully',
-    data: this.toDetailedResponse(order),
+    data: await this.toDetailedResponse(order),
   };
 }
   /* ================================================= */

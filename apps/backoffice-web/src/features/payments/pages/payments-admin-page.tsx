@@ -8,6 +8,7 @@ import {
   AdminPaymentListItem,
   PaymentsAdminApi,
 } from '../api/payments-admin.api';
+import { useOrderSocket } from '../hooks/use-order-socket';
 
 export default function PaymentsAdminPage() {
   const [payments, setPayments] = useState<AdminPaymentListItem[]>([]);
@@ -32,6 +33,10 @@ export default function PaymentsAdminPage() {
   useEffect(() => {
     void loadPayments();
   }, [loadPayments]);
+
+  useOrderSocket(() => {
+    void loadPayments();
+  });
 
   return (
     <div className="min-h-screen bg-background p-3 md:p-4 font-sans">
