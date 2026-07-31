@@ -110,8 +110,14 @@ export class StockItemManagementController {
   }
 
   @Delete(':stockItemId')
-  async deleteStockItem(@Param('stockItemId') stockItemId: string) {
-    const data = await this.orchestrator.deleteStockItem({ stockItemId });
+  async deleteStockItem(
+    @Param('stockItemId') stockItemId: string,
+    @Query('force') force?: string,
+  ) {
+    const data = await this.orchestrator.deleteStockItem({
+      stockItemId,
+      force: force === 'true',
+    });
 
     return {
       success: true,

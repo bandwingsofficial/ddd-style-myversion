@@ -2,6 +2,7 @@ import { axiosInstance } from '@/http/axios';
 import { StockItemsApi } from '@/features/stock-items/api/stock-items.api';
 import { StockItem } from '@/features/stock-items/types/stock-item.types';
 import { OutletService } from '@/features/outlets/outlet.service';
+import { unwrapApiList } from '@/lib/unwrap-api-list';
 import {
   InventoryItem,
   InventoryListItem,
@@ -11,7 +12,7 @@ import {
 export const InventoryApi = {
   list: async (): Promise<InventoryItem[]> => {
     const res = await axiosInstance.get('/inventory');
-    return res.data.data;
+    return unwrapApiList<InventoryItem>(res.data?.data);
   },
 
   listMerged: async (): Promise<InventoryListItem[]> => {
@@ -20,11 +21,14 @@ export const InventoryApi = {
       StockItemsApi.getAll(),
     ]);
 
+    const safeInventory = Array.isArray(inventory) ? inventory : [];
+    const safeStockItems = Array.isArray(stockItems) ? stockItems : [];
+
     const stockMap = new Map<string, StockItem>(
-      stockItems.map((item) => [item.id, item]),
+      safeStockItems.map((item) => [item.id, item]),
     );
 
-    return inventory.map((item) => {
+    return safeInventory.map((item) => {
       const stock = stockMap.get(item.stockItemId);
 
       return {
@@ -51,12 +55,13 @@ export const InventoryApi = {
     const res = await axiosInstance.get(
       `/inventory/${stockItemId}/transactions`,
     );
-    return res.data.data;
+    return unwrapApiList<InventoryTransaction>(res.data?.data);
   },
 
   listActiveOutlets: async () => {
     const outlets = await OutletService.getAll();
-    return outlets.filter(
+    const safeOutlets = Array.isArray(outlets) ? outlets : [];
+    return safeOutlets.filter(
       (outlet: { status?: string }) => outlet.status === 'ACTIVE',
     );
   },
@@ -98,6 +103,3 @@ export const InventoryApi = {
     return res.data.data;
   },
 };
-
-/** @deprecated Use InventoryApi */
-export const InventoryAPI = InventoryApi;

@@ -11,6 +11,10 @@ import { ValidationError } from '../../../common/errors';
 
 import { StockItemEventsService } from '../events/stock-item-events.service';
 import { ListStockItemsQueryDto } from '../dtos/list-stock-items-query.dto';
+import {
+  DeleteAnalysis,
+  DELETE_ERROR_CODES,
+} from '../../../common/types/delete-analysis.types';
 
 @Injectable()
 export class StockItemService {
@@ -182,8 +186,63 @@ export class StockItemService {
     return updated;
   }
 
-  async deleteStockItem(stockItemId: string): Promise<{ id: string }> {
+  async deleteStockItem(
+    stockItemId: string,
+    options?: { force?: boolean },
+  ): Promise<{ id: string }> {
     const stockItem = await this.getById(stockItemId);
+    const analysis = await this.analyzeStockItemDelete(stockItemId);
+
+    if (!analysis.canDelete && !options?.force) {
+      if (analysis.canForceDelete) {
+        throw new ValidationError(
+          DELETE_ERROR_CODES.REQUIRES_FORCE,
+          `This stock item is referenced by ${analysis.removableDependencies
+            .map((item) => `${item.count} ${item.label.toLowerCase()}`)
+            .join(' and ')}.`,
+          { deleteAnalysis: analysis },
+        );
+      }
+
+      throw new ValidationError(
+        DELETE_ERROR_CODES.BLOCKED,
+        this.buildPermanentStockItemDeleteMessage(analysis),
+        { deleteAnalysis: analysis },
+      );
+    }
+
+    if (options?.force && analysis.permanentBlockers.length > 0) {
+      throw new ValidationError(
+        DELETE_ERROR_CODES.BLOCKED,
+        this.buildPermanentStockItemDeleteMessage(analysis),
+        { deleteAnalysis: analysis },
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      if (options?.force) {
+        await this.stockItemRepo.deleteCentralInventoryByStockItemId(
+          stockItemId,
+          tx,
+        );
+        await this.stockItemRepo.deleteOutletStocksByStockItemId(
+          stockItemId,
+          tx,
+        );
+      }
+
+      await this.stockItemRepo.deleteById(stockItemId, tx);
+    });
+
+    this.stockItemEvents.emitStockItemDeleted({
+      stockItemId: stockItem.id,
+    });
+
+    return { id: stockItem.id };
+  }
+
+  async analyzeStockItemDelete(stockItemId: string): Promise<DeleteAnalysis> {
+    await this.getById(stockItemId);
 
     const [
       centralInventoryCount,
@@ -195,35 +254,64 @@ export class StockItemService {
       this.stockItemRepo.countOutletStocksByStockItemId(stockItemId),
     ]);
 
-    const blockers: string[] = [];
-
-    if (centralInventoryCount > 0) {
-      blockers.push('central inventory records exist');
-    }
+    const permanentBlockers = [];
+    const removableDependencies = [];
 
     if (transactionCount > 0) {
-      blockers.push('inventory transactions exist');
+      permanentBlockers.push({
+        type: 'STOCK_TRANSACTIONS',
+        label: 'Inventory Transactions',
+        count: transactionCount,
+      });
+    }
+
+    if (centralInventoryCount > 0) {
+      removableDependencies.push({
+        type: 'CENTRAL_INVENTORY',
+        label: 'Central Inventory Records',
+        count: centralInventoryCount,
+      });
     }
 
     if (outletStockCount > 0) {
-      blockers.push('outlet stock records exist');
+      removableDependencies.push({
+        type: 'OUTLET_STOCK',
+        label: 'Outlet Stock Records',
+        count: outletStockCount,
+      });
     }
 
-    if (blockers.length > 0) {
-      throw new ValidationError(
-        'STOCK_ITEM_HAS_REFERENCES',
-        `Cannot delete stock item while ${blockers.join(', ')}.`,
-      );
+    const canDelete =
+      permanentBlockers.length === 0 && removableDependencies.length === 0;
+    const canForceDelete =
+      permanentBlockers.length === 0 && removableDependencies.length > 0;
+
+    return {
+      canDelete,
+      canForceDelete,
+      permanentBlockers,
+      removableDependencies,
+      forceDeleteActions: canForceDelete
+        ? [
+            'Remove central inventory records',
+            'Remove outlet stock records',
+            'Permanently delete the stock item',
+          ]
+        : undefined,
+    };
+  }
+
+  private buildPermanentStockItemDeleteMessage(
+    analysis: DeleteAnalysis,
+  ): string {
+    if (analysis.permanentBlockers.length === 0) {
+      return 'Cannot delete this stock item.';
     }
 
-    await this.prisma.$transaction(async (tx) => {
-      await this.stockItemRepo.deleteById(stockItemId, tx);
-    });
+    const details = analysis.permanentBlockers
+      .map((blocker) => `${blocker.count} ${blocker.label}`)
+      .join(', ');
 
-    this.stockItemEvents.emitStockItemDeleted({
-      stockItemId: stockItem.id,
-    });
-
-    return { id: stockItem.id };
+    return `Cannot delete this stock item because it has permanent business records: ${details}. Those records must be retained.`;
   }
 }

@@ -78,7 +78,10 @@ export class StockItemOrchestratorService {
 
   async deleteStockItem(params: {
     stockItemId: string;
+    force?: boolean;
   }): Promise<{ id: string }> {
-    return this.stockItemService.deleteStockItem(params.stockItemId);
+    return this.stockItemService.deleteStockItem(params.stockItemId, {
+      force: params.force,
+    });
   }
 }

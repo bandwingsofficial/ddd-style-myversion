@@ -3,11 +3,12 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
+  Query,
   UseGuards,
-  Delete
 } from '@nestjs/common';
 
 import { OutletOrchestratorService } from '../services/outlet-orchestrator.service';
@@ -23,6 +24,7 @@ import { ActorType } from '../../auth/domain/enums/actor-type.enum';
 import { CreateOutletDto } from '../dtos/create-outlet.dto';
 import { UpdateOutletDetailsDto } from '../dtos/update-outlet-details.dto';
 import { OutletCameraOnDto } from '../dtos/outlet-camera-on.dto';
+import { OutletCameraConfigDto } from '../dtos/outlet-camera-config.dto';
 import { OutletWorkingActionDto } from '../dtos/outlet-working-action.dto';
 
 /* Domain */
@@ -107,11 +109,22 @@ const outlet = Outlet.createNew({
       adminId: user.actorId,
     });
 
+    if (dto.cameraEnabled && dto.cameraStreamUrl?.trim()) {
+      await this.orchestrator.configureOutletCamera({
+        outletId: data.id,
+        enabled: true,
+        streamUrl: dto.cameraStreamUrl.trim(),
+        adminId: user.actorId,
+      });
+    }
+
+    const refreshed = await this.orchestrator.getOutletById(data.id);
+
     return {
       success: true,
       code: 'OUTLET_CREATED',
       message: 'Outlet created successfully',
-      data,
+      data: refreshed ?? data,
     };
   }
 
@@ -273,6 +286,49 @@ const outlet = Outlet.createNew({
       code: 'OUTLET_CAMERA_OFF',
       message: 'Camera turned off successfully',
       data: null,
+    };
+  }
+
+  @Post(':outletId/camera/config')
+  @Roles(ActorType.SUPER_ADMIN)
+  async configureCamera(
+    @Param('outletId') outletId: string,
+    @Body() dto: OutletCameraConfigDto,
+    @CurrentUser() user,
+  ) {
+    const data = await this.orchestrator.configureOutletCamera({
+      outletId,
+      enabled: dto.enabled,
+      streamUrl: dto.streamUrl,
+      adminId: user.actorId,
+    });
+
+    return {
+      success: true,
+      code: 'OUTLET_CAMERA_CONFIGURED',
+      message: 'Camera configuration saved successfully',
+      data,
+    };
+  }
+
+  @Delete(':outletId')
+  @Roles(ActorType.SUPER_ADMIN)
+  async deleteOutlet(
+    @Param('outletId') outletId: string,
+    @Query('force') force: string | undefined,
+    @CurrentUser() user,
+  ) {
+    const data = await this.orchestrator.deleteOutlet({
+      outletId,
+      adminId: user.actorId,
+      force: force === 'true',
+    });
+
+    return {
+      success: true,
+      code: 'OUTLET_DELETED',
+      message: 'Outlet deleted permanently',
+      data,
     };
   }
 

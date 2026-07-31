@@ -765,6 +765,26 @@ async updateSortOrder(
     return this.prisma.outletProduct.count({ where: { productId } });
   }
 
+  async deleteCartItemsByProductId(
+    productId: string,
+    tx?: PrismaTransaction,
+  ): Promise<number> {
+    const client = tx ?? this.prisma;
+    const result = await client.cartItem.deleteMany({ where: { productId } });
+    return result.count;
+  }
+
+  async deleteOutletProductsByProductId(
+    productId: string,
+    tx?: PrismaTransaction,
+  ): Promise<number> {
+    const client = tx ?? this.prisma;
+    const result = await client.outletProduct.deleteMany({
+      where: { productId },
+    });
+    return result.count;
+  }
+
   private buildAdminSearchWhere(params: {
     search?: string;
     categoryId?: string;

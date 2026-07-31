@@ -76,7 +76,7 @@ export const sidebarConfig = [
       {
         label: "Central Inventory",
         icon: Warehouse,
-        href: "/central-inventory",
+        href: "/inventory",
         roles: ["superadmin", "companyadmin"],
       },
       {
@@ -92,7 +92,7 @@ export const sidebarConfig = [
       {
         label: "Outlet Inventory",
         icon: Store,
-        href: "/inventory/outlets",
+        href: "/users",
         roles: [
           "superadmin",
           "companyadmin",
@@ -102,7 +102,7 @@ export const sidebarConfig = [
       {
         label: "Outlet Transfers",
         icon: ArrowRightLeft,
-        href: "/inventory/outlets",
+        href: "/inventory",
         roles: [
           "superadmin",
           "companyadmin",

@@ -325,6 +325,9 @@ export class InventoryService {
         );
 
       let outletStock: OutletStock;
+      const previousOutletQty = existingOutletStock
+        ? existingOutletStock.quantity
+        : Quantity.create(0);
 
       if (!existingOutletStock) {
         outletStock = OutletStock.createNew({
@@ -350,7 +353,7 @@ export class InventoryService {
       }
 
       /* 3️⃣ Transaction log */
-      const transaction =
+      const transferOutTransaction =
         StockTransaction.transferToOutlet({
           id: randomUUID(),
           stockItemId: params.stockItemId,
@@ -362,7 +365,21 @@ export class InventoryService {
           performedBy: params.performedBy,
         });
 
-      await this.transactionRepo.create(transaction, tx);
+      await this.transactionRepo.create(transferOutTransaction, tx);
+
+      const transferInTransaction =
+        StockTransaction.transferReceiveAtOutlet({
+          id: randomUUID(),
+          stockItemId: params.stockItemId,
+          inventoryId: inventory.id,
+          outletId: params.outletId,
+          quantity: qty,
+          previousOutletQty,
+          newOutletQty: outletStock.quantity,
+          performedBy: params.performedBy,
+        });
+
+      await this.transactionRepo.create(transferInTransaction, tx);
 
       return {
         inventory: updatedInventory,

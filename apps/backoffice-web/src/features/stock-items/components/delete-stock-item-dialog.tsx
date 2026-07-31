@@ -1,14 +1,13 @@
 'use client';
 
-import { Loader2 } from 'lucide-react';
-
+import ConfirmDeleteDialog from '@/components/ui/confirm-delete-dialog';
 import { StockItem } from '../types/stock-item.types';
 
 interface DeleteStockItemDialogProps {
   stockItem: StockItem | null;
   loading: boolean;
   onCancel: () => void;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
 }
 
 export default function DeleteStockItemDialog({
@@ -17,40 +16,15 @@ export default function DeleteStockItemDialog({
   onCancel,
   onConfirm,
 }: DeleteStockItemDialogProps) {
-  if (!stockItem) {
-    return null;
-  }
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md rounded-2xl border border-border bg-background p-6 shadow-2xl">
-        <h2 className="text-lg font-bold text-foreground">Delete Stock Item?</h2>
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          This action is permanent. Any associated uploaded files/images will also
-          be deleted. This action cannot be undone.
-        </p>
-        <p className="mt-4 rounded-xl bg-muted/40 px-4 py-3 text-sm font-semibold text-foreground">
-          {stockItem.name}
-        </p>
-
-        <div className="mt-6 flex justify-end gap-3">
-          <button
-            onClick={onCancel}
-            disabled={loading}
-            className="rounded-xl border border-input px-4 py-2 text-sm font-semibold"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-xl bg-destructive px-4 py-2 text-sm font-semibold text-destructive-foreground disabled:opacity-50"
-          >
-            {loading && <Loader2 size={16} className="animate-spin" />}
-            Delete Permanently
-          </button>
-        </div>
-      </div>
-    </div>
+    <ConfirmDeleteDialog
+      open={!!stockItem}
+      title="Delete Stock Item?"
+      description="This action is permanent. Any associated uploaded files or images will also be deleted. This action cannot be undone."
+      itemLabel={stockItem?.name ?? ''}
+      loading={loading}
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+    />
   );
 }

@@ -113,6 +113,11 @@ export class InventoryOrchestratorService {
   }
 
   async getOutletStock(outletId: string) {
-    return this.inventoryService.getOutletStock(outletId);
+    const outletStock =
+      await this.inventoryService.getOutletStock(outletId);
+
+    return this.inventoryResponseMapper.toOutletStockResponseList(
+      outletStock,
+    );
   }
 }

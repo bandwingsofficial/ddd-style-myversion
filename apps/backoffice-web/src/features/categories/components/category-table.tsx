@@ -20,7 +20,6 @@ import {
   GripVertical,
   Image as ImageIcon,
   ImageOff,
-  Loader2,
   Pencil,
   Power,
   PowerOff,
@@ -28,11 +27,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { IconActionButton } from '@/components/ui/icon-action-button';
+import SmartDeleteDialogs from '@/components/ui/smart-delete-dialogs';
+import { useSmartDelete } from '@/hooks/use-smart-delete';
 import { CategoriesApi } from '../api/categories.api';
 import { Category } from '../types/category.types';
 import CategoryTableSkeleton from './category-table-skeleton';
 import EditCategoryModal from './edit-category-modal';
-import DeleteCategoryDialog from './delete-category-dialog';
 
 interface Props {
   categories: Category[];
@@ -188,60 +189,43 @@ function CategoryCells({
         </span>
       </td>
       <td className="px-6 py-4 align-middle text-right">
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-1">
           {showEdit && (
-            <button
+            <IconActionButton
+              icon={<Pencil size={14} />}
+              label="Edit category"
+              variant="edit"
               onClick={() => onEdit?.(category)}
-              title="Edit category"
-              className="rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-semibold shadow-sm hover:border-primary hover:text-primary"
-            >
-              <span className="inline-flex items-center gap-1">
-                <Pencil size={14} /> Edit
-              </span>
-            </button>
+            />
           )}
 
           {isActive ? (
-            <button
+            <IconActionButton
+              icon={<PowerOff size={14} />}
+              label="Deactivate category"
               onClick={() => onDeactivate?.(category)}
               disabled={isLoading}
-              className="rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-semibold shadow-sm hover:border-amber-500 hover:text-amber-600 disabled:opacity-50"
-            >
-              <span className="inline-flex items-center gap-1">
-                {isLoading ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <PowerOff size={14} />
-                )}
-                Deactivate
-              </span>
-            </button>
+              loading={isLoading}
+              variant="deactivate"
+            />
           ) : (
-            <button
+            <IconActionButton
+              icon={<Power size={14} />}
+              label="Activate category"
               onClick={() => onActivate?.(category)}
               disabled={isLoading}
-              className="rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-semibold shadow-sm hover:border-primary hover:text-primary disabled:opacity-50"
-            >
-              <span className="inline-flex items-center gap-1">
-                {isLoading ? (
-                  <Loader2 size={14} className="animate-spin" />
-                ) : (
-                  <Power size={14} />
-                )}
-                Activate
-              </span>
-            </button>
+              loading={isLoading}
+              variant="activate"
+            />
           )}
 
-          <button
+          <IconActionButton
+            icon={<Trash2 size={14} />}
+            label="Delete category"
             onClick={() => onDelete(category)}
             disabled={isLoading}
-            className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50"
-          >
-            <span className="inline-flex items-center gap-1">
-              <Trash2 size={14} /> Delete
-            </span>
-          </button>
+            variant="delete"
+          />
         </div>
       </td>
     </>
@@ -262,10 +246,23 @@ export default function CategoryTable({
 }: Props) {
   const dragEnabled = !search.trim();
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [deletingCategory, setDeletingCategory] = useState<Category | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
   const [reordering, setReordering] = useState(false);
+
+  const deleteConfirm = useSmartDelete<Category>({
+    deleteFn: (category, options) =>
+      CategoriesApi.delete(category.id, { force: options?.force }),
+    successMessage: 'Category deleted permanently.',
+    errorMessage: 'Failed to delete category.',
+    getItemLabel: (category) => category.name,
+    onSuccess: () => {
+      if (categories.length === 1 && page > 1) {
+        onPageChange(page - 1);
+      } else {
+        onRefresh();
+      }
+    },
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -350,22 +347,7 @@ export default function CategoryTable({
   };
 
   const handleDelete = async () => {
-    if (!deletingCategory || deleteLoading) {
-      return;
-    }
-
-    setDeleteLoading(true);
-
-    try {
-      await CategoriesApi.delete(deletingCategory.id);
-      toast.success('Category deleted permanently.');
-      setDeletingCategory(null);
-      onRefresh();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || 'Failed to delete category.');
-    } finally {
-      setDeleteLoading(false);
-    }
+    await deleteConfirm.confirm();
   };
 
   if (loading) {
@@ -456,7 +438,7 @@ export default function CategoryTable({
                         onDeactivate={(item) =>
                           handleStatusChange(item, 'INACTIVE')
                         }
-                        onDelete={setDeletingCategory}
+                        onDelete={deleteConfirm.open}
                       />
                     ))}
                   </SortableContext>
@@ -467,7 +449,7 @@ export default function CategoryTable({
                       category={category}
                       actionLoadingId={actionLoadingId}
                       onActivate={(item) => handleStatusChange(item, 'ACTIVE')}
-                      onDelete={setDeletingCategory}
+                      onDelete={deleteConfirm.open}
                     />
                   ))}
                 </tbody>
@@ -505,11 +487,24 @@ export default function CategoryTable({
         onSuccess={onRefresh}
       />
 
-      <DeleteCategoryDialog
-        category={deletingCategory}
-        loading={deleteLoading}
-        onCancel={() => setDeletingCategory(null)}
-        onConfirm={handleDelete}
+      <SmartDeleteDialogs
+        entityName="Category"
+        itemLabel={deleteConfirm.itemLabel}
+        showInitial={
+          !!deleteConfirm.target &&
+          !deleteConfirm.forceAnalysis &&
+          !deleteConfirm.blockedAnalysis
+        }
+        initialDescription="This action is permanent. Images will also be deleted."
+        forceAnalysis={deleteConfirm.forceAnalysis}
+        blockedAnalysis={deleteConfirm.blockedAnalysis}
+        blockedMessage={deleteConfirm.blockedMessage}
+        loading={deleteConfirm.loading}
+        onCancel={deleteConfirm.close}
+        onConfirm={() => void deleteConfirm.confirm()}
+        onConfirmForce={() => void deleteConfirm.confirmForce()}
+        onCloseBlocked={deleteConfirm.closeBlocked}
+        onCloseForce={deleteConfirm.closeForce}
       />
     </>
   );

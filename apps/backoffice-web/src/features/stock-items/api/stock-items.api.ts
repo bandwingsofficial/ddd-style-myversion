@@ -67,8 +67,13 @@ export const StockItemsApi = {
     return res.data.data as StockItem;
   },
 
-  delete: async (id: string): Promise<{ id: string }> => {
-    const res = await axiosInstance.delete(`/stock-items/${id}`);
+  delete: async (
+    id: string,
+    options?: { force?: boolean },
+  ): Promise<{ id: string }> => {
+    const res = await axiosInstance.delete(`/stock-items/${id}`, {
+      params: options?.force ? { force: 'true' } : undefined,
+    });
     return res.data.data;
   },
 };

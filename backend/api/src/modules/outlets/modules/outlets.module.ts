@@ -48,6 +48,8 @@ import { CameraOffPolicy } from './../policies/camera-off.policy';
 /* ---------------------------------------------- */
 /* AUTH / SHARED                                  */
 /* ---------------------------------------------- */
+import { AuthSessionRepository } from '../../auth/repositories/auth-session.repository';
+import { RefreshTokenRepository } from '../../auth/repositories/refresh-token.repository';
 import { AuditLogRepository } from '../../auth/repositories/audit-log.repository';
 
 /* ---------------------------------------------- */
@@ -83,6 +85,8 @@ import { ProductsModule } from '../../products/modules/products.module';
     OutletUserRepository,
     OutletRepository,
     AuditLogRepository,
+    AuthSessionRepository,
+    RefreshTokenRepository,
     OutletProductRepository,
     OutletProfileRepository,
 

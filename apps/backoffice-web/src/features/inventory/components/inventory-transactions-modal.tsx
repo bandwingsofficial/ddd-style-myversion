@@ -21,6 +21,7 @@ import {
 } from '../types/inventory.types';
 import {
   formatTransactionDelta,
+  getQuantityValue,
   getTransactionDelta,
   UNEXPECTED_ERROR_TOAST,
 } from '../utils/inventory-validation';
@@ -28,6 +29,14 @@ import {
 interface Props {
   item: InventoryListItem;
   onClose: () => void;
+}
+
+function getTransactionLabel(type: string, delta: number): string {
+  if (type.includes('TRANSFER')) {
+    return delta >= 0 ? 'TRANSFER IN' : 'TRANSFER OUT';
+  }
+
+  return type.replace(/_/g, ' ');
 }
 
 function getLogDetails(type: string, delta: number) {
@@ -43,9 +52,9 @@ function getLogDetails(type: string, delta: number) {
   if (type.includes('TRANSFER')) {
     return {
       icon: <ArrowRightLeft size={18} />,
-      color: 'text-amber-600',
-      bg: 'bg-amber-500/10',
-      border: 'border-amber-200/50',
+      color: delta >= 0 ? 'text-emerald-600' : 'text-amber-600',
+      bg: delta >= 0 ? 'bg-emerald-500/10' : 'bg-amber-500/10',
+      border: delta >= 0 ? 'border-emerald-200/50' : 'border-amber-200/50',
     };
   }
 
@@ -72,8 +81,11 @@ export default function InventoryTransactionsModal({ item, onClose }: Props) {
 
   useEffect(() => {
     InventoryApi.getTransactions(item.stockItemId)
-      .then(setLogs)
+      .then((data) => {
+        setLogs(Array.isArray(data) ? data : []);
+      })
       .catch(() => {
+        setLogs([]);
         toast.error(UNEXPECTED_ERROR_TOAST);
       })
       .finally(() => setLoading(false));
@@ -149,14 +161,25 @@ export default function InventoryTransactionsModal({ item, onClose }: Props) {
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-foreground">
-                          {log.type.replace(/_/g, ' ')}
+                          {getTransactionLabel(log.type, delta)}
                         </p>
                         <p className="mt-0.5 text-xs text-muted-foreground">
                           {new Date(log.createdAt).toLocaleString()}
                         </p>
+                        {log.type.includes('ADJUST') && (
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {getQuantityValue(log.previousQuantity)} →{' '}
+                            {getQuantityValue(log.newQuantity)}
+                          </p>
+                        )}
                         {log.remarks && (
                           <p className="mt-1 truncate text-xs text-muted-foreground">
                             {log.remarks}
+                          </p>
+                        )}
+                        {log.performedBy && (
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            By {log.performedBy}
                           </p>
                         )}
                       </div>

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { CentralInventory } from '../domain/models/central-inventory.model';
+import { OutletStock } from '../domain/models/outlet-stock.model';
 import { StockTransaction } from '../domain/models/stock-transaction.model';
 
 export interface InventoryQuantityResponse {
@@ -18,6 +19,16 @@ export interface CentralInventoryResponse {
   updatedAt: string;
 }
 
+export interface OutletStockResponse {
+  id: string;
+  outletId: string;
+  stockItemId: string;
+  unit: string;
+  quantity: InventoryQuantityResponse;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface StockTransactionResponse {
   id: string;
   stockItemId: string;
@@ -31,6 +42,7 @@ export interface StockTransactionResponse {
   destination: string;
   outletId?: string;
   remarks?: string;
+  performedBy?: string;
   createdAt: string;
 }
 
@@ -59,6 +71,24 @@ export class InventoryResponseMapper {
     return inventories.map((inventory) => this.toResponse(inventory));
   }
 
+  toOutletStockResponse(outletStock: OutletStock): OutletStockResponse {
+    return {
+      id: outletStock.id,
+      outletId: outletStock.outletId,
+      stockItemId: outletStock.stockItemId,
+      unit: outletStock.unit,
+      quantity: this.toQuantityResponse(outletStock.quantity),
+      createdAt: outletStock.createdAt.toISOString(),
+      updatedAt: outletStock.updatedAt.toISOString(),
+    };
+  }
+
+  toOutletStockResponseList(
+    outletStockItems: OutletStock[],
+  ): OutletStockResponse[] {
+    return outletStockItems.map((item) => this.toOutletStockResponse(item));
+  }
+
   toTransactionResponse(
     transaction: StockTransaction,
   ): StockTransactionResponse {
@@ -79,6 +109,7 @@ export class InventoryResponseMapper {
       destination: transaction.destination,
       outletId: transaction.outletId,
       remarks: transaction.remarks,
+      performedBy: transaction.performedBy,
       createdAt: transaction.createdAt.toISOString(),
     };
   }

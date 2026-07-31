@@ -41,6 +41,28 @@ export const ProductsApi = {
     return res.data.data;
   },
 
+  /**
+   * Fetches all products by paginating through GET /products.
+   * Backend allows limit 1–100 per page.
+   */
+  getAll: async (): Promise<Product[]> => {
+    const limit = 100;
+    const firstPage = await ProductsApi.list({ page: 1, limit });
+    const items = [...firstPage.items];
+
+    for (let page = 2; page <= firstPage.totalPages; page += 1) {
+      const nextPage = await ProductsApi.list({ page, limit });
+      items.push(...nextPage.items);
+    }
+
+    return items;
+  },
+
+  listActiveForSelection: async (): Promise<Product[]> => {
+    const products = await ProductsApi.getAll();
+    return products.filter((product) => product.status === 'ACTIVE');
+  },
+
   create: async (payload: CreateProductPayload): Promise<Product> => {
     const formData = new FormData();
 
@@ -176,8 +198,13 @@ export const ProductsApi = {
     return res.data.data as Product;
   },
 
-  delete: async (productId: string): Promise<{ id: string }> => {
-    const res = await axiosInstance.delete(`/products/${productId}`);
+  delete: async (
+    productId: string,
+    options?: { force?: boolean },
+  ): Promise<{ id: string }> => {
+    const res = await axiosInstance.delete(`/products/${productId}`, {
+      params: options?.force ? { force: 'true' } : undefined,
+    });
     return res.data.data;
   },
 

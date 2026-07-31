@@ -104,8 +104,13 @@ export const CategoriesApi = {
     return res.data.data;
   },
 
-  delete: async (id: string): Promise<{ id: string }> => {
-    const res = await axiosInstance.delete(`/categories/${id}`);
+  delete: async (
+    id: string,
+    options?: { force?: boolean },
+  ): Promise<{ id: string }> => {
+    const res = await axiosInstance.delete(`/categories/${id}`, {
+      params: options?.force ? { force: 'true' } : undefined,
+    });
     return res.data.data;
   },
 };

@@ -212,6 +212,35 @@ export class StockTransaction {
       destination: StockDestination.OUTLET,
       outletId: params.outletId,
       performedBy: params.performedBy,
+      remarks: 'Transferred from central inventory',
+      createdAt: params.now,
+    });
+  }
+
+  static transferReceiveAtOutlet(params: {
+    id: string;
+    stockItemId: string;
+    inventoryId: string;
+    outletId: string;
+    quantity: Quantity;
+    previousOutletQty: Quantity;
+    newOutletQty: Quantity;
+    performedBy?: string;
+    now?: Date;
+  }): StockTransaction {
+    return StockTransaction.createRecord({
+      id: params.id,
+      stockItemId: params.stockItemId,
+      inventoryId: params.inventoryId,
+      type: StockTransactionType.TRANSFER,
+      previousQuantity: params.previousOutletQty,
+      newQuantity: params.newOutletQty,
+      quantityChange: params.quantity.getRaw(),
+      source: StockSource.CENTRAL,
+      destination: StockDestination.OUTLET,
+      outletId: params.outletId,
+      performedBy: params.performedBy,
+      remarks: 'Received at outlet',
       createdAt: params.now,
     });
   }

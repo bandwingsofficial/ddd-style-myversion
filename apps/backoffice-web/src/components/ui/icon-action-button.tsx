@@ -4,7 +4,14 @@ import { Loader2 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
-type IconActionVariant = 'edit' | 'activate' | 'deactivate' | 'delete' | 'default';
+type IconActionVariant =
+  | 'edit'
+  | 'activate'
+  | 'deactivate'
+  | 'delete'
+  | 'details'
+  | 'reset'
+  | 'default';
 
 interface IconActionButtonProps {
   icon: React.ReactNode;
@@ -24,6 +31,10 @@ const variantClasses: Record<IconActionVariant, string> = {
     'border-amber-200 text-amber-600 hover:border-amber-300 hover:bg-amber-50',
   delete:
     'border-red-200 text-red-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700',
+  reset:
+    'border-violet-200 text-violet-600 hover:border-violet-300 hover:bg-violet-50',
+  details:
+    'border-primary/30 text-primary hover:border-primary/50 hover:bg-primary/10',
   default:
     'border-input text-muted-foreground hover:border-primary/40 hover:bg-muted hover:text-foreground',
 };

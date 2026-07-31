@@ -307,6 +307,10 @@ model OutletUser {
   id       String @id @default(cuid())
   outletId String
 
+  name  String         @default("Outlet User")
+  phone String?        @unique
+  role  OutletUserRole @default(STAFF)
+
   // Auth
   email        String  @unique
   passwordHash String

@@ -249,6 +249,51 @@ async findWithLocation(
     return this.toDomain(row);
   }
 
+  async hardDelete(outletId: string, tx?: PrismaTransaction): Promise<void> {
+    const client = tx ?? this.prisma;
+    await client.outlet.delete({ where: { id: outletId } });
+  }
+
+  async countOrdersByOutletId(outletId: string): Promise<number> {
+    return this.prisma.order.count({ where: { outletId } });
+  }
+
+  async countStockTransactionsByOutletId(outletId: string): Promise<number> {
+    return this.prisma.stockTransaction.count({ where: { outletId } });
+  }
+
+  async countOutletProductsByOutletId(outletId: string): Promise<number> {
+    return this.prisma.outletProduct.count({ where: { outletId } });
+  }
+
+  async countOutletStocksByOutletId(outletId: string): Promise<number> {
+    return this.prisma.outletStock.count({ where: { outletId } });
+  }
+
+  async countOutletUsersByOutletId(outletId: string): Promise<number> {
+    return this.prisma.outletUser.count({ where: { outletId } });
+  }
+
+  async countCartsByOutletId(outletId: string): Promise<number> {
+    return this.prisma.cart.count({ where: { outletId } });
+  }
+
+  async deleteRemovableOutletDependencies(
+    outletId: string,
+    tx?: PrismaTransaction,
+  ): Promise<void> {
+    const client = tx ?? this.prisma;
+
+    await client.cartItem.deleteMany({
+      where: { cart: { outletId } },
+    });
+    await client.cart.deleteMany({ where: { outletId } });
+    await client.outletProduct.deleteMany({ where: { outletId } });
+    await client.outletStock.deleteMany({ where: { outletId } });
+    await client.outletUser.deleteMany({ where: { outletId } });
+    await client.outletProfile.deleteMany({ where: { outletId } });
+  }
+
   /* ================================================= */
   /* PRIVATE MAPPER                                    */
   /* ================================================= */

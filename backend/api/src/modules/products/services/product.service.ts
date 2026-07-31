@@ -16,6 +16,10 @@ import { ListProductsQueryDto } from '../dtos/list-products-query.dto';
 import { UploadFolders } from '../../uploads/constants/upload-folders.constants';
 import { UploadService } from '../../uploads/services/upload.service';
 import { MulterUploadFile } from '../../uploads/interfaces/upload-file.interface';
+import {
+  DeleteAnalysis,
+  DELETE_ERROR_CODES,
+} from '../../../common/types/delete-analysis.types';
 
 @Injectable()
 export class ProductService {
@@ -619,8 +623,8 @@ export class ProductService {
   /* DELETE PRODUCT                                   */
   /* ================================================= */
 
-  async deleteProduct(productId: string): Promise<{ id: string }> {
-    const product = await this.getById(productId);
+  async analyzeProductDelete(productId: string): Promise<DeleteAnalysis> {
+    await this.getById(productId);
 
     const [cartCount, orderCount, outletCount] = await Promise.all([
       this.productRepo.countCartItemsByProductId(productId),
@@ -628,24 +632,85 @@ export class ProductService {
       this.productRepo.countOutletProductsByProductId(productId),
     ]);
 
-    const blockers: string[] = [];
-
-    if (cartCount > 0) {
-      blockers.push('cart items reference it');
-    }
+    const permanentBlockers = [];
+    const removableDependencies = [];
 
     if (orderCount > 0) {
-      blockers.push('order items reference it');
+      permanentBlockers.push({
+        type: 'ORDER_ITEMS',
+        label: 'Order Items',
+        count: orderCount,
+      });
+    }
+
+    if (cartCount > 0) {
+      removableDependencies.push({
+        type: 'CART_ITEMS',
+        label: 'Cart Items',
+        count: cartCount,
+      });
     }
 
     if (outletCount > 0) {
-      blockers.push('outlet product assignments exist');
+      removableDependencies.push({
+        type: 'OUTLET_PRODUCTS',
+        label: 'Outlet Product Assignments',
+        count: outletCount,
+      });
     }
 
-    if (blockers.length > 0) {
+    const canDelete =
+      permanentBlockers.length === 0 && removableDependencies.length === 0;
+    const canForceDelete =
+      permanentBlockers.length === 0 && removableDependencies.length > 0;
+
+    return {
+      canDelete,
+      canForceDelete,
+      permanentBlockers,
+      removableDependencies,
+      forceDeleteActions: canForceDelete
+        ? [
+            'Remove all outlet product assignments',
+            'Remove active cart items referencing this product',
+            'Delete gallery images and main image',
+            'Delete related upload records and storage objects',
+            'Permanently delete the product',
+          ]
+        : undefined,
+    };
+  }
+
+  async deleteProduct(
+    productId: string,
+    options?: { force?: boolean },
+  ): Promise<{ id: string }> {
+    const product = await this.getById(productId);
+    const analysis = await this.analyzeProductDelete(productId);
+
+    if (!analysis.canDelete && !options?.force) {
+      if (analysis.canForceDelete) {
+        throw new ValidationError(
+          DELETE_ERROR_CODES.REQUIRES_FORCE,
+          `This product is referenced by ${analysis.removableDependencies
+            .map((item) => `${item.count} ${item.label.toLowerCase()}`)
+            .join(' and ')}.`,
+          { deleteAnalysis: analysis },
+        );
+      }
+
       throw new ValidationError(
-        'PRODUCT_HAS_REFERENCES',
-        `Cannot delete product while ${blockers.join(', ')}.`,
+        DELETE_ERROR_CODES.BLOCKED,
+        this.buildPermanentDeleteMessage(analysis),
+        { deleteAnalysis: analysis },
+      );
+    }
+
+    if (options?.force && analysis.permanentBlockers.length > 0) {
+      throw new ValidationError(
+        DELETE_ERROR_CODES.BLOCKED,
+        this.buildPermanentDeleteMessage(analysis),
+        { deleteAnalysis: analysis },
       );
     }
 
@@ -655,6 +720,11 @@ export class ProductService {
     ].filter(Boolean) as string[];
 
     await this.prisma.$transaction(async (tx) => {
+      if (options?.force) {
+        await this.productRepo.deleteCartItemsByProductId(productId, tx);
+        await this.productRepo.deleteOutletProductsByProductId(productId, tx);
+      }
+
       await this.productRepo.hardDelete(productId, tx);
 
       for (const objectKey of objectKeys) {
@@ -667,6 +737,18 @@ export class ProductService {
     });
 
     return { id: product.id };
+  }
+
+  private buildPermanentDeleteMessage(analysis: DeleteAnalysis): string {
+    if (analysis.permanentBlockers.length === 0) {
+      return 'Cannot delete this product.';
+    }
+
+    const details = analysis.permanentBlockers
+      .map((blocker) => `${blocker.count} ${blocker.label}`)
+      .join(', ');
+
+    return `Cannot delete this product because it has permanent business records: ${details}. Those records must be retained.`;
   }
 
   async updateProductStatus(params: {

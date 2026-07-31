@@ -33,6 +33,7 @@ export interface InventoryTransaction {
   destination: string;
   outletId?: string;
   remarks?: string;
+  performedBy?: string;
   createdAt: string;
 }
 

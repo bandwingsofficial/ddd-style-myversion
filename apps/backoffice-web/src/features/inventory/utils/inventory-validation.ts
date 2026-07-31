@@ -20,13 +20,26 @@ export function getQuantityValue(
 export function getTransactionDelta(
   transaction: InventoryTransaction,
 ): number {
-  if (transaction.quantityChange?.value !== undefined) {
-    return transaction.quantityChange.value;
+  const signedChange = transaction.quantityChange?.value;
+
+  if (signedChange !== undefined && signedChange !== 0) {
+    return signedChange;
+  }
+
+  const previous = getQuantityValue(transaction.previousQuantity);
+  const next = getQuantityValue(transaction.newQuantity);
+
+  if (next !== previous) {
+    return next - previous;
   }
 
   const magnitude = getQuantityValue(transaction.quantity);
 
   if (transaction.type.includes('TRANSFER')) {
+    if (transaction.remarks?.toLowerCase().includes('received at outlet')) {
+      return magnitude;
+    }
+
     return -magnitude;
   }
 
@@ -35,6 +48,10 @@ export function getTransactionDelta(
     transaction.type.includes('INITIALIZE')
   ) {
     return magnitude;
+  }
+
+  if (transaction.type.includes('ADJUST') || transaction.type.includes('DEDUCT')) {
+    return -magnitude;
   }
 
   return magnitude;
