@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { getProductsByOutlet } from "../api/product.api";
 import { ProductListItem } from "../types/product.types";
 import { useOutletStore } from "@/features/outlet/outlet.store";
@@ -8,33 +9,61 @@ import { useProductSocket } from "./useProductSocket";
 
 export function useProducts() {
   const [products, setProducts] = useState<ProductListItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const pathname = usePathname();
+  const requestIdRef = useRef(0);
 
   const selectedOutlet = useOutletStore((state) => state.selectedOutlet);
+  const outletHydrated = useOutletStore((state) => state.hasHydrated);
 
-  const fetchProducts = useCallback(() => {
+  const fetchProducts = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+
+    if (!outletHydrated) {
+      return;
+    }
+
     if (!selectedOutlet?.id) {
       setProducts([]);
+      setError(null);
+      setLoading(false);
       return;
     }
 
     setLoading(true);
-    getProductsByOutlet(selectedOutlet.id)
-      .then((data) => {
-        setProducts(Array.isArray(data) ? data : []);
-      })
-      .catch((err) => {
-        console.error("Failed to load products for outlet", err);
-        setProducts([]);
-      })
-      .finally(() => setLoading(false));
-  }, [selectedOutlet?.id]);
+    setError(null);
+
+    try {
+      const data = await getProductsByOutlet(selectedOutlet.id);
+      if (requestId !== requestIdRef.current) return;
+
+      setProducts(Array.isArray(data) ? data : []);
+    } catch (err) {
+      if (requestId !== requestIdRef.current) return;
+
+      console.error("Failed to load products for outlet", err);
+      setProducts([]);
+      setError("Unable to load products. Please try again.");
+    } finally {
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
+    }
+  }, [outletHydrated, selectedOutlet?.id]);
 
   useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+    void fetchProducts();
+  }, [fetchProducts, pathname]);
 
   useProductSocket(fetchProducts);
 
-  return { products, loading, isOutletSelected: !!selectedOutlet };
+  return {
+    products,
+    loading: !outletHydrated || loading,
+    error,
+    isOutletSelected: !!selectedOutlet,
+    outletHydrated,
+    refresh: fetchProducts,
+  };
 }

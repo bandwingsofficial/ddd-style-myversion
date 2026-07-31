@@ -10,6 +10,7 @@ import React, {
 import { useSession } from "@/features/customer-auth/hooks/useSession";
 import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
 import { useCartStore } from "@/features/cart/cart.store";
+import { useOutletStore } from "@/features/outlet/outlet.store";
 import { ProductListItem } from "@/features/products/types/product.types";
 import { toast } from "sonner";
 
@@ -38,7 +39,6 @@ function FavoritesProvider({ children }: { children: React.ReactNode }) {
 
   const STORAGE_KEY = `favorites_${userId}`;
 
-  // Load user ID from auth store
   const { actorId, isAuthenticated } = useCustomerAuthStore();
 
   useEffect(() => {
@@ -49,7 +49,6 @@ function FavoritesProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isAuthenticated, actorId]);
 
-  // Load favorites
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -65,7 +64,6 @@ function FavoritesProvider({ children }: { children: React.ReactNode }) {
     }
   }, [STORAGE_KEY]);
 
-  // Persist favorites
   useEffect(() => {
     if (typeof window === "undefined") return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(favorites));
@@ -119,25 +117,47 @@ export default function CustomerAuthProvider({
 }) {
   const hydrateSession = useSession();
   const hasInitialized = useRef(false);
+  const lastOutletIdRef = useRef<string | null>(null);
 
-  const isHydrated = useCustomerAuthStore((s) => s.isHydrated);
+  const sessionChecked = useCustomerAuthStore((s) => s.sessionChecked);
   const isAuthenticated = useCustomerAuthStore((s) => s.isAuthenticated);
+  const selectedOutletId = useOutletStore((s) => s.selectedOutlet?.id ?? null);
+  const outletHydrated = useOutletStore((s) => s.hasHydrated);
 
   const loadCart = useCartStore((s) => s.loadCart);
 
-  // 1️⃣ Hydrate auth ONCE
   useEffect(() => {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
-    hydrateSession();
+    void hydrateSession();
   }, [hydrateSession]);
 
-  // 2️⃣ Hydrate cart AFTER auth
   useEffect(() => {
-    if (isHydrated) {
-      loadCart(isAuthenticated);
+    if (!sessionChecked || !outletHydrated) return;
+    loadCart(isAuthenticated);
+  }, [sessionChecked, isAuthenticated, outletHydrated, loadCart]);
+
+  useEffect(() => {
+    if (!sessionChecked || !outletHydrated || !isAuthenticated || !selectedOutletId) {
+      return;
     }
-  }, [isHydrated, isAuthenticated, loadCart]);
+
+    if (lastOutletIdRef.current === null) {
+      lastOutletIdRef.current = selectedOutletId;
+      return;
+    }
+
+    if (lastOutletIdRef.current === selectedOutletId) return;
+
+    lastOutletIdRef.current = selectedOutletId;
+    loadCart(true);
+  }, [
+    sessionChecked,
+    outletHydrated,
+    isAuthenticated,
+    selectedOutletId,
+    loadCart,
+  ]);
 
   return <FavoritesProvider>{children}</FavoritesProvider>;
 }

@@ -4,11 +4,13 @@ import { persist, createJSONStorage } from "zustand/middleware";
 interface CustomerAuthState {
   isAuthenticated: boolean;
   isHydrated: boolean;
+  sessionChecked: boolean;
   actorId?: string;
   sessionId?: string;
   setSession: (data: any) => void;
   clearSession: () => void;
   setHydrated: () => void;
+  markSessionChecked: () => void;
 }
 
 export const useCustomerAuthStore = create<CustomerAuthState>()(
@@ -16,6 +18,7 @@ export const useCustomerAuthStore = create<CustomerAuthState>()(
     (set) => ({
       isAuthenticated: false,
       isHydrated: false,
+      sessionChecked: false,
       actorId: undefined,
       sessionId: undefined,
 
@@ -34,6 +37,7 @@ export const useCustomerAuthStore = create<CustomerAuthState>()(
         }),
 
       setHydrated: () => set({ isHydrated: true }),
+      markSessionChecked: () => set({ sessionChecked: true }),
     }),
     {
       name: "customer-auth-storage",

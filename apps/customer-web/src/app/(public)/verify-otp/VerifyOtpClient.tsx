@@ -55,7 +55,8 @@ export default function VerifyOtpClient() {
       await verifyOtp(phone, otp);
       await fetchSession();
 
-      router.replace("/home");
+      const redirect = searchParams.get("redirect");
+      router.replace(redirect && redirect.startsWith("/") ? redirect : "/home");
       toast.success("Welcome back!");
     } catch (err: any) {
       setError(err?.message || "Invalid OTP");

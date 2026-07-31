@@ -21,7 +21,9 @@ import AddressSelectionModal from "@/components/address/AddressSelectionModal";
 import { Address } from "@/features/addresses/address.service";
 
 // Helper for image URLs
-const BACKEND_URL = "https://api.dev.local:4000";
+const BACKEND_URL = (
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? ""
+).replace(/\/$/, "");
 const getImageUrl = (path?: string) => {
   if (!path || path.trim() === "") return null;
   if (path.startsWith("http")) return path;

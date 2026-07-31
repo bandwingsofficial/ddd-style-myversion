@@ -4,20 +4,26 @@ import { Outlet } from "./outlet.type";
 
 interface OutletStore {
   selectedOutlet: Outlet | null;
-  // ✅ FIX: Allow 'null' so we can safely clear the selection
-  setOutlet: (outlet: Outlet | null) => void; 
+  hasHydrated: boolean;
+  setOutlet: (outlet: Outlet | null) => void;
   clearOutlet: () => void;
+  setHydrated: () => void;
 }
 
 export const useOutletStore = create<OutletStore>()(
   persist(
     (set) => ({
       selectedOutlet: null,
+      hasHydrated: false,
       setOutlet: (outlet) => set({ selectedOutlet: outlet }),
       clearOutlet: () => set({ selectedOutlet: null }),
+      setHydrated: () => set({ hasHydrated: true }),
     }),
     {
-      name: "customer-outlet-storage", // Unique name for localStorage
+      name: "customer-outlet-storage",
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated();
+      },
     }
   )
 );

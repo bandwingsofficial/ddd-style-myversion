@@ -64,21 +64,15 @@ export default function OutletSelector() {
 
     if (nearbyOutlets.length > 0) {
       const nearest: Outlet & { distance: number } = nearbyOutlets[0];
-      
-      // If we found a nearer outlet, or we have no outlet selected, switch to it
-      if (!selectedOutlet || selectedOutlet.id !== nearest.id) {
+
+      if (!selectedOutlet) {
         setOutlet(nearest);
-        setIsOpen(false); 
+        setIsOpen(false);
       }
-    } else {
-      // ❌ No outlets found for this location -> Clear Store -> Opens Modal
-      if (selectedOutlet) {
-          setOutlet(null); 
-      }
-      // Only open popup if user hasn't dismissed it recently
+    } else if (outlets.length > 0) {
       if (!isDismissed) setIsOpen(true);
     }
-  }, [nearbyOutlets, loading, userLat, setOutlet, isDismissed]);
+  }, [nearbyOutlets, loading, userLat, outlets.length, selectedOutlet, setOutlet, isDismissed]);
 
   if (!isOpen) return null; 
 

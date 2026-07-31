@@ -9,10 +9,10 @@ export class SmsProvider {
   constructor(private readonly httpService: HttpService) {}
 
   async sendOtp(phone: string, otp: string): Promise<void> {
-    if (process.env.NODE_ENV !== 'production') {
-      this.logger.log(`[DEV SMS] ${phone} → OTP: ${otp}`);
-      return;
-    }
+    if (process.env.SMS_ENABLED !== 'true') {
+  this.logger.log(`[DEV SMS] ${phone} → OTP: ${otp}`);
+  return;
+}
 
     const formattedPhone = this.formatPhone(phone);
 
