@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import AddressSelectionModal from "@/components/address/AddressSelectionModal";
 import { Address } from "@/features/addresses/address.service";
-import { DeliveryFeeDisplay } from "@/features/delivery/DeliveryFeeDisplay";
+import { OrderSummaryBreakdown } from "@/features/orders/components/OrderSummaryBreakdown";
 
 import { getProductImageUrl } from "@/lib/image-url";
 
@@ -36,7 +36,7 @@ export default function CartPage() {
   }, [hydrated, isAuthenticated, loadCart]);
 
   // Calculations come from backend summary (or guest preview API)
-  const { subtotal, discount: totalDiscount, deliveryFee, grandTotal, amountToFreeDelivery } = summary;
+  const { subtotal, discount: totalDiscount, netSubtotal, deliveryFee, grandTotal, remainingForFreeDelivery } = summary;
 
   // Handlers
   const handleQuantityChange = async (productId: string, currentQty: number, delta: number) => {
@@ -185,29 +185,18 @@ export default function CartPage() {
                 <div className="bg-white rounded-2xl border border-slate-100 shadow-xl shadow-slate-200/50 p-6 lg:sticky lg:top-36">
                    <h2 className="text-xl font-bold text-slate-900 mb-6">Order Summary</h2>
                    
-                   <div className="space-y-3 mb-6">
-                       <div className="flex justify-between text-slate-500 text-sm">
-                           <span>Subtotal</span>
-                           <span>₹{subtotal}</span>
-                       </div>
-                       {totalDiscount > 0 && (
-                           <div className="flex justify-between text-emerald-600 text-sm font-medium">
-                               <span>Discount</span>
-                               <span>-₹{totalDiscount}</span>
-                           </div>
-                       )}
-                       <DeliveryFeeDisplay
-                         deliveryFee={deliveryFee}
-                         amountToFreeDelivery={amountToFreeDelivery}
-                         remainingAmountForFreeDelivery={summary.remainingAmountForFreeDelivery}
-                       />
-                   </div>
-
-                   <div className="border-t border-slate-100 pt-4 mb-6">
-                       <div className="flex justify-between items-end">
-                           <span className="font-bold text-slate-900">Total Amount</span>
-                           <span className="text-3xl font-extrabold text-slate-900">₹{grandTotal}</span>
-                       </div>
+                   <div className="mb-6 pb-6 border-b border-slate-100">
+                     <OrderSummaryBreakdown
+                       subtotal={subtotal}
+                       discount={totalDiscount}
+                       netSubtotal={netSubtotal}
+                       deliveryFee={deliveryFee}
+                       grandTotal={grandTotal}
+                       remainingForFreeDelivery={remainingForFreeDelivery}
+                       totalLabel="Total Payable"
+                       className="space-y-3 text-slate-500 text-sm"
+                       totalClassName="flex justify-between items-end pt-4 font-bold text-slate-900"
+                     />
                    </div>
                    
                    <button 

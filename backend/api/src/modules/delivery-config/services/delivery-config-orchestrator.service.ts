@@ -71,7 +71,12 @@ export class DeliveryConfigOrchestratorService {
     return this.deliveryChargeService.getPublicConfig();
   }
 
-  previewCharge(subtotal: number) {
-    return this.deliveryChargeService.previewForSubtotal(subtotal);
+  previewCharge(params: {
+    subtotal: number;
+    netSubtotal?: number;
+    discount?: number;
+    itemCount?: number;
+  }) {
+    return this.deliveryChargeService.previewForTotals(params);
   }
 }

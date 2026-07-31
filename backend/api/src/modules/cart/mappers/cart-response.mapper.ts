@@ -39,10 +39,15 @@ export class CartResponseMapper {
       })),
     );
 
-    const afterDiscountTotal = toNumber(cart.afterDiscountTotal);
-    const delivery = mapDeliveryChargeToResponse(
+    const subtotal = toNumber(cart.subtotal);
+    const discount = toNumber(cart.discount);
+    const netSubtotal = toNumber(cart.afterDiscountTotal);
+
+    const pricing = mapDeliveryChargeToResponse(
       await this.deliveryChargeService.calculate({
-        afterDiscountTotal: cart.afterDiscountTotal,
+        subtotal: cart.subtotal,
+        discount: cart.discount,
+        netSubtotal: cart.afterDiscountTotal,
         itemCount: cart.itemCount,
       }),
     );
@@ -54,12 +59,13 @@ export class CartResponseMapper {
       outletId: cart.outletId,
       status: cart.status,
       currency: cart.currency,
-      subtotal: toNumber(cart.subtotal),
-      discount: toNumber(cart.discount),
-      afterDiscountTotal,
-      grandTotal: Number((afterDiscountTotal + delivery.deliveryFee).toFixed(2)),
+      subtotal,
+      discount,
+      netSubtotal,
+      afterDiscountTotal: netSubtotal,
+      grandTotal: Number((netSubtotal + pricing.deliveryFee).toFixed(2)),
       itemCount: cart.itemCount,
-      ...delivery,
+      ...pricing,
       items,
       createdAt: cart.createdAt,
       updatedAt: cart.updatedAt,

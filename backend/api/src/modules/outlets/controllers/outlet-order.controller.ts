@@ -42,6 +42,7 @@ export class OutletOrderController {
     subtotal: order.subtotal.toNumber(),
     discount: order.discount.toNumber(),
     afterDiscountTotal: order.afterDiscountTotal.toNumber(),
+    netSubtotal: order.afterDiscountTotal.toNumber(),
     deliveryFee: order.deliveryFee.toNumber(),
     grandTotal: order.grandTotal.toNumber(),
     itemCount: order.itemCount,

@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 
 import { OrderDetails } from "@/features/checkout/checkout.types";
+import { OrderSummaryBreakdown } from "@/features/orders/components/OrderSummaryBreakdown";
 
 interface OrderSummaryProps {
   order: OrderDetails;
@@ -23,53 +24,16 @@ export default function OrderSummary({
           Payment Summary
         </h2>
 
-        <div className="space-y-4">
-          <div className="flex justify-between text-sm">
-            <span className="text-slate-500">
-              Subtotal
-            </span>
-
-            <span className="font-semibold">
-              ₹{order.subtotal}
-            </span>
-          </div>
-
-          {order.discount > 0 && (
-            <div className="flex justify-between text-sm">
-              <span className="text-green-600">
-                Discount
-              </span>
-
-              <span className="font-semibold text-green-600">
-                -₹{order.discount}
-              </span>
-            </div>
-          )}
-
-          <div className="flex justify-between text-sm">
-            <span className="text-slate-500">
-              Delivery Fee
-            </span>
-
-            <span className="font-semibold">
-              {order.deliveryFee === 0
-                ? "FREE"
-                : `₹${order.deliveryFee}`}
-            </span>
-          </div>
-
-          <hr />
-
-          <div className="flex justify-between">
-            <span className="text-base font-bold">
-              Grand Total
-            </span>
-
-            <span className="text-2xl font-bold text-emerald-600">
-              ₹{order.grandTotal}
-            </span>
-          </div>
-        </div>
+        <OrderSummaryBreakdown
+          subtotal={order.subtotal}
+          discount={order.discount}
+          netSubtotal={order.netSubtotal ?? order.afterDiscountTotal}
+          deliveryFee={order.deliveryFee}
+          grandTotal={order.grandTotal}
+          showFreeDeliveryHint={false}
+          className="space-y-4 text-sm"
+          totalClassName="flex justify-between border-t border-slate-100 pt-4"
+        />
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6">

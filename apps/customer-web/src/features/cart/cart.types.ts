@@ -16,6 +16,7 @@ export interface CartItem {
 export interface CartSummary {
   subtotal: number;
   discount: number;
+  netSubtotal: number;
   afterDiscountTotal: number;
   deliveryFee: number;
   grandTotal: number;
@@ -26,6 +27,8 @@ export interface CartSummary {
   matchedDeliveryRuleName?: string | null;
   minimumOrderAmount?: number;
   isFreeDelivery: boolean;
+  freeDeliveryThreshold?: number | null;
+  remainingForFreeDelivery?: number | null;
   amountToFreeDelivery?: number | null;
   remainingAmountForFreeDelivery?: number | null;
   remainingAmountForNextRule?: number | null;

@@ -61,6 +61,7 @@ export class OrderController {
 
       subtotal: order.subtotal.toNumber(),
       discount: order.discount.toNumber(),
+      netSubtotal: order.afterDiscountTotal.toNumber(),
       afterDiscountTotal: order.afterDiscountTotal.toNumber(),
       deliveryFee: order.deliveryFee.toNumber(),
       grandTotal: order.grandTotal.toNumber(),

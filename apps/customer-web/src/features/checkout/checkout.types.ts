@@ -17,6 +17,7 @@ export interface CheckoutSummary {
   }[];
   subtotal: number;
   discount: number;
+  netSubtotal: number;
   afterDiscountTotal: number;
   deliveryFee: number;
   grandTotal: number;
@@ -27,6 +28,8 @@ export interface CheckoutSummary {
   matchedDeliveryRuleName?: string | null;
   minimumOrderAmount?: number;
   isFreeDelivery?: boolean;
+  freeDeliveryThreshold?: number | null;
+  remainingForFreeDelivery?: number | null;
   amountToFreeDelivery?: number | null;
   remainingAmountForFreeDelivery?: number | null;
   remainingAmountForNextRule?: number | null;
@@ -98,6 +101,7 @@ export interface OrderDetails {
   };
   subtotal: number;
   discount: number;
+  netSubtotal?: number;
   afterDiscountTotal: number;
   deliveryFee: number;
   grandTotal: number;

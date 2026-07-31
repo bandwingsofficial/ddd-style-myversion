@@ -1,19 +1,16 @@
 interface DeliveryFeeDisplayProps {
   deliveryFee: number;
-  amountToFreeDelivery?: number | null;
-  remainingAmountForFreeDelivery?: number | null;
+  remainingForFreeDelivery?: number | null;
   className?: string;
 }
 
 export function DeliveryFeeDisplay({
   deliveryFee,
-  amountToFreeDelivery,
-  remainingAmountForFreeDelivery,
+  remainingForFreeDelivery,
   className = '',
 }: DeliveryFeeDisplayProps) {
   const showFree = deliveryFee === 0;
-  const remaining =
-    remainingAmountForFreeDelivery ?? amountToFreeDelivery ?? null;
+  const remaining = remainingForFreeDelivery ?? null;
 
   return (
     <div className={className}>

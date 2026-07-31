@@ -6,13 +6,13 @@ import Script from "next/script";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { CheckoutApi } from "@/features/checkout/checkout.api";
-import { CheckoutSummary, CheckoutErrorResponse } from "@/features/checkout/checkout.types";
+import { CheckoutSummary, CheckoutErrorResponse, CheckoutStartResponse } from "@/features/checkout/checkout.types";
 import { useCartStore } from "@/features/cart/cart.store";
 import { useOutletStore } from "@/features/outlet/outlet.store";
 import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
-import { ArrowLeft, ShieldCheck, Loader2, MapPin, TicketPercent, ShoppingCart } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Loader2, MapPin, ShoppingCart } from "lucide-react";
 import Header from "@/components/customer/Header";
-import { DeliveryFeeDisplay } from "@/features/delivery/DeliveryFeeDisplay";
+import { OrderSummaryBreakdown } from "@/features/orders/components/OrderSummaryBreakdown";
 import { getProductImageUrl } from "@/lib/image-url";
 
 declare global {
@@ -29,6 +29,7 @@ export default function CheckoutPage() {
   const [summary, setSummary] = useState<CheckoutSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [initializing, setInitializing] = useState(true);
 
   const [pendingOrderModal, setPendingOrderModal] = useState<{
@@ -97,86 +98,126 @@ export default function CheckoutPage() {
       useCartStore.getState().items[0]?.outletId ||
       useOutletStore.getState().selectedOutlet?.id;
 
-    if (!addressId || !summary || !currentOutletId) {
+    if (!addressId || !summary || !currentOutletId || processing || checkoutOpen) {
       return;
     }
 
     setProcessing(true);
+    let checkoutData: CheckoutStartResponse | null = null;
+
     try {
-      const data = await CheckoutApi.startCheckout({
+      if (typeof window.Razorpay === "undefined") {
+        toast.error(
+          "Payment gateway is still loading. Please wait a moment and try again.",
+        );
+        return;
+      }
+
+      checkoutData = await CheckoutApi.startCheckout({
         savedAddressId: addressId,
         outletId: currentOutletId,
       });
-
-      const razorpayKey = data.key ?? process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-
-      console.log("[Razorpay Checkout]", {
-        customerId: data.customerId,
-        customerName: data.customerName,
-        customerEmail: data.customerEmail,
-        customerPhone: data.customerPhone,
-        checkoutId: data.checkoutId,
-        subtotal: data.subtotal,
-        discount: data.discount,
-        deliveryFee: data.deliveryFee,
-        grandTotal: data.grandTotal,
-        razorpayAmount: data.razorpayAmount,
-        isRetry: data.isRetry,
-      });
-
-      const options = {
-        key: razorpayKey,
-        amount: data.razorpayAmount,
-        currency: data.currency,
-        name: "CaneTen",
-        description: "Order Payment",
-        order_id: data.razorpayOrderId,
-        handler: function (response: any) {
-          const params = new URLSearchParams({
-            orderId: data.orderId,
-            orderNumber: data.orderNumber,
-            paymentId: data.paymentId,
-            rzp_payment_id: response.razorpay_payment_id,
-            rzp_order_id: response.razorpay_order_id,
-            rzp_signature: response.razorpay_signature,
-            amount: data.grandTotal.toString(),
-            addressId: addressId,
-          });
-
-          router.replace(`/payment/process?${params.toString()}`);
-        },
-        prefill: {
-          name: data.customerName,
-          email: data.customerEmail || undefined,
-          contact: data.customerPhone,
-        },
-        theme: { color: "#10B981" },
-        modal: {
-          ondismiss: function () {
-            setProcessing(false);
-            toast.message("Payment cancelled. You can retry when ready.");
-          },
-        },
-      };
-
-      const rzp1 = new window.Razorpay(options);
-      rzp1.open();
     } catch (error: any) {
       const errData = error.response?.data as CheckoutErrorResponse;
 
-      if (errData?.code === "ORDER_ALREADY_IN_PROGRESS" && errData?.metadata?.orderId) {
+      if (
+        errData?.code === "ORDER_ALREADY_IN_PROGRESS" &&
+        errData?.metadata?.orderId
+      ) {
         setPendingOrderModal({
           isOpen: true,
           orderId: errData.metadata.orderId,
           orderNumber: errData.metadata.orderNumber || null,
         });
-        setProcessing(false);
         return;
       }
 
       console.error("Checkout Error:", error);
       toast.error(errData?.message || "Could not initiate payment.");
+      return;
+    } finally {
       setProcessing(false);
+    }
+
+    if (!checkoutData) {
+      return;
+    }
+
+    const data = checkoutData;
+    const razorpayKey = data.key ?? process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+
+    console.log("[Razorpay Checkout]", {
+      customerId: data.customerId,
+      customerName: data.customerName,
+      customerEmail: data.customerEmail,
+      customerPhone: data.customerPhone,
+      checkoutId: data.checkoutId,
+      subtotal: data.subtotal,
+      discount: data.discount,
+      deliveryFee: data.deliveryFee,
+      grandTotal: data.grandTotal,
+      razorpayAmount: data.razorpayAmount,
+      isRetry: data.isRetry,
+    });
+
+    const closeCheckout = () => {
+      setCheckoutOpen(false);
+    };
+
+    const options = {
+      key: razorpayKey,
+      amount: data.razorpayAmount,
+      currency: data.currency,
+      name: "CaneTen",
+      description: "Order Payment",
+      order_id: data.razorpayOrderId,
+      handler: function (response: any) {
+        closeCheckout();
+        const params = new URLSearchParams({
+          orderId: data.orderId,
+          orderNumber: data.orderNumber,
+          paymentId: data.paymentId,
+          rzp_payment_id: response.razorpay_payment_id,
+          rzp_order_id: response.razorpay_order_id,
+          rzp_signature: response.razorpay_signature,
+          amount: data.grandTotal.toString(),
+          addressId: addressId,
+        });
+
+        router.replace(`/payment/process?${params.toString()}`);
+      },
+      prefill: {
+        name: data.customerName,
+        email: data.customerEmail || undefined,
+        contact: data.customerPhone,
+      },
+      theme: { color: "#10B981" },
+      modal: {
+        ondismiss: function () {
+          closeCheckout();
+          toast.message("Payment cancelled. You can retry when ready.");
+        },
+      },
+    };
+
+    const rzp = new window.Razorpay(options);
+
+    rzp.on("payment.failed", function (response: any) {
+      console.error("[Razorpay] Payment failed:", response);
+      closeCheckout();
+      toast.error(
+        response?.error?.description ||
+          "Payment failed. Please try again.",
+      );
+    });
+
+    setCheckoutOpen(true);
+    try {
+      rzp.open();
+    } catch (openError) {
+      console.error("[Razorpay] Failed to open checkout:", openError);
+      closeCheckout();
+      toast.error("Could not open payment window. Please try again.");
     }
   };
 
@@ -300,37 +341,33 @@ export default function CheckoutPage() {
             <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm sticky top-32">
               <h3 className="font-bold text-slate-900 mb-4">Bill Details</h3>
 
-              <div className="space-y-3 text-sm text-slate-600 pb-4 border-b border-slate-100">
-                <div className="flex justify-between">
-                  <span>Item Total</span> <span>₹{summary.subtotal}</span>
-                </div>
-                {summary.discount > 0 && (
-                  <div className="flex justify-between text-emerald-600">
-                    <span className="flex items-center gap-1">
-                      <TicketPercent size={14} /> Discount
-                    </span>
-                    <span>- ₹{summary.discount}</span>
-                  </div>
-                )}
-                <DeliveryFeeDisplay
-                  deliveryFee={summary.deliveryFee}
-                  amountToFreeDelivery={summary.amountToFreeDelivery}
-                  remainingAmountForFreeDelivery={summary.remainingAmountForFreeDelivery}
-                />
-              </div>
-
-              <div className="flex justify-between items-center py-4 font-extrabold text-xl text-slate-900">
-                <span>To Pay</span>
-                <span>₹{summary.grandTotal}</span>
-              </div>
+              <OrderSummaryBreakdown
+                subtotal={summary.subtotal}
+                discount={summary.discount}
+                netSubtotal={summary.netSubtotal ?? summary.afterDiscountTotal}
+                deliveryFee={summary.deliveryFee}
+                grandTotal={summary.grandTotal}
+                remainingForFreeDelivery={summary.remainingForFreeDelivery ?? summary.remainingAmountForFreeDelivery}
+                totalLabel="Total Payable"
+                className="space-y-3 text-sm text-slate-600 pb-4 border-b border-slate-100"
+                totalClassName="flex justify-between items-center py-4 font-extrabold text-xl text-slate-900"
+              />
 
               <button
                 onClick={handlePay}
-                disabled={processing}
+                disabled={processing || checkoutOpen}
                 className="w-full bg-[#059669] hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {processing ? <Loader2 className="animate-spin" /> : <ShieldCheck />}
-                {processing ? "Processing..." : `Pay ₹${summary.grandTotal}`}
+                {processing ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <ShieldCheck />
+                )}
+                {processing
+                  ? "Processing..."
+                  : checkoutOpen
+                    ? "Payment Window Open"
+                    : `Pay ₹${summary.grandTotal}`}
               </button>
             </div>
           </div>

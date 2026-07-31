@@ -51,15 +51,18 @@ export class CartService {
     }
 
     const discount = subtotal.sub(afterDiscountTotal);
+    const netSubtotal = afterDiscountTotal;
 
     const delivery = await this.deliveryChargeService.calculate({
-      afterDiscountTotal,
+      subtotal,
+      discount,
+      netSubtotal,
       itemCount,
     });
 
     const amountToFreeDelivery =
-      delivery.amountToFreeDelivery != null
-        ? new Decimal(delivery.amountToFreeDelivery)
+      delivery.remainingForFreeDelivery != null
+        ? new Decimal(delivery.remainingForFreeDelivery)
         : null;
 
     const grandTotal = afterDiscountTotal.add(new Decimal(delivery.deliveryFee));
