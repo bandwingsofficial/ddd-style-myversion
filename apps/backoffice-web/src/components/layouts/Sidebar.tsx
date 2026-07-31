@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard, Store, Users, Boxes, LogOut,
-  Warehouse, Package, Layers
+  Warehouse, Package, Layers, Truck, CreditCard
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -20,6 +20,8 @@ const menuItems = [
   { label: 'Central Inventory', path: '/inventory', icon: Warehouse },
   { label: 'Stock Items', path: '/stock-items', icon: Boxes },
   { label: 'Categories', path: '/categories', icon: Layers },
+  { label: 'Delivery Rules', path: '/delivery-rules', icon: Truck },
+  { label: 'Payments', path: '/payments', icon: CreditCard },
 ];
 
 export function Sidebar({ isOpen }: SidebarProps) {

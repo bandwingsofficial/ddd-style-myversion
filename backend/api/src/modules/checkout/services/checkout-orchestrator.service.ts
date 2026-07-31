@@ -15,21 +15,32 @@ export class CheckoutOrchestratorService {
 
 async getCheckoutSummary(params: {
   customerId: string;
-  outletId: string; // 🔥 REQUIRED
+  outletId: string;
   savedAddressId: string;
 }): Promise<CheckoutSummaryDto> {
   return this.checkoutService.getCheckoutSummary(params);
 }
-  async startCheckout(params: {
+
+async getActiveCheckout(params: {
+  customerId: string;
+  outletId: string;
+}) {
+  return this.checkoutService.getActiveCheckout(params);
+}
+
+async startCheckout(params: {
   customerId: string;
   outletId: string;
   savedAddressId: string;
 }): Promise<{
   orderId: string;
+  orderNumber: string;
   paymentId: string;
   razorpayOrderId: string;
   amount: number;
+  currency: string;
   key: string;
+  isRetry: boolean;
 }> {
   return this.checkoutService.startCheckout(params);
 }

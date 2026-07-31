@@ -31,6 +31,11 @@ export interface OrderProps {
   deliveryFee: Money;
   grandTotal: Money;
 
+  deliveryRuleId?: string | null;
+  deliveryRuleName?: string | null;
+  deliveryRuleMinimumOrderAmount?: Money | null;
+  isFreeDelivery: boolean;
+
   items: OrderItem[];
 
   status: OrderStatus;
@@ -64,6 +69,11 @@ export class Order {
   readonly itemCount: number;
   readonly deliveryFee: Money;
   readonly grandTotal: Money;
+
+  readonly deliveryRuleId?: string | null;
+  readonly deliveryRuleName?: string | null;
+  readonly deliveryRuleMinimumOrderAmount?: Money | null;
+  readonly isFreeDelivery: boolean;
 
   readonly items: OrderItem[];
 
@@ -107,6 +117,11 @@ export class Order {
   grandTotal: number;
   itemCount: number;
 
+  deliveryRuleId?: string | null;
+  deliveryRuleName?: string | null;
+  deliveryRuleMinimumOrderAmount?: number | null;
+  isFreeDelivery?: boolean;
+
   items: OrderItem[];
 
   now?: Date;
@@ -133,6 +148,14 @@ export class Order {
     deliveryFee: Money.create(params.deliveryFee),
     grandTotal: Money.create(params.grandTotal),
     itemCount: params.itemCount,
+
+    deliveryRuleId: params.deliveryRuleId ?? null,
+    deliveryRuleName: params.deliveryRuleName ?? null,
+    deliveryRuleMinimumOrderAmount:
+      params.deliveryRuleMinimumOrderAmount != null
+        ? Money.create(params.deliveryRuleMinimumOrderAmount)
+        : null,
+    isFreeDelivery: params.isFreeDelivery ?? params.deliveryFee === 0,
 
     items: params.items,
 

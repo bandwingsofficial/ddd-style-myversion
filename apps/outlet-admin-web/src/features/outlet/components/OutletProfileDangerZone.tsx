@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Trash2, AlertTriangle, X } from 'lucide-react';
 import { outletProfileService } from '../services/outletProfile.service';
 
@@ -21,7 +22,7 @@ export default function OutletProfileDangerZone({
       onDeleted();
     } catch (error) {
       console.error("Delete failed:", error);
-      alert("Failed to delete profile. Please try again.");
+      toast.error('Failed to delete profile. Please try again.');
     } finally {
       setIsDeleting(false);
       setShowConfirm(false);

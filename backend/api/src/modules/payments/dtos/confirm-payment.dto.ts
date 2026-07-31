@@ -1,6 +1,15 @@
-import { IsUUID } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class ConfirmPaymentDto {
-  @IsUUID()
-  paymentId: string;
+  @IsOptional()
+  @IsString()
+  razorpayPaymentId?: string;
+
+  @IsOptional()
+  @IsString()
+  razorpayOrderId?: string;
+
+  @IsOptional()
+  @IsString()
+  razorpaySignature?: string;
 }

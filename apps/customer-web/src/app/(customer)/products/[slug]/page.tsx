@@ -13,6 +13,7 @@ import { useCartStore } from "@/features/cart/cart.store";
 import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
 import { useOutletStore } from "@/features/outlet/outlet.store";
 import { useFavorites } from "@/providers/CustomerAuthProvider";
+import { toast } from "sonner";
 
 export default function ProductDetailsPage() {
   const { slug: routeSlug } = useParams<{ slug: string }>();
@@ -67,7 +68,7 @@ export default function ProductDetailsPage() {
 
   const handleAddToCart = async () => {
     if (!currentOutlet) {
-      alert("Please select a nearby outlet first.");
+      toast.error("Please select a nearby outlet first.");
       return;
     }
     if (!product || product.originalPrice <= 0) return;

@@ -57,6 +57,30 @@ async getCheckoutSummary(
     data,
   };
 }
+  @Get('active')
+  async getActiveCheckout(
+    @Query('outletId') outletId: string,
+    @CurrentUser() user: { actorId: string },
+  ) {
+    if (!outletId) {
+      throw new ValidationError('OUTLET_ID_REQUIRED', 'Outlet id is required');
+    }
+
+    const data = await this.orchestrator.getActiveCheckout({
+      customerId: user.actorId,
+      outletId,
+    });
+
+    return {
+      success: true,
+      code: data ? 'ACTIVE_CHECKOUT_FOUND' : 'NO_ACTIVE_CHECKOUT',
+      message: data
+        ? 'Active checkout session found'
+        : 'No active checkout session',
+      data,
+    };
+  }
+
   /* ================================================= */
   /* START CHECKOUT                                   */
   /* ================================================= */

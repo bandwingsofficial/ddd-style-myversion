@@ -14,6 +14,7 @@ import { PaymentMethod } from '../domain/enums/payment-method.enum';
 import { ValidationError } from '../../../common/errors';
 
 import { PaymentEventsService } from '../events/payment-events.service';
+import { OrderStatus } from '../../orders/domain/enums/order-status.enum';
 
 
 @Injectable()
@@ -58,7 +59,7 @@ async createPayment(params: {
         throw new ValidationError('ORDER_NOT_FOUND', 'Order not found');
       }
 
-      if (!order.isCreated()) {
+      if (!order.isCreated() && order.status !== OrderStatus.PAYMENT_PENDING) {
         throw new ValidationError(
           'ORDER_NOT_PAYABLE',
           'Payment already initiated for this order',
@@ -66,20 +67,26 @@ async createPayment(params: {
       }
 
       const amount = order.grandTotal.toNumber();
+      const existingAttempts = await this.paymentRepo.findAllByOrderId(
+        order.id,
+        tx,
+      );
+      const attemptNo = existingAttempts.length + 1;
 
-      /* 🔥 FIX #1 → REAL PROVIDER */
       const payment = Payment.createNew({
         id: uuid(),
         orderId: order.id,
         method: PaymentMethod.ONLINE,
         amount,
-        provider: 'RAZORPAY', // ✅ changed
+        provider: 'RAZORPAY',
       });
 
-      const saved = await this.paymentRepo.create(payment, tx);
+      const saved = await this.paymentRepo.create(payment, tx, attemptNo);
 
-      const pendingOrder = order.markPaymentPending();
-      await this.orderRepo.update(pendingOrder, tx);
+      if (order.isCreated()) {
+        const pendingOrder = order.markPaymentPending();
+        await this.orderRepo.update(pendingOrder, tx);
+      }
 
       return { payment: saved, amount };
     },
@@ -138,12 +145,10 @@ async createPayment(params: {
 
 async confirmPayment(params: {
   paymentId: string;
+  razorpayPaymentId?: string;
+  razorpayOrderId?: string;
+  razorpaySignature?: string;
 }): Promise<Payment> {
-
-  console.log('\n💰 ==============================');
-  console.log('CONFIRM PAYMENT START');
-  console.log('paymentId:', params.paymentId);
-  console.log('==============================\n');
 
   if (!params?.paymentId) {
     throw new ValidationError(
@@ -151,8 +156,6 @@ async confirmPayment(params: {
       'Payment id is required',
     );
   }
-
-  console.log('🛢️  Fetching payment from DB...');
 
   const payment = await this.paymentRepo.findById(params.paymentId);
 
@@ -163,15 +166,7 @@ async confirmPayment(params: {
     );
   }
 
-  console.log('✅ Payment found');
-  console.log({
-    providerRefId: payment.providerRefId,
-    currentStatus: payment.status,
-  });
-
-  /* 🔥 HARD IDEMPOTENCY EXIT */
   if (payment.isSuccess()) {
-    console.log('🟡 Already SUCCESS — skipping confirm completely\n');
     return payment;
   }
 
@@ -182,18 +177,21 @@ async confirmPayment(params: {
     );
   }
 
-  /* ================================================= */
-  /* EXTERNAL VERIFY                                   */
-  /* ================================================= */
+  const razorpayPaymentId =
+    params.razorpayPaymentId ?? payment.transactionId ?? undefined;
 
-  console.log('🌐 Verifying payment with gateway...');
+  if (!razorpayPaymentId) {
+    throw new ValidationError(
+      'RAZORPAY_PAYMENT_ID_REQUIRED',
+      'Razorpay payment id is required for verification',
+    );
+  }
 
   const verification = await this.gateway.verifyPayment({
-    providerPaymentId: payment.providerRefId,
+    providerOrderId: params.razorpayOrderId ?? payment.providerRefId,
+    providerPaymentId: razorpayPaymentId,
+    signature: params.razorpaySignature,
   });
-
-  console.log('📡 Gateway verification result →');
-  console.log(verification);
 
   /* ================================================= */
   /* DB UPDATE (atomic)                                */
@@ -213,12 +211,10 @@ async confirmPayment(params: {
     let newPayment: Payment;
 
     if (verification.success) {
-      console.log('🟢 SUCCESS → marking PAID');
       newPayment = freshPayment.markSuccess({
         transactionId: verification.providerPaymentId,
       });
     } else {
-      console.log('🔴 FAILED → marking FAILED');
       newPayment = freshPayment.markFailed();
     }
 
@@ -232,8 +228,6 @@ async confirmPayment(params: {
   /* ================================================= */
 
   if (updatedPayment.isSuccess()) {
-    console.log('🎉 Emitting PaymentSuccess event');
-
     this.paymentEvents.emitPaymentSuccess({
       paymentId: updatedPayment.id,
       orderId: updatedPayment.orderId,
@@ -242,8 +236,6 @@ async confirmPayment(params: {
       occurredAt: new Date(),
     });
   } else {
-    console.log('⚠️ Emitting PaymentFailed event');
-
     this.paymentEvents.emitPaymentFailed({
       paymentId: updatedPayment.id,
       orderId: updatedPayment.orderId,
@@ -251,8 +243,6 @@ async confirmPayment(params: {
       occurredAt: new Date(),
     });
   }
-
-  console.log('💰 CONFIRM PAYMENT END\n');
 
   return updatedPayment;
 }
@@ -266,77 +256,78 @@ async handleWebhook(params: {
   signature?: string;
 }): Promise<void> {
 
-  console.log('\n📩 ==============================');
-  console.log('WEBHOOK RECEIVED');
-  console.log('==============================');
-
   try {
-
-    /* ---------------------------------------------- */
-    /* 🔐 signature verify (optional)                  */
-    /* ---------------------------------------------- */
-
-    // this.gateway.verifyWebhookSignature(
-    //   params.signature,
-    //   params.payload,
-    // );
-
-    console.log('📦 Raw payload →');
-    console.log(JSON.stringify(params.payload, null, 2));
-
-    /* ---------------------------------------------- */
-    /* ✅ Razorpay correct parsing                     */
-    /* ---------------------------------------------- */
+    if (params.signature && typeof params.payload === 'string') {
+      this.gateway.verifyWebhookSignature(params.signature, params.payload);
+    }
 
     const body = params.payload as any;
+    const event = body?.event as string | undefined;
+    const paymentEntity = body?.payload?.payment?.entity;
+    const razorpayOrderId = paymentEntity?.order_id as string | undefined;
+    const razorpayPaymentId = paymentEntity?.id as string | undefined;
 
-    const providerPaymentId =
-      body?.payload?.payment?.entity?.id;
+    const supportedEvents = new Set([
+      'payment.authorized',
+      'payment.captured',
+      'payment.failed',
+      'order.paid',
+    ]);
 
-    console.log('🔍 Extracted providerPaymentId:', providerPaymentId);
-
-    if (!providerPaymentId) {
-      console.log('⚠️ No providerPaymentId found → ignoring');
+    if (event && !supportedEvents.has(event) && !event.startsWith('refund.')) {
       return;
     }
 
-    /* ---------------------------------------------- */
-    /* find payment                                   */
-    /* ---------------------------------------------- */
+    if (event === 'refund.created' || event === 'refund.processed') {
+      this.paymentEvents.emitPaymentRefunded({
+        paymentId: razorpayPaymentId ?? '',
+        orderId: '',
+        amount: Number(paymentEntity?.amount ?? 0) / 100,
+        occurredAt: new Date(),
+      });
+      return;
+    }
 
-    console.log('🛢️ Looking up payment in DB...');
+    if (!razorpayOrderId) {
+      return;
+    }
 
     const payment =
-      await this.paymentRepo.findByProviderRefId(
-        providerPaymentId,
-      );
+      await this.paymentRepo.findByProviderRefId(razorpayOrderId);
 
     if (!payment) {
-      console.log('⚠️ Payment not found for providerRef');
       return;
     }
 
-    console.log('✅ Payment found → confirming...');
-    console.log({
-      paymentId: payment.id,
-      orderId: payment.orderId,
-    });
+    if (event === 'payment.failed') {
+      await this.prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: 'FAILED',
+          failureReason:
+            paymentEntity?.error_description ??
+            paymentEntity?.error_reason ??
+            'Payment failed',
+          updatedAt: new Date(),
+        },
+      });
 
-    /* ---------------------------------------------- */
-    /* idempotent confirm                              */
-    /* ---------------------------------------------- */
+      this.paymentEvents.emitPaymentFailed({
+        paymentId: payment.id,
+        orderId: payment.orderId,
+        amount: payment.amount.toNumber(),
+        occurredAt: new Date(),
+      });
+      return;
+    }
 
     await this.confirmPayment({
       paymentId: payment.id,
+      razorpayOrderId,
+      razorpayPaymentId,
     });
-
-    console.log('🎉 Webhook processing complete\n');
-
   } catch (err) {
-
-    /* 🔥 NEVER throw in webhook */
-    console.error('❌ [PAYMENT WEBHOOK ERROR]');
-    console.error(err);
+    console.error('[PAYMENT WEBHOOK ERROR]', err);
   }
 }
 

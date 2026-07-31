@@ -1,39 +1,22 @@
 "use client";
 
-import React, { useMemo } from "react";
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCartStore } from "@/features/cart/cart.store";
 import { ShoppingBag, ArrowRight } from "lucide-react";
 
-// Helper for image URLs (matching your cart page implementation)
-const BACKEND_URL = "https://api.dev.local:4000";
-const getImageUrl = (path?: string) => {
-  if (!path || path.trim() === "") return null;
-  if (path.startsWith("http")) return path;
-  const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  return `${BACKEND_URL}${cleanPath}`;
-};
+import { getProductImageUrl } from "@/lib/image-url";
 
 export default function FloatingCartBar() {
   const pathname = usePathname();
-  const { items, hydrated } = useCartStore();
+  const { items, summary, hydrated } = useCartStore();
 
   // Hide the floating bar automatically if the user is already on the main cart page or checkout pages
   const isCartOrCheckout = pathname?.startsWith("/cart") || pathname?.startsWith("/checkout");
 
-  // Calculate total items count and grand total amount
-  const { totalItems, grandTotal } = useMemo(() => {
-    return items.reduce(
-      (acc, item) => {
-        const price = item.discountPrice ?? item.unitPrice;
-        acc.totalItems += item.quantity;
-        acc.grandTotal += price * item.quantity;
-        return acc;
-      },
-      { totalItems: 0, grandTotal: 0 }
-    );
-  }, [items]);
+  const totalItems = summary.itemCount || items.reduce((acc, item) => acc + item.quantity, 0);
+  const grandTotal = summary.grandTotal;
 
   // Do not render if not hydrated, cart is empty, or user is currently viewing the cart/checkout pages
   if (!hydrated || items.length === 0 || isCartOrCheckout) {
@@ -43,7 +26,7 @@ export default function FloatingCartBar() {
   // Grab up to 3 product images for a stacked preview effect
   const previewImages = items
     .slice(0, 3)
-    .map((item) => getImageUrl(item.productImage))
+    .map((item) => getProductImageUrl(item.productImage))
     .filter(Boolean);
 
   return (

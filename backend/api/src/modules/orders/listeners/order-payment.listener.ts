@@ -5,91 +5,49 @@ import { PaymentEvents } from '../../payments/events/payment-events.constants';
 
 import { OrderStatusService } from '../services/order-status.service';
 import { CartOrchestratorService } from '../../cart/services/cart-orchestrator.service';
+import { OrderRepository } from '../repositories/order.repository';
 
-/**
- * =================================================
- * ORDER ⇄ PAYMENT GLUE (DOMAIN LISTENER)
- * =================================================
- *
- * This is BUSINESS logic (NOT socket).
- *
- * payment.success  → order.PAID
- * payment.failed   → order.FAILED
- *
- * OrderStatusService handles:
- *   • DB update
- *   • OrderEvent history
- *   • order.* events
- *   • socket updates automatically
- *
- * So this listener stays VERY thin.
- */
 @Injectable()
 export class OrderPaymentListener {
   constructor(
     private readonly orderStatusService: OrderStatusService,
     private readonly cartOrchestrator: CartOrchestratorService,
+    private readonly orderRepo: OrderRepository,
   ) {}
 
-  /* ================================================= */
-  /* PAYMENT SUCCESS → ORDER PAID                       */
-  /* ================================================= */
+  @OnEvent(PaymentEvents.PAYMENT_SUCCESS)
+  async handlePaymentSuccess(payload: {
+    orderId: string;
+  }): Promise<void> {
+    let order;
 
-@OnEvent(PaymentEvents.PAYMENT_SUCCESS)
-async handlePaymentSuccess(payload: {
-  orderId: string;
-}): Promise<void> {
-
-  console.log(
-    '💚 payment.success → mark order PAID + clear cart',
-    payload.orderId,
-  );
-
-  let order;
-
-  try {
-    order = await this.orderStatusService.markPaid(payload.orderId);
-  } catch (err: any) {
-
-    // ✅ idempotent protection
-    if (err?.message?.includes('Cannot mark paid')) {
-      console.log('🟡 Order already paid — skipping');
-      return;
+    try {
+      order = await this.orderStatusService.markPaid(payload.orderId);
+    } catch (err: any) {
+      if (err?.message?.includes('Cannot mark paid')) {
+        return;
+      }
+      throw err;
     }
 
-    throw err;
+    try {
+      await this.cartOrchestrator.clearCart({
+        customerId: order.customerId,
+        outletId: order.outletId,
+      });
+    } catch {
+      // Cart may already be cleared after successful checkout
+    }
   }
 
-  try {
-    await this.cartOrchestrator.clearCart({
-      customerId: order.customerId,
-    });
-  } catch (err) {
-    console.log('🟡 Cart already cleared — skipping');
-  }
-}
-  /* ================================================= */
-  /* PAYMENT FAILED → ORDER FAILED                      */
-  /* ================================================= */
-
+  /**
+   * Payment attempt failed — checkout stays active for unlimited retries.
+   * Do NOT unlock cart or fail the order.
+   */
   @OnEvent(PaymentEvents.PAYMENT_FAILED)
-async handlePaymentFailed(payload: {
-  orderId: string;
-}): Promise<void> {
-
-  console.log(
-    '🔥 payment.failed → mark FAILED + unlock cart',
-    payload.orderId,
-  );
-
-  const order = await this.orderStatusService.fail(payload.orderId);
-
-  try {
-    await this.cartOrchestrator.unlockCart({
-      customerId: order.customerId,
-    });
-  } catch (err) {
-    console.error('[UNLOCK CART FAILED]', err);
+  async handlePaymentFailed(_payload: {
+    orderId: string;
+  }): Promise<void> {
+    // Intentionally no-op: order remains PAYMENT_PENDING, cart stays locked.
   }
-}
 }

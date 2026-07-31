@@ -57,6 +57,26 @@ export async function fetchRazorpayPayment(paymentId: string) {
 }
 
 /**
+ * Verify Razorpay checkout callback signature (order_id|payment_id)
+ */
+export function verifyRazorpayCheckoutSignature(params: {
+  orderId: string;
+  paymentId: string;
+  signature: string;
+}): boolean {
+  if (!keySecret || !params.signature) {
+    return false;
+  }
+
+  const expected = crypto
+    .createHmac('sha256', keySecret)
+    .update(`${params.orderId}|${params.paymentId}`)
+    .digest('hex');
+
+  return expected === params.signature;
+}
+
+/**
  * Verify webhook signature (HMAC SHA256)
  */
 export function verifyRazorpaySignature(params: {

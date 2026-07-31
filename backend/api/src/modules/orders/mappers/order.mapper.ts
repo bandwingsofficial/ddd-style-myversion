@@ -69,6 +69,13 @@ export class OrderMapper {
 
       itemCount: order.itemCount,
 
+      deliveryRuleId: order.deliveryRuleId ?? null,
+      deliveryRuleName: order.deliveryRuleName ?? null,
+      deliveryRuleMinimumOrderAmount: order.deliveryRuleMinimumOrderAmount
+        ? Money.create(Number(order.deliveryRuleMinimumOrderAmount))
+        : null,
+      isFreeDelivery: order.isFreeDelivery,
+
       status: this.toDomainStatus(order.status),
       version: order.version,
 
@@ -138,6 +145,12 @@ export class OrderMapper {
       deliveryFee: order.deliveryFee.toNumber(),
       grandTotal: order.grandTotal.toNumber(),
       itemCount: order.itemCount,
+
+      deliveryRuleId: order.deliveryRuleId ?? null,
+      deliveryRuleName: order.deliveryRuleName ?? null,
+      deliveryRuleMinimumOrderAmount:
+        order.deliveryRuleMinimumOrderAmount?.toNumber() ?? null,
+      isFreeDelivery: order.isFreeDelivery,
 
       status: this.toPrismaStatus(order.status),
       version: order.version,

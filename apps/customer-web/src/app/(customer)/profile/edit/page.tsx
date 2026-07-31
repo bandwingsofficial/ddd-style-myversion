@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { X, Save, User, Mail, Calendar, ChevronDown, Camera } from "lucide-react";
 import { profileApi } from "@/features/customer-profile/api/profile.api";
+import { toast } from "sonner";
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -55,7 +56,7 @@ export default function EditProfileModal({ isOpen, onClose, initialData, onSucce
     e.preventDefault();
     
     if (!formData.fullName.trim()) {
-      alert("Full Name is required");
+      toast.error("Full Name is required");
       return;
     }
 
@@ -86,7 +87,7 @@ export default function EditProfileModal({ isOpen, onClose, initialData, onSucce
     } catch (error: any) {
       console.error("Operation failed:", error.response?.data || error.message);
       const serverMessage = error.response?.data?.message || "Failed to save profile.";
-      alert(serverMessage);
+      toast.error(serverMessage);
     } finally {
       setSaving(false);
     }

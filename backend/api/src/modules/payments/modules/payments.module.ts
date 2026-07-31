@@ -6,6 +6,7 @@ import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 /* CONTROLLERS                                    */
 /* ---------------------------------------------- */
 import { PaymentController } from '../controllers/payment.controller';
+import { PaymentAdminController } from '../controllers/payment-admin.controller';
 import { PaymentWebhookController } from '../controllers/payment-webhook.controller';
 
 /* ---------------------------------------------- */
@@ -46,7 +47,8 @@ import { OrdersModule } from '../../orders/modules/orders.module';
   ],
   controllers: [
     PaymentController,
-    PaymentWebhookController, // 🔥 Razorpay webhook
+    PaymentAdminController,
+    PaymentWebhookController,
   ],
   providers: [
     /* Infrastructure */

@@ -21,6 +21,15 @@ export interface CheckoutSummary {
   deliveryFee: number;
   grandTotal: number;
   itemCount: number;
+  deliveryRuleId?: string | null;
+  deliveryRuleName?: string | null;
+  matchedDeliveryRuleId?: string | null;
+  matchedDeliveryRuleName?: string | null;
+  minimumOrderAmount?: number;
+  isFreeDelivery?: boolean;
+  amountToFreeDelivery?: number | null;
+  remainingAmountForFreeDelivery?: number | null;
+  remainingAmountForNextRule?: number | null;
   currency: string;
 }
 

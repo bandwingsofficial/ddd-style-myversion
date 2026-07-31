@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Header from "@/components/customer/Header";
@@ -19,21 +19,13 @@ import {
 } from "lucide-react";
 import AddressSelectionModal from "@/components/address/AddressSelectionModal";
 import { Address } from "@/features/addresses/address.service";
+import { DeliveryFeeDisplay } from "@/features/delivery/DeliveryFeeDisplay";
 
-// Helper for image URLs
-const BACKEND_URL = (
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? ""
-).replace(/\/$/, "");
-const getImageUrl = (path?: string) => {
-  if (!path || path.trim() === "") return null;
-  if (path.startsWith("http")) return path;
-  const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  return `${BACKEND_URL}${cleanPath}`;
-};
+import { getProductImageUrl } from "@/lib/image-url";
 
 export default function CartPage() {
   const router = useRouter();
-  const { items, updateItem, removeItem, hydrated, loadCart } = useCartStore();
+  const { items, summary, updateItem, removeItem, hydrated, loadCart } = useCartStore();
   const { isAuthenticated } = useCustomerAuthStore();
   
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
@@ -43,16 +35,8 @@ export default function CartPage() {
     if (!hydrated) loadCart(isAuthenticated);
   }, [hydrated, isAuthenticated, loadCart]);
 
-  // Calculations
-  const { subtotal, totalDiscount, grandTotal } = useMemo(() => {
-    return items.reduce((acc, item) => {
-        const price = item.discountPrice || item.unitPrice;
-        acc.subtotal += item.unitPrice * item.quantity;
-        acc.grandTotal += price * item.quantity;
-        acc.totalDiscount += (item.unitPrice * item.quantity) - (price * item.quantity);
-        return acc;
-    }, { subtotal: 0, totalDiscount: 0, grandTotal: 0 });
-  }, [items]);
+  // Calculations come from backend summary (or guest preview API)
+  const { subtotal, discount: totalDiscount, deliveryFee, grandTotal, amountToFreeDelivery } = summary;
 
   // Handlers
   const handleQuantityChange = async (productId: string, currentQty: number, delta: number) => {
@@ -137,7 +121,7 @@ export default function CartPage() {
               {/* Items List */}
               <div className="lg:col-span-8 space-y-4">
                 {items.map((item) => {
-                   const imageUrl = getImageUrl(item.productImage);
+                   const imageUrl = getProductImageUrl(item.productImage);
                    const isLoading = isUpdating === item.productId;
                    return (
                      <div key={item.productId} className={`group relative flex flex-col sm:flex-row gap-5 p-5 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 ${isLoading ? 'opacity-60 pointer-events-none' : ''}`}>
@@ -212,10 +196,11 @@ export default function CartPage() {
                                <span>-₹{totalDiscount}</span>
                            </div>
                        )}
-                       <div className="flex justify-between text-slate-500 text-sm">
-                           <span>Delivery Fee</span>
-                           <span className="text-emerald-600 font-medium">30</span>
-                       </div>
+                       <DeliveryFeeDisplay
+                         deliveryFee={deliveryFee}
+                         amountToFreeDelivery={amountToFreeDelivery}
+                         remainingAmountForFreeDelivery={summary.remainingAmountForFreeDelivery}
+                       />
                    </div>
 
                    <div className="border-t border-slate-100 pt-4 mb-6">

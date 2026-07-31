@@ -49,6 +49,12 @@ private toResponse(order: any) {
       grandTotal: order.grandTotal.toNumber(),
       itemCount: order.itemCount,
 
+      deliveryRuleId: order.deliveryRuleId ?? null,
+      deliveryRuleName: order.deliveryRuleName ?? null,
+      deliveryRuleMinimumOrderAmount:
+        order.deliveryRuleMinimumOrderAmount?.toNumber() ?? null,
+      isFreeDelivery: order.isFreeDelivery,
+
       status: order.status,
 
       items: order.items.map((item: any) => ({

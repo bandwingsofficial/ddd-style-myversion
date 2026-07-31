@@ -6,6 +6,7 @@ import {
   createRazorpayOrder,
   fetchRazorpayPayment,
   verifyRazorpaySignature,
+  verifyRazorpayCheckoutSignature,
 } from '../../../infrastructure/providers/razorpay/razorpay.client';
 
 /* ================================================= */
@@ -22,11 +23,6 @@ export interface PaymentVerificationResult {
   providerPaymentId: string;
   raw?: unknown;
 }
-console.log('ENV DEBUG →', process.env.NODE_ENV);
-
-/* ================================================= */
-/* GATEWAY SERVICE                                   */
-/* ================================================= */
 
 @Injectable()
 export class PaymentGatewayService {
@@ -69,35 +65,21 @@ export class PaymentGatewayService {
   /* ================================================= */
 
   async verifyPayment(params: {
+    providerOrderId: string;
     providerPaymentId: string;
+    signature?: string;
   }): Promise<PaymentVerificationResult> {
 
-    console.log('\n==============================');
-    console.log('🔍 VERIFY PAYMENT START');
-    console.log('providerPaymentId:', params.providerPaymentId);
-
-    /* 🔥 DEBUG BOTH SOURCES */
-    console.log('process.env.NODE_ENV =', process.env.NODE_ENV);
-
-    const env = this.config.get<string>('NODE_ENV');
-    console.log('ConfigService NODE_ENV =', env);
-
-    console.log('==============================\n');
-
-    if (!params?.providerPaymentId) {
+    if (!params?.providerOrderId || !params?.providerPaymentId) {
       throw new ValidationError(
         'PROVIDER_PAYMENT_ID_REQUIRED',
         'Provider payment id is required',
       );
     }
 
-    /* ================================================= */
-    /* DEV MODE                                          */
-    /* ================================================= */
+    const env = this.config.get<string>('NODE_ENV');
 
     if (env !== 'production') {
-      console.log('⚡ MOCK MODE → auto success\n');
-
       return {
         success: true,
         providerPaymentId: params.providerPaymentId,
@@ -105,25 +87,29 @@ export class PaymentGatewayService {
       };
     }
 
-    /* ================================================= */
-    /* PRODUCTION MODE                                   */
-    /* ================================================= */
+    if (
+      params.signature &&
+      !verifyRazorpayCheckoutSignature({
+        orderId: params.providerOrderId,
+        paymentId: params.providerPaymentId,
+        signature: params.signature,
+      })
+    ) {
+      return {
+        success: false,
+        providerPaymentId: params.providerPaymentId,
+        raw: { reason: 'INVALID_SIGNATURE' },
+      };
+    }
 
     try {
-      console.log('🌐 REAL MODE → calling Razorpay verify...');
-
-      const payment = await fetchRazorpayPayment(
-        params.providerPaymentId,
-      );
-
-      console.log('📡 Razorpay status →', payment.status);
+      const payment = await fetchRazorpayPayment(params.providerPaymentId);
 
       return {
-        success: payment.status === 'captured',
+        success: payment.status === 'captured' || payment.status === 'authorized',
         providerPaymentId: params.providerPaymentId,
         raw: payment,
       };
-
     } catch (err) {
       console.error('❌ Razorpay verify failed:', err);
 

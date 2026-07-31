@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Param,
+  Body,
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
@@ -17,6 +18,7 @@ import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { ActorType } from '../../auth/domain/enums/actor-type.enum';
 
 import { PaymentResponseDto } from '../dtos/payment-response.dto';
+import { ConfirmPaymentDto } from '../dtos/confirm-payment.dto';
 
 @Controller('payments')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -52,10 +54,14 @@ export class PaymentController {
   @Post(':paymentId/confirm')
   async confirmPayment(
     @Param('paymentId', ParseUUIDPipe) paymentId: string,
+    @Body() dto: ConfirmPaymentDto,
   ) {
     const payment =
       await this.orchestrator.confirmPayment({
         paymentId,
+        razorpayPaymentId: dto.razorpayPaymentId,
+        razorpayOrderId: dto.razorpayOrderId,
+        razorpaySignature: dto.razorpaySignature,
       });
 
     return {

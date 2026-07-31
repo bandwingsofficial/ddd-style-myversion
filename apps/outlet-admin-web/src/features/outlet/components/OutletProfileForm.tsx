@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { toast } from 'sonner';
 import { Save, X, Image as ImageIcon, Briefcase, Phone, Mail, Hash, FileText, Camera, Upload, Trash2 } from 'lucide-react';
 import {
   OutletProfile,
@@ -96,7 +97,7 @@ export default function OutletProfileForm({
     e.preventDefault();
     
     if (!outletId || outletId === 'undefined') {
-      alert("System Error: Outlet ID not found. Please refresh the page.");
+      toast.error('System error: outlet ID not found. Please refresh the page.');
       return;
     }
 
@@ -123,7 +124,7 @@ export default function OutletProfileForm({
       onSuccess();
     } catch (error) {
       console.error("Failed to save profile:", error);
-      alert("Something went wrong. Please try again.");
+      toast.error('Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

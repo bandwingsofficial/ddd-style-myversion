@@ -1,35 +1,50 @@
 export interface CartItem {
-  id?: string; // Cart Item ID (from backend)
+  id?: string;
   productId: string;
   cartId?: string;
   outletId?: string;
-  
-  // Product Details
   productName: string;
   productImage: string;
-  
-  // Price & Qty
   quantity: number;
-  unitPrice: number;     // Converted to number in API
-  discountPrice: number; // Converted to number in API
+  unitPrice: number;
+  discountPrice: number;
   lineTotal?: number;
-  
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface CartSummary {
+  subtotal: number;
+  discount: number;
+  afterDiscountTotal: number;
+  deliveryFee: number;
+  grandTotal: number;
+  itemCount: number;
+  deliveryRuleId?: string | null;
+  deliveryRuleName?: string | null;
+  matchedDeliveryRuleId?: string | null;
+  matchedDeliveryRuleName?: string | null;
+  minimumOrderAmount?: number;
+  isFreeDelivery: boolean;
+  amountToFreeDelivery?: number | null;
+  remainingAmountForFreeDelivery?: number | null;
+  remainingAmountForNextRule?: number | null;
 }
 
 export interface Cart {
   id?: string;
   customerId?: string;
   outletId?: string;
-  
-  // Backend Totals (New)
-  subtotal?: number | string;
-  discount?: number | string;
-  deliveryFee?: number | string;
-  grandTotal?: number | string;
+  subtotal?: number;
+  discount?: number;
+  afterDiscountTotal?: number;
+  deliveryFee?: number;
+  grandTotal?: number;
   itemCount?: number;
-
+  deliveryRuleId?: string | null;
+  deliveryRuleName?: string | null;
+  isFreeDelivery?: boolean;
+  amountToFreeDelivery?: number | null;
   items: CartItem[];
   currency?: string;
   status?: string;

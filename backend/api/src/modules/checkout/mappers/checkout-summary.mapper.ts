@@ -47,6 +47,11 @@ export interface CheckoutSummaryDto {
   grandTotal: number;
   itemCount: number;
 
+  deliveryRuleId?: string | null;
+  deliveryRuleName?: string | null;
+  isFreeDelivery: boolean;
+  amountToFreeDelivery?: number | null;
+
   currency: string;
 }
 
@@ -100,6 +105,14 @@ export class CheckoutSummaryMapper {
       deliveryFee: toNumber(cart.deliveryFee),
       grandTotal: toNumber(cart.grandTotal),
       itemCount: cart.itemCount,
+
+      deliveryRuleId: cart.deliveryRuleId ?? null,
+      deliveryRuleName: cart.deliveryRuleName ?? null,
+      isFreeDelivery: cart.isFreeDelivery,
+      amountToFreeDelivery:
+        cart.amountToFreeDelivery != null
+          ? toNumber(cart.amountToFreeDelivery)
+          : null,
 
       currency: cart.currency,
     };

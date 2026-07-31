@@ -8,6 +8,7 @@ import { useCartStore } from "@/features/cart/cart.store";
 import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
 import { ProductListItem } from "@/features/products/types/product.types";
 import { useOutletStore } from "@/features/outlet/outlet.store";
+import { toast } from "sonner";
 
 export default function ProductCard({ product }: { product: ProductListItem }) {
   const [imageError, setImageError] = useState(false);
@@ -73,10 +74,10 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
   const handleAdd = async (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
     if (!isOutletSelected) {
-      alert("Please select a nearby outlet first.");
+      toast.error("Please select a nearby outlet first.");
       return;
     }
-    if (original <= 0) { alert("Invalid Price"); return; }
+    if (original <= 0) { toast.error("Invalid price for this product."); return; }
     if (!outletId) return;
 
     await addItem(

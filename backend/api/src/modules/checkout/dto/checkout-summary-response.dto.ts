@@ -49,5 +49,10 @@ export class CheckoutSummaryResponseDto {
 
   itemCount: number;
 
+  deliveryRuleId?: string | null;
+  deliveryRuleName?: string | null;
+  isFreeDelivery: boolean;
+  amountToFreeDelivery?: number | null;
+
   currency: string;
 }

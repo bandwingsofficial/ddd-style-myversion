@@ -3,6 +3,8 @@
 import { Module } from '@nestjs/common';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+import { DeliveryConfigModule } from '../../delivery-config/modules/delivery-config.module';
+import { UploadsModule } from '../../uploads/uploads.module';
 
 /* ---------------------------------------------- */
 /* CONTROLLERS                                    */
@@ -19,10 +21,12 @@ import { CartOrchestratorService } from '../services/cart-orchestrator.service';
 /* REPOSITORIES                                   */
 /* ---------------------------------------------- */
 import { CartRepository } from '../repositories/cart.repository';
+import { CartResponseMapper } from '../mappers/cart-response.mapper';
 
 @Module({
   imports: [
-    // no dependency modules for now
+    DeliveryConfigModule,
+    UploadsModule,
   ],
   controllers: [
     CartManagementController,
@@ -34,6 +38,7 @@ import { CartRepository } from '../repositories/cart.repository';
     // Core
     CartService,
     CartOrchestratorService,
+    CartResponseMapper,
 
     // Repositories
     CartRepository,
@@ -41,6 +46,7 @@ import { CartRepository } from '../repositories/cart.repository';
   exports: [
     CartService,
     CartOrchestratorService,
+    CartResponseMapper,
   ],
 })
 export class CartModule {}

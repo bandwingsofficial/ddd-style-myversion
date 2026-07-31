@@ -131,6 +131,14 @@ export class OrderService {
     deliveryFee: toNumber(cart.deliveryFee),
     grandTotal: toNumber(cart.grandTotal),
     itemCount: cart.itemCount,
+
+    deliveryRuleId: cart.deliveryRuleId ?? null,
+    deliveryRuleName: cart.deliveryRuleName ?? null,
+    deliveryRuleMinimumOrderAmount:
+      cart.deliveryRuleMinimumOrderAmount != null
+        ? toNumber(cart.deliveryRuleMinimumOrderAmount)
+        : null,
+    isFreeDelivery: cart.isFreeDelivery,
     items,
   });
 

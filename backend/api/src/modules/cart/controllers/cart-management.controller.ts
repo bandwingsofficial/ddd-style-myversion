@@ -1,17 +1,17 @@
 import {
   Body,
   Controller,
-  Get,
-  Post,
-  Patch,
   Delete,
+  Get,
   Param,
-  UseGuards,
+  Patch,
+  Post,
   Query,
+  UseGuards,
 } from '@nestjs/common';
-
 import { ValidationError } from '../../../common/errors';
 import { CartOrchestratorService } from '../services/cart-orchestrator.service';
+import { CartResponseMapper } from '../mappers/cart-response.mapper';
 
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
@@ -27,7 +27,16 @@ import { UpdateCartItemDto } from '../dtos/update-cart-item.dto';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(ActorType.CUSTOMER)
 export class CartManagementController {
-  constructor(private readonly orchestrator: CartOrchestratorService) {}
+  constructor(
+    private readonly orchestrator: CartOrchestratorService,
+    private readonly cartResponseMapper: CartResponseMapper,
+  ) {}
+
+  private async mapCart(cart: Awaited<
+    ReturnType<CartOrchestratorService['getActiveCart']>
+  >['cart']) {
+    return this.cartResponseMapper.toResponse(cart);
+  }
 
   /* ================================================= */
   /* GET ACTIVE CART                                   */
@@ -55,7 +64,7 @@ export class CartManagementController {
         removedInactiveCount > 0
           ? 'One or more products were removed because they are no longer available.'
           : 'Cart fetched successfully',
-      data: cart,
+      data: await this.mapCart(cart),
       meta: { removedInactiveCount },
     };
   }
@@ -79,7 +88,7 @@ export class CartManagementController {
       success: true,
       code: 'CART_ITEM_ADDED',
       message: 'Item added to cart',
-      data,
+      data: await this.cartResponseMapper.toResponse(data),
     };
   }
 
@@ -109,7 +118,7 @@ export class CartManagementController {
       success: true,
       code: 'CART_ITEM_UPDATED',
       message: 'Cart item updated',
-      data,
+      data: await this.cartResponseMapper.toResponse(data),
     };
   }
 
@@ -137,7 +146,7 @@ export class CartManagementController {
       success: true,
       code: 'CART_ITEM_REMOVED',
       message: 'Cart item removed',
-      data,
+      data: await this.cartResponseMapper.toResponse(data),
     };
   }
 
@@ -163,7 +172,7 @@ export class CartManagementController {
       success: true,
       code: 'CART_CLEARED',
       message: 'Cart cleared successfully',
-      data,
+      data: await this.cartResponseMapper.toResponse(data),
     };
   }
 
@@ -189,7 +198,7 @@ export class CartManagementController {
       success: true,
       code: 'CART_LOCKED',
       message: 'Cart locked for checkout',
-      data,
+      data: await this.cartResponseMapper.toResponse(data),
     };
   }
 }

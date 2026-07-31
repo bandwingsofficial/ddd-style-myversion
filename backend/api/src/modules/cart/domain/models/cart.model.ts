@@ -22,6 +22,12 @@ export interface CartProps {
   grandTotal: Decimal;
   itemCount: number;
 
+  deliveryRuleId?: string | null;
+  deliveryRuleName?: string | null;
+  deliveryRuleMinimumOrderAmount?: Decimal | null;
+  isFreeDelivery: boolean;
+  amountToFreeDelivery?: Decimal | null;
+
   createdAt: Date;
   updatedAt: Date;
   lockedAt?: Date;
@@ -44,6 +50,12 @@ export class Cart {
   readonly deliveryFee: Decimal;
   readonly grandTotal: Decimal;
   readonly itemCount: number;
+
+  readonly deliveryRuleId?: string | null;
+  readonly deliveryRuleName?: string | null;
+  readonly deliveryRuleMinimumOrderAmount?: Decimal | null;
+  readonly isFreeDelivery: boolean;
+  readonly amountToFreeDelivery?: Decimal | null;
 
   readonly createdAt: Date;
   readonly updatedAt: Date;
@@ -89,6 +101,12 @@ export class Cart {
       deliveryFee: new Prisma.Decimal(0),
       grandTotal: new Prisma.Decimal(0),
       itemCount: 0,
+
+      deliveryRuleId: null,
+      deliveryRuleName: null,
+      deliveryRuleMinimumOrderAmount: null,
+      isFreeDelivery: false,
+      amountToFreeDelivery: null,
 
       createdAt: now,
       updatedAt: now,
@@ -181,6 +199,12 @@ private toProps(): CartProps {
     deliveryFee: this.deliveryFee,
     grandTotal: this.grandTotal,
     itemCount: this.itemCount,
+
+    deliveryRuleId: this.deliveryRuleId,
+    deliveryRuleName: this.deliveryRuleName,
+    deliveryRuleMinimumOrderAmount: this.deliveryRuleMinimumOrderAmount,
+    isFreeDelivery: this.isFreeDelivery,
+    amountToFreeDelivery: this.amountToFreeDelivery,
 
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,

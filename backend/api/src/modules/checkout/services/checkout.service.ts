@@ -11,7 +11,7 @@ import { PaymentOrchestratorService } from '../../payments/services/payment-orch
 
 import { CheckoutPricingService } from './checkout-pricing.service';
 
-import { CheckoutSummaryMapper } from '../mappers/checkout-summary.mapper';
+import { CartResponseMapper } from '../../cart/mappers/cart-response.mapper';
 
 import { ValidationError } from '../../../common/errors';
 
@@ -27,8 +27,6 @@ import { OrderStatus } from '@/modules/orders/domain/enums/order-status.enum';
 /* ============================================= */
 
 const ACTIVE_ORDER_STATUSES: OrderStatus[] = [
-  OrderStatus.CREATED,
-  OrderStatus.PAYMENT_PENDING,
   OrderStatus.PAID,
   OrderStatus.CONFIRMED,
   OrderStatus.PREPARING,
@@ -47,6 +45,7 @@ export class CheckoutService {
 
     /* 🔥 NEW */
     private readonly checkoutEvents: CheckoutEventsService,
+    private readonly cartResponseMapper: CartResponseMapper,
   ) {}
 
   /* ================================================= */
@@ -106,10 +105,85 @@ async getCheckoutSummary(params: {
     savedAddressId: params.savedAddressId,
   });
 
-  return CheckoutSummaryMapper.toDto({
-    cart,
-    address,
+  const cartResponse = await this.cartResponseMapper.toResponse(cart);
+
+  if (!cartResponse) {
+    throw new ValidationError('EMPTY_CART', 'Cart is empty');
+  }
+
+  return {
+    address: {
+      id: address.id,
+      label: address.label,
+      addressText: address.addressText,
+      latitude: address.latitude ?? undefined,
+      longitude: address.longitude ?? undefined,
+    },
+    items: cartResponse.items.map((item) => ({
+      productId: item.productId,
+      productName: item.productName,
+      productImage: item.productImage,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      discountPrice: item.discountPrice,
+      lineTotal: item.lineTotal,
+    })),
+    subtotal: cartResponse.subtotal,
+    discount: cartResponse.discount,
+    afterDiscountTotal: cartResponse.afterDiscountTotal,
+    deliveryFee: cartResponse.deliveryFee,
+    grandTotal: cartResponse.grandTotal,
+    itemCount: cartResponse.itemCount,
+    deliveryRuleId: cartResponse.deliveryRuleId,
+    deliveryRuleName: cartResponse.deliveryRuleName,
+    matchedDeliveryRuleId: cartResponse.matchedDeliveryRuleId,
+    matchedDeliveryRuleName: cartResponse.matchedDeliveryRuleName,
+    minimumOrderAmount: cartResponse.minimumOrderAmount,
+    isFreeDelivery: cartResponse.isFreeDelivery,
+    amountToFreeDelivery: cartResponse.amountToFreeDelivery,
+    remainingAmountForFreeDelivery: cartResponse.remainingAmountForFreeDelivery,
+    remainingAmountForNextRule: cartResponse.remainingAmountForNextRule,
+    currency: cartResponse.currency,
+  };
+}
+
+async getActiveCheckout(params: {
+  customerId: string;
+  outletId: string;
+}): Promise<{
+  orderId: string;
+  orderNumber: string;
+  status: string;
+  grandTotal: number;
+  currency: string;
+} | null> {
+  const order = await this.prisma.order.findFirst({
+    where: {
+      customerId: params.customerId,
+      outletId: params.outletId,
+      status: OrderStatus.PAYMENT_PENDING,
+    },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      id: true,
+      orderNumber: true,
+      status: true,
+      grandTotal: true,
+      currency: true,
+    },
   });
+
+  if (!order) {
+    return null;
+  }
+
+  return {
+    orderId: order.id,
+    orderNumber: order.orderNumber ?? '',
+    status: order.status,
+    grandTotal: Number(order.grandTotal),
+    currency: order.currency ?? 'INR',
+  };
 }
 
 /* ================================================= */
@@ -122,24 +196,41 @@ async startCheckout(params: {
   savedAddressId: string;
 }): Promise<{
   orderId: string;
+  orderNumber: string;
   paymentId: string;
-
-  // 🔥 NEW (for Razorpay popup)
   razorpayOrderId: string;
   amount: number;
+  currency: string;
   key: string;
+  isRetry: boolean;
 }> {
-
-  console.log('\n==============================');
-  console.log('🚀 CHECKOUT STARTED');
-  console.log(params);
-  console.log('==============================\n');
-
   this.validateParams(params);
 
-  /* ================================================= */
-  /* 1️⃣ CREATE ORDER (TX SAFE)                         */
-  /* ================================================= */
+  const pendingOrder = await this.prisma.order.findFirst({
+    where: {
+      customerId: params.customerId,
+      outletId: params.outletId,
+      status: OrderStatus.PAYMENT_PENDING,
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  if (pendingOrder) {
+    const paymentResult = await this.paymentOrchestrator.createPayment({
+      orderId: pendingOrder.id,
+    });
+
+    return {
+      orderId: pendingOrder.id,
+      orderNumber: pendingOrder.orderNumber ?? '',
+      paymentId: paymentResult.payment.id,
+      razorpayOrderId: paymentResult.razorpayOrderId,
+      amount: Number(pendingOrder.grandTotal) * 100,
+      currency: pendingOrder.currency ?? 'INR',
+      key: process.env.RAZORPAY_KEY_ID!,
+      isRetry: true,
+    };
+  }
 
   const order = await this.prisma.$transaction(
     async (tx: PrismaTransaction) => {
@@ -219,21 +310,16 @@ async startCheckout(params: {
 
     return {
       orderId: order.id,
+      orderNumber: order.orderNumber,
       paymentId: paymentResult.payment.id,
-
-      // 🔥 THESE 3 ARE REQUIRED
       razorpayOrderId: paymentResult.razorpayOrderId,
-      amount: order.grandTotal.toNumber() * 100, // paise
+      amount: order.grandTotal.toNumber() * 100,
+      currency: 'INR',
       key: process.env.RAZORPAY_KEY_ID!,
+      isRetry: false,
     };
 
   } catch (err) {
-
-    await this.cartService.unlockCart({
-      customerId: params.customerId,
-      outletId: params.outletId,
-    });
-
     this.checkoutEvents.emitCheckoutFailed({
       customerId: params.customerId,
       reason: err?.message ?? 'Payment failed',
@@ -262,11 +348,17 @@ async startCheckout(params: {
     });
 
     if (activeOrder) {
+      const fullOrder = await this.prisma.order.findUnique({
+        where: { id: activeOrder.id },
+        select: { id: true, orderNumber: true },
+      });
+
       throw new ValidationError(
         'ORDER_ALREADY_IN_PROGRESS',
         'You already have an order in progress.',
         {
-          orderId: activeOrder.id, // ⭐ frontend uses this
+          orderId: activeOrder.id,
+          orderNumber: fullOrder?.orderNumber ?? null,
         },
       );
     }

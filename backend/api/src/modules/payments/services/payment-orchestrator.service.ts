@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { PaymentService } from './payment.service';
 import { Payment } from '../domain/models/payment.model';
+import { PaymentRepository } from '../repositories/payment.repository';
 
 import { ValidationError } from '../../../common/errors';
 
@@ -9,8 +10,8 @@ import { ValidationError } from '../../../common/errors';
 export class PaymentOrchestratorService {
   constructor(
     private readonly paymentService: PaymentService,
+    private readonly paymentRepo: PaymentRepository,
   ) {}
-
   /* ================================================= */
   /* PAYMENT – CREATE                                  */
   /* ================================================= */
@@ -44,6 +45,9 @@ async createPayment(params: {
 
   async confirmPayment(params: {
     paymentId: string;
+    razorpayPaymentId?: string;
+    razorpayOrderId?: string;
+    razorpaySignature?: string;
   }): Promise<Payment> {
 
     const { paymentId } = params;
@@ -55,7 +59,7 @@ async createPayment(params: {
       );
     }
 
-    return this.paymentService.confirmPayment({ paymentId });
+    return this.paymentService.confirmPayment(params);
   }
 
   /* ================================================= */
@@ -91,5 +95,24 @@ async createPayment(params: {
     }
 
     return this.paymentService.getByOrderId(orderId);
+  }
+
+  async listPaymentsForAdmin(params: {
+    page: number;
+    limit: number;
+    status?: string;
+    orderId?: string;
+  }) {
+    return this.paymentRepo.findAllForAdmin(params);
+  }
+
+  async getPaymentAdminDetail(paymentId: string) {
+    const detail = await this.paymentRepo.findAdminDetailById(paymentId);
+
+    if (!detail) {
+      throw new ValidationError('PAYMENT_NOT_FOUND', 'Payment not found');
+    }
+
+    return detail;
   }
 }

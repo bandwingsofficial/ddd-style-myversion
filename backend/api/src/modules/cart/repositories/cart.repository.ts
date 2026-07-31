@@ -35,6 +35,12 @@ export class CartRepository {
         grandTotal: cart.grandTotal,
         itemCount: cart.itemCount,
 
+        deliveryRuleId: cart.deliveryRuleId ?? null,
+        deliveryRuleName: cart.deliveryRuleName ?? null,
+        deliveryRuleMinimumOrderAmount: cart.deliveryRuleMinimumOrderAmount ?? null,
+        isFreeDelivery: cart.isFreeDelivery,
+        amountToFreeDelivery: cart.amountToFreeDelivery ?? null,
+
         createdAt: cart.createdAt,
         updatedAt: cart.updatedAt,
         lockedAt: cart.lockedAt ?? null,
@@ -71,6 +77,32 @@ export class CartRepository {
 
   return row ? this.toDomain(row) : null;
 }
+
+  /** ACTIVE or LOCKED — for checkout display and session recovery */
+  async findOpenByCustomerAndOutlet(
+    customerId: string,
+    outletId: string,
+    tx?: PrismaTransaction,
+  ): Promise<Cart | null> {
+    const client = tx ?? this.prisma;
+
+    const row = await client.cart.findFirst({
+      where: {
+        customerId,
+        outletId,
+        status: {
+          in: [
+            CartStatusMapper.toPrisma(CartStatus.ACTIVE),
+            CartStatusMapper.toPrisma(CartStatus.LOCKED),
+          ],
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      include: { items: true },
+    });
+
+    return row ? this.toDomain(row) : null;
+  }
 
   async findActiveBySessionAndOutlet(
   sessionId: string,
@@ -124,6 +156,12 @@ export class CartRepository {
         deliveryFee: cart.deliveryFee,
         grandTotal: cart.grandTotal,
         itemCount: cart.itemCount,
+
+        deliveryRuleId: cart.deliveryRuleId ?? null,
+        deliveryRuleName: cart.deliveryRuleName ?? null,
+        deliveryRuleMinimumOrderAmount: cart.deliveryRuleMinimumOrderAmount ?? null,
+        isFreeDelivery: cart.isFreeDelivery,
+        amountToFreeDelivery: cart.amountToFreeDelivery ?? null,
 
         updatedAt: cart.updatedAt,
         lockedAt: cart.lockedAt ?? null,
@@ -238,6 +276,12 @@ export class CartRepository {
       deliveryFee: row.deliveryFee,
       grandTotal: row.grandTotal,
       itemCount: row.itemCount,
+
+      deliveryRuleId: row.deliveryRuleId ?? null,
+      deliveryRuleName: row.deliveryRuleName ?? null,
+      deliveryRuleMinimumOrderAmount: row.deliveryRuleMinimumOrderAmount ?? null,
+      isFreeDelivery: row.isFreeDelivery,
+      amountToFreeDelivery: row.amountToFreeDelivery ?? null,
 
       items: row.items.map((i) => this.toItemDomain(i)),
 

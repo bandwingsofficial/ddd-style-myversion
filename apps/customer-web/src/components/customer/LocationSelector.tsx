@@ -7,7 +7,8 @@ import { useLiveLocation } from "@/features/location/hooks/useLiveLocation";
 import { reverseGeocode } from "@/features/location/utils/reverseGeocode";
 import { AddressService, Address } from "@/features/addresses/address.service";
 import { useLocationStore } from "@/features/location/location.store"; 
-import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store"; 
+import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
+import { toast } from "sonner"; 
 
 export default function LocationSelector() {
   // Local UI State
@@ -82,7 +83,7 @@ export default function LocationSelector() {
       setLocation(liveLat, liveLng, label);
       setIsOpen(false);
     } else {
-      alert("Location unavailable. Please check browser permissions.");
+      toast.error("Location unavailable. Please check browser permissions.");
     }
   };
 

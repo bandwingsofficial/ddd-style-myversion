@@ -16,6 +16,7 @@ import { CartModule } from './modules/cart/modules/cart.module';
 import { CategoriesModule } from './modules/categories/modules/categories.module';
 import { CheckoutModule } from './modules/checkout/modules/checkout.module';
 import { DeliveryModule } from './modules/delivery/modules/delivery.module';
+import { DeliveryConfigModule } from './modules/delivery-config/modules/delivery-config.module';
 import { InventoryModule } from './modules/inventory/modules/inventory.module';
 import { OrdersModule } from './modules/orders/modules/orders.module';
 import { OutletsModule } from './modules/outlets/modules/outlets.module';
@@ -58,6 +59,7 @@ import { OtpWorker } from './workers/otp.worker';
     PaymentsModule,
     CheckoutModule,
     DeliveryModule,
+    DeliveryConfigModule,
     CustomersModule,
   ],
   providers: [OtpWorker, SmsProvider],

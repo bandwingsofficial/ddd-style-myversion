@@ -8,17 +8,7 @@ interface OrderItemsProps {
   items: OrderItem[];
 }
 
-const BACKEND_URL = "https://api.dev.local:4000";
-
-const getImageUrl = (path?: string) => {
-  if (!path) return "/images/product-placeholder.png";
-
-  if (path.startsWith("http")) {
-    return path;
-  }
-
-  return `${BACKEND_URL}${path.startsWith("/") ? path : `/${path}`}`;
-};
+import { getProductImageUrl } from "@/lib/image-url";
 
 export default function OrderItems({
   items,
@@ -43,7 +33,7 @@ export default function OrderItems({
           >
             <div className="relative h-20 w-20 overflow-hidden rounded-xl bg-slate-100">
               <Image
-                src={getImageUrl(item.productImage)}
+                src={getProductImageUrl(item.productImage) ?? "/images/product-placeholder.png"}
                 alt={item.productName}
                 fill
                 className="object-cover"

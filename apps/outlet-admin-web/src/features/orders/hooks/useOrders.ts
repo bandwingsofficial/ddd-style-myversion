@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 import { Order } from '../types';
 import * as orderApi from '../api/orders';
 
@@ -45,7 +46,7 @@ export const useOrders = () => {
       // Immediately reload to reflect the change
       await loadOrders(); 
     } catch (error) {
-      alert("Failed to update order status. Please try again.");
+      toast.error('Failed to update order status. Please try again.');
       console.error(error);
     }
   };

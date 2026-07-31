@@ -9,6 +9,7 @@ import { CartItem } from '../domain/models/cart-item.model';
 import { CartStatus } from '../domain/enums/cart-status.enum';
 
 import { CartRepository } from '../repositories/cart.repository';
+import { DeliveryChargeService } from '../../delivery-config/services/delivery-charge.service';
 
 import { ValidationError } from '../../../common/errors';
 import { Prisma } from '@prisma/client';
@@ -20,6 +21,7 @@ export class CartService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cartRepo: CartRepository,
+    private readonly deliveryChargeService: DeliveryChargeService,
   ) {}
 
   /* ================================================= */
@@ -50,9 +52,17 @@ export class CartService {
 
     const discount = subtotal.sub(afterDiscountTotal);
 
-    const deliveryFee = itemCount > 0 ? new Decimal(30) : new Decimal(0);
+    const delivery = await this.deliveryChargeService.calculate({
+      afterDiscountTotal,
+      itemCount,
+    });
 
-    const grandTotal = afterDiscountTotal.add(deliveryFee);
+    const amountToFreeDelivery =
+      delivery.amountToFreeDelivery != null
+        ? new Decimal(delivery.amountToFreeDelivery)
+        : null;
+
+    const grandTotal = afterDiscountTotal.add(new Decimal(delivery.deliveryFee));
 
     const updated = Cart.rehydrate({
       id: cart.id,
@@ -66,9 +76,15 @@ export class CartService {
       subtotal,
       discount,
       afterDiscountTotal,
-      deliveryFee,
+      deliveryFee: new Decimal(delivery.deliveryFee),
       grandTotal,
       itemCount,
+
+      deliveryRuleId: delivery.deliveryRuleId,
+      deliveryRuleName: delivery.deliveryRuleName,
+      deliveryRuleMinimumOrderAmount: new Decimal(delivery.minimumOrderAmount),
+      isFreeDelivery: delivery.deliveryFee === 0,
+      amountToFreeDelivery,
 
       createdAt: cart.createdAt,
       updatedAt: new Date(),
@@ -132,7 +148,7 @@ export class CartService {
     const client = tx ?? this.prisma;
 
     const cart = params.customerId
-      ? await this.cartRepo.findActiveByCustomerAndOutlet(
+      ? await this.cartRepo.findOpenByCustomerAndOutlet(
           params.customerId,
           params.outletId,
           client,
@@ -148,9 +164,66 @@ export class CartService {
     }
 
     const removedInactiveCount = await this.purgeInactiveItems(cart, client);
+    await this.refreshItemSnapshots(cart.id, client);
     const syncedCart = await this.recalcTotals(cart.id, client);
 
     return { cart: syncedCart, removedInactiveCount };
+  }
+
+  /**
+   * Reload product snapshots (prices, names, images) on every cart sync.
+   */
+  private async refreshItemSnapshots(
+    cartId: string,
+    tx: PrismaTransaction,
+  ): Promise<void> {
+    const cart = await this.cartRepo.findById(cartId, tx);
+    if (!cart?.items.length) {
+      return;
+    }
+
+    for (const item of cart.items) {
+      const product = await tx.product.findUnique({
+        where: { id: item.productId },
+        select: {
+          productName: true,
+          mainImage: true,
+          originalPrice: true,
+          discountPrice: true,
+          status: true,
+          isAvailable: true,
+        },
+      });
+
+      if (!product) {
+        continue;
+      }
+
+      const unitPrice = product.originalPrice;
+      const discountPrice = product.discountPrice ?? undefined;
+      const effectivePrice = discountPrice ?? unitPrice;
+      const lineTotal = effectivePrice.mul(item.quantity);
+
+      const productImage =
+        product.mainImage?.trim() || item.productImage?.trim() || '';
+      const productName = product.productName?.trim() || item.productName;
+
+      const refreshed = CartItem.rehydrate({
+        id: item.id,
+        cartId: item.cartId,
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice,
+        discountPrice,
+        lineTotal,
+        productName,
+        productImage,
+        createdAt: item.createdAt,
+        updatedAt: new Date(),
+      });
+
+      await this.cartRepo.upsertItem(refreshed, tx);
+    }
   }
 
   async getActiveCart(
@@ -293,7 +366,7 @@ export class CartService {
           unitPrice: product.originalPrice,
           discountPrice: product.discountPrice ?? undefined,
           productName: product.productName,
-          productImage: product.mainImage,
+          productImage: product.mainImage?.trim() ?? '',
         });
       }
 

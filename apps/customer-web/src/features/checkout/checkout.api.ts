@@ -57,5 +57,16 @@ export const CheckoutApi = {
   getMyOrders: async () => {
     const { data } = await customerAxios.get<{ data: OrderDetails[] }>("/my-orders");
     return data.data;
-  }
+  },
+
+  getActiveCheckout: async (outletId: string) => {
+    const { data } = await customerAxios.get<{ data: {
+      orderId: string;
+      orderNumber: string;
+      status: string;
+      grandTotal: number;
+      currency: string;
+    } | null }>("/checkout/active", { params: { outletId } });
+    return data.data;
+  },
 };
