@@ -8,6 +8,7 @@ import { useCartStore } from "@/features/cart/cart.store";
 import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
 import { ProductListItem } from "@/features/products/types/product.types";
 import { useOutletStore } from "@/features/outlet/outlet.store";
+import { resolveProductPricing } from "@/lib/product-pricing";
 import { toast } from "sonner";
 
 export default function ProductCard({ product }: { product: ProductListItem }) {
@@ -31,26 +32,10 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
     return null;
   }, [p, currentOutlet]);
 
-  const { original, current, hasDiscount, savings } = useMemo(() => {
-    const parse = (val: any) => {
-      if (val === undefined || val === null) return 0;
-      const num = parseFloat(val);
-      return isNaN(num) ? 0 : num;
-    };
-    let originalPrice = parse(p.originalPrice ?? p.price?.originalPrice ?? p.price?.value ?? p.price);
-    let discountVal = parse(p.discountPrice ?? p.salePrice ?? p.price?.discountPrice ?? p.price?.salePrice);
-    let currentPrice = originalPrice;
-    let isDiscounted = false;
-    if (discountVal > 0 && discountVal < originalPrice) {
-      currentPrice = discountVal;
-      isDiscounted = true;
-    }
-    return { original: originalPrice, current: currentPrice, hasDiscount: isDiscounted, savings: originalPrice - currentPrice };
-  }, [p]);
+  const pricing = useMemo(() => resolveProductPricing(p), [p]);
+  const { mrp, sellingPrice, hasDiscount, discountPercent } = pricing;
 
-  const imageUrl = useMemo(() => {
-    return p.images?.mainImageUrl || null;
-  }, [p]);
+  const imageUrl = useMemo(() => p.images?.mainImageUrl || null, [p]);
 
   const unitLabel = useMemo(() => {
     if (typeof p.unit === "object" && p.unit !== null) return `${p.unit.value} ${p.unit.type}`;
@@ -77,7 +62,7 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
       toast.error("Please select a nearby outlet first.");
       return;
     }
-    if (original <= 0) { toast.error("Invalid price for this product."); return; }
+    if (mrp <= 0) { toast.error("Invalid price for this product."); return; }
     if (!outletId) return;
 
     await addItem(
@@ -87,8 +72,8 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
         productName: name,
         productImage: imageUrl || "",
         quantity: 1,
-        unitPrice: original,
-        discountPrice: current
+        unitPrice: mrp,
+        discountPrice: sellingPrice
       },
       isAuthenticated
     );
@@ -102,7 +87,7 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
     else await updateItem(p.id, newQty, isAuthenticated);
   };
 
-  const isAddDisabled = original <= 0 || !isOutletSelected;
+  const isAddDisabled = mrp <= 0 || !isOutletSelected;
 
   return (
     <div className="relative h-full">
@@ -113,7 +98,8 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
         <div className="relative h-[140px] shrink-0 overflow-hidden bg-slate-50 flex items-center justify-center">
           <button
             onClick={handleToggleFavorite}
-            className="absolute top-1.5 right-1.5 z-20 bg-white border-none rounded-full w-7 h-7 flex items-center justify-center cursor-pointer shadow-[0_4px_8px_rgba(0,0,0,0.08)] transition-transform active:scale-90"
+            className="absolute top-1.5 right-1.5 z-20 bg-white border-none rounded-full w-7 h-7 flex items-center justify-center cursor-pointer shadow-[0_4px_8px_rgba(0,0,0,0.08)] transition-transform active:scale-90 touch-target"
+            aria-label={isFav ? "Remove from wishlist" : "Add to wishlist"}
           >
             <Heart size={16} fill={isFav ? "#ef4444" : "transparent"} color={isFav ? "#ef4444" : "#94a3b8"} strokeWidth={2.5} />
           </button>
@@ -128,12 +114,15 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
           )}
 
           <div className="absolute top-1.5 left-1.5 flex flex-col gap-1 z-10">
-            {hasDiscount && <div className="bg-red-500 text-white text-[0.6rem] font-extrabold px-1.5 py-0.5 rounded">SAVE ₹{savings}</div>}
-            {isTrending && <div className="bg-amber-500 text-white text-[0.6rem] font-extrabold px-1.5 py-0.5 rounded flex items-center gap-0.5"><TrendingUp size={10} /> Trending</div>}
+            {isTrending && (
+              <div className="bg-amber-500 text-white text-[0.6rem] font-extrabold px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                <TrendingUp size={10} /> Trending
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="p-2.5 flex flex-col justify-between flex-1 gap-1.5">
+        <div className="p-2.5 flex flex-col justify-between flex-1 gap-1.5 min-w-0">
           <div className="flex-1 min-w-0">
             {tags.length > 0 && (
               <div className="flex gap-1 mb-1 flex-wrap">
@@ -162,43 +151,55 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
             </div>
           </div>
 
-          <div className="flex items-center justify-between mt-auto pt-2 border-t border-slate-50">
-            <div className="flex flex-col justify-center leading-none">
-              <span className="text-slate-900 font-extrabold text-base">₹{current}</span>
-              {hasDiscount && <span className="text-slate-400 line-through text-[0.75rem] font-medium mt-0.5">₹{original}</span>}
+          <div className="flex items-center justify-between gap-2 mt-auto pt-2 border-t border-slate-50 min-w-0">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-0.5 leading-none">
+              {hasDiscount ? (
+                <>
+                  <span className="text-[0.75rem] font-medium text-slate-400 line-through">₹{mrp}</span>
+                  <span className="text-[1.25rem] font-extrabold text-slate-900">₹{sellingPrice}</span>
+                  <span className="inline-flex shrink-0 rounded-full bg-red-500 px-2 py-1 text-[0.58rem] font-extrabold uppercase tracking-wide text-white">
+                    {discountPercent}% OFF
+                  </span>
+                </>
+              ) : (
+                <span className="text-[1.25rem] font-extrabold text-slate-900">₹{sellingPrice}</span>
+              )}
             </div>
 
-            <div className="flex items-center">
+            <div className="flex flex-shrink-0 items-center">
               {quantity === 0 ? (
                 <button
                   disabled={isAddDisabled}
                   onClick={!isAddDisabled ? handleAdd : (e) => e.preventDefault()}
-                  className={`flex items-center gap-1 px-2.5 py-1 rounded-md font-extrabold text-[0.7rem] transition-all border
+                  className={`flex h-9 min-w-[2.75rem] items-center justify-center gap-0.5 rounded-md px-2 font-extrabold text-[0.65rem] transition-all border touch-target
                         ${isAddDisabled
                       ? 'bg-slate-100 text-slate-400 border-slate-300 cursor-not-allowed opacity-60'
-                      : 'bg-green-50 text-green-600 border-green-600 hover:bg-green-600 hover:text-white pointer-events-auto'
+                      : 'bg-green-50 text-green-600 border-green-600 hover:bg-green-600 hover:text-white pointer-events-auto active:scale-95'
                     }`}
+                  aria-label="Add to cart"
                 >
                   {!isOutletSelected ? (
-                    <MapPinOff size={16} strokeWidth={2} />
+                    <MapPinOff size={14} strokeWidth={2} />
                   ) : (
-                    <><Plus size={16} strokeWidth={3} /><span>ADD</span></>
+                    <><Plus size={14} strokeWidth={3} /><span>ADD</span></>
                   )}
                 </button>
               ) : (
-                <div className="flex items-center bg-green-600 text-white p-0.5 rounded-md gap-1.5 shadow-[0_4px_10px_rgba(22,163,74,0.25)]">
+                <div className="flex h-9 md:h-10 items-center gap-0.5 rounded-md bg-green-600 p-0.5 text-white shadow-[0_2px_6px_rgba(22,163,74,0.2)]">
                   <button
-                    className="bg-transparent border-none text-white w-[22px] h-[22px] flex items-center justify-center cursor-pointer transition-colors hover:bg-white/10 rounded"
+                    className="flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded border-none bg-transparent text-white transition-colors hover:bg-white/10 touch-target"
                     onClick={(e) => updateQuantity(e, -1)}
+                    aria-label="Decrease quantity"
                   >
-                    <Minus size={14} strokeWidth={3} />
+                    <Minus size={13} strokeWidth={3} />
                   </button>
-                  <span className="font-extrabold text-[0.85rem] min-w-[12px] text-center">{quantity}</span>
+                  <span className="min-w-[14px] text-center text-[0.8rem] font-extrabold tabular-nums">{quantity}</span>
                   <button
-                    className="bg-transparent border-none text-white w-[22px] h-[22px] flex items-center justify-center cursor-pointer transition-colors hover:bg-white/10 rounded"
+                    className="flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded border-none bg-transparent text-white transition-colors hover:bg-white/10 touch-target"
                     onClick={(e) => updateQuantity(e, 1)}
+                    aria-label="Increase quantity"
                   >
-                    <Plus size={14} strokeWidth={3} />
+                    <Plus size={13} strokeWidth={3} />
                   </button>
                 </div>
               )}

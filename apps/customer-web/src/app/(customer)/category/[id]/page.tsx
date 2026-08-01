@@ -16,8 +16,10 @@ export default function Page({ params }: Props) {
       <Header />
 
       {/* Main product view wrapper with balanced padding */}
-      <main className="flex-grow pt-40 pb-16 max-w-6xl w-full mx-auto px-4">
-        <CategoryProductsPage categoryId={params.id} />
+      <main className="customer-page-shell flex-grow">
+        <div className="mobile-container max-w-6xl w-full">
+          <CategoryProductsPage categoryId={params.id} />
+        </div>
       </main>
 
       {/* Consistent Bottom Footer */}

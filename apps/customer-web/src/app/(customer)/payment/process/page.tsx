@@ -172,7 +172,7 @@ function PaymentProcessor() {
             <div className="flex flex-col gap-3">
               <button
                 onClick={retryCheckout}
-                className="rounded-xl bg-emerald-600 px-6 py-3 font-bold text-white hover:bg-emerald-700"
+                className="touch-target rounded-xl bg-emerald-600 px-6 py-3.5 font-bold text-white hover:bg-emerald-700"
               >
                 Retry Payment
               </button>
@@ -194,8 +194,14 @@ function PaymentProcessor() {
 
 export default function PaymentProcessPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
-      <Suspense fallback={<Loader2 className="animate-spin" />}>
+    <div
+      className="flex min-h-[100dvh] items-center justify-center bg-slate-50 p-4"
+      style={{
+        paddingTop: "calc(1rem + env(safe-area-inset-top))",
+        paddingBottom: "calc(1rem + env(safe-area-inset-bottom))",
+      }}
+    >
+      <Suspense fallback={<Loader2 className="animate-spin text-emerald-600" size={32} />}>
         <PaymentProcessor />
       </Suspense>
     </div>

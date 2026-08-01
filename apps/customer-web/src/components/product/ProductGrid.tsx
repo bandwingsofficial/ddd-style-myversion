@@ -30,7 +30,7 @@ export default function ProductGrid() {
       {/* 1. Mount the Outlet Selector */}
       <OutletSelector />
 
-      <div className="max-w-[1400px] mx-auto px-6">
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
         
         {/* Header */}
         <motion.div 

@@ -3,23 +3,16 @@
 import { motion } from 'framer-motion';
 import { LucideIcon } from 'lucide-react';
 
+import { dashCardInteractive, dashIconWrap } from './dashboard-ui';
+
 interface KpiCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
   icon: LucideIcon;
-  accent?: 'emerald' | 'blue' | 'amber' | 'rose' | 'violet' | 'slate';
+  accent?: keyof typeof dashIconWrap;
   loading?: boolean;
 }
-
-const accents = {
-  emerald: 'bg-emerald-50 text-emerald-600',
-  blue: 'bg-blue-50 text-blue-600',
-  amber: 'bg-amber-50 text-amber-600',
-  rose: 'bg-rose-50 text-rose-600',
-  violet: 'bg-violet-50 text-violet-600',
-  slate: 'bg-slate-100 text-slate-600',
-};
 
 export function KpiCard({
   title,
@@ -31,28 +24,31 @@ export function KpiCard({
 }: KpiCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border border-border bg-card p-5 shadow-sm transition hover:shadow-md"
+      transition={{ duration: 0.2 }}
+      className={`${dashCardInteractive} p-5`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
             {title}
           </p>
           {loading ? (
-            <div className="mt-3 h-8 w-24 animate-pulse rounded-lg bg-muted" />
+            <div className="mt-2.5 h-8 w-28 dash-shimmer rounded-xl" />
           ) : (
-            <p className="mt-2 text-2xl font-black tracking-tight text-foreground">
+            <p className="mt-1.5 text-[1.75rem] font-bold leading-none tracking-tight text-slate-900">
               {value}
             </p>
           )}
           {subtitle && (
-            <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>
+            <p className="mt-1.5 text-xs text-slate-500">{subtitle}</p>
           )}
         </div>
-        <div className={`rounded-xl p-3 ${accents[accent]}`}>
-          <Icon size={20} />
+        <div
+          className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl ${dashIconWrap[accent]}`}
+        >
+          <Icon size={24} strokeWidth={2} />
         </div>
       </div>
     </motion.div>

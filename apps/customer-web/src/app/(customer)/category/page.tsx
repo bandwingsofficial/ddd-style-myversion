@@ -55,9 +55,9 @@ export default function CategoriesPage() {
         }
       `}</style>
 
-      <main className="pt-40 pb-16 hero-gradient flex-grow">
+      <main className="customer-page-shell flex-grow hero-gradient">
         {/* Simplified Hero Section */}
-        <section className="max-w-6xl mx-auto px-4 pt-6 mb-10">
+        <section className="mobile-container mb-8 pt-2 sm:mb-10">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-6">
             <div>
               <h1 className="text-2xl sm:text-3xl font-serif font-bold text-slate-800 mb-1">

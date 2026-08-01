@@ -11,11 +11,11 @@ export default function CustomerHomePage() {
   return (
     <>
       <Header />
-      <main className="pt-20">
+      <main className="customer-page-shell customer-page-shell--with-cart w-full overflow-x-clip">
         <HomeBanner />
         <CategoryCarousel />
         <ProductsGrid />
-        <WhyChooseUs/>
+        <WhyChooseUs />
       </main>
       <Footer />
     </>

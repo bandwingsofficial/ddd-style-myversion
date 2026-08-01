@@ -280,7 +280,7 @@ export default function CheckoutPage() {
           document.body,
         )}
 
-      <main className="pt-36 pb-12 px-4 max-w-5xl mx-auto">
+      <main className="customer-page-shell customer-page-shell--no-nav mobile-container max-w-5xl pb-28 lg:pb-12">
         <button
           onClick={() => router.back()}
           className="flex items-center text-slate-500 hover:text-emerald-600 mb-6 font-medium"
@@ -362,7 +362,7 @@ export default function CheckoutPage() {
               <button
                 onClick={handlePay}
                 disabled={processing || checkoutOpen}
-                className="w-full bg-[#059669] hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                className="hidden w-full items-center justify-center gap-2 rounded-xl bg-[#059669] py-4 font-bold text-white shadow-lg shadow-emerald-600/20 transition-all hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70 lg:flex touch-target"
               >
                 {processing ? (
                   <Loader2 className="animate-spin" />
@@ -379,6 +379,33 @@ export default function CheckoutPage() {
           </div>
         </div>
       </main>
+
+      <div
+        className="fixed inset-x-0 z-[800] border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-lg lg:hidden"
+        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+      >
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Total Payable
+            </p>
+            <p className="text-xl font-extrabold text-slate-900">₹{summary.grandTotal}</p>
+          </div>
+          <button
+            type="button"
+            onClick={handlePay}
+            disabled={processing || checkoutOpen}
+            className="flex min-h-[2.75rem] flex-1 max-w-[220px] items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-lg disabled:opacity-70 touch-target"
+          >
+            {processing ? (
+              <Loader2 className="animate-spin" size={18} />
+            ) : (
+              <ShieldCheck size={18} />
+            )}
+            {processing ? "Processing..." : `Pay ₹${summary.grandTotal}`}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

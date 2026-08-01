@@ -12,7 +12,7 @@ export default function PrivacyPolicyPage() {
       {/* pt-36 ensures content clears fixed header.
         animate-in gives a smooth entrance.
       */}
-      <main className="flex-grow pt-36 pb-20 px-4 sm:px-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <main className="customer-page-shell flex-grow animate-in fade-in slide-in-from-bottom-4 duration-700 mobile-container">
         
         <article className="max-w-4xl mx-auto bg-white rounded-3xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.05)] border border-slate-200 overflow-hidden">
           

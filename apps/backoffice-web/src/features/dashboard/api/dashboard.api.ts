@@ -80,12 +80,4 @@ export const DashboardApi = {
     );
     return unwrap(res);
   },
-
-  exportCsv: async (filters: DashboardFilters, section: string) => {
-    const res = await axiosInstance.get<string>('/admin/dashboard/export/csv', {
-      params: { ...filters, section },
-      responseType: 'blob',
-    });
-    return res.data;
-  },
 };

@@ -48,7 +48,7 @@ export default function OrdersPage() {
       <Header />
 
       {/* Increased padding-top (pt-32) to perfectly clear fixed headers */}
-      <main className="mx-auto max-w-6xl px-4 pb-24 pt-32 sm:px-6 lg:px-8">
+      <main className="customer-page-shell mobile-container max-w-6xl">
         
         {/* Modern Top Level Header Section - Only shows if user has orders */}
         {orders && orders.length > 0 && (
@@ -109,7 +109,7 @@ export default function OrdersPage() {
                 <button
                   key={status}
                   onClick={() => setActiveFilter(status)}
-                  className={`rounded-lg px-3.5 py-1.5 text-xs font-bold tracking-wide transition-all duration-200 ${
+                  className={`touch-target rounded-lg px-3.5 py-2.5 text-xs font-bold tracking-wide transition-all duration-200 ${
                     activeFilter === status
                       ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/10"
                       : "bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/60"

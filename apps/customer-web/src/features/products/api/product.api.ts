@@ -1,8 +1,26 @@
 import customerAxios from "@/http/axios/customerAxios";
+import { normalizeProductList } from "@/lib/product-normalizer";
 import {
   ProductListItem,
   ProductDetails,
 } from "../types/product.types";
+
+let catalogCache: { data: ProductListItem[]; at: number } | null = null;
+const CATALOG_CACHE_TTL_MS = 60_000;
+
+async function getPublicCatalog(): Promise<ProductListItem[]> {
+  if (
+    catalogCache &&
+    Date.now() - catalogCache.at < CATALOG_CACHE_TTL_MS
+  ) {
+    return catalogCache.data;
+  }
+
+  const res = await customerAxios.get("/public/products");
+  const data = Array.isArray(res.data.data) ? res.data.data : [];
+  catalogCache = { data, at: Date.now() };
+  return data;
+}
 
 /**
  * Fetch all public products
@@ -26,9 +44,13 @@ export const getPublicProducts = async (): Promise<ProductListItem[]> => {
 
 
 export const getProductsByOutlet = async (outletId: string): Promise<ProductListItem[]> => {
-  // Matches: https://admin.dev.local:4000/public/outlets/:id/products
-  const res = await customerAxios.get(`/public/outlets/${outletId}/products`);
-  return res.data.data;
+  const [outletRes, catalog] = await Promise.all([
+    customerAxios.get(`/public/outlets/${outletId}/products`),
+    getPublicCatalog(),
+  ]);
+
+  const raw = Array.isArray(outletRes.data.data) ? outletRes.data.data : [];
+  return normalizeProductList(raw, catalog);
 };
 
 /**

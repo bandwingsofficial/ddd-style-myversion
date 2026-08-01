@@ -14,7 +14,7 @@ export default function RefundPolicyPage() {
           - pb-[100px]: Padding bottom for spacing before footer
           - animate-slide-up: Custom animation class defined below
       */}
-      <main className="animate-slide-up pb-[100px] pt-[130px]">
+      <main className="customer-page-shell animate-slide-up mobile-container">
         <article className="mx-auto max-w-[850px] rounded-3xl border border-slate-200 bg-white p-[30px] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.05)] md:p-[60px]">
           
           {/* Document Header */}

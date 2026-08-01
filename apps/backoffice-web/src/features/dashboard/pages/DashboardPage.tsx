@@ -1,51 +1,38 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import {
-  AlertCircle,
-  CreditCard,
-  IndianRupee,
-  Package,
-  ShoppingBag,
-  Store,
-  TrendingUp,
-  Truck,
-  Users,
-} from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { IndianRupee, RefreshCw, ShoppingBag, TrendingUp, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { DashboardApi } from '../api/dashboard.api';
+import { formatRupeeAmount } from '@/lib/format-currency';
+
 import { DashboardFilters } from '../types/dashboard.types';
-import { useDashboard } from '../hooks/use-dashboard';
+import { dashboardQueryKeys, useDashboard } from '../hooks/use-dashboard';
 import { DashboardFiltersBar } from '../components/DashboardFiltersBar';
 import { DashboardChartsSection } from '../components/DashboardChartsSection';
 import { KpiCard } from '../components/KpiCard';
 import {
-  ExportMenu,
-  LowStockPanel,
-  QuickActions,
+  InventoryAlertsCard,
   RecentOrdersTable,
-  RecentPaymentsTable,
-  TopCategoriesList,
-  TopOutletsList,
+  TopCategoriesPanel,
+  TopOutletsPanel,
   TopProductsTable,
 } from '../components/DashboardTables';
-
-function formatCurrency(value?: number) {
-  return `₹${(value ?? 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
-}
+import { QuickActionsCard, QuickActionsFab } from '../components/QuickActionsWidget';
 
 export function DashboardPage() {
+  const queryClient = useQueryClient();
   const [filters, setFilters] = useState<DashboardFilters>({
     period: 'LAST_7_DAYS',
     topLimit: 10,
   });
+  const [refreshing, setRefreshing] = useState(false);
 
   const {
     summary,
     charts,
     recentOrders,
-    recentPayments,
     topProducts,
     topOutlets,
     topCategories,
@@ -55,139 +42,124 @@ export function DashboardPage() {
     refresh,
   } = useDashboard(filters);
 
-  const kpiGroups = useMemo(
+  const periodLabel = summary?.filters?.label ?? 'Selected period';
+  const isBusy = loading || refreshing;
+
+  const handleRefresh = useCallback(async () => {
+    if (isBusy) return;
+
+    setRefreshing(true);
+    try {
+      refresh();
+      await queryClient.refetchQueries({ queryKey: dashboardQueryKeys.all });
+      toast.success('Dashboard refreshed');
+    } catch {
+      toast.error('Failed to refresh dashboard');
+    } finally {
+      setRefreshing(false);
+    }
+  }, [isBusy, queryClient, refresh]);
+
+  const kpiCards = useMemo(
     () => [
       {
         title: 'Revenue',
-        cards: [
-          { title: 'Total Revenue', value: formatCurrency(summary?.revenue.totalRevenue), icon: IndianRupee, accent: 'emerald' as const },
-          { title: "Today's Revenue", value: formatCurrency(summary?.revenue.todaysRevenue), icon: TrendingUp, accent: 'blue' as const },
-          { title: 'Weekly Revenue', value: formatCurrency(summary?.revenue.weeklyRevenue), icon: TrendingUp, accent: 'violet' as const },
-          { title: 'Monthly Revenue', value: formatCurrency(summary?.revenue.monthlyRevenue), icon: TrendingUp, accent: 'amber' as const },
-        ],
+        value: formatRupeeAmount(summary?.revenue.totalRevenue),
+        subtitle: periodLabel,
+        icon: IndianRupee,
+        accent: 'emerald' as const,
       },
       {
         title: 'Orders',
-        cards: [
-          { title: 'Total Orders', value: summary?.orders.totalOrders ?? 0, icon: ShoppingBag, accent: 'blue' as const },
-          { title: 'Delivered', value: summary?.orders.deliveredOrders ?? 0, icon: Truck, accent: 'emerald' as const },
-          { title: 'Pending', value: summary?.orders.pendingOrders ?? 0, icon: Package, accent: 'amber' as const },
-          { title: 'Avg Order Value', value: formatCurrency(summary?.orders.averageOrderValue), icon: IndianRupee, accent: 'violet' as const },
-        ],
+        value: summary?.orders.totalOrders ?? 0,
+        subtitle: periodLabel,
+        icon: ShoppingBag,
+        accent: 'blue' as const,
       },
       {
-        title: 'Customers & Catalog',
-        cards: [
-          { title: 'Total Customers', value: summary?.customers.totalCustomers ?? 0, icon: Users, accent: 'blue' as const },
-          { title: 'New Customers', value: summary?.customers.newCustomers ?? 0, icon: Users, accent: 'emerald' as const },
-          { title: 'Active Products', value: summary?.catalog.activeProducts ?? 0, icon: Package, accent: 'amber' as const },
-          { title: 'Active Outlets', value: summary?.catalog.activeOutlets ?? 0, icon: Store, accent: 'slate' as const },
-        ],
+        title: 'Customers',
+        value: summary?.customers.newCustomers ?? 0,
+        subtitle: `New registrations · ${periodLabel}`,
+        icon: Users,
+        accent: 'violet' as const,
       },
       {
-        title: 'Payments',
-        cards: [
-          { title: 'Successful Payments', value: summary?.payments.successfulPayments ?? 0, icon: CreditCard, accent: 'emerald' as const },
-          { title: 'Failed Payments', value: summary?.payments.failedPayments ?? 0, icon: AlertCircle, accent: 'rose' as const },
-          { title: 'Pending Payments', value: summary?.payments.pendingPayments ?? 0, icon: CreditCard, accent: 'amber' as const },
-          { title: 'Success Rate', value: `${summary?.payments.paymentSuccessRate ?? 0}%`, icon: TrendingUp, accent: 'violet' as const },
-        ],
+        title: 'Average Order Value',
+        value: formatRupeeAmount(summary?.orders.averageOrderValue),
+        subtitle: periodLabel,
+        icon: TrendingUp,
+        accent: 'amber' as const,
       },
     ],
-    [summary],
+    [summary, periodLabel],
   );
 
-  const handleExport = async (section: string) => {
-    try {
-      const blob = await DashboardApi.exportCsv(filters, section);
-      const url = window.URL.createObjectURL(new Blob([blob]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `dashboard-${section}.csv`;
-      link.click();
-      window.URL.revokeObjectURL(url);
-      toast.success('Export downloaded');
-    } catch (exportError) {
-      console.error(exportError);
-      toast.error('Export failed');
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-background p-3 md:p-4 font-sans animate-in fade-in duration-500 print:p-0">
-      <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight text-foreground">
-            Executive Dashboard
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Real-time business intelligence across revenue, orders, payments, and inventory.
-          </p>
-          {summary?.filters?.label && (
-            <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-primary">
-              {summary.filters.label}
+    <div className="relative min-h-screen animate-in fade-in p-4 font-sans duration-500 md:p-5">
+      <div className="mx-auto max-w-[1600px] space-y-5">
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-[1.65rem]">
+              Executive Dashboard
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Unified view of revenue, orders, and operations for the selected period.
             </p>
-          )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => void handleRefresh()}
+            disabled={isBusy}
+            className="group inline-flex h-10 shrink-0 items-center gap-2 rounded-[14px] border border-[#D8F3E4] bg-white px-4 text-sm font-semibold text-[#16A34A] transition-all duration-[250ms] hover:border-[#16A34A] hover:bg-[#16A34A] hover:text-white hover:shadow-[0_4px_14px_rgba(22,163,74,0.22)] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <RefreshCw
+              size={16}
+              className={`transition-colors duration-[250ms] group-hover:text-white ${isBusy ? 'animate-spin' : ''}`}
+            />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
         </div>
-        <ExportMenu onExport={handleExport} />
-      </div>
 
-      <div className="mb-6 space-y-6">
-        <DashboardFiltersBar
-          filters={filters}
-          onChange={setFilters}
-          onRefresh={refresh}
-          loading={loading}
-        />
-        <QuickActions />
-      </div>
+        <DashboardFiltersBar filters={filters} onChange={setFilters} />
 
-      {error && (
-        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          Failed to load dashboard data. Please refresh.
-        </div>
-      )}
+        {error && (
+          <div className="rounded-[20px] border border-red-100/80 bg-red-50/80 px-4 py-3 text-sm text-red-700 shadow-sm">
+            Failed to load dashboard data. Please refresh.
+          </div>
+        )}
 
-      <div className="space-y-8">
-        {kpiGroups.map((group) => (
-          <section key={group.title}>
-            <h2 className="mb-4 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-              {group.title}
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {group.cards.map((card) => (
-                <KpiCard
-                  key={card.title}
-                  title={card.title}
-                  value={card.value}
-                  icon={card.icon}
-                  accent={card.accent}
-                  loading={loading}
-                />
-              ))}
-            </div>
-          </section>
-        ))}
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {kpiCards.map((card) => (
+            <KpiCard
+              key={card.title}
+              title={card.title}
+              value={card.value}
+              subtitle={card.subtitle}
+              icon={card.icon}
+              accent={card.accent}
+              loading={loading}
+            />
+          ))}
+        </section>
 
         <DashboardChartsSection charts={charts} loading={loading} />
 
-        <div className="grid gap-6 xl:grid-cols-2">
-          <RecentOrdersTable orders={recentOrders} loading={loading} />
-          <RecentPaymentsTable payments={recentPayments} loading={loading} />
-        </div>
+        <section className="grid gap-4 xl:grid-cols-3">
+          <TopProductsTable products={topProducts} loading={loading} />
+          <TopCategoriesPanel categories={topCategories} loading={loading} />
+          <TopOutletsPanel outlets={topOutlets} loading={loading} />
+        </section>
 
-        <div className="grid gap-6 xl:grid-cols-3">
-          <div className="xl:col-span-2">
-            <TopProductsTable products={topProducts} loading={loading} />
-          </div>
-          <LowStockPanel items={lowStock} loading={loading} />
-        </div>
+        <RecentOrdersTable orders={recentOrders} loading={loading} />
 
-        <div className="grid gap-6 md:grid-cols-2">
-          <TopOutletsList outlets={topOutlets} />
-          <TopCategoriesList categories={topCategories} />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <InventoryAlertsCard items={lowStock} loading={loading} />
+          <QuickActionsCard />
         </div>
       </div>
+
+      <QuickActionsFab />
     </div>
   );
 }

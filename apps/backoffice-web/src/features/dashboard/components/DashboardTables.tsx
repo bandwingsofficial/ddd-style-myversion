@@ -4,26 +4,27 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle,
-  Download,
-  Layers,
+  ExternalLink,
   Package,
-  Printer,
-  Store,
-  Users,
 } from 'lucide-react';
+
+import { formatRupeeAmount } from '@/lib/format-currency';
 
 import {
   DashboardLowStockItem,
   DashboardRecentOrder,
-  DashboardRecentPayment,
   DashboardTopCategory,
   DashboardTopOutlet,
   DashboardTopProduct,
 } from '../types/dashboard.types';
-
-function formatCurrency(value: number) {
-  return `₹${value.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
-}
+import {
+  dashCard,
+  dashListItem,
+  dashSectionSubtitle,
+  dashSectionTitle,
+  dashTableHead,
+  dashTableRow,
+} from './dashboard-ui';
 
 function formatDate(value: string) {
   return new Date(value).toLocaleString('en-IN', {
@@ -34,67 +35,10 @@ function formatDate(value: string) {
   });
 }
 
-export function QuickActions() {
-  const actions = [
-    { label: 'Create Product', href: '/products', icon: Package },
-    { label: 'Create Category', href: '/categories', icon: Layers },
-    { label: 'Create Outlet', href: '/outlets', icon: Store },
-    { label: 'View Payments', href: '/payments', icon: Download },
-    { label: 'Inventory', href: '/inventory', icon: AlertTriangle },
-    { label: 'Outlet Users', href: '/users', icon: Users },
-  ];
-
-  return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-      <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-muted-foreground">
-        Quick Actions
-      </h3>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        {actions.map((action) => (
-          <Link
-            key={action.href}
-            href={action.href}
-            className="flex flex-col items-center gap-2 rounded-xl border border-border bg-background px-3 py-4 text-center text-xs font-semibold transition hover:border-primary hover:bg-primary/5"
-          >
-            <action.icon size={18} className="text-primary" />
-            {action.label}
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-interface ExportMenuProps {
-  onExport: (section: string) => void;
-}
-
-export function ExportMenu({ onExport }: ExportMenuProps) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      <button
-        type="button"
-        onClick={() => onExport('summary')}
-        className="inline-flex items-center gap-2 rounded-xl border border-input px-3 py-2 text-sm font-semibold"
-      >
-        <Download size={16} /> Export CSV
-      </button>
-      <button
-        type="button"
-        onClick={() => onExport('orders')}
-        className="inline-flex items-center gap-2 rounded-xl border border-input px-3 py-2 text-sm font-semibold"
-      >
-        <Download size={16} /> Orders CSV
-      </button>
-      <button
-        type="button"
-        onClick={() => window.print()}
-        className="inline-flex items-center gap-2 rounded-xl border border-input px-3 py-2 text-sm font-semibold"
-      >
-        <Printer size={16} /> Print
-      </button>
-    </div>
-  );
+function formatGrowth(value: number) {
+  if (value === 0) return '—';
+  const prefix = value > 0 ? '+' : '';
+  return `${prefix}${value.toFixed(1)}%`;
 }
 
 export function RecentOrdersTable({
@@ -105,112 +49,63 @@ export function RecentOrdersTable({
   loading?: boolean;
 }) {
   return (
-    <Panel title="Recent Orders" subtitle="Latest order activity">
-      <div className="overflow-x-auto">
+    <Panel title="Recent Orders" subtitle="Latest 10 orders with live updates">
+      <div className="max-h-[420px] overflow-auto">
         <table className="min-w-full text-sm">
-          <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+          <thead className={dashTableHead}>
             <tr>
-              <th className="px-4 py-3">Order</th>
-              <th className="px-4 py-3">Customer</th>
-              <th className="px-4 py-3">Outlet</th>
-              <th className="px-4 py-3">Payment</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Amount</th>
-              <th className="px-4 py-3">Time</th>
+              <th className="px-5 py-3">Order</th>
+              <th className="px-5 py-3">Customer</th>
+              <th className="px-5 py-3">Outlet</th>
+              <th className="px-5 py-3">Payment</th>
+              <th className="px-5 py-3">Status</th>
+              <th className="px-5 py-3">Amount</th>
+              <th className="px-5 py-3">Time</th>
+              <th className="px-5 py-3">Action</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                  Loading orders...
+                <td colSpan={8} className="px-5 py-10 text-center text-slate-500">
+                  <div className="mx-auto h-8 w-48 dash-shimmer rounded-[14px]" />
                 </td>
               </tr>
             ) : orders.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={8} className="px-5 py-10 text-center text-slate-500">
                   No orders found for this period.
                 </td>
               </tr>
             ) : (
-              orders.map((order) => (
-                <tr key={order.id} className="border-t border-border">
-                  <td className="px-4 py-3 font-semibold">{order.orderNumber}</td>
-                  <td className="px-4 py-3">
-                    <div>{order.customerName}</div>
-                    <div className="text-xs text-muted-foreground">{order.customerPhone}</div>
+              orders.slice(0, 10).map((order) => (
+                <tr key={order.id} className={dashTableRow}>
+                  <td className="px-5 py-3.5 font-semibold text-slate-800">{order.orderNumber}</td>
+                  <td className="px-5 py-3.5">
+                    <div className="font-medium text-slate-700">{order.customerName}</div>
+                    <div className="text-xs text-slate-500">{order.customerPhone}</div>
                   </td>
-                  <td className="px-4 py-3">{order.outletName}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-5 py-3.5 text-slate-600">{order.outletName}</td>
+                  <td className="px-5 py-3.5">
                     <Badge tone="payment">{order.paymentStatus}</Badge>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-5 py-3.5">
                     <Badge tone="order">{order.orderStatus}</Badge>
                   </td>
-                  <td className="px-4 py-3 font-semibold">{formatCurrency(order.amount)}</td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">
+                  <td className="px-5 py-3.5 font-semibold text-slate-800">
+                    {formatRupeeAmount(order.amount)}
+                  </td>
+                  <td className="px-5 py-3.5 text-xs text-slate-500">
                     {formatDate(order.createdAt)}
                   </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </Panel>
-  );
-}
-
-export function RecentPaymentsTable({
-  payments,
-  loading,
-}: {
-  payments: DashboardRecentPayment[];
-  loading?: boolean;
-}) {
-  return (
-    <Panel title="Recent Payments" subtitle="Latest payment transactions">
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3">Transaction</th>
-              <th className="px-4 py-3">Gateway</th>
-              <th className="px-4 py-3">Customer</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Attempt</th>
-              <th className="px-4 py-3">Amount</th>
-              <th className="px-4 py-3">Time</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                  Loading payments...
-                </td>
-              </tr>
-            ) : payments.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                  No payments found for this period.
-                </td>
-              </tr>
-            ) : (
-              payments.map((payment) => (
-                <tr key={payment.id} className="border-t border-border">
-                  <td className="px-4 py-3 font-mono text-xs">
-                    {payment.transactionId ?? payment.id.slice(0, 10)}
-                  </td>
-                  <td className="px-4 py-3">{payment.gateway}</td>
-                  <td className="px-4 py-3">{payment.customerName}</td>
-                  <td className="px-4 py-3">
-                    <Badge tone="payment">{payment.status}</Badge>
-                  </td>
-                  <td className="px-4 py-3">#{payment.attemptNo}</td>
-                  <td className="px-4 py-3 font-semibold">{formatCurrency(payment.amount)}</td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">
-                    {formatDate(payment.paidAt ?? payment.createdAt)}
+                  <td className="px-5 py-3.5">
+                    <Link
+                      href={`/orders?id=${order.id}`}
+                      className="inline-flex items-center gap-1 rounded-[14px] border border-[#D8F3E4] bg-[#ECFDF3] px-2.5 py-1.5 text-xs font-semibold text-[#15803D] transition duration-200 hover:border-[#86EFAC] hover:bg-[#DCFCE7]"
+                    >
+                      Quick View
+                      <ExternalLink size={12} />
+                    </Link>
                   </td>
                 </tr>
               ))
@@ -230,39 +125,41 @@ export function TopProductsTable({
   loading?: boolean;
 }) {
   return (
-    <Panel title="Top Selling Products" subtitle="Highest revenue products">
-      <div className="overflow-x-auto">
+    <Panel title="Top Selling Products" subtitle="Top 10 by revenue">
+      <div className="max-h-[380px] overflow-auto">
         <table className="min-w-full text-sm">
-          <thead className="text-left text-xs uppercase tracking-wide text-muted-foreground">
+          <thead className={dashTableHead}>
             <tr>
               <th className="px-4 py-3">Product</th>
-              <th className="px-4 py-3">SKU</th>
-              <th className="px-4 py-3">Category</th>
-              <th className="px-4 py-3">Units</th>
+              <th className="px-4 py-3">Qty Sold</th>
               <th className="px-4 py-3">Revenue</th>
+              <th className="px-4 py-3">Growth</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
-                  Loading products...
-                </td>
-              </tr>
+              <SkeletonRows cols={4} />
             ) : products.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
-                  No product sales in this period.
-                </td>
-              </tr>
+              <EmptyRow cols={4} message="No product sales in this period." />
             ) : (
-              products.map((product) => (
-                <tr key={product.productId} className="border-t border-border">
-                  <td className="px-4 py-3 font-semibold">{product.productName}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{product.sku}</td>
-                  <td className="px-4 py-3">{product.category}</td>
-                  <td className="px-4 py-3">{product.unitsSold}</td>
-                  <td className="px-4 py-3 font-semibold">{formatCurrency(product.revenue)}</td>
+              products.slice(0, 10).map((product) => (
+                <tr key={product.productId} className={dashTableRow}>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <ProductThumb image={product.productImage} name={product.productName} />
+                      <div>
+                        <p className="font-semibold text-slate-800">{product.productName}</p>
+                        <p className="text-xs text-slate-500">{product.category}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600">{product.unitsSold}</td>
+                  <td className="px-4 py-3 font-semibold text-slate-800">
+                    {formatRupeeAmount(product.revenue)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <GrowthBadge value={product.growthPercent} />
+                  </td>
                 </tr>
               ))
             )}
@@ -273,56 +170,43 @@ export function TopProductsTable({
   );
 }
 
-export function TopOutletsList({
-  outlets,
-}: {
-  outlets: DashboardTopOutlet[];
-}) {
-  return (
-    <Panel title="Top Outlets" subtitle="Highest revenue outlets">
-      <div className="space-y-3 p-4">
-        {outlets.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No outlet data available.</p>
-        ) : (
-          outlets.map((outlet) => (
-            <div
-              key={outlet.outletId}
-              className="flex items-center justify-between rounded-xl border border-border bg-muted/20 px-4 py-3"
-            >
-              <div>
-                <p className="font-semibold">{outlet.outletName}</p>
-                <p className="text-xs text-muted-foreground">{outlet.orders} orders</p>
-              </div>
-              <p className="font-bold text-primary">{formatCurrency(outlet.revenue)}</p>
-            </div>
-          ))
-        )}
-      </div>
-    </Panel>
-  );
-}
-
-export function TopCategoriesList({
+export function TopCategoriesPanel({
   categories,
+  loading,
 }: {
   categories: DashboardTopCategory[];
+  loading?: boolean;
 }) {
   return (
-    <Panel title="Top Categories" subtitle="Highest revenue categories">
-      <div className="space-y-3 p-4">
-        {categories.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No category data available.</p>
+    <Panel title="Top Categories" subtitle="Revenue leaders">
+      <div className="max-h-[380px] space-y-2 overflow-auto p-4 pt-0">
+        {loading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-14 dash-shimmer rounded-[14px]" />
+            ))}
+          </div>
+        ) : categories.length === 0 ? (
+          <p className="py-6 text-center text-sm text-slate-500">
+            No category data available.
+          </p>
         ) : (
-          categories.map((category) => (
+          categories.slice(0, 10).map((category) => (
             <div
               key={category.categoryId}
-              className="flex items-center justify-between rounded-xl border border-border bg-muted/20 px-4 py-3"
+              className={dashListItem}
             >
-              <div>
-                <p className="font-semibold">{category.categoryName}</p>
-                <p className="text-xs text-muted-foreground">{category.units} units sold</p>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-slate-800">{category.categoryName}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {category.orders} orders · {category.units} products sold
+                  </p>
+                </div>
+                <p className="font-bold text-[#16A34A]">
+                  {formatRupeeAmount(category.revenue)}
+                </p>
               </div>
-              <p className="font-bold text-primary">{formatCurrency(category.revenue)}</p>
             </div>
           ))
         )}
@@ -331,48 +215,183 @@ export function TopCategoriesList({
   );
 }
 
-export function LowStockPanel({
+export function TopOutletsPanel({
+  outlets,
+  loading,
+}: {
+  outlets: DashboardTopOutlet[];
+  loading?: boolean;
+}) {
+  return (
+    <Panel title="Top Performing Outlets" subtitle="Revenue and order volume">
+      <div className="max-h-[380px] space-y-2 overflow-auto p-4 pt-0">
+        {loading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-14 dash-shimmer rounded-[14px]" />
+            ))}
+          </div>
+        ) : outlets.length === 0 ? (
+          <p className="py-6 text-center text-sm text-slate-500">
+            No outlet data available.
+          </p>
+        ) : (
+          outlets.slice(0, 10).map((outlet) => (
+            <div
+              key={outlet.outletId}
+              className={dashListItem}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-slate-800">{outlet.outletName}</p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {outlet.orders} orders · Avg rating N/A
+                  </p>
+                </div>
+                <p className="font-bold text-[#16A34A]">
+                  {formatRupeeAmount(outlet.revenue)}
+                </p>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </Panel>
+  );
+}
+
+export function InventoryAlertsCard({
   items,
   loading,
 }: {
   items: DashboardLowStockItem[];
   loading?: boolean;
 }) {
+  const lowStock = items.filter((item) => item.level === 'LOW' || item.level === 'CRITICAL').length;
+  const outOfStock = items.filter((item) => item.level === 'OUT_OF_STOCK').length;
+  const expiringSoon = 0;
+
+  const alerts = [
+    { label: 'Low Stock', value: lowStock, tone: 'amber' as const },
+    { label: 'Out of Stock', value: outOfStock, tone: 'rose' as const },
+    { label: 'Expiring Soon', value: expiringSoon, tone: 'slate' as const },
+  ];
+
   return (
-    <Panel title="Low Stock Alerts" subtitle="Inventory below threshold">
-      <div className="space-y-3 p-4">
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Loading inventory...</p>
-        ) : items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">All stock levels are healthy.</p>
-        ) : (
-          items.map((item) => (
+    <div className={`${dashCard} p-5`}>
+      <div className="mb-4 flex items-center gap-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#ECFDF3] text-amber-600">
+          <AlertTriangle size={24} strokeWidth={2} />
+        </div>
+        <div>
+          <h3 className={dashSectionTitle}>Inventory Alerts</h3>
+          <p className={dashSectionSubtitle}>Stock health overview</p>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-3 gap-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-20 dash-shimmer rounded-[14px]" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {alerts.map((alert) => (
+            <div
+              key={alert.label}
+              className="rounded-[14px] border border-[#D8F3E4] bg-[#F7FEFA] px-4 py-4 text-center"
+            >
+              <p className="text-2xl font-extrabold text-slate-900">{alert.value}</p>
+              <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                {alert.label}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && items.length > 0 && (
+        <div className="mt-4 space-y-2 border-t border-[#D8F3E4]/70 pt-4">
+          {items.slice(0, 3).map((item) => (
             <div
               key={item.stockItemId}
-              className="flex items-center justify-between rounded-xl border border-border px-4 py-3"
+              className="flex items-center justify-between text-sm"
             >
-              <div>
-                <p className="font-semibold">{item.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {item.availableQty} {item.unit} available
-                </p>
-              </div>
+              <span className="font-medium text-slate-700">{item.name}</span>
               <span
-                className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${
+                className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase ${
                   item.level === 'OUT_OF_STOCK'
-                    ? 'bg-red-100 text-red-700'
-                    : item.level === 'CRITICAL'
-                      ? 'bg-amber-100 text-amber-700'
-                      : 'bg-yellow-100 text-yellow-700'
+                    ? 'bg-red-50 text-red-600/90'
+                    : 'bg-amber-50 text-amber-700/90'
                 }`}
               >
                 {item.level.replace(/_/g, ' ')}
               </span>
             </div>
-          ))
-        )}
-      </div>
-    </Panel>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProductThumb({ image, name }: { image: string; name: string }) {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '') ?? '';
+  const src = image?.startsWith('http')
+    ? image
+    : image
+      ? `${baseUrl}${image.startsWith('/') ? '' : '/'}${image}`
+      : null;
+
+  return (
+    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-[14px] bg-[#ECFDF3]">
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt={name} className="h-full w-full object-cover" />
+      ) : (
+        <Package size={16} className="text-slate-400" />
+      )}
+    </div>
+  );
+}
+
+function GrowthBadge({ value }: { value: number }) {
+  if (value === 0) {
+    return <span className="text-xs text-slate-400">—</span>;
+  }
+
+  const positive = value > 0;
+  return (
+    <span
+      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+        positive
+          ? 'bg-emerald-50 text-emerald-700/90'
+          : 'bg-red-50 text-red-600/90'
+      }`}
+    >
+      {formatGrowth(value)}
+    </span>
+  );
+}
+
+function SkeletonRows({ cols }: { cols: number }) {
+  return (
+    <tr>
+      <td colSpan={cols} className="px-4 py-8">
+        <div className="mx-auto h-8 w-full max-w-md dash-shimmer rounded-[14px]" />
+      </td>
+    </tr>
+  );
+}
+
+function EmptyRow({ cols, message }: { cols: number; message: string }) {
+  return (
+    <tr>
+      <td colSpan={cols} className="px-4 py-8 text-center text-slate-500">
+        {message}
+      </td>
+    </tr>
   );
 }
 
@@ -386,10 +405,10 @@ function Panel({
   children: ReactNode;
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      <div className="border-b border-border px-5 py-4">
-        <h3 className="text-lg font-bold text-foreground">{title}</h3>
-        <p className="text-sm text-muted-foreground">{subtitle}</p>
+    <div className={`${dashCard} overflow-hidden`}>
+      <div className="border-b border-[#D8F3E4]/70 px-5 py-4">
+        <h3 className={dashSectionTitle}>{title}</h3>
+        <p className={dashSectionSubtitle}>{subtitle}</p>
       </div>
       {children}
     </div>
@@ -405,11 +424,11 @@ function Badge({
 }) {
   const styles =
     tone === 'payment'
-      ? 'bg-emerald-50 text-emerald-700'
-      : 'bg-blue-50 text-blue-700';
+      ? 'bg-emerald-50 text-emerald-700/90'
+      : 'bg-blue-50 text-blue-700/90';
 
   return (
-    <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${styles}`}>
+    <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase ${styles}`}>
       {children}
     </span>
   );

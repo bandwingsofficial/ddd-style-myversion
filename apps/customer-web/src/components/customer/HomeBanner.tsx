@@ -133,7 +133,7 @@ export default function HomeBanner() {
 
         @media (max-width: 768px) {
           .home-banner {
-            padding: 84px 18px 40px;
+            padding: 12px 16px 32px;
           }
         }
 

@@ -13,6 +13,7 @@ import { useCartStore } from "@/features/cart/cart.store";
 import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
 import { useOutletStore } from "@/features/outlet/outlet.store";
 import { useFavorites } from "@/providers/CustomerAuthProvider";
+import { resolveProductPricing } from "@/lib/product-pricing";
 import { toast } from "sonner";
 
 export default function ProductDetailsPage() {
@@ -32,14 +33,7 @@ export default function ProductDetailsPage() {
 
     const p = productData as any;
     const name = p.name?.value || p.name || "Unknown Product";
-    
-    const parse = (val: any) => {
-      const num = parseFloat(val);
-      return isNaN(num) ? 0 : num;
-    };
-    let original = parse(p.originalPrice ?? p.price?.originalPrice ?? p.price?.value ?? p.price);
-    let discountVal = parse(p.discountPrice ?? p.salePrice ?? p.price?.discountPrice ?? p.price?.salePrice);
-    let current = (discountVal > 0 && discountVal < original) ? discountVal : original;
+    const pricing = resolveProductPricing(p);
     
     const mainImgPath = p.images?.mainImageUrl || "";
     const gallery: string[] = p.images?.galleryImageUrls || [];
@@ -51,10 +45,11 @@ export default function ProductDetailsPage() {
     return {
       ...p,
       displayName: name,
-      currentPrice: current,
-      originalPrice: original,
-      savings: original - current,
-      percent: original > 0 ? Math.round(((original - current) / original) * 100) : 0,
+      currentPrice: pricing.sellingPrice,
+      originalPrice: pricing.mrp,
+      savings: pricing.savings,
+      percent: pricing.discountPercent,
+      hasDiscount: pricing.hasDiscount,
       mainImage: mainImgPath || "/placeholder.jpg",
       gallery: gallery.length > 0 ? gallery : (mainImgPath ? [mainImgPath] : []),
       unitLabel,
@@ -97,7 +92,7 @@ export default function ProductDetailsPage() {
     return (
       <div className="min-h-screen bg-white flex flex-col">
         <Header />
-        <main className="flex-grow flex flex-col items-center justify-center text-emerald-600">
+        <main className="customer-page-shell flex flex-grow flex-col items-center justify-center text-emerald-600">
           <Loader2 className="w-10 h-10 animate-spin mb-4" />
           <p className="font-semibold">Squeezing the details...</p>
         </main>
@@ -110,7 +105,7 @@ export default function ProductDetailsPage() {
     return (
       <div className="min-h-screen bg-white flex flex-col">
         <Header />
-        <main className="flex-grow flex flex-col items-center justify-center px-4 text-center">
+        <main className="customer-page-shell flex flex-grow flex-col items-center justify-center px-4 text-center">
           <p className="font-semibold text-slate-800">{productError ?? "Product not found."}</p>
         </main>
         <Footer />
@@ -122,8 +117,8 @@ export default function ProductDetailsPage() {
     <div className="min-h-screen bg-white font-sans flex flex-col">
       <Header />
 
-      <main className="flex-grow pt-24 pb-12 px-4 sm:px-6">
-        <div className="max-w-6xl mx-auto">
+      <main className="customer-page-shell customer-page-shell--with-cart flex-grow pb-28 lg:pb-12">
+        <div className="mobile-container max-w-6xl">
           {/* Breadcrumbs */}
           <nav className="flex items-center gap-2 text-xs text-slate-500 font-medium mb-5 overflow-x-auto whitespace-nowrap">
             <span className="hover:text-emerald-700 cursor-pointer transition-colors">Home</span> 
@@ -218,8 +213,8 @@ export default function ProductDetailsPage() {
                  {product?.shortDescription}
                </p>
 
-               {/* Add to Cart Actions - CENTERED AND OPTIMIZED */}
-               <div className="mb-8 flex justify-center w-full">
+               {/* Add to Cart Actions - desktop inline */}
+               <div className="mb-8 hidden w-full justify-center md:flex">
                   {quantityInCart > 0 ? (
                     <div className="flex items-center justify-between bg-emerald-600 rounded-xl p-1 w-full max-w-[160px] h-[48px] shadow-md">
                       <button 
@@ -271,6 +266,48 @@ export default function ProductDetailsPage() {
           </div>
         </div>
       </main>
+
+      {/* Mobile sticky add-to-cart bar */}
+      <div
+        className="fixed inset-x-0 z-[800] border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-lg md:hidden"
+        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+      >
+        <div className="mx-auto flex max-w-lg items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold text-slate-500">Total</p>
+            <p className="text-lg font-extrabold text-emerald-600">₹{product?.currentPrice}</p>
+          </div>
+          {quantityInCart > 0 ? (
+            <div className="flex h-12 flex-1 max-w-[180px] items-center justify-between rounded-xl bg-emerald-600 p-1 shadow-md">
+              <button
+                onClick={() => handleUpdateQty(-1)}
+                className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-white touch-target"
+                aria-label="Decrease quantity"
+              >
+                <Minus size={16} strokeWidth={2.5} />
+              </button>
+              <span className="text-base font-bold text-white">{quantityInCart}</span>
+              <button
+                onClick={() => handleUpdateQty(1)}
+                className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-white touch-target"
+                aria-label="Increase quantity"
+              >
+                <Plus size={16} strokeWidth={2.5} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleAddToCart}
+              disabled={!currentOutlet}
+              className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-sm font-bold text-white shadow-md transition-all active:scale-[0.98] disabled:bg-slate-300 touch-target"
+            >
+              {!currentOutlet ? <MapPinOff size={18} /> : <ShoppingBag size={18} />}
+              {!currentOutlet ? "Select Outlet" : "Add to Cart"}
+            </button>
+          )}
+        </div>
+      </div>
+
       <Footer />
     </div>
   );

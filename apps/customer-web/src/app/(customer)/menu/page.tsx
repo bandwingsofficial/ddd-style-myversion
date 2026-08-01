@@ -1,48 +1,54 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Header from "@/components/customer/Header";
 import Footer from "@/components/customer/Footer";
 import { useProducts } from "@/features/products/hooks/useProducts";
 import ProductCard from "@/components/product/ProductCard";
 import ProductSkeleton from "@/components/product/ProductSkeleton";
-import { Search, Filter, X } from "lucide-react";
+import { BottomSheet } from "@/components/ui/BottomSheet";
+import { resolveProductPricing } from "@/lib/product-pricing";
+import { Search, Filter, X, SlidersHorizontal } from "lucide-react";
 
-export default function MenuPage() {
+function MenuPageContent() {
+  const searchParams = useSearchParams();
   const { products, loading, isOutletSelected, error, refresh } = useProducts();
-  
-  // --- Filter States ---
+
   const [searchQuery, setSearchQuery] = useState("");
   const [maxPrice, setMaxPrice] = useState<number>(500);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   const filterOptions = ["Organic", "Fresh", "Natural"];
 
-  // --- Filter Logic ---
+  useEffect(() => {
+    const q = searchParams.get("search");
+    if (q) setSearchQuery(q);
+  }, [searchParams]);
+
   const filteredProducts = useMemo(() => {
     return products.filter((product: any) => {
-      // 1. Search Filter
       const name = (product.name?.value || product.name || "").toLowerCase();
       const matchesSearch = name.includes(searchQuery.toLowerCase());
 
-      // 2. Price Filter (using the logic from your ProductCard)
-      const originalPrice = parseFloat(product.originalPrice ?? product.price?.originalPrice ?? product.price?.value ?? product.price ?? 0);
-      const discountVal = parseFloat(product.discountPrice ?? product.salePrice ?? product.price?.discountPrice ?? product.price?.salePrice ?? 0);
-      const currentPrice = (discountVal > 0 && discountVal < originalPrice) ? discountVal : originalPrice;
-      const matchesPrice = currentPrice <= maxPrice;
+      const { sellingPrice } = resolveProductPricing(product);
+      const matchesPrice = sellingPrice <= maxPrice;
 
-      // 3. Tag Filter
-      const productTags = (product.tags || []).map((t: string) => t.toLowerCase());
-      const matchesTags = selectedTags.length === 0 || 
-        selectedTags.every(tag => productTags.includes(tag.toLowerCase()));
+      const productTags = (product.tags || []).map((t: string) =>
+        t.toLowerCase(),
+      );
+      const matchesTags =
+        selectedTags.length === 0 ||
+        selectedTags.every((tag) => productTags.includes(tag.toLowerCase()));
 
       return matchesSearch && matchesPrice && matchesTags;
     });
   }, [products, searchQuery, maxPrice, selectedTags]);
 
   const toggleTag = (tag: string) => {
-    setSelectedTags(prev => 
-      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
     );
   };
 
@@ -52,61 +58,134 @@ export default function MenuPage() {
     setSelectedTags([]);
   };
 
+  const activeFilterCount =
+    (searchQuery ? 1 : 0) +
+    (maxPrice < 500 ? 1 : 0) +
+    selectedTags.length;
+
+  const filterPanel = (
+    <div className="space-y-5">
+      <div>
+        <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">
+          Max Price: ₹{maxPrice}
+        </label>
+        <input
+          type="range"
+          min="0"
+          max="500"
+          step="10"
+          value={maxPrice}
+          onChange={(e) => setMaxPrice(parseInt(e.target.value))}
+          className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-slate-200 accent-emerald-600"
+        />
+      </div>
+
+      <div>
+        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+          Tags
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {filterOptions.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => toggleTag(tag)}
+              className={`touch-target rounded-xl border px-4 py-2 text-xs font-bold transition-all ${
+                selectedTags.includes(tag)
+                  ? "border-emerald-600 bg-emerald-600 text-white shadow-md shadow-emerald-200"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-emerald-500"
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {activeFilterCount > 0 && (
+        <button
+          type="button"
+          onClick={() => {
+            clearFilters();
+            setFilterSheetOpen(false);
+          }}
+          className="flex w-full items-center justify-center gap-1 rounded-xl border border-red-200 bg-red-50 py-3 text-sm font-bold text-red-600 touch-target"
+        >
+          <X size={16} /> Clear all filters
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-white">
       <Header />
 
-      <main className="pb-[60px] pt-[110px] md:pt-[140px]">
-        <section className="mx-auto max-w-[1400px] px-4 md:px-6">
-          
-          {/* Page Header */}
-          <header className="mb-8 border-b border-slate-100 pb-3">
-            <h1 className="text-left text-[1.75rem] font-extrabold text-[#052e16] md:text-[2rem] animate-shine mb-6">
+      <main className="customer-page-shell customer-page-shell--with-cart">
+        <section className="mobile-container">
+          <header className="mb-6 border-b border-slate-100 pb-4 sm:mb-8 sm:pb-6">
+            <h1 className="animate-shine mb-4 text-left text-xl font-extrabold text-[#052e16] sm:mb-6 sm:text-[1.75rem] md:text-[2rem]">
               Our Products
             </h1>
 
-            {/* Filter Toolbar */}
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between bg-slate-50 p-4 rounded-2xl border border-slate-100">
-              
-              {/* Search Bar */}
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input 
-                  type="text"
+            <div className="flex flex-col gap-3">
+              <div className="relative w-full">
+                <Search
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                  size={18}
+                />
+                <input
+                  type="search"
+                  enterKeyHint="search"
                   placeholder="Search fresh products..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm"
+                  className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm transition-all focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
                 />
               </div>
 
-              {/* Price & Tags Wrapper */}
+              <button
+                type="button"
+                onClick={() => setFilterSheetOpen(true)}
+                className="flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-700 shadow-sm lg:hidden touch-target"
+              >
+                <SlidersHorizontal size={18} />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            <div className="mt-4 hidden flex-col gap-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 lg:flex lg:flex-row lg:items-center lg:justify-between">
               <div className="flex flex-wrap items-center gap-4">
-                
-                {/* Price Slider */}
-                <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl border border-slate-200 min-w-[200px]">
-                  <span className="text-xs font-bold text-slate-500 whitespace-nowrap">Max Price: ₹{maxPrice}</span>
-                  <input 
-                    type="range" 
-                    min="0" 
-                    max="500" 
+                <div className="flex min-w-[200px] items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2">
+                  <span className="whitespace-nowrap text-xs font-bold text-slate-500">
+                    Max Price: ₹{maxPrice}
+                  </span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="500"
                     step="10"
                     value={maxPrice}
                     onChange={(e) => setMaxPrice(parseInt(e.target.value))}
-                    className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                    className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-slate-200 accent-emerald-600"
                   />
                 </div>
 
-                {/* Tag Chips */}
                 <div className="flex items-center gap-2">
                   {filterOptions.map((tag) => (
                     <button
                       key={tag}
+                      type="button"
                       onClick={() => toggleTag(tag)}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                      className={`rounded-xl border px-4 py-2 text-xs font-bold transition-all ${
                         selectedTags.includes(tag)
-                          ? "bg-emerald-600 text-white border-emerald-600 shadow-md shadow-emerald-200"
-                          : "bg-white text-slate-600 border-slate-200 hover:border-emerald-500"
+                          ? "border-emerald-600 bg-emerald-600 text-white shadow-md shadow-emerald-200"
+                          : "border-slate-200 bg-white text-slate-600 hover:border-emerald-500"
                       }`}
                     >
                       {tag}
@@ -114,11 +193,11 @@ export default function MenuPage() {
                   ))}
                 </div>
 
-                {/* Clear Filters */}
-                {(searchQuery || selectedTags.length > 0 || maxPrice < 500) && (
-                  <button 
+                {activeFilterCount > 0 && (
+                  <button
+                    type="button"
                     onClick={clearFilters}
-                    className="flex items-center gap-1 text-xs font-bold text-red-500 hover:text-red-600 px-2"
+                    className="flex items-center gap-1 px-2 text-xs font-bold text-red-500 hover:text-red-600"
                   >
                     <X size={14} /> Reset
                   </button>
@@ -127,58 +206,86 @@ export default function MenuPage() {
             </div>
           </header>
 
-          {/* Grid Layout */}
           {!isOutletSelected && !loading ? (
-            <div className="py-20 text-center text-slate-500">
-              <p className="font-semibold text-slate-700">Select an outlet to view products</p>
-              <p className="mt-2 text-sm">Choose your branch from the home page or update your location in the header.</p>
+            <div className="py-16 text-center text-slate-500 sm:py-20">
+              <p className="font-semibold text-slate-700">
+                Select an outlet to view products
+              </p>
+              <p className="mt-2 text-sm">
+                Choose your branch from the home page or update your location in
+                the header.
+              </p>
             </div>
           ) : error ? (
-            <div className="py-20 flex flex-col items-center justify-center text-center">
+            <div className="flex flex-col items-center justify-center py-16 text-center sm:py-20">
               <p className="text-sm font-medium text-red-600">{error}</p>
               <button
                 type="button"
                 onClick={() => void refresh()}
-                className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 touch-target"
               >
                 Retry
               </button>
             </div>
           ) : (
-          <div className="grid grid-cols-2 gap-3 md:gap-5 lg:grid-cols-4 xl:grid-cols-5 min-[380px]:grid-cols-2 max-[379px]:grid-cols-1">
-            {loading
-              ? Array.from({ length: 10 }).map((_, i) => (
-                  <ProductSkeleton key={i} />
-                ))
-              : filteredProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-          </div>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {loading
+                ? Array.from({ length: 10 }).map((_, i) => (
+                    <ProductSkeleton key={i} />
+                  ))
+                : filteredProducts.map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+            </div>
           )}
 
-          {/* Empty State */}
           {!loading && !error && isOutletSelected && filteredProducts.length === 0 && (
-            <div className="py-20 flex flex-col items-center justify-center text-center">
-              <div className="bg-slate-50 p-6 rounded-full mb-4">
-                <Search size={40} className="text-slate-300" />
+            <div className="flex flex-col items-center justify-center py-16 text-center sm:py-20">
+              <div className="mb-4 rounded-full bg-slate-50 p-6">
+                <Filter size={40} className="text-slate-300" />
               </div>
-              <h3 className="text-slate-900 font-bold text-lg">No products found</h3>
-              <p className="text-slate-500 text-sm max-w-xs">
-                We couldn't find any products matching your current filters. Try adjusting your search or price range.
+              <h3 className="text-lg font-bold text-slate-900">
+                No products found
+              </h3>
+              <p className="mt-2 max-w-xs text-sm text-slate-500">
+                We couldn&apos;t find any products matching your current filters.
+                Try adjusting your search or price range.
               </p>
-              <button 
+              <button
+                type="button"
                 onClick={clearFilters}
-                className="mt-6 text-emerald-600 font-bold text-sm underline underline-offset-4"
+                className="mt-6 text-sm font-bold text-emerald-600 underline underline-offset-4 touch-target"
               >
                 Clear all filters
               </button>
             </div>
           )}
-          
         </section>
       </main>
 
+      <BottomSheet
+        open={filterSheetOpen}
+        onClose={() => setFilterSheetOpen(false)}
+        title="Filter Products"
+      >
+        {filterPanel}
+      </BottomSheet>
+
       <Footer />
     </div>
+  );
+}
+
+export default function MenuPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-white">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-slate-200 border-t-emerald-600" />
+        </div>
+      }
+    >
+      <MenuPageContent />
+    </Suspense>
   );
 }

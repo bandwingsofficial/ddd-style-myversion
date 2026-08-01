@@ -11,7 +11,6 @@ export const dashboardQueryKeys = {
   summary: (filters: DashboardFilters) => ['dashboard', 'summary', filters] as const,
   charts: (filters: DashboardFilters) => ['dashboard', 'charts', filters] as const,
   recentOrders: (filters: DashboardFilters) => ['dashboard', 'recent-orders', filters] as const,
-  recentPayments: (filters: DashboardFilters) => ['dashboard', 'recent-payments', filters] as const,
   topProducts: (filters: DashboardFilters) => ['dashboard', 'top-products', filters] as const,
   topOutlets: (filters: DashboardFilters) => ['dashboard', 'top-outlets', filters] as const,
   topCategories: (filters: DashboardFilters) => ['dashboard', 'top-categories', filters] as const,
@@ -42,12 +41,6 @@ export function useDashboard(filters: DashboardFilters) {
   const recentOrdersQuery = useQuery({
     queryKey: dashboardQueryKeys.recentOrders(filters),
     queryFn: () => DashboardApi.getRecentOrders(filters),
-    staleTime: 15_000,
-  });
-
-  const recentPaymentsQuery = useQuery({
-    queryKey: dashboardQueryKeys.recentPayments(filters),
-    queryFn: () => DashboardApi.getRecentPayments(filters),
     staleTime: 15_000,
   });
 
@@ -89,7 +82,6 @@ export function useDashboard(filters: DashboardFilters) {
     summary: summaryQuery.data,
     charts: chartsQuery.data,
     recentOrders: recentOrdersQuery.data ?? [],
-    recentPayments: recentPaymentsQuery.data ?? [],
     topProducts: topProductsQuery.data?.topProducts ?? [],
     topOutlets: topOutletsQuery.data?.topOutlets ?? [],
     topCategories: topCategoriesQuery.data?.topCategories ?? [],

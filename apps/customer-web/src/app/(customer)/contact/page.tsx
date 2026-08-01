@@ -11,12 +11,11 @@ export default function ContactPage() {
       <Header />
 
       {/* FIXED: Increased padding-top from 110px to 160px to clear the header */}
-      <main className="animate-fade-in-up pb-20 pt-[160px] md:pt-[180px]">
-        <section className="mx-auto max-w-[1100px] px-6">
+      <main className="customer-page-shell animate-fade-in-up mobile-container max-w-[1100px]">
           
           {/* Page Header */}
           <header className="mb-[60px] text-center">
-            <h1 className="animate-shine mb-4 bg-gradient-to-r from-[#052e16] via-[#4ade80] to-[#052e16] bg-[length:200%_auto] bg-clip-text font-serif text-5xl font-extrabold text-transparent">
+            <h1 className="animate-shine mb-4 bg-gradient-to-r from-[#052e16] via-[#4ade80] to-[#052e16] bg-[length:200%_auto] bg-clip-text font-serif text-3xl font-extrabold text-transparent sm:text-4xl md:text-5xl">
               Get in Touch
             </h1>
             <p className="text-lg text-slate-500">
@@ -165,7 +164,6 @@ export default function ContactPage() {
               </form>
             </div>
           </div>
-        </section>
       </main>
 
       <Footer />

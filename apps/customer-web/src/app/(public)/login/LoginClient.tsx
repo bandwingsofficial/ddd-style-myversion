@@ -42,7 +42,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative h-screen w-full overflow-hidden flex items-center justify-center bg-black">
+    <div className="relative flex min-h-[100dvh] w-full items-center justify-center overflow-hidden bg-black px-4 py-8" style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}>
 
       {/* Background */}
       <Image
@@ -97,6 +97,9 @@ export default function LoginPage() {
 
               <input
                 type="tel"
+                inputMode="numeric"
+                autoComplete="tel-national"
+                enterKeyHint="done"
                 value={phone}
                 onChange={(e) => {
                   setPhone(e.target.value.replace(/\D/g, "").slice(0, 10));

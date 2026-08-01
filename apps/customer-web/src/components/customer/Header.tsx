@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import ShinyText from '../styles/ShinyText'; 
 import {
   ShoppingCart,
@@ -20,10 +21,12 @@ import { useCartStore } from "@/features/cart/cart.store";
 import LocationSelector from "./LocationSelector";
 
 export default function Header() {
+  const router = useRouter();
   const { isAuthenticated } = useCustomerAuthStore();
   const logout = useLogout();
   const [scrolled, setScrolled] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false); 
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(""); 
 
   const { items } = useCartStore();
   const cartItemCount = items?.reduce((acc, item) => acc + item.quantity, 0) || 0;
@@ -53,6 +56,16 @@ export default function Header() {
   const navLinks = isAuthenticated 
     ? [...baseLinks, { name: "Orders", href: "/orders" }] 
     : baseLinks;
+
+  const submitSearch = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      router.push("/search");
+      return;
+    }
+    router.push(`/menu?search=${encodeURIComponent(trimmed)}`);
+    setMobileMenuOpen(false);
+  };
 
   return (
     <>
@@ -90,7 +103,7 @@ export default function Header() {
               {/* Hamburger Button (Triggers Mobile Menu Drawer) */}
               <button 
                 onClick={() => setMobileMenuOpen(true)}
-                className="flex lg:hidden p-2 text-slate-700 hover:bg-green-50 hover:text-green-600 rounded-xl transition-colors"
+                className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-700 transition-colors hover:bg-green-50 hover:text-green-600 lg:hidden touch-target"
                 aria-label="Open Menu"
               >
                 <Menu size={24} strokeWidth={2.5} />
@@ -102,8 +115,8 @@ export default function Header() {
                   alt="Cane & Tender" 
                   width={140} 
                   height={50} 
-                  className={`object-contain transition-all duration-400 md:w-[170px]
-                  ${scrolled ? "max-h-[45px]" : "max-h-[55px] md:max-h-[60px]"}`}
+                  className={`object-contain transition-all duration-400 w-[108px] sm:w-[120px] md:w-[170px]
+                  ${scrolled ? "max-h-[40px] md:max-h-[45px]" : "max-h-[46px] md:max-h-[60px]"}`}
                   priority 
                   unoptimized={true} 
                 />
@@ -126,17 +139,25 @@ export default function Header() {
 
             {/* MIDDLE: Search Section */}
             <div className="hidden md:flex flex-1 justify-center max-w-[360px] lg:max-w-[400px]">
-              <div className="w-full bg-slate-100 rounded-2xl py-[8px] md:py-[10px] px-2 flex items-center border border-transparent transition-all duration-300 hover:bg-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] focus-within:bg-white focus-within:border-green-500 focus-within:shadow-[0_0_0_3px_rgba(34,197,94,0.15)] group/search">
+              <form
+                className="w-full bg-slate-100 rounded-2xl py-[8px] md:py-[10px] px-2 flex items-center border border-transparent transition-all duration-300 hover:bg-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] focus-within:bg-white focus-within:border-green-500 focus-within:shadow-[0_0_0_3px_rgba(34,197,94,0.15)] group/search"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  submitSearch(searchQuery);
+                }}
+              >
                 <Search 
                   size={18} 
                   className="ml-2 text-slate-400 transition-transform duration-300 group-focus-within/search:scale-110 group-focus-within/search:text-green-500"
                 />
                 <input 
-                  type="text" 
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search Products..." 
                   className="bg-transparent border-none outline-none text-[0.92rem] w-full text-slate-600 font-medium pl-2.5 placeholder:text-slate-400" 
                 />
-              </div>
+              </form>
             </div>
 
             {/* RIGHT ACTIONS */}
@@ -145,12 +166,16 @@ export default function Header() {
                 <LocationSelector />
               </div>
 
-              <div className="flex items-center gap-1 md:gap-2">
-                <Link href="/favorites" className="w-[40px] h-[40px] flex items-center justify-center rounded-full text-slate-700 transition-all duration-300 hover:bg-green-50 hover:text-green-500 group/fav">
+              <div className="flex items-center gap-0.5 sm:gap-1 md:gap-2">
+                <Link href="/search" className="flex h-11 w-11 items-center justify-center rounded-full text-slate-700 transition-all duration-300 hover:bg-green-50 hover:text-green-500 md:hidden touch-target" aria-label="Search">
+                  <Search size={20} strokeWidth={2.2} />
+                </Link>
+
+                <Link href="/favorites" className="flex h-11 w-11 items-center justify-center rounded-full text-slate-700 transition-all duration-300 hover:bg-green-50 hover:text-green-500 touch-target" aria-label="Wishlist">
                   <Heart size={20} strokeWidth={2.2} className="group-hover/fav:animate-[heart-pop_0.4s_ease-in-out]" />
                 </Link>
                 
-                <Link href="/cart" className="w-[40px] h-[40px] flex items-center justify-center rounded-full text-slate-700 transition-all duration-300 hover:bg-green-50 hover:text-green-500 group/cart">
+                <Link href="/cart" className="flex h-11 w-11 items-center justify-center rounded-full text-slate-700 transition-all duration-300 hover:bg-green-50 hover:text-green-500 touch-target" aria-label="Cart">
                   <div className="relative flex items-center">
                     <ShoppingCart size={20} strokeWidth={2.2} className="group-hover/cart:animate-bounce" />
                     {cartItemCount > 0 && (
@@ -159,6 +184,14 @@ export default function Header() {
                       </span>
                     )}
                   </div>
+                </Link>
+
+                <Link
+                  href={isAuthenticated ? "/profile" : "/login"}
+                  className="flex h-11 w-11 items-center justify-center rounded-full text-slate-700 transition-all duration-300 hover:bg-green-50 hover:text-green-500 lg:hidden touch-target"
+                  aria-label="Profile"
+                >
+                  <User size={20} strokeWidth={2.2} />
                 </Link>
 
                 {/* User Dropdown (Desktop Only) */}
@@ -226,14 +259,22 @@ export default function Header() {
           </div>
 
           {/* Mobile Search input */}
-          <div className="lg:hidden mb-6 bg-slate-100 rounded-xl py-2 px-3 flex items-center border border-transparent focus-within:bg-white focus-within:border-green-500 transition-all">
-            <Search size={16} className="text-slate-400 mr-2" />
+          <form
+            className="mb-6 flex items-center rounded-xl border border-slate-200 bg-slate-100 py-2 px-3 transition-all focus-within:border-green-500 focus-within:bg-white lg:hidden"
+            onSubmit={(event) => {
+              event.preventDefault();
+              submitSearch(searchQuery);
+            }}
+          >
+            <Search size={16} className="mr-2 text-slate-400" />
             <input 
-              type="text" 
-              placeholder="Search..." 
-              className="bg-transparent border-none outline-none text-[0.9rem] w-full text-slate-600 placeholder:text-slate-400 font-medium" 
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search products..." 
+              className="w-full border-none bg-transparent text-[0.9rem] font-medium text-slate-600 outline-none placeholder:text-slate-400" 
             />
-          </div>
+          </form>
 
           <nav className="flex flex-col gap-1 flex-1">
             {navLinks.map((link) => (

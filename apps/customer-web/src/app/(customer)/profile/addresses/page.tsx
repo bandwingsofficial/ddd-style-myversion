@@ -292,7 +292,7 @@ export default function AddressListPage() {
       )}
 
       {/* ✅ List View */}
-      <main className="max-w-4xl mx-auto px-4 pt-10 pb-24">
+      <main className="customer-page-shell mobile-container max-w-4xl">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm border border-slate-100 hover:bg-slate-50 transition text-slate-600">

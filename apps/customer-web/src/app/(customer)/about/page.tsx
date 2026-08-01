@@ -38,7 +38,7 @@ export default function AboutPage() {
       <Header />
       
       {/* Main Content */}
-      <main className="flex-grow pt-36 pb-20 px-4 z-10 relative">
+      <main className="customer-page-shell flex-grow animate-in fade-in slide-in-from-bottom-4 duration-700 mobile-container">
         
         {/* --- Hero Section --- */}
         <section className="max-w-4xl mx-auto text-center mb-20 animate-fade-in-up">

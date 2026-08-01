@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { formatPaymentAmount } from '@/lib/format-currency';
 import {
   AdminPaymentListItem,
   PaymentsAdminApi,
@@ -86,7 +87,9 @@ export default function PaymentsAdminPage() {
                         {payment.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3">₹{payment.amount}</td>
+                    <td className="px-4 py-3 font-semibold">
+                      {formatPaymentAmount(payment.amount)}
+                    </td>
                     <td className="px-4 py-3 font-mono text-xs">{payment.providerRefId ?? '—'}</td>
                     <td className="px-4 py-3 font-mono text-xs">{payment.transactionId ?? '—'}</td>
                     <td className="px-4 py-3">{payment.customerName ?? payment.customerId}</td>

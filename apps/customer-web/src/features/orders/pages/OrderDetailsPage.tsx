@@ -84,7 +84,7 @@ export default function OrderDetailsPage() {
     <div className="min-h-screen bg-slate-50">
       <Header />
 
-      <main className="mx-auto max-w-7xl px-4 pb-16 pt-36">
+      <main className="customer-page-shell mobile-container max-w-7xl">
 
         <div className="mb-8 flex items-center justify-between">
 

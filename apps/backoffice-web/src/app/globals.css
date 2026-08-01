@@ -71,6 +71,28 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-[#F2FCF6] text-foreground;
+  }
+}
+
+@layer components {
+  .dash-shimmer {
+    background: linear-gradient(
+      90deg,
+      rgba(236, 253, 243, 0.5) 0%,
+      rgba(220, 252, 231, 0.95) 50%,
+      rgba(236, 253, 243, 0.5) 100%
+    );
+    background-size: 200% 100%;
+    animation: dash-shimmer 1.4s ease-in-out infinite;
+  }
+
+  @keyframes dash-shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
   }
 }
