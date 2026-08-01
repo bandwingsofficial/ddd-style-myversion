@@ -9,8 +9,13 @@ import {
 } from "lucide-react";
 
 const SUPPORT_EMAIL = "cantenonline@gmail.com";
-const SUPPORT_PHONE = "+91 99029 30777";
-const SUPPORT_TEL = "tel:+919902930777";
+
+const SUPPORT_PHONE_1 = "+91 99029 62777";
+const SUPPORT_PHONE_2 = "+91 99029 30777";
+
+const SUPPORT_TEL_1 = "tel:+919902962777";
+const SUPPORT_TEL_2 = "tel:+919902930777";
+
 const SUPPORT_MAIL = "mailto:cantenonline@gmail.com";
 
 interface SupportCardProps {
@@ -49,23 +54,36 @@ export default function SupportCard({
           <span className="font-medium break-all">{SUPPORT_EMAIL}</span>
         </a>
 
-        <a
-          href={SUPPORT_TEL}
-          className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white px-4 py-3 text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50/50"
-        >
-          <Phone size={18} className="shrink-0 text-emerald-600" />
-          <span className="font-medium">{SUPPORT_PHONE}</span>
-        </a>
+        <div className="rounded-xl border border-slate-100 bg-white px-4 py-3 transition hover:border-emerald-200 hover:bg-emerald-50/50">
+          <div className="flex items-start gap-3">
+            <Phone size={18} className="mt-0.5 shrink-0 text-emerald-600" />
+            <div className="flex flex-col gap-1">
+              <a
+                href={SUPPORT_TEL_1}
+                className="font-medium text-slate-700 hover:text-emerald-600"
+              >
+                {SUPPORT_PHONE_1}
+              </a>
+              <a
+                href={SUPPORT_TEL_2}
+                className="font-medium text-slate-700 hover:text-emerald-600"
+              >
+                {SUPPORT_PHONE_2}
+              </a>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <a
-          href={SUPPORT_TEL}
+          href={SUPPORT_TEL_1}
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700"
         >
           <Phone size={16} />
           Call Support
         </a>
+
         <a
           href={SUPPORT_MAIL}
           className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50"

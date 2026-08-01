@@ -30,19 +30,19 @@ export default function Footer() {
           <div className="col brand-col">
             <Link href="/" className="logo-link">
               <div className="logo-wrapper">
-                <Image 
-                  src="/images/Canten1.png" 
-                  alt="CanTen Logo" 
-                  width={140} 
-                  height={50}  
+                <Image
+                  src="/images/Canten1.png"
+                  alt="CanTen Logo"
+                  width={140}
+                  height={50}
                   className="logo-img"
                   priority
                 />
               </div>
             </Link>
             <p className="brand-story">
-              Your destination for fresh, natural, and hygienic cane juice
-              and tender coconut water.
+              Your destination for fresh, natural, and hygienic cane juice and
+              tender coconut water.
             </p>
             <div className="social-group">
               <a href="#" className="social-link" aria-label="Facebook">
@@ -92,24 +92,31 @@ export default function Footer() {
                 <span className="icon-badge">
                   <Mail size={14} />
                 </span>
-               <a href="mailto:cantenonline@gmail.com" className="contact-text">
-  cantenonline@gmail.com
-</a>
+                <a
+                  href="mailto:cantenonline@gmail.com"
+                  className="contact-text"
+                >
+                  cantenonline@gmail.com
+                </a>
               </li>
               <li className="contact-item">
-                <span className="icon-badge">
-                  <Phone size={14} />
-                </span>
-               <a href="tel:+919902930777" className="contact-text">
-  +91 99029 30777
-</a>
-              </li>
+  <span className="icon-badge">
+    <Phone size={14} />
+  </span>
+
+  <div className="contact-text flex items-center gap-2 whitespace-nowrap">
+    <a href="tel:+919902962777">+91 99029 62777</a>
+    <span>/</span>
+    <a href="tel:+919902930777">+91 99029 30777</a>
+  </div>
+</li>
               <li className="contact-item address-item">
                 <span className="icon-badge">
                   <MapPin size={14} />
                 </span>
                 <span className="contact-text">
-                  Sai Dharshan, 1st A Main Road, 1st Phase, Yelahanka New Town, Bengaluru - 560064
+                  Sai Dharshan, 1st A Main Road, 1st Phase, Yelahanka New Town,
+                  Bengaluru - 560064
                 </span>
               </li>
               <li className="contact-item hours-item">
@@ -198,11 +205,13 @@ export default function Footer() {
         .grid-lines {
           position: absolute;
           inset: 0;
-          background-image: linear-gradient(
+          background-image:
+            linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+            linear-gradient(
+              90deg,
               rgba(255, 255, 255, 0.025) 1px,
               transparent 1px
-            ),
-            linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+            );
           background-size: 48px 48px;
           mask-image: radial-gradient(ellipse at top, black, transparent 75%);
         }
@@ -253,7 +262,7 @@ export default function Footer() {
         }
 
         .logo-wrapper {
-          width: 130px; 
+          width: 130px;
           height: auto;
           display: flex;
           align-items: center;
@@ -269,7 +278,7 @@ export default function Footer() {
         }
 
         .logo-link:hover .logo-wrapper {
-          transform: scale(1.04); 
+          transform: scale(1.04);
         }
 
         .brand-story {
@@ -298,7 +307,10 @@ export default function Footer() {
           border: 1px solid rgba(255, 255, 255, 0.1);
           backdrop-filter: blur(8px);
           -webkit-backdrop-filter: blur(8px);
-          transition: transform 0.3s ease, background 0.3s ease, border-color 0.3s ease,
+          transition:
+            transform 0.3s ease,
+            background 0.3s ease,
+            border-color 0.3s ease,
             box-shadow 0.3s ease;
         }
 
@@ -498,7 +510,7 @@ export default function Footer() {
             animation: none !important;
           }
         }
-      `}</style>  
+      `}</style>
     </footer>
   );
 }
