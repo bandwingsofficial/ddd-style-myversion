@@ -381,6 +381,12 @@ export class DashboardRepository {
       select: {
         id: true,
         slug: true,
+        mainImage: true,
+        galleryImages: {
+          orderBy: { sortOrder: 'asc' },
+          take: 1,
+          select: { imageUrl: true },
+        },
         category: { select: { name: true } },
         isAvailable: true,
       },
@@ -393,6 +399,9 @@ export class DashboardRepository {
         productId: item.productId,
         productName: item.productName,
         productImage: item.productImage,
+        mainImage: product?.mainImage ?? null,
+        galleryImageKeys:
+          product?.galleryImages.map((image) => image.imageUrl) ?? [],
         sku: product?.slug ?? item.productId.slice(0, 8).toUpperCase(),
         category: product?.category.name ?? 'Uncategorized',
         unitsSold: item._sum.quantity ?? 0,

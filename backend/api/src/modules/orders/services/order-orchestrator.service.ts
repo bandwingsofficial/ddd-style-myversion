@@ -107,4 +107,17 @@ export class OrderOrchestratorService {
   async getOutletOrders(outletId: string): Promise<Order[]> {
     return this.orderService.getOutletOrders(outletId);
   }
+
+  async listOrdersForAdmin(params: {
+    page: number;
+    limit: number;
+    status?: string;
+    search?: string;
+  }) {
+    return this.orderService.listForAdmin(params);
+  }
+
+  async getOrderAdminDetail(orderId: string) {
+    return this.orderService.getAdminDetail(orderId);
+  }
 }

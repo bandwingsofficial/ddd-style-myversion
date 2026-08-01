@@ -79,6 +79,9 @@ export interface DashboardTopProduct {
   productId: string;
   productName: string;
   productImage: string;
+  image?: string;
+  imageUrl?: string;
+  thumbnail?: string;
   sku: string;
   category: string;
   unitsSold: number;

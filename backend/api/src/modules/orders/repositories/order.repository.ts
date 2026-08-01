@@ -208,4 +208,97 @@ async findById(
       where: { id },
     });
   }
+
+  /* ================================================= */
+  /* ADMIN READS                                       */
+  /* ================================================= */
+
+  async findAllForAdmin(params: {
+    page: number;
+    limit: number;
+    status?: string;
+    search?: string;
+  }) {
+    const where: Record<string, unknown> = {};
+
+    if (params.status) {
+      where.status = params.status;
+    }
+
+    if (params.search?.trim()) {
+      const term = params.search.trim();
+      where.OR = [
+        { orderNumber: { contains: term, mode: 'insensitive' } },
+        {
+          customer: {
+            profile: {
+              fullName: { contains: term, mode: 'insensitive' },
+            },
+          },
+        },
+        { customer: { phone: { contains: term } } },
+      ];
+    }
+
+    const skip = (params.page - 1) * params.limit;
+
+    const [rows, total] = await Promise.all([
+      this.prisma.order.findMany({
+        where,
+        skip,
+        take: params.limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          customer: {
+            select: {
+              phone: true,
+              profile: { select: { fullName: true } },
+            },
+          },
+          outlet: { select: { name: true } },
+          payments: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            select: { status: true },
+          },
+          items: { select: { id: true } },
+        },
+      }),
+      this.prisma.order.count({ where }),
+    ]);
+
+    return {
+      items: rows.map((row) => ({
+        id: row.id,
+        orderNumber: row.orderNumber,
+        customerName: row.customer.profile?.fullName ?? 'Customer',
+        customerPhone: row.customer.phone,
+        outletName: row.outlet.name,
+        itemCount: row.items.length,
+        paymentStatus: row.payments[0]?.status ?? 'INITIATED',
+        orderStatus: row.status,
+        amount: Number(row.grandTotal),
+        createdAt: row.createdAt,
+      })),
+      total,
+      page: params.page,
+      limit: params.limit,
+      totalPages: Math.ceil(total / params.limit) || 1,
+    };
+  }
+
+  async findAdminDetailRow(orderId: string) {
+    return this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: true,
+        customer: {
+          include: { profile: true },
+        },
+        outlet: { select: { id: true, name: true } },
+        payments: { orderBy: { createdAt: 'desc' } },
+        events: { orderBy: { createdAt: 'asc' } },
+      },
+    });
+  }
 }

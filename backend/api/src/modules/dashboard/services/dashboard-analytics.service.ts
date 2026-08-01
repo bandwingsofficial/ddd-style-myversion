@@ -1,12 +1,16 @@
 import { Injectable } from '@nestjs/common';
 
+import { MediaUrlResolverService } from '../../uploads/services/media-url-resolver.service';
 import { DashboardFilter } from '../domain/types/dashboard-filter.types';
 import { resolveDashboardDateRange } from '../utils/dashboard-date.util';
 import { DashboardRepository } from '../repositories/dashboard.repository';
 
 @Injectable()
 export class DashboardAnalyticsService {
-  constructor(private readonly repo: DashboardRepository) {}
+  constructor(
+    private readonly repo: DashboardRepository,
+    private readonly mediaUrlResolver: MediaUrlResolverService,
+  ) {}
 
   async getRevenueAnalytics(filter: DashboardFilter) {
     const range = resolveDashboardDateRange(filter);
@@ -71,7 +75,34 @@ export class DashboardAnalyticsService {
   async getProductAnalytics(filter: DashboardFilter, limit = 10) {
     const range = resolveDashboardDateRange(filter);
     const topProducts = await this.repo.getTopProducts(filter, range, limit);
-    return { range, topProducts };
+
+    const resolvedTopProducts = await Promise.all(
+      topProducts.map(async (product) => {
+        const imageUrl = await this.mediaUrlResolver.resolveProductImage({
+          snapshotImage: product.productImage,
+          mainImage: product.mainImage,
+          galleryImageKeys: product.galleryImageKeys,
+        });
+
+        return {
+          productId: product.productId,
+          productName: product.productName,
+          productImage: imageUrl,
+          image: imageUrl,
+          imageUrl,
+          thumbnail: imageUrl,
+          sku: product.sku,
+          category: product.category,
+          unitsSold: product.unitsSold,
+          revenue: product.revenue,
+          currentStock: product.currentStock,
+          trend: product.trend,
+          growthPercent: product.growthPercent,
+        };
+      }),
+    );
+
+    return { range, topProducts: resolvedTopProducts };
   }
 
   async getCategoryAnalytics(filter: DashboardFilter, limit = 10) {

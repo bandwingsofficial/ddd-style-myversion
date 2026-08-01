@@ -7,6 +7,7 @@ import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 /* ---------------------------------------------- */
 import { OrderController } from '../controllers/order.controller';
 import { MyOrdersController } from '../controllers/my-orders.controller';
+import { OrderAdminController } from '../controllers/order-admin.controller';
 
 /* ---------------------------------------------- */
 /* SERVICES                                       */
@@ -39,6 +40,7 @@ import { UploadsModule } from '../../uploads/uploads.module';
   controllers: [
     OrderController,
     MyOrdersController,
+    OrderAdminController,
   ],
 
   imports: [

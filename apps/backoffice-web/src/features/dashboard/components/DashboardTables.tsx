@@ -5,10 +5,10 @@ import Link from 'next/link';
 import {
   AlertTriangle,
   ExternalLink,
-  Package,
 } from 'lucide-react';
 
 import { formatRupeeAmount } from '@/lib/format-currency';
+import { ProductImage } from '@/components/product/product-image';
 
 import {
   DashboardLowStockItem,
@@ -100,7 +100,7 @@ export function RecentOrdersTable({
                   </td>
                   <td className="px-5 py-3.5">
                     <Link
-                      href={`/orders?id=${order.id}`}
+                      href={`/orders/${order.id}`}
                       className="inline-flex items-center gap-1 rounded-[14px] border border-[#D8F3E4] bg-[#ECFDF3] px-2.5 py-1.5 text-xs font-semibold text-[#15803D] transition duration-200 hover:border-[#86EFAC] hover:bg-[#DCFCE7]"
                     >
                       Quick View
@@ -146,7 +146,11 @@ export function TopProductsTable({
                 <tr key={product.productId} className={dashTableRow}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <ProductThumb image={product.productImage} name={product.productName} />
+                      <ProductImage
+                        src={product.imageUrl ?? product.thumbnail ?? product.image ?? product.productImage}
+                        alt={product.productName}
+                        className="h-[52px] w-[52px] rounded-[14px]"
+                      />
                       <div>
                         <p className="font-semibold text-slate-800">{product.productName}</p>
                         <p className="text-xs text-slate-500">{product.category}</p>
@@ -331,26 +335,6 @@ export function InventoryAlertsCard({
             </div>
           ))}
         </div>
-      )}
-    </div>
-  );
-}
-
-function ProductThumb({ image, name }: { image: string; name: string }) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '') ?? '';
-  const src = image?.startsWith('http')
-    ? image
-    : image
-      ? `${baseUrl}${image.startsWith('/') ? '' : '/'}${image}`
-      : null;
-
-  return (
-    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center overflow-hidden rounded-[14px] bg-[#ECFDF3]">
-      {src ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={name} className="h-full w-full object-cover" />
-      ) : (
-        <Package size={16} className="text-slate-400" />
       )}
     </div>
   );

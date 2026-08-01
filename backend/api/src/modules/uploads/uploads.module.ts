@@ -7,6 +7,7 @@ import { s3ClientProvider } from './providers/s3-client.provider';
 import { S3StorageProvider } from './providers/s3-storage.provider';
 import { UploadService } from './services/upload.service';
 import { UploadValidationService } from './services/upload-validation.service';
+import { MediaUrlResolverService } from './services/media-url-resolver.service';
 
 @Module({
   providers: [
@@ -17,7 +18,8 @@ import { UploadValidationService } from './services/upload-validation.service';
     },
     UploadValidationService,
     UploadService,
+    MediaUrlResolverService,
   ],
-  exports: [UploadService],
+  exports: [UploadService, MediaUrlResolverService],
 })
 export class UploadsModule {}

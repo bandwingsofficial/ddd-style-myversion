@@ -1,8 +1,18 @@
 import { Injectable } from '@nestjs/common';
 
 import { UploadService } from '../../uploads/services/upload.service';
+import { OutletOrderResponseDto } from '../../outlets/dtos/outlet-order-response.dto';
+import { PaymentMapper } from '../../payments/mappers/payment.mapper';
 import { Order } from '../domain/models/order.model';
 import { OrderStatus } from '../domain/enums/order-status.enum';
+
+type AdminOrderDetailRow = NonNullable<
+  Awaited<
+    ReturnType<
+      import('../repositories/order.repository').OrderRepository['findAdminDetailRow']
+    >
+  >
+>;
 
 @Injectable()
 export class OrderResponseMapper {
@@ -53,6 +63,87 @@ export class OrderResponseMapper {
       items,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
+    };
+  }
+
+  async toAdminDetailResponse(row: AdminOrderDetailRow) {
+    const latestPaymentRow = row.payments[0] ?? null;
+    const latestPayment = latestPaymentRow
+      ? PaymentMapper.toDomain(latestPaymentRow)
+      : null;
+
+    const items = await Promise.all(
+      row.items.map(async (item) => ({
+        id: item.id,
+        productId: item.productId,
+        productName: item.productName,
+        productImage: await this.resolveImageUrl(item.productImage),
+        quantity: item.quantity,
+        unitPrice: Number(item.unitPrice),
+        discountPrice:
+          item.discountPrice != null ? Number(item.discountPrice) : null,
+        lineTotal: Number(item.totalPrice),
+        createdAt: item.createdAt,
+      })),
+    );
+
+    const cancellationEvent = [...row.events]
+      .reverse()
+      .find((event) => event.type === 'CANCELLED');
+
+    const timeline = row.events.map((event) => ({
+      type: event.type,
+      label: event.type.replace(/_/g, ' '),
+      at: event.createdAt,
+      note: event.note,
+    }));
+
+    return {
+      id: row.id,
+      orderNumber: row.orderNumber,
+      status: row.status,
+      paymentStatus: OutletOrderResponseDto.resolvePaymentStatus(
+        row.status,
+        latestPayment,
+      ),
+      outlet: {
+        id: row.outlet.id,
+        name: row.outlet.name,
+      },
+      customer: {
+        name: row.customer.profile?.fullName ?? 'Customer',
+        phone: row.customer.phone,
+        email: row.customer.profile?.email ?? null,
+      },
+      address: {
+        label: row.addressLabel,
+        addressText: row.addressText,
+        latitude: row.latitude,
+        longitude: row.longitude,
+      },
+      items,
+      pricing: {
+        subtotal: Number(row.subtotal),
+        discount: Number(row.discount),
+        netSubtotal: Number(row.afterDiscountTotal),
+        deliveryFee: Number(row.deliveryFee),
+        grandTotal: Number(row.grandTotal),
+      },
+      payment: latestPaymentRow
+        ? {
+            id: latestPaymentRow.id,
+            gateway: latestPaymentRow.provider,
+            transactionId: latestPaymentRow.transactionId,
+            method: latestPaymentRow.method,
+            status: latestPaymentRow.status,
+            paidAt: latestPaymentRow.paidAt,
+            amount: Number(latestPaymentRow.amount),
+          }
+        : null,
+      cancellationReason: cancellationEvent?.note ?? null,
+      timeline,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
     };
   }
 

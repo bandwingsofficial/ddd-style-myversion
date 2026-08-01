@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { RedisModule } from '../../../infrastructure/redis/redis.module';
+import { UploadsModule } from '../../uploads/uploads.module';
 import { AuditLogRepository } from '../../auth/repositories/audit-log.repository';
 
 import { DashboardController } from '../controllers/dashboard.controller';
@@ -15,7 +16,7 @@ import { DashboardService } from '../services/dashboard.service';
 import { DashboardOrchestratorService } from '../services/dashboard-orchestrator.service';
 
 @Module({
-  imports: [RedisModule],
+  imports: [RedisModule, UploadsModule],
   controllers: [DashboardController],
   providers: [
     PrismaService,

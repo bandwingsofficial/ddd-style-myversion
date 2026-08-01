@@ -7,6 +7,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 
 import { OrderRepository } from '../repositories/order.repository';
 import { OrderEventRepository } from '../repositories/order-event.repository';
+import { OrderResponseMapper } from '../mappers/order-response.mapper';
 
 import { Cart } from '../../cart/domain/models/cart.model';
 import { SavedAddress } from '../../saved-address/domain/models/saved-address.model';
@@ -34,6 +35,7 @@ export class OrderService {
     private readonly prisma: PrismaService,
     private readonly orderRepo: OrderRepository,
     private readonly orderEventRepo: OrderEventRepository,
+    private readonly orderResponseMapper: OrderResponseMapper,
   ) {}
 
   /* ================================================= */
@@ -52,6 +54,25 @@ export class OrderService {
 
   async getCustomerOrders(customerId: string): Promise<Order[]> {
     return this.orderRepo.findAllByCustomer(customerId);
+  }
+
+  async listForAdmin(params: {
+    page: number;
+    limit: number;
+    status?: string;
+    search?: string;
+  }) {
+    return this.orderRepo.findAllForAdmin(params);
+  }
+
+  async getAdminDetail(orderId: string) {
+    const row = await this.orderRepo.findAdminDetailRow(orderId);
+
+    if (!row) {
+      throw new ValidationError('ORDER_NOT_FOUND', 'Order not found');
+    }
+
+    return this.orderResponseMapper.toAdminDetailResponse(row);
   }
 
   /* ================================================= */
