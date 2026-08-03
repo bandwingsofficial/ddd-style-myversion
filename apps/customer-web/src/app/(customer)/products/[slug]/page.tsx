@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useCartStore } from "@/features/cart/cart.store";
-import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
+import { useCustomerSession } from "@/features/customer-auth/hooks/useCustomerSession";
 import { useOutletStore } from "@/features/outlet/outlet.store";
 import { useFavorites } from "@/providers/CustomerAuthProvider";
 import { resolveProductPricing } from "@/lib/product-pricing";
@@ -22,7 +22,7 @@ export default function ProductDetailsPage() {
     useProductBySlug(routeSlug);
   
   const { items, addItem, updateItem, removeItem } = useCartStore();
-  const isAuthenticated = useCustomerAuthStore((s) => s.isAuthenticated);
+  const { isReady } = useCustomerSession();
   const currentOutlet = useOutletStore((state) => state.selectedOutlet);
   const { isFavorite, addToFavorites, removeFromFavorites } = useFavorites();
 
@@ -66,6 +66,10 @@ export default function ProductDetailsPage() {
       toast.error("Please select a nearby outlet first.");
       return;
     }
+    if (!isReady) {
+      toast.error("Please wait, session is loading...");
+      return;
+    }
     if (!product || product.originalPrice <= 0) return;
 
     await addItem({
@@ -75,15 +79,15 @@ export default function ProductDetailsPage() {
       productImage: product.mainImage,
       quantity: 1,
       unitPrice: product.originalPrice,
-      discountPrice: product.currentPrice
-    }, isAuthenticated);
+      discountPrice: product.currentPrice,
+    });
   };
 
   const handleUpdateQty = async (delta: number) => {
-    if (!product || !cartItem) return;
+    if (!product || !cartItem || !isReady) return;
     const newQty = cartItem.quantity + delta;
-    if (newQty <= 0) await removeItem(product.id, isAuthenticated);
-    else await updateItem(product.id, newQty, isAuthenticated);
+    if (newQty <= 0) await removeItem(product.id);
+    else await updateItem(product.id, newQty);
   };
 
   const activeImageUrl = selectedImage || product?.mainImage || "/placeholder.jpg";

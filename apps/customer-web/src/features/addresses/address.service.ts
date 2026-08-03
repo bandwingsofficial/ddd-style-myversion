@@ -1,23 +1,12 @@
 import customerAxios from "@/http/axios/customerAxios";
-import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
-
-import {
-  Address,
-  AddressPayload,
-  ApiResponse,
-} from "./address.types";
+import { canUseAuthenticatedApis } from "@/features/customer-auth/hooks/useCustomerSession";
+import type { Address, AddressPayload, ApiResponse } from "./address.types";
 
 export type { Address, AddressPayload, ApiResponse };
 
 function assertAuthenticatedSession(): void {
-  const { sessionChecked, isAuthenticated } = useCustomerAuthStore.getState();
-
-  if (!sessionChecked) {
+  if (!canUseAuthenticatedApis()) {
     throw new Error("SESSION_NOT_READY");
-  }
-
-  if (!isAuthenticated) {
-    throw new Error("NOT_AUTHENTICATED");
   }
 }
 

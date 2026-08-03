@@ -9,7 +9,7 @@ import { CheckoutApi } from "@/features/checkout/checkout.api";
 import { CheckoutSummary, CheckoutErrorResponse, CheckoutStartResponse } from "@/features/checkout/checkout.types";
 import { useCartStore } from "@/features/cart/cart.store";
 import { useOutletStore } from "@/features/outlet/outlet.store";
-import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
+import { useCustomerSession } from "@/features/customer-auth/hooks/useCustomerSession";
 import { ArrowLeft, ShieldCheck, Loader2, MapPin, ShoppingCart } from "lucide-react";
 import Header from "@/components/customer/Header";
 import { OrderSummaryBreakdown } from "@/features/orders/components/OrderSummaryBreakdown";
@@ -42,7 +42,7 @@ export default function CheckoutPage() {
     orderNumber: null,
   });
 
-  const { isAuthenticated, isHydrated: authHydrated } = useCustomerAuthStore();
+  const { isLoggedIn, isHydrated: authHydrated } = useCustomerSession();
   const { items: cartItems, loadCart, hydrated: cartHydrated } = useCartStore();
   const { selectedOutlet, outletRevision } = useOutletStore();
 
@@ -50,7 +50,7 @@ export default function CheckoutPage() {
     const initCart = async () => {
       if (!authHydrated || !cartHydrated) return;
 
-      if (!isAuthenticated) {
+      if (!isLoggedIn) {
         router.replace("/login?redirect=/cart/checkout");
         return;
       }
@@ -59,12 +59,12 @@ export default function CheckoutPage() {
         return;
       }
       if (cartItems.length === 0) {
-        await loadCart(true);
+        await loadCart(isLoggedIn);
       }
       setInitializing(false);
     };
     void initCart();
-  }, [authHydrated, cartHydrated, isAuthenticated, addressId, loadCart, router, cartItems.length]);
+  }, [authHydrated, cartHydrated, isLoggedIn, addressId, loadCart, router, cartItems.length]);
 
   useEffect(() => {
     if (initializing || !addressId) return;

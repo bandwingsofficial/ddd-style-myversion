@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Plus, Minus, ImageOff, Heart, Star, TrendingUp, MapPinOff } from "lucide-react";
 import { useFavorites } from "@/providers/CustomerAuthProvider";
 import { useCartStore } from "@/features/cart/cart.store";
-import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
+import { useCustomerSession } from "@/features/customer-auth/hooks/useCustomerSession";
 import { ProductListItem } from "@/features/products/types/product.types";
 import { useOutletStore } from "@/features/outlet/outlet.store";
 import { resolveProductPricing } from "@/lib/product-pricing";
@@ -18,7 +18,7 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
   const { isFavorite, addToFavorites, removeFromFavorites } = useFavorites();
   const isFav = isFavorite(product.id);
   const { items, addItem, updateItem, removeItem } = useCartStore();
-  const isAuthenticated = useCustomerAuthStore((s) => s.isAuthenticated);
+  const { isReady } = useCustomerSession();
 
   const currentOutlet = useOutletStore((state) => state.selectedOutlet);
   const isOutletSelected = !!currentOutlet;
@@ -65,26 +65,29 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
     if (mrp <= 0) { toast.error("Invalid price for this product."); return; }
     if (!outletId) return;
 
-    await addItem(
-      {
-        productId: p.id,
-        outletId: outletId,
-        productName: name,
-        productImage: imageUrl || "",
-        quantity: 1,
-        unitPrice: mrp,
-        discountPrice: sellingPrice
-      },
-      isAuthenticated
-    );
+    if (!isReady) {
+      toast.error("Please wait, session is loading...");
+      return;
+    }
+    if (!outletId) return;
+
+    await addItem({
+      productId: p.id,
+      outletId: outletId,
+      productName: name,
+      productImage: imageUrl || "",
+      quantity: 1,
+      unitPrice: mrp,
+      discountPrice: sellingPrice,
+    });
   };
 
   const updateQuantity = async (e: React.MouseEvent, delta: number) => {
     e.preventDefault(); e.stopPropagation();
-    if (!cartItem) return;
+    if (!cartItem || !isReady) return;
     const newQty = cartItem.quantity + delta;
-    if (newQty <= 0) await removeItem(p.id, isAuthenticated);
-    else await updateItem(p.id, newQty, isAuthenticated);
+    if (newQty <= 0) await removeItem(p.id);
+    else await updateItem(p.id, newQty);
   };
 
   const isAddDisabled = mrp <= 0 || !isOutletSelected;

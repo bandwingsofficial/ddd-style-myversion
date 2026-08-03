@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useVerifyOtp } from "@/features/customer-auth/hooks/useVerifyOtp";
-import { useSession } from "@/features/customer-auth/hooks/useSession";
 import { requestOtp } from "@/features/customer-auth/api/auth.api";
 import { toast } from "sonner";
 import Image from "next/image";
@@ -17,7 +16,6 @@ export default function VerifyOtpClient() {
   const phone = rawPhone?.startsWith("+") ? rawPhone : `+91${rawPhone}`;
 
   const verifyOtp = useVerifyOtp();
-  const fetchSession = useSession();
 
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -53,7 +51,6 @@ export default function VerifyOtpClient() {
       setError(null);
 
       await verifyOtp(phone, otp);
-      await fetchSession();
 
       const redirect = searchParams.get("redirect");
       router.replace(redirect && redirect.startsWith("/") ? redirect : "/home");

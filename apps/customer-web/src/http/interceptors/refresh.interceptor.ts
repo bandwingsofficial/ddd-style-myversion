@@ -1,6 +1,7 @@
 import { AxiosInstance, AxiosError } from "axios";
 import { refreshSession, logoutSession } from "@/features/customer-auth/api/session.api";
 import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
+import { handleAuthInvalidated } from "@/features/customer-auth/services/auth-sync.service";
 
 let isRefreshing = false;
 let queue: Array<(success: boolean) => void> = [];
@@ -18,6 +19,11 @@ function getErrorCode(error: AxiosError): string | undefined {
   return data?.code;
 }
 
+function devLog(event: string, payload: Record<string, unknown>) {
+  if (process.env.NODE_ENV === "production") return;
+  console.info("[auth-refresh]", { event, ...payload });
+}
+
 export const attachRefreshInterceptor = (axios: AxiosInstance) => {
   axios.interceptors.response.use(
     (response) => response,
@@ -32,7 +38,8 @@ export const attachRefreshInterceptor = (axios: AxiosInstance) => {
       const errorCode = getErrorCode(error);
 
       if (status === 403 && errorCode === "INSUFFICIENT_ROLE") {
-        useCustomerAuthStore.getState().clearSession();
+        devLog("insufficient_role", { url: originalRequest.url });
+        handleAuthInvalidated();
         try {
           await logoutSession();
         } catch {
@@ -62,9 +69,11 @@ export const attachRefreshInterceptor = (axios: AxiosInstance) => {
       }
 
       isRefreshing = true;
+      devLog("refresh_start", { url: originalRequest.url });
 
       try {
         await refreshSession();
+        devLog("refresh_success", {});
 
         const sessionRes = await axios.get("/auth/session/me");
         useCustomerAuthStore
@@ -74,8 +83,9 @@ export const attachRefreshInterceptor = (axios: AxiosInstance) => {
         resolveQueue(true);
         return axios(originalRequest);
       } catch (refreshError) {
+        devLog("refresh_failed", { error: String(refreshError) });
         resolveQueue(false);
-        useCustomerAuthStore.getState().clearSession();
+        handleAuthInvalidated();
 
         try {
           await logoutSession();

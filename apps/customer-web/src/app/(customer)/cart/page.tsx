@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import Header from "@/components/customer/Header";
 import Footer from "@/components/customer/Footer";
 import { useCartStore } from "@/features/cart/cart.store";
-import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
+import { useCustomerSession } from "@/features/customer-auth/hooks/useCustomerSession";
 import { 
   Minus, 
   Plus, 
@@ -26,14 +26,14 @@ import { getProductImageUrl } from "@/lib/image-url";
 export default function CartPage() {
   const router = useRouter();
   const { items, summary, updateItem, removeItem, hydrated, loadCart } = useCartStore();
-  const { isAuthenticated } = useCustomerAuthStore();
+  const { isLoggedIn } = useCustomerSession();
   
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
 
   useEffect(() => {
-    if (!hydrated) loadCart(isAuthenticated);
-  }, [hydrated, isAuthenticated, loadCart]);
+    if (!hydrated) void loadCart(isLoggedIn);
+  }, [hydrated, isLoggedIn, loadCart]);
 
   // Calculations come from backend summary (or guest preview API)
   const { subtotal, discount: totalDiscount, netSubtotal, deliveryFee, grandTotal, remainingForFreeDelivery } = summary;
@@ -44,19 +44,19 @@ export default function CartPage() {
     const newQty = currentQty + delta;
     setIsUpdating(productId);
     try {
-      if (newQty <= 0) await removeItem(productId, isAuthenticated);
-      else await updateItem(productId, newQty, isAuthenticated);
+      if (newQty <= 0) await removeItem(productId);
+      else await updateItem(productId, newQty);
     } finally { setIsUpdating(null); }
   };
 
   const handleRemove = async (productId: string) => {
     setIsUpdating(productId);
-    await removeItem(productId, isAuthenticated);
+    await removeItem(productId);
     setIsUpdating(null);
   };
 
   const handleCheckoutClick = () => {
-    if (!isAuthenticated) {
+    if (!isLoggedIn) {
       router.push("/login?redirect=/cart");
       return;
     }

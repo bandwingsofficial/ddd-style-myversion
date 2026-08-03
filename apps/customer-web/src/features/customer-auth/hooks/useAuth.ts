@@ -1,27 +1,22 @@
 "use client";
 
 import { useEffect } from "react";
-import { useCustomerAuthStore } from "../store/auth.store";
+import { useCustomerSession } from "./useCustomerSession";
 import { useSession } from "./useSession";
 
 export const useAuth = () => {
-  const isAuthenticated = useCustomerAuthStore(
-    (state) => state.isAuthenticated
-  );
-  const isHydrated = useCustomerAuthStore(
-    (state) => state.isHydrated
-  );
-
+  const { isLoggedIn, isReady, isHydrated } = useCustomerSession();
   const hydrateSession = useSession();
 
   useEffect(() => {
     if (!isHydrated) {
-      hydrateSession();
+      void hydrateSession();
     }
   }, [isHydrated, hydrateSession]);
 
   return {
-    isLoggedIn: isAuthenticated,
+    isLoggedIn,
     isHydrated,
+    isReady,
   };
 };

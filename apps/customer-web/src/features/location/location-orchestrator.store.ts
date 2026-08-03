@@ -6,8 +6,6 @@ import { invalidateProductCatalogCache } from "@/features/products/api/product.a
 
 import { useCartStore } from "@/features/cart/cart.store";
 
-import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
-
 import { useLocationStore } from "@/features/location/location.store";
 
 import { formatLocationLabel } from "@/features/location/location.types";
@@ -126,10 +124,6 @@ async function handleOutletSwitch(nextOutlet: NearbyOutlet): Promise<void> {
 
   const cartStore = useCartStore.getState();
 
-  const isAuthenticated = useCustomerAuthStore.getState().isAuthenticated;
-
-
-
   if (previousOutlet && previousOutlet.id !== nextOutlet.id) {
 
     const cartOutletId =
@@ -140,7 +134,7 @@ async function handleOutletSwitch(nextOutlet: NearbyOutlet): Promise<void> {
 
     if (cartOutletId) {
 
-      await cartStore.clear(isAuthenticated);
+      await cartStore.clear();
 
       toast.info(
 

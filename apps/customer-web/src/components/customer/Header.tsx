@@ -15,14 +15,14 @@ import {
   Menu, 
   X,    
 } from "lucide-react";
-import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
+import { useCustomerSession } from "@/features/customer-auth/hooks/useCustomerSession";
 import { useLogout } from "@/features/customer-auth/hooks/useLogout";
 import { useCartStore } from "@/features/cart/cart.store"; 
 import LocationSelector from "./LocationSelector";
 
 export default function Header() {
   const router = useRouter();
-  const { isAuthenticated } = useCustomerAuthStore();
+  const { isLoggedIn } = useCustomerSession();
   const logout = useLogout();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -53,7 +53,7 @@ export default function Header() {
     { name: "Categories", href: "/category" }, 
   ];
 
-  const navLinks = isAuthenticated 
+  const navLinks = isLoggedIn 
     ? [...baseLinks, { name: "Orders", href: "/orders" }] 
     : baseLinks;
 
@@ -190,7 +190,7 @@ export default function Header() {
                 </Link>
 
                 <Link
-                  href={isAuthenticated ? "/profile" : "/login"}
+                  href={isLoggedIn ? "/profile" : "/login"}
                   className="flex h-11 w-11 items-center justify-center rounded-full text-slate-700 transition-all duration-300 hover:bg-green-50 hover:text-green-500 lg:hidden touch-target"
                   aria-label="Profile"
                 >
@@ -199,7 +199,7 @@ export default function Header() {
 
                 {/* User Dropdown (Desktop Only) */}
                 <div className="hidden lg:block">
-                  {isAuthenticated ? (
+                  {isLoggedIn ? (
                     <div className="relative group/user">
                       <div className="w-[40px] h-[40px] flex items-center justify-center rounded-full text-slate-700 transition-all duration-300 hover:bg-green-50 hover:text-green-500 cursor-pointer">
                         <User size={20} strokeWidth={2.2} />
@@ -291,7 +291,7 @@ export default function Header() {
               </Link>
             ))}
 
-            {isAuthenticated && (
+            {isLoggedIn && (
               <>
                 <div className="h-px bg-slate-100 my-3" />
                 <Link href="/profile" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-[0.95rem] font-semibold text-slate-700 hover:bg-green-50 hover:text-green-700 rounded-xl flex items-center gap-3">
@@ -305,7 +305,7 @@ export default function Header() {
           </nav>
 
           <div className="pt-4 border-t border-slate-100">
-            {isAuthenticated ? (
+            {isLoggedIn ? (
               <button 
                 onClick={() => { setMobileMenuOpen(false); logout(); }}
                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 font-semibold hover:bg-red-50 text-left transition-all"
