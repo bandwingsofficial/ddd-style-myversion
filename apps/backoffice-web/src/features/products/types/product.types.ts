@@ -7,10 +7,17 @@ export type ProductStatus =
 
 export type ProductDeleteOutcome = 'PERMANENT' | 'ARCHIVED';
 
-export interface Product {
+/** Matches backend ProductGalleryImageResponse */
+export interface ProductGalleryImage {
   id: string;
   imageUrl: string;
   sortOrder: number;
+}
+
+/** Matches backend ProductImagesResponse */
+export interface ProductImages {
+  mainImageUrl: string;
+  galleryImages: ProductGalleryImage[];
 }
 
 export interface Product {
@@ -23,10 +30,7 @@ export interface Product {
     originalPrice: number;
     discountPrice?: number | null;
   };
-  images: {
-    mainImageUrl: string;
-    galleryImages: ProductGalleryImage[];
-  };
+  images: ProductImages;
   unitValue: number;
   unitType: string;
   tags: string[];
