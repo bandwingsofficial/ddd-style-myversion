@@ -25,10 +25,7 @@ export class DeliveryOrchestratorService {
     const { orderId, partnerId } = params ?? {};
 
     if (!orderId) {
-      throw new ValidationError(
-        'ORDER_ID_REQUIRED',
-        'Order id is required',
-      );
+      throw new ValidationError('ORDER_ID_REQUIRED', 'Order id is required');
     }
 
     if (!partnerId) {
@@ -110,11 +107,7 @@ export class DeliveryOrchestratorService {
       );
     }
 
-    await this.deliveryStatusService.markLocationUpdated(
-      deliveryId,
-      lat,
-      lng,
-    );
+    await this.deliveryStatusService.markLocationUpdated(deliveryId, lat, lng);
   }
 
   /* ================================================= */
@@ -129,9 +122,7 @@ export class DeliveryOrchestratorService {
     return this.deliveryService.getByOrderId(orderId);
   }
 
-  async getPartnerDeliveries(
-    partnerId: string,
-  ): Promise<Delivery[]> {
+  async getPartnerDeliveries(partnerId: string): Promise<Delivery[]> {
     return this.deliveryService.getPartnerDeliveries(partnerId);
   }
 }

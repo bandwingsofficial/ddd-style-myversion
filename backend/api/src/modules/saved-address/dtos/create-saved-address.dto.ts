@@ -1,4 +1,12 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength, MinLength, IsNumber } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+  IsNumber,
+} from 'class-validator';
 import { SavedAddressType } from '../domain/enums/saved-address-type.enum';
 
 export class CreateSavedAddressDto {

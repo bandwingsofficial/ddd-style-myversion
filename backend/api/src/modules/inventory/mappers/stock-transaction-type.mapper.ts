@@ -4,9 +4,7 @@ import { StockTransactionType as PrismaStockTransactionType } from '@prisma/clie
 import { StockTransactionType } from '../domain/enums/stock-transaction-type.enum';
 
 export class StockTransactionTypeMapper {
-  static toDomain(
-    type: PrismaStockTransactionType,
-  ): StockTransactionType {
+  static toDomain(type: PrismaStockTransactionType): StockTransactionType {
     switch (type) {
       case PrismaStockTransactionType.INITIALIZE:
         return StockTransactionType.INITIALIZE;
@@ -21,15 +19,11 @@ export class StockTransactionTypeMapper {
         return StockTransactionType.TRANSFER;
 
       default:
-        throw new Error(
-          `Unknown Prisma StockTransactionType: ${type}`,
-        );
+        throw new Error(`Unknown Prisma StockTransactionType: ${type}`);
     }
   }
 
-  static toPrisma(
-    type: StockTransactionType,
-  ): PrismaStockTransactionType {
+  static toPrisma(type: StockTransactionType): PrismaStockTransactionType {
     switch (type) {
       case StockTransactionType.INITIALIZE:
         return PrismaStockTransactionType.INITIALIZE;
@@ -44,9 +38,7 @@ export class StockTransactionTypeMapper {
         return PrismaStockTransactionType.TRANSFER;
 
       default:
-        throw new Error(
-          `Unknown Domain StockTransactionType: ${type}`,
-        );
+        throw new Error(`Unknown Domain StockTransactionType: ${type}`);
     }
   }
 }

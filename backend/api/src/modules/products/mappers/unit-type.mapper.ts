@@ -2,9 +2,7 @@ import { UnitType as PrismaUnitType } from '@prisma/client';
 import { UnitType } from '../domain/enums/unit-type.enum';
 
 export class UnitTypeMapper {
-  static toDomain(
-    unit: PrismaUnitType,
-  ): UnitType {
+  static toDomain(unit: PrismaUnitType): UnitType {
     switch (unit) {
       case PrismaUnitType.ML:
         return UnitType.ML;
@@ -22,15 +20,11 @@ export class UnitTypeMapper {
         return UnitType.PCS;
 
       default:
-        throw new Error(
-          `Unknown Prisma UnitType: ${unit}`,
-        );
+        throw new Error(`Unknown Prisma UnitType: ${unit}`);
     }
   }
 
-  static toPrisma(
-    unit: UnitType,
-  ): PrismaUnitType {
+  static toPrisma(unit: UnitType): PrismaUnitType {
     switch (unit) {
       case UnitType.ML:
         return PrismaUnitType.ML;
@@ -48,9 +42,7 @@ export class UnitTypeMapper {
         return PrismaUnitType.PCS;
 
       default:
-        throw new Error(
-          `Unknown Domain UnitType: ${unit}`,
-        );
+        throw new Error(`Unknown Domain UnitType: ${unit}`);
     }
   }
 }

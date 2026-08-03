@@ -12,9 +12,7 @@ export const s3ClientProvider: Provider = {
   provide: S3_CLIENT,
   useFactory: (configService: ConfigService): S3Client => {
     const accessKeyId = configService.get<string>('aws.accessKeyId');
-    const secretAccessKey = configService.get<string>(
-      'aws.secretAccessKey',
-    );
+    const secretAccessKey = configService.get<string>('aws.secretAccessKey');
     const region = configService.get<string>('aws.region');
     const bucketName = configService.get<string>('aws.bucketName');
 
@@ -23,9 +21,7 @@ export const s3ClientProvider: Provider = {
     }
 
     if (!region) {
-      throw new UploadMissingCredentialsError(
-        'AWS region is not configured',
-      );
+      throw new UploadMissingCredentialsError('AWS region is not configured');
     }
 
     if (!bucketName) {

@@ -40,18 +40,14 @@ export class CartService {
       throw new ValidationError('CART_NOT_FOUND', 'Cart not found');
     }
 
-    const {
-      subtotal,
-      discount,
-      afterDiscountTotal,
-      itemCount,
-    } = computeCartItemTotals(
-      cart.items.map((item) => ({
-        unitPrice: item.unitPrice,
-        discountPrice: item.discountPrice,
-        quantity: item.quantity,
-      })),
-    );
+    const { subtotal, discount, afterDiscountTotal, itemCount } =
+      computeCartItemTotals(
+        cart.items.map((item) => ({
+          unitPrice: item.unitPrice,
+          discountPrice: item.discountPrice,
+          quantity: item.quantity,
+        })),
+      );
 
     const netSubtotal = afterDiscountTotal;
 
@@ -67,7 +63,9 @@ export class CartService {
         ? new Decimal(delivery.remainingForFreeDelivery)
         : null;
 
-    const grandTotal = afterDiscountTotal.add(new Decimal(delivery.deliveryFee));
+    const grandTotal = afterDiscountTotal.add(
+      new Decimal(delivery.deliveryFee),
+    );
 
     const updated = Cart.rehydrate({
       id: cart.id,
@@ -119,7 +117,9 @@ export class CartService {
       select: { id: true, status: true, isAvailable: true },
     });
 
-    const productStatus = new Map(products.map((product) => [product.id, product.status]));
+    const productStatus = new Map(
+      products.map((product) => [product.id, product.status]),
+    );
     const productAvailability = new Map(
       products.map((product) => [product.id, product.isAvailable]),
     );
@@ -159,7 +159,7 @@ export class CartService {
           client,
         )
       : await this.cartRepo.findActiveBySessionAndOutlet(
-          params.sessionId!,
+          params.sessionId,
           params.outletId,
           client,
         );
@@ -300,7 +300,7 @@ export class CartService {
           tx,
         )
       : await this.cartRepo.findActiveBySessionAndOutlet(
-          params.sessionId!,
+          params.sessionId,
           params.outletId,
           tx,
         );
@@ -670,8 +670,7 @@ export class CartService {
 
       await this.cartRepo.clearItems(cart.id, client);
 
-      const unlocked =
-        cart.status === CartStatus.LOCKED ? cart.unlock() : cart;
+      const unlocked = cart.status === CartStatus.LOCKED ? cart.unlock() : cart;
 
       await this.cartRepo.update(unlocked, client);
 

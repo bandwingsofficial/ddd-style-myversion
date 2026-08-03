@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 
 import { SavedAddressOrchestratorService } from '../services/saved-address-orchestrator.service';
 import { OutletOrchestratorService } from '../../outlets/services/outlet-orchestrator.service';
@@ -77,11 +70,10 @@ export class SavedAddressManagementController {
     @Param('savedAddressId') savedAddressId: string,
     @CurrentUser() user,
   ) {
-    const address =
-      await this.orchestrator.getSavedAddressById({
-        customerId: user.actorId,
-        savedAddressId,
-      });
+    const address = await this.orchestrator.getSavedAddressById({
+      customerId: user.actorId,
+      savedAddressId,
+    });
 
     // ✅ FIX: allow 0 coords
     if (address.latitude == null || address.longitude == null) {
@@ -93,11 +85,10 @@ export class SavedAddressManagementController {
       };
     }
 
-    const outlets =
-      await this.outletOrchestrator.getNearbyOutlets(
-        address.latitude,
-        address.longitude,
-      );
+    const outlets = await this.outletOrchestrator.getNearbyOutlets(
+      address.latitude,
+      address.longitude,
+    );
 
     return {
       success: true,
@@ -124,8 +115,7 @@ export class SavedAddressManagementController {
       longitude: dto.longitude,
     });
 
-    const data =
-      await this.orchestrator.createSavedAddress({ address });
+    const data = await this.orchestrator.createSavedAddress({ address });
 
     return {
       success: true,
@@ -143,15 +133,14 @@ export class SavedAddressManagementController {
     @Body() dto: UpdateSavedAddressDto,
     @CurrentUser() user,
   ) {
-    const data =
-      await this.orchestrator.updateSavedAddress({
-        customerId: user.actorId,
-        savedAddressId,
-        label: dto.label,
-        addressText: dto.addressText,
-        latitude: dto.latitude,
-        longitude: dto.longitude,
-      });
+    const data = await this.orchestrator.updateSavedAddress({
+      customerId: user.actorId,
+      savedAddressId,
+      label: dto.label,
+      addressText: dto.addressText,
+      latitude: dto.latitude,
+      longitude: dto.longitude,
+    });
 
     return {
       success: true,
@@ -168,11 +157,10 @@ export class SavedAddressManagementController {
     @Param('savedAddressId') savedAddressId: string,
     @CurrentUser() user,
   ) {
-    const data =
-      await this.orchestrator.deleteSavedAddress({
-        customerId: user.actorId,
-        savedAddressId,
-      });
+    const data = await this.orchestrator.deleteSavedAddress({
+      customerId: user.actorId,
+      savedAddressId,
+    });
 
     return {
       success: true,

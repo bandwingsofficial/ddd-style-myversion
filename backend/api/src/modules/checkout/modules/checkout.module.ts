@@ -51,9 +51,6 @@ import { OutletsModule } from '../../outlets/modules/outlets.module';
     /* 🔥 EVENTS */
     CheckoutEventsService,
   ],
-  exports: [
-    CheckoutService,
-    CheckoutOrchestratorService,
-  ],
+  exports: [CheckoutService, CheckoutOrchestratorService],
 })
 export class CheckoutModule {}

@@ -81,7 +81,7 @@ export class ProductService {
       limit,
       search: query.search,
       categoryId: query.categoryId,
-      status: query.status as ProductStatus | undefined,
+      status: query.status,
     });
 
     return {
@@ -183,9 +183,8 @@ export class ProductService {
     }
 
     const normalizedName = params.product.name.getValue();
-    const existingByName = await this.productRepo.findByProductName(
-      normalizedName,
-    );
+    const existingByName =
+      await this.productRepo.findByProductName(normalizedName);
 
     if (existingByName) {
       throw new ValidationError(
@@ -462,9 +461,7 @@ export class ProductService {
       file: params.imageFile,
     });
 
-    const oldObjectKey = this.normalizeImagePath(
-      targetRecord.imageUrl,
-    ) as string;
+    const oldObjectKey = this.normalizeImagePath(targetRecord.imageUrl);
 
     let updated!: Product;
 
@@ -547,9 +544,7 @@ export class ProductService {
       );
     }
 
-    const objectKey = this.normalizeImagePath(
-      targetRecord.imageUrl,
-    ) as string;
+    const objectKey = this.normalizeImagePath(targetRecord.imageUrl);
 
     let updated!: Product;
 
@@ -577,9 +572,7 @@ export class ProductService {
     galleryImageIds: string[];
   }): Promise<Product> {
     const product = await this.assertActiveProduct(params.productId);
-    const records = await this.productRepo.findGalleryRecords(
-      params.productId,
-    );
+    const records = await this.productRepo.findGalleryRecords(params.productId);
 
     if (params.galleryImageIds.length !== records.length) {
       throw new ValidationError(
@@ -601,7 +594,7 @@ export class ProductService {
 
     const orderedKeys = params.galleryImageIds.map((galleryImageId) => {
       const record = records.find((item) => item.id === galleryImageId);
-      return record!.imageUrl;
+      return record.imageUrl;
     });
 
     let updated!: Product;
@@ -657,8 +650,7 @@ export class ProductService {
 
     const willArchive = orderCount > 0;
     const canDelete = !willArchive && removableDependencies.length === 0;
-    const canForceDelete =
-      !willArchive && removableDependencies.length > 0;
+    const canForceDelete = !willArchive && removableDependencies.length > 0;
 
     return {
       canDelete,
@@ -696,8 +688,10 @@ export class ProductService {
       await this.prisma.$transaction(async (tx) => {
         outletAssignmentsRemoved =
           await this.productRepo.deleteOutletProductsByProductId(productId, tx);
-        cartItemsRemoved =
-          await this.productRepo.deleteCartItemsByProductId(productId, tx);
+        cartItemsRemoved = await this.productRepo.deleteCartItemsByProductId(
+          productId,
+          tx,
+        );
         await this.productRepo.archiveProduct(product, tx);
       });
 
@@ -738,7 +732,7 @@ export class ProductService {
     const objectKeys = [
       product.images.getMain(),
       ...product.images.getGallery(),
-    ].filter(Boolean) as string[];
+    ].filter(Boolean);
 
     await this.prisma.$transaction(async (tx) => {
       if (options?.force) {
@@ -818,8 +812,10 @@ export class ProductService {
             updated.id,
             tx,
           );
-        cartItemsRemoved =
-          await this.productRepo.deleteCartItemsByProductId(updated.id, tx);
+        cartItemsRemoved = await this.productRepo.deleteCartItemsByProductId(
+          updated.id,
+          tx,
+        );
       }
     });
 
@@ -1007,9 +1003,7 @@ export class ProductService {
     }
   }
 
-  private async deleteMultipleImagesSafe(
-    objectKeys: string[],
-  ): Promise<void> {
+  private async deleteMultipleImagesSafe(objectKeys: string[]): Promise<void> {
     if (!objectKeys.length) return;
 
     try {

@@ -142,14 +142,9 @@ export class SavedAddress {
       ...this,
       label: params.label ?? this.label,
       addressText: params.addressText ?? this.addressText,
-      latitude:
-        params.latitude !== undefined
-          ? params.latitude
-          : this.latitude,
+      latitude: params.latitude !== undefined ? params.latitude : this.latitude,
       longitude:
-        params.longitude !== undefined
-          ? params.longitude
-          : this.longitude,
+        params.longitude !== undefined ? params.longitude : this.longitude,
       resolvedOutletId,
       resolvedOutletName:
         params.resolvedOutletName !== undefined

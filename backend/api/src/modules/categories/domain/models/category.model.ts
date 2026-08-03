@@ -104,7 +104,7 @@ export class Category {
       imagePath:
         params.imagePath === null
           ? undefined
-          : params.imagePath ?? this.imagePath,
+          : (params.imagePath ?? this.imagePath),
       updatedAt: now,
     });
   }
@@ -134,10 +134,7 @@ export class Category {
       );
     }
 
-    if (
-      this.imagePath &&
-      !this.imagePath.startsWith('categories/')
-    ) {
+    if (this.imagePath && !this.imagePath.startsWith('categories/')) {
       throw new ValidationError(
         'CATEGORY_INVALID_IMAGE_PATH',
         'Image path must start with categories/',

@@ -51,9 +51,9 @@ export class CustomerProfileRepository {
     const client = tx ?? this.prisma;
 
     const row = await client.customerProfile.create({
-      data:
-        this.toPersistence(profile) satisfies
-        Prisma.CustomerProfileUncheckedCreateInput,
+      data: this.toPersistence(
+        profile,
+      ) satisfies Prisma.CustomerProfileUncheckedCreateInput,
     });
 
     return this.toDomain(row);
@@ -71,9 +71,9 @@ export class CustomerProfileRepository {
 
     const row = await client.customerProfile.update({
       where: { id: profile.id },
-      data:
-        this.toUpdatePersistence(profile) satisfies
-        Prisma.CustomerProfileUncheckedUpdateInput,
+      data: this.toUpdatePersistence(
+        profile,
+      ) satisfies Prisma.CustomerProfileUncheckedUpdateInput,
     });
 
     return this.toDomain(row);
@@ -104,12 +104,12 @@ export class CustomerProfileRepository {
 
     const row = await client.customerProfile.upsert({
       where: { customerId: profile.customerId },
-      create:
-        this.toPersistence(profile) satisfies
-        Prisma.CustomerProfileUncheckedCreateInput,
-      update:
-        this.toUpdatePersistence(profile) satisfies
-        Prisma.CustomerProfileUncheckedUpdateInput,
+      create: this.toPersistence(
+        profile,
+      ) satisfies Prisma.CustomerProfileUncheckedCreateInput,
+      update: this.toUpdatePersistence(
+        profile,
+      ) satisfies Prisma.CustomerProfileUncheckedUpdateInput,
     });
 
     return this.toDomain(row);

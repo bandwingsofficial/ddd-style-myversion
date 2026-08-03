@@ -100,10 +100,7 @@ export class RefreshToken {
   /* DOMAIN TRANSITIONS                             */
   /* ---------------------------------------------- */
 
-  rotate(params: {
-    replacedById: string;
-    now?: Date;
-  }): RefreshToken {
+  rotate(params: { replacedById: string; now?: Date }): RefreshToken {
     if (this.rotatedAt) return this;
 
     const now = params.now ?? new Date();

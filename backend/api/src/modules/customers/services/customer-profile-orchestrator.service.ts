@@ -9,23 +9,17 @@ import { CustomerProfileService } from './customer-profile.service';
 
 @Injectable()
 export class CustomerProfileOrchestratorService {
-  constructor(
-    private readonly profileService: CustomerProfileService,
-  ) {}
+  constructor(private readonly profileService: CustomerProfileService) {}
 
   /* ================================================= */
   /* READ                                              */
   /* ================================================= */
 
-  async getProfile(
-    customerId: string,
-  ): Promise<CustomerProfile | null> {
+  async getProfile(customerId: string): Promise<CustomerProfile | null> {
     return this.profileService.getProfile(customerId);
   }
 
-  async getProfileOrThrow(
-    customerId: string,
-  ): Promise<CustomerProfile> {
+  async getProfileOrThrow(customerId: string): Promise<CustomerProfile> {
     return this.profileService.getProfileOrThrow(customerId);
   }
 

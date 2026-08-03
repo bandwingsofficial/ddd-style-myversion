@@ -10,13 +10,21 @@ export class DashboardCacheService {
 
   constructor(private readonly redis: RedisService) {}
 
-  private buildKey(prefix: string, filter: DashboardFilter, suffix = ''): string {
+  private buildKey(
+    prefix: string,
+    filter: DashboardFilter,
+    suffix = '',
+  ): string {
     const payload = JSON.stringify({ ...filter, suffix });
     const hash = createHash('sha256').update(payload).digest('hex');
     return `dashboard:${prefix}:${hash}`;
   }
 
-  async get<T>(prefix: string, filter: DashboardFilter, suffix = ''): Promise<T | null> {
+  async get<T>(
+    prefix: string,
+    filter: DashboardFilter,
+    suffix = '',
+  ): Promise<T | null> {
     const key = this.buildKey(prefix, filter, suffix);
     const cached = await this.redis.get(key);
     if (!cached) return null;

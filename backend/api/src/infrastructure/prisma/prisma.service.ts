@@ -5,10 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class PrismaService
-  extends PrismaClient
-  implements OnModuleInit
-{
+export class PrismaService extends PrismaClient implements OnModuleInit {
   constructor(private readonly configService: ConfigService) {
     super({
       datasources: {

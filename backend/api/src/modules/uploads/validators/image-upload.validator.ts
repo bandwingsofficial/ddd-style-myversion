@@ -47,10 +47,7 @@ export class ImageUploadValidator {
     originalFilename: string,
     allowedExtensions: readonly string[] = UPLOAD_ALLOWED_IMAGE_EXTENSIONS,
   ): void {
-    const extension = path
-      .extname(originalFilename)
-      .toLowerCase()
-      .trim();
+    const extension = path.extname(originalFilename).toLowerCase().trim();
 
     if (!allowedExtensions.includes(extension)) {
       throw new UploadInvalidContentTypeError(

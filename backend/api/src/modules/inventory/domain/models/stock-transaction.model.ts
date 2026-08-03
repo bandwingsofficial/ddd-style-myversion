@@ -170,8 +170,7 @@ export class StockTransaction {
     now?: Date;
   }): StockTransaction {
     const change =
-      params.newAvailable.getRaw() -
-      params.previousAvailable.getRaw();
+      params.newAvailable.getRaw() - params.previousAvailable.getRaw();
 
     return StockTransaction.createRecord({
       id: params.id,
@@ -249,9 +248,7 @@ export class StockTransaction {
   /* REHYDRATION (FOR REPOSITORY)                   */
   /* ---------------------------------------------- */
 
-  static rehydrate(
-    props: StockTransactionProps,
-  ): StockTransaction {
+  static rehydrate(props: StockTransactionProps): StockTransaction {
     return new StockTransaction(props);
   }
 
@@ -311,10 +308,7 @@ export class StockTransaction {
       );
     }
 
-    if (
-      this.type === StockTransactionType.TRANSFER &&
-      !this.outletId
-    ) {
+    if (this.type === StockTransactionType.TRANSFER && !this.outletId) {
       throw new ValidationError(
         'STOCK_TRANSACTION_OUTLET_REQUIRED',
         'Outlet is required for transfer transaction',

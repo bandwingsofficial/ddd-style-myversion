@@ -48,7 +48,9 @@ export interface StockTransactionResponse {
 
 @Injectable()
 export class InventoryResponseMapper {
-  toQuantityResponse(quantity: { getRaw(): number }): InventoryQuantityResponse {
+  toQuantityResponse(quantity: {
+    getRaw(): number;
+  }): InventoryQuantityResponse {
     return { value: quantity.getRaw() };
   }
 
@@ -65,9 +67,7 @@ export class InventoryResponseMapper {
     };
   }
 
-  toResponseList(
-    inventories: CentralInventory[],
-  ): CentralInventoryResponse[] {
+  toResponseList(inventories: CentralInventory[]): CentralInventoryResponse[] {
     return inventories.map((inventory) => this.toResponse(inventory));
   }
 
@@ -98,9 +98,7 @@ export class InventoryResponseMapper {
       inventoryId: transaction.inventoryId,
       type: transaction.type,
       quantity: this.toQuantityResponse(transaction.quantity),
-      previousQuantity: this.toQuantityResponse(
-        transaction.previousQuantity,
-      ),
+      previousQuantity: this.toQuantityResponse(transaction.previousQuantity),
       newQuantity: this.toQuantityResponse(transaction.newQuantity),
       quantityChange: {
         value: transaction.quantityChange,

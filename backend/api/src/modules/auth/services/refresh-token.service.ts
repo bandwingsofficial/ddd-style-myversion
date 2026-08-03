@@ -25,9 +25,7 @@ export class RefreshTokenService {
    * - DO NOT revoke session on reuse
    * - Logout happens ONLY on expiry or explicit revoke
    */
-  async validateRefreshToken(
-    refreshToken: string,
-  ): Promise<{
+  async validateRefreshToken(refreshToken: string): Promise<{
     actorType: ActorType;
     actorId: string;
     sessionId: string;
@@ -51,8 +49,7 @@ export class RefreshTokenService {
 
     /* ---------- lookup refresh token ---------- */
 
-    const stored =
-      await this.refreshTokenRepo.findByTokenHash(tokenHash);
+    const stored = await this.refreshTokenRepo.findByTokenHash(tokenHash);
 
     if (!stored) {
       throw new UnauthorizedError(
@@ -82,9 +79,7 @@ export class RefreshTokenService {
 
     /* ---------- load session ---------- */
 
-    const session = await this.sessionRepo.findById(
-      stored.sessionId,
-    );
+    const session = await this.sessionRepo.findById(stored.sessionId);
 
     if (!session || session.isRevoked()) {
       throw new UnauthorizedError(

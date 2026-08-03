@@ -1,16 +1,9 @@
 import { Injectable } from '@nestjs/common';
 
-import {
-  PrismaService,
-} from '../../../infrastructure/prisma/prisma.service';
-import {
-  PrismaTransaction,
-} from '../../../infrastructure/prisma/prisma.types';
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
 
-import {
-  Prisma,
-  DeliveryEventType,
-} from '@prisma/client';
+import { Prisma, DeliveryEventType } from '@prisma/client';
 
 import { ValidationError } from '../../../common/errors';
 
@@ -63,10 +56,7 @@ export class DeliveryEventRepository {
   /* READ (ALL BY DELIVERY)                             */
   /* ================================================= */
 
-  async findAllByDeliveryId(
-    deliveryId: string,
-    tx?: PrismaTransaction,
-  ) {
+  async findAllByDeliveryId(deliveryId: string, tx?: PrismaTransaction) {
     if (!deliveryId) return [];
 
     return (tx ?? this.prisma).deliveryEvent.findMany({
@@ -79,10 +69,7 @@ export class DeliveryEventRepository {
   /* READ (LATEST)                                      */
   /* ================================================= */
 
-  async findLatest(
-    deliveryId: string,
-    tx?: PrismaTransaction,
-  ) {
+  async findLatest(deliveryId: string, tx?: PrismaTransaction) {
     if (!deliveryId) return null;
 
     return (tx ?? this.prisma).deliveryEvent.findFirst({
@@ -95,10 +82,7 @@ export class DeliveryEventRepository {
   /* DELETE                                            */
   /* ================================================= */
 
-  async deleteAll(
-    deliveryId: string,
-    tx?: PrismaTransaction,
-  ): Promise<void> {
+  async deleteAll(deliveryId: string, tx?: PrismaTransaction): Promise<void> {
     await (tx ?? this.prisma).deliveryEvent.deleteMany({
       where: { deliveryId },
     });

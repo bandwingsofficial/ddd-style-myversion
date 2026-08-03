@@ -9,9 +9,7 @@ import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
 import { OutletUser } from '../domain/models/outlet-user.model';
 import { InvariantViolationError } from '../../../common/errors';
 
-type PrismaClientLike =
-  | PrismaService
-  | Prisma.TransactionClient;
+type PrismaClientLike = PrismaService | Prisma.TransactionClient;
 
 @Injectable()
 export class OutletUserRepository {
@@ -183,10 +181,7 @@ export class OutletUserRepository {
     return this.findByIdOrFail(userId, client);
   }
 
-  async activate(
-    userId: string,
-    tx?: PrismaTransaction,
-  ): Promise<OutletUser> {
+  async activate(userId: string, tx?: PrismaTransaction): Promise<OutletUser> {
     const client = tx ?? this.prisma;
 
     const result = await client.outletUser.updateMany({

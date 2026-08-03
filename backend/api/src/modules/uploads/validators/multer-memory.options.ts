@@ -16,8 +16,7 @@ export function createMemoryImageUploadOptions(
     storage: multer.memoryStorage(),
     limits: {
       fileSize:
-        config.maxFileSizeBytes ??
-        UPLOAD_DEFAULTS.MAX_SINGLE_IMAGE_SIZE_BYTES,
+        config.maxFileSizeBytes ?? UPLOAD_DEFAULTS.MAX_SINGLE_IMAGE_SIZE_BYTES,
     },
   };
 }

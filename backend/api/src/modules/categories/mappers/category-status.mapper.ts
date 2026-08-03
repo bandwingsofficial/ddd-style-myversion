@@ -2,9 +2,7 @@ import { CategoryStatus as PrismaCategoryStatus } from '@prisma/client';
 import { CategoryStatus } from '../domain/enums/category-status.enum';
 
 export class CategoryStatusMapper {
-  static toDomain(
-    status: PrismaCategoryStatus,
-  ): CategoryStatus {
+  static toDomain(status: PrismaCategoryStatus): CategoryStatus {
     switch (status) {
       case PrismaCategoryStatus.ACTIVE:
         return CategoryStatus.ACTIVE;
@@ -13,15 +11,11 @@ export class CategoryStatusMapper {
         return CategoryStatus.INACTIVE;
 
       default:
-        throw new Error(
-          `Unknown Prisma CategoryStatus: ${status}`,
-        );
+        throw new Error(`Unknown Prisma CategoryStatus: ${status}`);
     }
   }
 
-  static toPrisma(
-    status: CategoryStatus,
-  ): PrismaCategoryStatus {
+  static toPrisma(status: CategoryStatus): PrismaCategoryStatus {
     switch (status) {
       case CategoryStatus.ACTIVE:
         return PrismaCategoryStatus.ACTIVE;
@@ -30,9 +24,7 @@ export class CategoryStatusMapper {
         return PrismaCategoryStatus.INACTIVE;
 
       default:
-        throw new Error(
-          `Unknown Domain CategoryStatus: ${status}`,
-        );
+        throw new Error(`Unknown Domain CategoryStatus: ${status}`);
     }
   }
 }

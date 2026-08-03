@@ -1,7 +1,4 @@
-import {
-  WebSocketGateway,
-  WebSocketServer,
-} from '@nestjs/websockets';
+import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 
 @WebSocketGateway({
@@ -18,21 +15,15 @@ export class StockItemPublicGateway {
   /* LIFECYCLE                                         */
   /* ================================================= */
 
-  emitStockItemCreated(payload: {
-    stockItemId: string;
-  }): void {
+  emitStockItemCreated(payload: { stockItemId: string }): void {
     this.server.emit('stock_item.created', payload);
   }
 
-  emitStockItemEnabled(payload: {
-    stockItemId: string;
-  }): void {
+  emitStockItemEnabled(payload: { stockItemId: string }): void {
     this.server.emit('stock_item.enabled', payload);
   }
 
-  emitStockItemDisabled(payload: {
-    stockItemId: string;
-  }): void {
+  emitStockItemDisabled(payload: { stockItemId: string }): void {
     this.server.emit('stock_item.disabled', payload);
   }
 
@@ -40,10 +31,7 @@ export class StockItemPublicGateway {
   /* UPDATE                                            */
   /* ================================================= */
 
-  emitStockItemUpdated(payload: {
-    stockItemId: string;
-    name: string;
-  }): void {
+  emitStockItemUpdated(payload: { stockItemId: string; name: string }): void {
     this.server.emit('stock_item.updated', payload);
   }
 
@@ -58,9 +46,7 @@ export class StockItemPublicGateway {
     this.server.emit('stock_item.unit.changed', payload);
   }
 
-  emitStockItemDeleted(payload: {
-    stockItemId: string;
-  }): void {
+  emitStockItemDeleted(payload: { stockItemId: string }): void {
     this.server.emit('stock_item.deleted', payload);
   }
 }

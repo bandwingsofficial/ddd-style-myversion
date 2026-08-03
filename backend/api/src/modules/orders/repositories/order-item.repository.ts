@@ -15,33 +15,32 @@ export class OrderItemRepository {
   /* ================================================= */
 
   async createMany(
-  items: OrderItem[],
-  tx?: PrismaTransaction,
-): Promise<OrderItem[]> {
+    items: OrderItem[],
+    tx?: PrismaTransaction,
+  ): Promise<OrderItem[]> {
+    const client = tx ?? this.prisma;
 
-  const client = tx ?? this.prisma;
+    await client.orderItem.createMany({
+      data: items.map((item) => ({
+        id: item.id,
+        orderId: item.orderId,
 
-  await client.orderItem.createMany({
-    data: items.map(item => ({
-      id: item.id,
-      orderId: item.orderId,
+        productId: item.productId,
+        productName: item.productName,
+        productImage: item.productImage,
 
-      productId: item.productId,
-      productName: item.productName,
-      productImage: item.productImage,
+        quantity: item.quantity,
 
-      quantity: item.quantity,
+        unitPrice: item.unitPrice.toNumber(),
+        discountPrice: item.discountPrice?.toNumber(),
+        totalPrice: item.totalPrice.toNumber(),
 
-      unitPrice: item.unitPrice.toNumber(),
-      discountPrice: item.discountPrice?.toNumber(),
-      totalPrice: item.totalPrice.toNumber(),
+        createdAt: item.createdAt,
+      })),
+    });
 
-      createdAt: item.createdAt,
-    })),
-  });
-
-  return items;
-}
+    return items;
+  }
   /* ================================================= */
   /* READ (BY ORDER)                                  */
   /* ================================================= */

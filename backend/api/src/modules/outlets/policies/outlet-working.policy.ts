@@ -16,11 +16,9 @@ export class OutletWorkingPolicy {
     }
 
     if (workingState.isClosed()) {
-      throw new ValidationError(
-        'OUTLET_CLOSED',
-        'Outlet is currently closed',
-        { outletId: outlet.id },
-      );
+      throw new ValidationError('OUTLET_CLOSED', 'Outlet is currently closed', {
+        outletId: outlet.id,
+      });
     }
   }
 }

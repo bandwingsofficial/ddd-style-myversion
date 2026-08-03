@@ -9,9 +9,7 @@ import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
 import { SuperAdmin } from '../domain/models/super-admin.model';
 import { InvariantViolationError } from '../../../common/errors';
 
-type PrismaClientLike =
-  | PrismaService
-  | Prisma.TransactionClient;
+type PrismaClientLike = PrismaService | Prisma.TransactionClient;
 
 @Injectable()
 export class SuperAdminRepository {
@@ -139,7 +137,7 @@ export class SuperAdminRepository {
           : {
               totpSecret: {
                 set: null,
-              } as Prisma.NullableStringFieldUpdateOperationsInput,
+              },
             }),
       },
     });
@@ -177,10 +175,7 @@ export class SuperAdminRepository {
     return this.findByIdOrFail(adminId, client);
   }
 
-  async activate(
-    adminId: string,
-    tx?: PrismaTransaction,
-  ): Promise<SuperAdmin> {
+  async activate(adminId: string, tx?: PrismaTransaction): Promise<SuperAdmin> {
     const client = tx ?? this.prisma;
 
     const result = await client.superAdmin.updateMany({

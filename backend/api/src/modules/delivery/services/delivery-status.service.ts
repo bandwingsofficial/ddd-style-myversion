@@ -70,10 +70,7 @@ export class DeliveryStatusService {
     const delivery = await this.deliveryRepo.findById(deliveryId, client);
 
     if (!delivery) {
-      throw new ValidationError(
-        'DELIVERY_NOT_FOUND',
-        'Delivery not found',
-      );
+      throw new ValidationError('DELIVERY_NOT_FOUND', 'Delivery not found');
     }
 
     /* 🔥 domain transition */
@@ -99,7 +96,10 @@ export class DeliveryStatusService {
   /* STATUS METHODS                                    */
   /* ================================================= */
 
-  async markAssigned(deliveryId: string, tx?: PrismaTransaction): Promise<Delivery> {
+  async markAssigned(
+    deliveryId: string,
+    tx?: PrismaTransaction,
+  ): Promise<Delivery> {
     return this.transition(
       deliveryId,
       (d) => d,
@@ -109,7 +109,10 @@ export class DeliveryStatusService {
     );
   }
 
-  async markPickedUp(deliveryId: string, tx?: PrismaTransaction): Promise<Delivery> {
+  async markPickedUp(
+    deliveryId: string,
+    tx?: PrismaTransaction,
+  ): Promise<Delivery> {
     return this.transition(
       deliveryId,
       (d) => d.markPickedUp(),
@@ -119,7 +122,10 @@ export class DeliveryStatusService {
     );
   }
 
-  async markInTransit(deliveryId: string, tx?: PrismaTransaction): Promise<Delivery> {
+  async markInTransit(
+    deliveryId: string,
+    tx?: PrismaTransaction,
+  ): Promise<Delivery> {
     return this.transition(
       deliveryId,
       (d) => d.markInTransit(),
@@ -129,7 +135,10 @@ export class DeliveryStatusService {
     );
   }
 
-  async markDelivered(deliveryId: string, tx?: PrismaTransaction): Promise<Delivery> {
+  async markDelivered(
+    deliveryId: string,
+    tx?: PrismaTransaction,
+  ): Promise<Delivery> {
     return this.transition(
       deliveryId,
       (d) => d.markDelivered(),
@@ -139,7 +148,10 @@ export class DeliveryStatusService {
     );
   }
 
-  async markFailed(deliveryId: string, tx?: PrismaTransaction): Promise<Delivery> {
+  async markFailed(
+    deliveryId: string,
+    tx?: PrismaTransaction,
+  ): Promise<Delivery> {
     return this.transition(
       deliveryId,
       (d) => d.markFailed(),

@@ -35,9 +35,7 @@ export class SuperAdminProfileService {
   /* 🔒 IMAGE NORMALIZATION                           */
   /* ================================================= */
 
-  private normalizeImagePath(
-    imagePath?: string | null,
-  ): string | undefined {
+  private normalizeImagePath(imagePath?: string | null): string | undefined {
     if (!imagePath) return undefined;
 
     let normalized = imagePath.trim();
@@ -62,9 +60,7 @@ export class SuperAdminProfileService {
   /* READ                                             */
   /* ================================================= */
 
-  async getProfile(
-    superAdminId: string,
-  ): Promise<SuperAdminProfile | null> {
+  async getProfile(superAdminId: string): Promise<SuperAdminProfile | null> {
     return this.repo.findBySuperAdminId(superAdminId);
   }
 
@@ -80,9 +76,7 @@ export class SuperAdminProfileService {
     phone?: string;
     notes?: string;
   }): Promise<SuperAdminProfile> {
-    const existing = await this.repo.findBySuperAdminId(
-      params.superAdminId,
-    );
+    const existing = await this.repo.findBySuperAdminId(params.superAdminId);
 
     if (existing) {
       throw new ValidationError(
@@ -124,15 +118,10 @@ export class SuperAdminProfileService {
       notes?: string;
     };
   }): Promise<SuperAdminProfile> {
-    const existing = await this.repo.findBySuperAdminId(
-      params.superAdminId,
-    );
+    const existing = await this.repo.findBySuperAdminId(params.superAdminId);
 
     if (!existing) {
-      throw new ValidationError(
-        'PROFILE_NOT_FOUND',
-        'Profile does not exist',
-      );
+      throw new ValidationError('PROFILE_NOT_FOUND', 'Profile does not exist');
     }
 
     const oldAvatar = existing.avatarUrl;
@@ -191,9 +180,7 @@ export class SuperAdminProfileService {
     phone?: string;
     notes?: string;
   }): Promise<SuperAdminProfile> {
-    const existing = await this.repo.findBySuperAdminId(
-      params.superAdminId,
-    );
+    const existing = await this.repo.findBySuperAdminId(params.superAdminId);
 
     let profile: SuperAdminProfile;
 
@@ -235,12 +222,8 @@ export class SuperAdminProfileService {
   /* DELETE                                           */
   /* ================================================= */
 
-  async deleteProfile(
-    superAdminId: string,
-  ): Promise<void> {
-    const existing = await this.repo.findBySuperAdminId(
-      superAdminId,
-    );
+  async deleteProfile(superAdminId: string): Promise<void> {
+    const existing = await this.repo.findBySuperAdminId(superAdminId);
 
     if (!existing) return;
 

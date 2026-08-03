@@ -23,7 +23,6 @@ export const envValidationSchema = z.object({
   AWS_SECRET_ACCESS_KEY: z.string().min(1),
   AWS_REGION: z.string().min(1),
   AWS_BUCKET_NAME: z.string().min(1),
-
 });
 
 export function validateEnv(config: Record<string, unknown>) {

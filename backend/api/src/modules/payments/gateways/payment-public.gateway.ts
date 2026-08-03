@@ -15,16 +15,12 @@ import { PaymentSocketEvent } from '../events/payment-events.types';
     credentials: true,
   },
 })
-export class PaymentPublicGateway
-  implements OnGatewayConnection
-{
+export class PaymentPublicGateway implements OnGatewayConnection {
   @WebSocketServer()
   private readonly server: Server;
 
   constructor() {
-    console.log(
-      '🚀 [GATEWAY INIT] PaymentPublicGateway initialized',
-    );
+    console.log('🚀 [GATEWAY INIT] PaymentPublicGateway initialized');
   }
 
   /* ================================================= */
@@ -32,10 +28,7 @@ export class PaymentPublicGateway
   /* ================================================= */
 
   async handleConnection(client: Socket): Promise<void> {
-    console.log(
-      '✅ [SOCKET CONNECT] payment client connected:',
-      client.id,
-    );
+    console.log('✅ [SOCKET CONNECT] payment client connected:', client.id);
 
     /**
      * Payments are lifecycle events only.

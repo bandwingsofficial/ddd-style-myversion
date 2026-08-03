@@ -13,6 +13,7 @@ import {
 } from "@/features/cart/cart.local";
 import { useOutletStore } from "@/features/outlet/outlet.store";
 import { canUseAuthenticatedApis } from "@/features/customer-auth/hooks/useCustomerSession";
+import { getEffectiveCartOutletId } from "@/features/cart/cart-outlet.util";
 import { toast } from "sonner";
 import { normalizeCartItemPricing } from "@/lib/cart-pricing";
 
@@ -49,6 +50,7 @@ function getApiErrorMessage(error: unknown, fallback: string): string {
 interface CartState {
   items: CartItem[];
   cartOutletId: string | null;
+  cartOutletName: string | null;
   summary: CartSummary;
   hydrated: boolean;
   isLoading: boolean;
@@ -71,6 +73,7 @@ let loadCartGeneration = 0;
 export const useCartStore = create<CartState>((set, get) => ({
   items: [],
   cartOutletId: null,
+  cartOutletName: null,
   summary: EMPTY_CART_SUMMARY,
   hydrated: false,
   isLoading: false,
@@ -92,6 +95,7 @@ export const useCartStore = create<CartState>((set, get) => ({
 
   applyCartResponse: (cart) => {
     const cartOutletId = cart.outletId ?? null;
+    const cartOutletName = cart.outletName ?? null;
     const items = (cart.items || []).map((item) => ({
       ...item,
       outletId: item.outletId ?? cartOutletId ?? undefined,
@@ -101,6 +105,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       console.info("[outlet-trace]", {
         stage: "cart.applyCartResponse",
         cartOutletId,
+        cartOutletName,
         selectedOutletId: useOutletStore.getState().selectedOutlet?.id ?? null,
         itemCount: items.length,
         at: new Date().toISOString(),
@@ -110,6 +115,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     set({
       items,
       cartOutletId,
+      cartOutletName,
       summary: mapApiCartToSummary(cart),
     });
   },
@@ -136,7 +142,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       return;
     }
 
-    const currentOutletId = useOutletStore.getState().selectedOutlet?.id;
+    const currentOutletId = getEffectiveCartOutletId();
     if (!currentOutletId) {
       const local = getLocalCart();
       finish({
@@ -240,7 +246,12 @@ export const useCartStore = create<CartState>((set, get) => ({
               local.items = [normalized];
               setLocalCart(local);
               void get().refreshGuestSummary(local.items).then(() => {
-                set({ items: local.items });
+                set({
+                  items: local.items,
+                  cartOutletId: normalized.outletId ?? null,
+                  cartOutletName:
+                    useOutletStore.getState().selectedOutlet?.name ?? null,
+                });
               });
             },
           },
@@ -259,7 +270,13 @@ export const useCartStore = create<CartState>((set, get) => ({
       }
       setLocalCart(local);
       const summary = await resolveGuestCartSummary(local.items);
-      set({ items: local.items, summary });
+      const leadingItem = local.items[0];
+      set({
+        items: local.items,
+        summary,
+        cartOutletId: leadingItem?.outletId ?? null,
+        cartOutletName: useOutletStore.getState().selectedOutlet?.name ?? null,
+      });
       return;
     }
 
@@ -319,11 +336,11 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
 
     try {
-      const currentOutletId = useOutletStore.getState().selectedOutlet?.id;
+      const currentOutletId = getEffectiveCartOutletId();
       const updatedCart = await cartApi.updateCartItem(
         productId,
         quantity,
-        currentOutletId,
+        currentOutletId ?? undefined,
       );
       get().applyCartResponse(updatedCart);
     } catch (error) {
@@ -345,10 +362,10 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
 
     try {
-      const currentOutletId = useOutletStore.getState().selectedOutlet?.id;
+      const currentOutletId = getEffectiveCartOutletId();
       const updatedCart = await cartApi.removeCartItem(
         productId,
-        currentOutletId,
+        currentOutletId ?? undefined,
       );
       get().applyCartResponse(updatedCart);
     } catch (error) {
@@ -362,14 +379,24 @@ export const useCartStore = create<CartState>((set, get) => ({
 
     if (!isLoggedIn) {
       clearLocalCart();
-      set({ items: [], cartOutletId: null, summary: EMPTY_CART_SUMMARY });
+      set({
+        items: [],
+        cartOutletId: null,
+        cartOutletName: null,
+        summary: EMPTY_CART_SUMMARY,
+      });
       return;
     }
 
     try {
-      const currentOutletId = useOutletStore.getState().selectedOutlet?.id;
-      await cartApi.clearCart(currentOutletId);
-      set({ items: [], cartOutletId: null, summary: EMPTY_CART_SUMMARY });
+      const currentOutletId = getEffectiveCartOutletId();
+      await cartApi.clearCart(currentOutletId ?? undefined);
+      set({
+        items: [],
+        cartOutletId: null,
+        cartOutletName: null,
+        summary: EMPTY_CART_SUMMARY,
+      });
     } catch (error) {
       console.error("Failed to clear cart", error);
       toast.error(getApiErrorMessage(error, "Could not clear cart."));
@@ -379,11 +406,20 @@ export const useCartStore = create<CartState>((set, get) => ({
   checkoutCart: async (addressId) => {
     set({ isCheckingOut: true });
     try {
-      const currentOutletId = useOutletStore.getState().selectedOutlet?.id;
-      const lockedCart = await cartApi.checkout(addressId, currentOutletId);
+      const currentOutletId = getEffectiveCartOutletId();
+      const lockedCart = await cartApi.checkout(
+        addressId,
+        currentOutletId ?? undefined,
+      );
 
       if (lockedCart && lockedCart.status === "LOCKED") {
-        set({ items: [], summary: EMPTY_CART_SUMMARY, isCheckingOut: false });
+        set({
+          items: [],
+          cartOutletId: null,
+          cartOutletName: null,
+          summary: EMPTY_CART_SUMMARY,
+          isCheckingOut: false,
+        });
         return true;
       }
       set({ isCheckingOut: false });

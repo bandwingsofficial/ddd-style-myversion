@@ -49,18 +49,13 @@ export class CategoryService {
     const category = await this.categoryRepo.findById(categoryId);
 
     if (!category) {
-      throw new ValidationError(
-        'CATEGORY_NOT_FOUND',
-        'Category not found',
-      );
+      throw new ValidationError('CATEGORY_NOT_FOUND', 'Category not found');
     }
 
     return category;
   }
 
-  async getAll(params?: {
-    includeInactive?: boolean;
-  }): Promise<Category[]> {
+  async getAll(params?: { includeInactive?: boolean }): Promise<Category[]> {
     return this.categoryRepo.findAll(params?.includeInactive ?? false);
   }
 
@@ -274,8 +269,7 @@ export class CategoryService {
   async reorderCategories(
     items: { id: string; sortOrder: number }[],
   ): Promise<Category[]> {
-    const activeCategories =
-      await this.categoryRepo.findActiveCategories();
+    const activeCategories = await this.categoryRepo.findActiveCategories();
 
     if (items.length !== activeCategories.length) {
       throw new ValidationError(

@@ -27,7 +27,10 @@ export class DashboardStatisticsService {
       this.repo.getDeliveryMetrics(filter, range),
     ]);
 
-    const totalOrders = Object.values(orderStatusCounts).reduce((sum, n) => sum + n, 0);
+    const totalOrders = Object.values(orderStatusCounts).reduce(
+      (sum, n) => sum + n,
+      0,
+    );
 
     return {
       filters: {
@@ -55,7 +58,8 @@ export class DashboardStatisticsService {
         totalOrders,
         todaysOrders: snapshots.today.orderCount,
         pendingOrders:
-          (orderStatusCounts.PAYMENT_PENDING ?? 0) + (orderStatusCounts.PAID ?? 0),
+          (orderStatusCounts.PAYMENT_PENDING ?? 0) +
+          (orderStatusCounts.PAID ?? 0),
         confirmedOrders: orderStatusCounts.CONFIRMED ?? 0,
         preparingOrders: orderStatusCounts.PREPARING ?? 0,
         readyOrders: orderStatusCounts.PREPARING ?? 0,

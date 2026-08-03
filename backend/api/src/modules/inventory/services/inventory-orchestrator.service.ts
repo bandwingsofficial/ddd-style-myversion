@@ -30,9 +30,7 @@ export class InventoryOrchestratorService {
     quantity: number;
     performedBy?: string;
   }) {
-    const inventory = await this.inventoryService.initializeInventory(
-      params,
-    );
+    const inventory = await this.inventoryService.initializeInventory(params);
 
     return this.inventoryResponseMapper.toResponse(inventory);
   }
@@ -63,9 +61,7 @@ export class InventoryOrchestratorService {
     performedBy?: string;
     remarks: string;
   }) {
-    const inventory = await this.inventoryService.adjustAvailableStock(
-      params,
-    );
+    const inventory = await this.inventoryService.adjustAvailableStock(params);
 
     return this.inventoryResponseMapper.toResponse(inventory);
   }
@@ -80,14 +76,10 @@ export class InventoryOrchestratorService {
     quantity: number;
     performedBy?: string;
   }) {
-    const result = await this.inventoryService.transferToOutlet(
-      params,
-    );
+    const result = await this.inventoryService.transferToOutlet(params);
 
     return {
-      inventory: this.inventoryResponseMapper.toResponse(
-        result.inventory,
-      ),
+      inventory: this.inventoryResponseMapper.toResponse(result.inventory),
     };
   }
 
@@ -103,21 +95,14 @@ export class InventoryOrchestratorService {
 
   async getInventoryTransactions(stockItemId: string) {
     const transactions =
-      await this.inventoryService.getInventoryTransactions(
-        stockItemId,
-      );
+      await this.inventoryService.getInventoryTransactions(stockItemId);
 
-    return this.inventoryResponseMapper.toTransactionResponseList(
-      transactions,
-    );
+    return this.inventoryResponseMapper.toTransactionResponseList(transactions);
   }
 
   async getOutletStock(outletId: string) {
-    const outletStock =
-      await this.inventoryService.getOutletStock(outletId);
+    const outletStock = await this.inventoryService.getOutletStock(outletId);
 
-    return this.inventoryResponseMapper.toOutletStockResponseList(
-      outletStock,
-    );
+    return this.inventoryResponseMapper.toOutletStockResponseList(outletStock);
   }
 }

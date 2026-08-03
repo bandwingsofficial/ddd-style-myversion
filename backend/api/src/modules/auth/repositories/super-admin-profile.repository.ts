@@ -35,9 +35,7 @@ export class SuperAdminProfileRepository {
       where: { superAdminId },
     });
 
-    return row
-      ? SuperAdminProfileMapper.toDomain(row)
-      : null;
+    return row ? SuperAdminProfileMapper.toDomain(row) : null;
   }
 
   async findById(
@@ -48,9 +46,7 @@ export class SuperAdminProfileRepository {
       where: { id },
     });
 
-    return row
-      ? SuperAdminProfileMapper.toDomain(row)
-      : null;
+    return row ? SuperAdminProfileMapper.toDomain(row) : null;
   }
 
   /* ================================================= */
@@ -64,9 +60,9 @@ export class SuperAdminProfileRepository {
     const client = tx ?? this.prisma;
 
     const row = await client.superAdminProfile.create({
-      data:
-        SuperAdminProfileMapper.toCreateInput(profile) satisfies
-        Prisma.SuperAdminProfileUncheckedCreateInput,
+      data: SuperAdminProfileMapper.toCreateInput(
+        profile,
+      ) satisfies Prisma.SuperAdminProfileUncheckedCreateInput,
     });
 
     return SuperAdminProfileMapper.toDomain(row);
@@ -84,9 +80,9 @@ export class SuperAdminProfileRepository {
 
     const row = await client.superAdminProfile.update({
       where: { superAdminId: profile.superAdminId },
-      data:
-        SuperAdminProfileMapper.toUpdateInput(profile) satisfies
-        Prisma.SuperAdminProfileUncheckedUpdateInput,
+      data: SuperAdminProfileMapper.toUpdateInput(
+        profile,
+      ) satisfies Prisma.SuperAdminProfileUncheckedUpdateInput,
     });
 
     return SuperAdminProfileMapper.toDomain(row);
@@ -105,13 +101,13 @@ export class SuperAdminProfileRepository {
     const row = await client.superAdminProfile.upsert({
       where: { superAdminId: profile.superAdminId },
 
-      create:
-        SuperAdminProfileMapper.toCreateInput(profile) satisfies
-        Prisma.SuperAdminProfileUncheckedCreateInput,
+      create: SuperAdminProfileMapper.toCreateInput(
+        profile,
+      ) satisfies Prisma.SuperAdminProfileUncheckedCreateInput,
 
-      update:
-        SuperAdminProfileMapper.toUpdateInput(profile) satisfies
-        Prisma.SuperAdminProfileUncheckedUpdateInput,
+      update: SuperAdminProfileMapper.toUpdateInput(
+        profile,
+      ) satisfies Prisma.SuperAdminProfileUncheckedUpdateInput,
     });
 
     return SuperAdminProfileMapper.toDomain(row);

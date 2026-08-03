@@ -17,10 +17,7 @@ export class MediaUrlResolverService {
       return '';
     }
 
-    if (
-      imageRef.startsWith('http://') ||
-      imageRef.startsWith('https://')
-    ) {
+    if (imageRef.startsWith('http://') || imageRef.startsWith('https://')) {
       return imageRef;
     }
 

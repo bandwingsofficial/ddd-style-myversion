@@ -13,22 +13,18 @@ export class CameraStateMapper {
       return CameraState.disabled();
     }
 
-    const status = CameraStatusMapper.toDomain(
-      params.cameraStatus,
-    );
+    const status = CameraStatusMapper.toDomain(params.cameraStatus);
 
     switch (status) {
       case 'ON':
-        return CameraState.turnOn(params.cameraStreamUrl!);
+        return CameraState.turnOn(params.cameraStreamUrl);
 
       case 'MAINTENANCE':
         return CameraState.maintenance();
 
       case 'OFF':
       default:
-        return CameraState.enabledButOff(
-          params.cameraStreamUrl ?? undefined,
-        );
+        return CameraState.enabledButOff(params.cameraStreamUrl ?? undefined);
     }
   }
 
@@ -41,9 +37,7 @@ export class CameraStateMapper {
 
     return {
       isCameraEnabled: raw.isCameraEnabled,
-      cameraStatus: CameraStatusMapper.toPrisma(
-        raw.cameraStatus,
-      ),
+      cameraStatus: CameraStatusMapper.toPrisma(raw.cameraStatus),
       cameraStreamUrl: raw.cameraStreamUrl ?? null,
     };
   }

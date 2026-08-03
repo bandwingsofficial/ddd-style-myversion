@@ -15,9 +15,7 @@ import { DeliverySocketEvent } from '../events/delivery-events.types';
     credentials: true,
   },
 })
-export class DeliveryPublicGateway
-  implements OnGatewayConnection
-{
+export class DeliveryPublicGateway implements OnGatewayConnection {
   @WebSocketServer()
   private readonly server: Server;
 
@@ -26,10 +24,7 @@ export class DeliveryPublicGateway
   /* ================================================= */
 
   async handleConnection(client: Socket): Promise<void> {
-    console.log(
-      '🚴 [SOCKET CONNECT] delivery client connected:',
-      client.id,
-    );
+    console.log('🚴 [SOCKET CONNECT] delivery client connected:', client.id);
   }
 
   /* ================================================= */

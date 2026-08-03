@@ -41,13 +41,15 @@ export class PaymentGatewayService {
     amount: number;
     currency: string;
   }): Promise<PaymentSession> {
-
     if (!params?.orderId) {
       throw new ValidationError('ORDER_ID_REQUIRED', 'Order id is required');
     }
 
     if (!params.amount || params.amount <= 0) {
-      throw new ValidationError('INVALID_AMOUNT', 'Payment amount must be greater than 0');
+      throw new ValidationError(
+        'INVALID_AMOUNT',
+        'Payment amount must be greater than 0',
+      );
     }
 
     const razorpayOrder = await createRazorpayOrder({
@@ -71,7 +73,6 @@ export class PaymentGatewayService {
     providerPaymentId: string;
     signature?: string;
   }): Promise<PaymentVerificationResult> {
-
     if (!params?.providerOrderId || !params?.providerPaymentId) {
       throw new ValidationError(
         'PROVIDER_PAYMENT_ID_REQUIRED',

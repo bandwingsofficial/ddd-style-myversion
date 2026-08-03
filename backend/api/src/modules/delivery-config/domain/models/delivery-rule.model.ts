@@ -44,8 +44,7 @@ export class DeliveryRule {
     now?: Date;
   }): DeliveryRule {
     const now = params.now ?? new Date();
-    const isFreeDelivery =
-      params.isFreeDelivery ?? params.deliveryFee === 0;
+    const isFreeDelivery = params.isFreeDelivery ?? params.deliveryFee === 0;
 
     return new DeliveryRule({
       id: params.id,
@@ -94,8 +93,7 @@ export class DeliveryRule {
     description?: string | null;
     now?: Date;
   }): DeliveryRule {
-    const isFreeDelivery =
-      params.isFreeDelivery ?? params.deliveryFee === 0;
+    const isFreeDelivery = params.isFreeDelivery ?? params.deliveryFee === 0;
 
     return new DeliveryRule({
       ...this.toProps(),

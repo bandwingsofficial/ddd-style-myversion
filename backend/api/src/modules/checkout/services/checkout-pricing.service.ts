@@ -7,8 +7,7 @@ import { Cart } from '../../cart/domain/models/cart.model';
 /* HELPERS                                           */
 /* ================================================= */
 
-const toNumber = (d?: Decimal | null): number =>
-  d == null ? 0 : Number(d);
+const toNumber = (d?: Decimal | null): number => (d == null ? 0 : Number(d));
 
 /* ================================================= */
 /* TYPES                                             */

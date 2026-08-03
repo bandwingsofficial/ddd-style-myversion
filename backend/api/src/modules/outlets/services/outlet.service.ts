@@ -54,132 +54,132 @@ export class OutletService {
     const outlet = await this.outletRepo.findById(outletId);
 
     if (!outlet) {
-      throw new ValidationError(
-        'OUTLET_NOT_FOUND',
-        'Outlet not found',
-      );
+      throw new ValidationError('OUTLET_NOT_FOUND', 'Outlet not found');
     }
 
     return outlet;
   }
 
   /* ================================================= */
-/* READ – ALL OUTLETS                                 */
-/* ================================================= */
+  /* READ – ALL OUTLETS                                 */
+  /* ================================================= */
 
-async getAllOutlets(): Promise<Outlet[]> {
-  return this.outletRepo.findAll();
-}
-/* ================================================= */
-/* ⭐ PUBLIC – NEARBY OUTLETS (GEO FILTER)            */
-/* ================================================= */
+  async getAllOutlets(): Promise<Outlet[]> {
+    return this.outletRepo.findAll();
+  }
+  /* ================================================= */
+  /* ⭐ PUBLIC – NEARBY OUTLETS (GEO FILTER)            */
+  /* ================================================= */
 
-async getNearbyOutlets(
-  lat: number,
-  lng: number,
-): Promise<{ outlet: Outlet; distanceKm: number }[]> {
-  assertValidCustomerCoordinates(lat, lng);
+  async getNearbyOutlets(
+    lat: number,
+    lng: number,
+  ): Promise<{ outlet: Outlet; distanceKm: number }[]> {
+    assertValidCustomerCoordinates(lat, lng);
 
-  const outlets = await this.outletRepo.findWithLocation();
+    const outlets = await this.outletRepo.findWithLocation();
 
-  this.logger.log(
-    JSON.stringify({
-      event: 'outlet_serviceability_search',
-      customerLatitude: lat,
-      customerLongitude: lng,
-      candidateCount: outlets.length,
-    }),
-  );
-
-  for (const outlet of outlets) {
-    if (!outlet.location) {
-      this.logger.warn(
-        JSON.stringify({
-          event: 'outlet_data_invalid',
-          outletId: outlet.id,
-          outletName: outlet.name,
-          workingStatus: outlet.workingState.getRaw(),
-          reason: 'MISSING_COORDINATES',
-        }),
-      );
-      continue;
-    }
-
-    const location = outlet.location.getRaw();
-    const corruption = detectCoordinateCorruption(
-      location.latitude,
-      location.longitude,
+    this.logger.log(
+      JSON.stringify({
+        event: 'outlet_serviceability_search',
+        customerLatitude: lat,
+        customerLongitude: lng,
+        candidateCount: outlets.length,
+      }),
     );
-    if (corruption) {
-      this.logger.warn(
+
+    for (const outlet of outlets) {
+      if (!outlet.location) {
+        this.logger.warn(
+          JSON.stringify({
+            event: 'outlet_data_invalid',
+            outletId: outlet.id,
+            outletName: outlet.name,
+            workingStatus: outlet.workingState.getRaw(),
+            reason: 'MISSING_COORDINATES',
+          }),
+        );
+        continue;
+      }
+
+      const location = outlet.location.getRaw();
+      const corruption = detectCoordinateCorruption(
+        location.latitude,
+        location.longitude,
+      );
+      if (corruption) {
+        this.logger.warn(
+          JSON.stringify({
+            event: 'outlet_coordinate_corruption_detected',
+            outletId: outlet.id,
+            outletName: outlet.name,
+            outletLatitude: location.latitude,
+            outletLongitude: location.longitude,
+            corruption,
+          }),
+        );
+      }
+
+      const distanceKm = this.calculateDistanceKm(
+        lat,
+        lng,
+        location.latitude,
+        location.longitude,
+      );
+      const deliveryRadiusKm = outlet.deliveryRadiusKm ?? 5;
+      const acceptsOrders = outlet.workingState?.canAcceptOrders() ?? false;
+      const isActive = outlet.isActive();
+      const withinRadius = distanceKm <= deliveryRadiusKm;
+      const serviceable = isActive && acceptsOrders && withinRadius;
+
+      let rejectReason: string | null = null;
+      if (!isActive) rejectReason = 'OUTLET_INACTIVE';
+      else if (!acceptsOrders) rejectReason = 'OUTLET_NOT_ACCEPTING_ORDERS';
+      else if (deliveryRadiusKm == null || deliveryRadiusKm <= 0) {
+        rejectReason = 'MISSING_DELIVERY_RADIUS';
+      } else if (!withinRadius) rejectReason = 'OUTSIDE_DELIVERY_RADIUS';
+
+      this.logger.log(
         JSON.stringify({
-          event: 'outlet_coordinate_corruption_detected',
+          event: 'outlet_serviceability_check',
+          customerLatitude: lat,
+          customerLongitude: lng,
           outletId: outlet.id,
           outletName: outlet.name,
           outletLatitude: location.latitude,
           outletLongitude: location.longitude,
-          corruption,
+          distanceKm: Number(distanceKm.toFixed(2)),
+          deliveryRadiusKm,
+          workingStatus: outlet.workingState.getRaw(),
+          serviceable,
+          rejectReason,
         }),
       );
     }
 
-    const distanceKm = this.calculateDistanceKm(
-      lat,
-      lng,
-      location.latitude,
-      location.longitude,
-    );
-    const deliveryRadiusKm = outlet.deliveryRadiusKm ?? 5;
-    const acceptsOrders = outlet.workingState?.canAcceptOrders() ?? false;
-    const isActive = outlet.isActive();
-    const withinRadius = distanceKm <= deliveryRadiusKm;
-    const serviceable = isActive && acceptsOrders && withinRadius;
+    return outlets
+      .filter(
+        (o) => o.isActive() && o.workingState?.canAcceptOrders() && o.location,
+      )
+      .map((o) => {
+        const location = o.location.getRaw();
+        const distanceKm = this.calculateDistanceKm(
+          lat,
+          lng,
+          location.latitude,
+          location.longitude,
+        );
 
-    let rejectReason: string | null = null;
-    if (!isActive) rejectReason = 'OUTLET_INACTIVE';
-    else if (!acceptsOrders) rejectReason = 'OUTLET_NOT_ACCEPTING_ORDERS';
-    else if (deliveryRadiusKm == null || deliveryRadiusKm <= 0) {
-      rejectReason = 'MISSING_DELIVERY_RADIUS';
-    } else if (!withinRadius) rejectReason = 'OUTSIDE_DELIVERY_RADIUS';
+        if (distanceKm > (o.deliveryRadiusKm ?? 5)) return null;
 
-    this.logger.log(
-      JSON.stringify({
-        event: 'outlet_serviceability_check',
-        customerLatitude: lat,
-        customerLongitude: lng,
-        outletId: outlet.id,
-        outletName: outlet.name,
-        outletLatitude: location.latitude,
-        outletLongitude: location.longitude,
-        distanceKm: Number(distanceKm.toFixed(2)),
-        deliveryRadiusKm,
-        workingStatus: outlet.workingState.getRaw(),
-        serviceable,
-        rejectReason,
-      }),
-    );
+        return {
+          outlet: o,
+          distanceKm: Number(distanceKm.toFixed(2)),
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.distanceKm - b.distanceKm);
   }
-
-  return outlets
-  .filter(o =>
-    o.isActive() &&
-    o.workingState?.canAcceptOrders() &&
-    o.location
-  )
-  .map(o => {
-    const location = o.location!.getRaw();
-    const distanceKm = this.calculateDistanceKm(lat, lng, location.latitude, location.longitude);
-
-    if (distanceKm > (o.deliveryRadiusKm ?? 5)) return null;
-
-    return {
-      outlet: o,
-      distanceKm: Number(distanceKm.toFixed(2)),
-    };
-  })
-  .filter(Boolean)
-  .sort((a, b) => a!.distanceKm - b!.distanceKm) as { outlet: Outlet; distanceKm: number }[];
-}
 
   /* ================================================= */
   /* CREATE OUTLET (ADMIN)                              */
@@ -243,25 +243,25 @@ async getNearbyOutlets(
 
     let updatedLocation = outlet.location;
 
-if (
-  params.updates.latitude !== undefined ||
-  params.updates.longitude !== undefined
-) {
-  if (
-    params.updates.latitude === undefined ||
-    params.updates.longitude === undefined
-  ) {
-    throw new ValidationError(
-      'INVALID_LOCATION',
-      'Both latitude and longitude are required',
-    );
-  }
+    if (
+      params.updates.latitude !== undefined ||
+      params.updates.longitude !== undefined
+    ) {
+      if (
+        params.updates.latitude === undefined ||
+        params.updates.longitude === undefined
+      ) {
+        throw new ValidationError(
+          'INVALID_LOCATION',
+          'Both latitude and longitude are required',
+        );
+      }
 
-  updatedLocation = GeoLocation.create(
-    params.updates.latitude,
-    params.updates.longitude,
-  );
-}
+      updatedLocation = GeoLocation.create(
+        params.updates.latitude,
+        params.updates.longitude,
+      );
+    }
 
     const updatedOutlet = outlet.updateDetails({
       name: params.updates.name,
@@ -428,7 +428,8 @@ if (
     userAgent?: string;
   }): Promise<void> {
     const outlet = await this.outletRepo.findById(params.outletId);
-    if (!outlet) throw new ValidationError('OUTLET_NOT_FOUND', 'Outlet not found');
+    if (!outlet)
+      throw new ValidationError('OUTLET_NOT_FOUND', 'Outlet not found');
 
     OutletActivePolicy.enforce(outlet);
 
@@ -464,7 +465,8 @@ if (
     userAgent?: string;
   }): Promise<void> {
     const outlet = await this.outletRepo.findById(params.outletId);
-    if (!outlet) throw new ValidationError('OUTLET_NOT_FOUND', 'Outlet not found');
+    if (!outlet)
+      throw new ValidationError('OUTLET_NOT_FOUND', 'Outlet not found');
 
     const updated = outlet.closeShop();
 
@@ -498,7 +500,8 @@ if (
     userAgent?: string;
   }): Promise<void> {
     const outlet = await this.outletRepo.findById(params.outletId);
-    if (!outlet) throw new ValidationError('OUTLET_NOT_FOUND', 'Outlet not found');
+    if (!outlet)
+      throw new ValidationError('OUTLET_NOT_FOUND', 'Outlet not found');
 
     const updated = outlet.temporarilyCloseShop();
 
@@ -537,7 +540,8 @@ if (
     userAgent?: string;
   }): Promise<void> {
     const outlet = await this.outletRepo.findById(params.outletId);
-    if (!outlet) throw new ValidationError('OUTLET_NOT_FOUND', 'Outlet not found');
+    if (!outlet)
+      throw new ValidationError('OUTLET_NOT_FOUND', 'Outlet not found');
 
     OutletActivePolicy.enforce(outlet);
     OutletWorkingPolicy.enforce(outlet);
@@ -575,7 +579,8 @@ if (
     userAgent?: string;
   }): Promise<void> {
     const outlet = await this.outletRepo.findById(params.outletId);
-    if (!outlet) throw new ValidationError('OUTLET_NOT_FOUND', 'Outlet not found');
+    if (!outlet)
+      throw new ValidationError('OUTLET_NOT_FOUND', 'Outlet not found');
 
     CameraOffPolicy.enforce(outlet);
 
@@ -605,33 +610,33 @@ if (
   }
 
   /* ================================================= */
-/* INTERNAL – HAVERSINE DISTANCE                     */
-/* ================================================= */
+  /* INTERNAL – HAVERSINE DISTANCE                     */
+  /* ================================================= */
 
-private calculateDistanceKm(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-): number {
-  const toRad = (v: number) => (v * Math.PI) / 180;
+  private calculateDistanceKm(
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ): number {
+    const toRad = (v: number) => (v * Math.PI) / 180;
 
-  const R = 6371; // earth radius km
+    const R = 6371; // earth radius km
 
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
 
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) *
-      Math.cos(toRad(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) *
+        Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
 
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-  return R * c;
-}
+    return R * c;
+  }
 
   async configureCamera(params: {
     outletId: string;
@@ -829,9 +834,7 @@ private calculateDistanceKm(
     return { id: outlet.id };
   }
 
-  private buildPermanentOutletDeleteMessage(
-    analysis: DeleteAnalysis,
-  ): string {
+  private buildPermanentOutletDeleteMessage(analysis: DeleteAnalysis): string {
     if (analysis.permanentBlockers.length === 0) {
       return 'Cannot delete this outlet.';
     }

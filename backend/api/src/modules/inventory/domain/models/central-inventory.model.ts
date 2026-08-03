@@ -82,9 +82,7 @@ export class CentralInventory {
   /**
    * Rehydrate from persistence
    */
-  static rehydrate(
-    props: CentralInventoryProps,
-  ): CentralInventory {
+  static rehydrate(props: CentralInventoryProps): CentralInventory {
     return new CentralInventory(props);
   }
 
@@ -101,10 +99,7 @@ export class CentralInventory {
   }
 
   canTransfer(quantity: Quantity): boolean {
-    return (
-      this.isActive() &&
-      this.availableQty.getRaw() >= quantity.getRaw()
-    );
+    return this.isActive() && this.availableQty.getRaw() >= quantity.getRaw();
   }
 
   /* ---------------------------------------------- */
@@ -114,10 +109,7 @@ export class CentralInventory {
   /**
    * ADD stock to central inventory
    */
-  addStock(
-    quantity: Quantity,
-    now = new Date(),
-  ): CentralInventory {
+  addStock(quantity: Quantity, now = new Date()): CentralInventory {
     if (!this.isActive()) {
       throw new ValidationError(
         'INVENTORY_INACTIVE',
@@ -147,10 +139,7 @@ export class CentralInventory {
       );
     }
 
-    if (
-      newAvailableQty.getRaw() >
-      this.totalQty.getRaw()
-    ) {
+    if (newAvailableQty.getRaw() > this.totalQty.getRaw()) {
       throw new ValidationError(
         'INVALID_STOCK_ADJUSTMENT',
         'Available stock cannot exceed total stock',
@@ -171,10 +160,7 @@ export class CentralInventory {
   /**
    * TRANSFER stock out (to outlet)
    */
-  transferOut(
-    quantity: Quantity,
-    now = new Date(),
-  ): CentralInventory {
+  transferOut(quantity: Quantity, now = new Date()): CentralInventory {
     if (!this.canTransfer(quantity)) {
       throw new ValidationError(
         'INSUFFICIENT_STOCK',
@@ -220,10 +206,7 @@ export class CentralInventory {
       );
     }
 
-    if (
-      this.availableQty.getRaw() >
-      this.totalQty.getRaw()
-    ) {
+    if (this.availableQty.getRaw() > this.totalQty.getRaw()) {
       throw new ValidationError(
         'INVENTORY_INVALID_STATE',
         'Available stock cannot exceed total stock',

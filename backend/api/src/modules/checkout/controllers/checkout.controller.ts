@@ -7,8 +7,7 @@ import {
   UseGuards,
   Query,
 } from '@nestjs/common';
-import { ValidationError,
-} from '../../../common/errors';
+import { ValidationError } from '../../../common/errors';
 
 import { CheckoutOrchestratorService } from '../services/checkout-orchestrator.service';
 
@@ -26,37 +25,35 @@ import { CheckoutSummaryParamsDto } from '../dto/checkout-summary.dto';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(ActorType.CUSTOMER)
 export class CheckoutController {
-  constructor(
-    private readonly orchestrator: CheckoutOrchestratorService,
-  ) {}
+  constructor(private readonly orchestrator: CheckoutOrchestratorService) {}
 
   /* ================================================= */
   /* SUMMARY                                          */
   /* ================================================= */
 
   @Get('summary/:savedAddressId')
-async getCheckoutSummary(
-  @Param() params: CheckoutSummaryParamsDto,
-  @Query('outletId') outletId: string,
-  @CurrentUser() user: { actorId: string },
-) {
-  if (!outletId) {
-    throw new ValidationError('OUTLET_ID_REQUIRED', 'Outlet id is required');
+  async getCheckoutSummary(
+    @Param() params: CheckoutSummaryParamsDto,
+    @Query('outletId') outletId: string,
+    @CurrentUser() user: { actorId: string },
+  ) {
+    if (!outletId) {
+      throw new ValidationError('OUTLET_ID_REQUIRED', 'Outlet id is required');
+    }
+
+    const data = await this.orchestrator.getCheckoutSummary({
+      customerId: user.actorId,
+      outletId,
+      savedAddressId: params.savedAddressId,
+    });
+
+    return {
+      success: true,
+      code: 'CHECKOUT_SUMMARY_FETCHED',
+      message: 'Checkout summary fetched successfully',
+      data,
+    };
   }
-
-  const data = await this.orchestrator.getCheckoutSummary({
-    customerId: user.actorId,
-    outletId,
-    savedAddressId: params.savedAddressId,
-  });
-
-  return {
-    success: true,
-    code: 'CHECKOUT_SUMMARY_FETCHED',
-    message: 'Checkout summary fetched successfully',
-    data,
-  };
-}
   @Get('active')
   async getActiveCheckout(
     @Query('outletId') outletId: string,
@@ -85,22 +82,22 @@ async getCheckoutSummary(
   /* START CHECKOUT                                   */
   /* ================================================= */
 
-@Post('start')
-async startCheckout(
-  @CurrentUser() user: { actorId: string },
-  @Body() body: StartCheckoutDto,
-) {
-  const data = await this.orchestrator.startCheckout({
-    customerId: user.actorId,
-    outletId: body.outletId, // 🔥 REQUIRED
-    savedAddressId: body.savedAddressId,
-  });
+  @Post('start')
+  async startCheckout(
+    @CurrentUser() user: { actorId: string },
+    @Body() body: StartCheckoutDto,
+  ) {
+    const data = await this.orchestrator.startCheckout({
+      customerId: user.actorId,
+      outletId: body.outletId, // 🔥 REQUIRED
+      savedAddressId: body.savedAddressId,
+    });
 
-  return {
-    success: true,
-    code: 'CHECKOUT_STARTED',
-    message: 'Checkout started successfully',
-    data,
-  };
-}
+    return {
+      success: true,
+      code: 'CHECKOUT_STARTED',
+      message: 'Checkout started successfully',
+      data,
+    };
+  }
 }

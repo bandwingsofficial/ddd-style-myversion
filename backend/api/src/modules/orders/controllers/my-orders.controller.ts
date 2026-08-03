@@ -1,8 +1,4 @@
-import {
-  Controller,
-  Get,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, UseGuards } from '@nestjs/common';
 
 import { OrderOrchestratorService } from '../services/order-orchestrator.service';
 import { OrderResponseMapper } from '../mappers/order-response.mapper';
@@ -24,9 +20,7 @@ export class MyOrdersController {
   ) {}
 
   @Get()
-  async getMyOrders(
-    @CurrentUser() user: { actorId: string },
-  ) {
+  async getMyOrders(@CurrentUser() user: { actorId: string }) {
     const orders = await this.orchestrator.getCustomerOrders(user.actorId);
 
     return {

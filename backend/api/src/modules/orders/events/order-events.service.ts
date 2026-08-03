@@ -2,10 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { OrderEvents } from './order-events.constants';
-import {
-  OrderBaseEvent,
-  OrderPaidEvent,
-} from './order-events.types';
+import { OrderBaseEvent, OrderPaidEvent } from './order-events.types';
 
 @Injectable()
 export class OrderEventsService {

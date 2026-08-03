@@ -16,30 +16,24 @@ export class PaymentOrchestratorService {
   /* PAYMENT – CREATE                                  */
   /* ================================================= */
 
-/* ================================================= */
-/* PAYMENT – CREATE                                  */
-/* ================================================= */
+  /* ================================================= */
+  /* PAYMENT – CREATE                                  */
+  /* ================================================= */
 
-async createPayment(params: {
-  orderId: string;
-}): Promise<{
-  payment: Payment;
-  razorpayOrderId: string;
-  amountInPaise: number;
-  checkoutUrl: string | null;
-}> {
+  async createPayment(params: { orderId: string }): Promise<{
+    payment: Payment;
+    razorpayOrderId: string;
+    amountInPaise: number;
+    checkoutUrl: string | null;
+  }> {
+    const { orderId } = params;
 
-  const { orderId } = params;
+    if (!orderId) {
+      throw new ValidationError('ORDER_ID_REQUIRED', 'Order id is required');
+    }
 
-  if (!orderId) {
-    throw new ValidationError(
-      'ORDER_ID_REQUIRED',
-      'Order id is required',
-    );
+    return this.paymentService.createPayment({ orderId });
   }
-
-  return this.paymentService.createPayment({ orderId });
-}
   /* ================================================= */
   /* PAYMENT – CONFIRM                                 */
   /* ================================================= */
@@ -50,7 +44,6 @@ async createPayment(params: {
     razorpayOrderId?: string;
     razorpaySignature?: string;
   }): Promise<Payment> {
-
     const { paymentId } = params;
 
     if (!paymentId) {

@@ -92,10 +92,7 @@ export class IdentityService {
       case ActorType.CUSTOMER: {
         const customer = await this.customerRepo.findById(params.actorId);
         if (!customer) {
-          throw new UnauthorizedError(
-            AuthErrors.UNAUTHORIZED,
-            'Unauthorized',
-          );
+          throw new UnauthorizedError(AuthErrors.UNAUTHORIZED, 'Unauthorized');
         }
 
         IdentityActivePolicy.check(customer);
@@ -109,10 +106,7 @@ export class IdentityService {
       case ActorType.DELIVERY: {
         const partner = await this.deliveryRepo.findById(params.actorId);
         if (!partner) {
-          throw new UnauthorizedError(
-            AuthErrors.UNAUTHORIZED,
-            'Unauthorized',
-          );
+          throw new UnauthorizedError(AuthErrors.UNAUTHORIZED, 'Unauthorized');
         }
 
         IdentityActivePolicy.check(partner);
@@ -127,10 +121,7 @@ export class IdentityService {
       case ActorType.OUTLET_USER: {
         const user = await this.outletUserRepo.findById(params.actorId);
         if (!user) {
-          throw new UnauthorizedError(
-            AuthErrors.UNAUTHORIZED,
-            'Unauthorized',
-          );
+          throw new UnauthorizedError(AuthErrors.UNAUTHORIZED, 'Unauthorized');
         }
 
         await this.assertOutletUserCanAuthenticate(user);
@@ -144,10 +135,7 @@ export class IdentityService {
       case ActorType.SUPER_ADMIN: {
         const admin = await this.superAdminRepo.findById(params.actorId);
         if (!admin) {
-          throw new UnauthorizedError(
-            AuthErrors.UNAUTHORIZED,
-            'Unauthorized',
-          );
+          throw new UnauthorizedError(AuthErrors.UNAUTHORIZED, 'Unauthorized');
         }
 
         IdentityActivePolicy.check(admin);
@@ -159,10 +147,7 @@ export class IdentityService {
       }
 
       default:
-        throw new UnauthorizedError(
-          AuthErrors.UNAUTHORIZED,
-          'Unauthorized',
-        );
+        throw new UnauthorizedError(AuthErrors.UNAUTHORIZED, 'Unauthorized');
     }
   }
 

@@ -18,9 +18,7 @@ import { PaymentOrchestratorService } from '../services/payment-orchestrator.ser
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(ActorType.SUPER_ADMIN)
 export class PaymentAdminController {
-  constructor(
-    private readonly orchestrator: PaymentOrchestratorService,
-  ) {}
+  constructor(private readonly orchestrator: PaymentOrchestratorService) {}
 
   @Get()
   async listPayments(
@@ -44,9 +42,7 @@ export class PaymentAdminController {
   }
 
   @Get(':paymentId')
-  async getPayment(
-    @Param('paymentId', ParseUUIDPipe) paymentId: string,
-  ) {
+  async getPayment(@Param('paymentId', ParseUUIDPipe) paymentId: string) {
     const data = await this.orchestrator.getPaymentAdminDetail(paymentId);
 
     return {

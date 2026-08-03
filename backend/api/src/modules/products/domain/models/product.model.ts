@@ -13,7 +13,6 @@ import {
   isProductRestorableStatus,
 } from '../utils/product-lifecycle.util';
 
-
 import { ProductName } from '../value-objects/product-name.vo';
 import { ProductSlug } from '../value-objects/product-slug.vo';
 import { ProductPrice } from '../value-objects/product-price.vo';
@@ -322,10 +321,8 @@ export class Product {
       ...this,
       name,
       slug,
-      shortDescription:
-        params.shortDescription ?? this.shortDescription,
-      longDescription:
-        params.longDescription ?? this.longDescription,
+      shortDescription: params.shortDescription ?? this.shortDescription,
+      longDescription: params.longDescription ?? this.longDescription,
       updatedAt: params.now ?? new Date(),
     });
   }
@@ -337,10 +334,7 @@ export class Product {
   }): Product {
     return new Product({
       ...this,
-      price: ProductPrice.create(
-        params.originalPrice,
-        params.discountPrice,
-      ),
+      price: ProductPrice.create(params.originalPrice, params.discountPrice),
       updatedAt: params.now ?? new Date(),
     });
   }
@@ -410,52 +404,48 @@ export class Product {
   }
 
   setAvailability(available: boolean, now = new Date()): Product {
-  return new Product({
-    ...this,
-    isAvailable: available,
-    updatedAt: now,
-  });
-}
-
-updateSortOrder(sortOrder: number, now = new Date()): Product {
-  if (sortOrder < 0) {
-    throw new ValidationError(
-      'PRODUCT_INVALID_SORT_ORDER',
-      'Sort order must be >= 0',
-    );
+    return new Product({
+      ...this,
+      isAvailable: available,
+      updatedAt: now,
+    });
   }
 
-  return new Product({
-    ...this,
-    sortOrder,
-    updatedAt: now,
-  });
-}
+  updateSortOrder(sortOrder: number, now = new Date()): Product {
+    if (sortOrder < 0) {
+      throw new ValidationError(
+        'PRODUCT_INVALID_SORT_ORDER',
+        'Sort order must be >= 0',
+      );
+    }
 
-addRating(newRating: number, now = new Date()): Product {
-  if (newRating < 1 || newRating > 5) {
-    throw new ValidationError(
-      'PRODUCT_INVALID_RATING',
-      'Rating must be between 1 and 5',
-    );
+    return new Product({
+      ...this,
+      sortOrder,
+      updatedAt: now,
+    });
   }
 
-  const count = this.ratingCount + 1;
+  addRating(newRating: number, now = new Date()): Product {
+    if (newRating < 1 || newRating > 5) {
+      throw new ValidationError(
+        'PRODUCT_INVALID_RATING',
+        'Rating must be between 1 and 5',
+      );
+    }
 
-  const avg =
-    ((this.ratingAverage ?? 0) * this.ratingCount + newRating) /
-    count;
+    const count = this.ratingCount + 1;
 
-  return new Product({
-    ...this,
-    ratingCount: count,
-    ratingAverage: Number(avg.toFixed(2)),
-    updatedAt: now,
-  });
-}
+    const avg =
+      ((this.ratingAverage ?? 0) * this.ratingCount + newRating) / count;
 
-
-
+    return new Product({
+      ...this,
+      ratingCount: count,
+      ratingAverage: Number(avg.toFixed(2)),
+      updatedAt: now,
+    });
+  }
 
   disable(now = new Date()): Product {
     return this.changeStatus(ProductStatus.INACTIVE, now);
@@ -477,10 +467,7 @@ addRating(newRating: number, now = new Date()): Product {
       );
     }
 
-    if (
-      this.shortDescription &&
-      this.shortDescription.length > 300
-    ) {
+    if (this.shortDescription && this.shortDescription.length > 300) {
       throw new ValidationError(
         'PRODUCT_SHORT_DESC_TOO_LONG',
         'Short description must not exceed 300 characters',

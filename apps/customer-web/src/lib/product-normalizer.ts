@@ -96,6 +96,10 @@ export function normalizeProductListItem(
     category: item.category ?? catalogItem?.category,
     shortDescription: item.shortDescription ?? undefined,
     outletId: item.outletId,
+    outletName:
+      (typeof item.outletName === "string" && item.outletName) ||
+      (typeof item.outlet?.name === "string" && item.outlet.name) ||
+      undefined,
   } as ProductListItem;
 }
 

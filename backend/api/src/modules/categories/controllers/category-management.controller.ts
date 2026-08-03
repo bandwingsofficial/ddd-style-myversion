@@ -37,9 +37,7 @@ import { categoryImageUploadOptions } from '../../uploads/validators/multer-memo
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(ActorType.SUPER_ADMIN)
 export class CategoryManagementController {
-  constructor(
-    private readonly orchestrator: CategoryOrchestratorService,
-  ) {}
+  constructor(private readonly orchestrator: CategoryOrchestratorService) {}
 
   @Get()
   async listCategories(@Query() query: ListCategoriesQueryDto) {
@@ -82,9 +80,7 @@ export class CategoryManagementController {
   }
 
   @Post()
-  @UseInterceptors(
-    FileInterceptor('image', categoryImageUploadOptions),
-  )
+  @UseInterceptors(FileInterceptor('image', categoryImageUploadOptions))
   async createCategory(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: CreateCategoryDto,
@@ -116,9 +112,7 @@ export class CategoryManagementController {
   }
 
   @Patch(':categoryId')
-  @UseInterceptors(
-    FileInterceptor('image', categoryImageUploadOptions),
-  )
+  @UseInterceptors(FileInterceptor('image', categoryImageUploadOptions))
   async updateCategory(
     @Param('categoryId') categoryId: string,
     @UploadedFile() file: Express.Multer.File,

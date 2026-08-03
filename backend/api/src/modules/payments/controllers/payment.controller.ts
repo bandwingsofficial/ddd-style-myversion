@@ -25,14 +25,10 @@ import { PaymentStatus } from '../domain/enums/payment-status.enum';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(ActorType.CUSTOMER)
 export class PaymentController {
-  constructor(
-    private readonly orchestrator: PaymentOrchestratorService,
-  ) {}
+  constructor(private readonly orchestrator: PaymentOrchestratorService) {}
 
   @Get(':paymentId')
-  async getPayment(
-    @Param('paymentId', ParseUUIDPipe) paymentId: string,
-  ) {
+  async getPayment(@Param('paymentId', ParseUUIDPipe) paymentId: string) {
     const payment = await this.orchestrator.getPaymentById(paymentId);
 
     return {

@@ -38,9 +38,7 @@ export class CategoryOrchestratorService {
     const result = await this.categoryService.listCategories(query);
 
     return {
-      items: await this.categoryResponseMapper.toResponseList(
-        result.items,
-      ),
+      items: await this.categoryResponseMapper.toResponseList(result.items),
       page: result.page,
       limit: result.limit,
       total: result.total,
@@ -81,9 +79,7 @@ export class CategoryOrchestratorService {
     categoryId: string;
     status: CategoryStatus;
   }): Promise<CategoryResponse> {
-    const category = await this.categoryService.updateCategoryStatus(
-      params,
-    );
+    const category = await this.categoryService.updateCategoryStatus(params);
 
     return this.categoryResponseMapper.toResponse(category);
   }
@@ -91,8 +87,7 @@ export class CategoryOrchestratorService {
   async reorderCategories(
     items: { id: string; sortOrder: number }[],
   ): Promise<CategoryResponse[]> {
-    const categories =
-      await this.categoryService.reorderCategories(items);
+    const categories = await this.categoryService.reorderCategories(items);
 
     return this.categoryResponseMapper.toResponseList(categories);
   }

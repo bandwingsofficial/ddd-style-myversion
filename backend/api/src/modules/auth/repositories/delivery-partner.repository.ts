@@ -13,9 +13,7 @@ import { Phone } from '../domain/value-objects/phone.vo';
 import { DeliveryStatusMapper } from '../mappers/delivery-status.mapper';
 import { InvariantViolationError } from '../../../common/errors';
 
-type PrismaClientLike =
-  | PrismaService
-  | Prisma.TransactionClient;
+type PrismaClientLike = PrismaService | Prisma.TransactionClient;
 
 @Injectable()
 export class DeliveryPartnerRepository {
@@ -34,9 +32,7 @@ export class DeliveryPartnerRepository {
     const row = await client.deliveryPartner.create({
       data: {
         phone: params.phone.getRaw(),
-        status: DeliveryStatusMapper.toPrisma(
-          DeliveryStatus.CREATED,
-        ),
+        status: DeliveryStatusMapper.toPrisma(DeliveryStatus.CREATED),
       },
     });
 
@@ -83,9 +79,7 @@ export class DeliveryPartnerRepository {
     const result = await client.deliveryPartner.updateMany({
       where: { id: partnerId },
       data: {
-        status: DeliveryStatusMapper.toPrisma(
-          DeliveryStatus.KYC_SUBMITTED,
-        ),
+        status: DeliveryStatusMapper.toPrisma(DeliveryStatus.KYC_SUBMITTED),
         kycRefId,
         approvedAt: null,
         approvedBy: null,
@@ -114,9 +108,7 @@ export class DeliveryPartnerRepository {
     const result = await client.deliveryPartner.updateMany({
       where: { id: partnerId },
       data: {
-        status: DeliveryStatusMapper.toPrisma(
-          DeliveryStatus.APPROVED,
-        ),
+        status: DeliveryStatusMapper.toPrisma(DeliveryStatus.APPROVED),
         approvedBy,
         approvedAt,
       },
@@ -141,22 +133,14 @@ export class DeliveryPartnerRepository {
     partnerId: string,
     tx?: PrismaTransaction,
   ): Promise<DeliveryPartner> {
-    return this.updateStatus(
-      partnerId,
-      DeliveryStatus.SUSPENDED,
-      tx,
-    );
+    return this.updateStatus(partnerId, DeliveryStatus.SUSPENDED, tx);
   }
 
   async block(
     partnerId: string,
     tx?: PrismaTransaction,
   ): Promise<DeliveryPartner> {
-    return this.updateStatus(
-      partnerId,
-      DeliveryStatus.BLOCKED,
-      tx,
-    );
+    return this.updateStatus(partnerId, DeliveryStatus.BLOCKED, tx);
   }
 
   /* ---------------------------------------------- */

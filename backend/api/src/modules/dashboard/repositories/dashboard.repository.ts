@@ -76,7 +76,12 @@ export class DashboardRepository {
       where.status = filter.paymentStatus as PaymentStatus;
     }
 
-    if (filter.outletId || filter.orderStatus || filter.productId || filter.categoryId) {
+    if (
+      filter.outletId ||
+      filter.orderStatus ||
+      filter.productId ||
+      filter.categoryId
+    ) {
       where.order = this.buildOrderWhere(filter);
       if (range) {
         delete (where.order as Prisma.OrderWhereInput).createdAt;
@@ -91,7 +96,10 @@ export class DashboardRepository {
     return typeof value === 'number' ? value : Number(value);
   }
 
-  async getOrderStatusCounts(filter: DashboardFilter, range: { start: Date; end: Date }) {
+  async getOrderStatusCounts(
+    filter: DashboardFilter,
+    range: { start: Date; end: Date },
+  ) {
     const rows = await this.prisma.order.groupBy({
       by: ['status'],
       where: this.buildOrderWhere(filter, range),
@@ -105,7 +113,10 @@ export class DashboardRepository {
     return map;
   }
 
-  async getPaymentStatusCounts(filter: DashboardFilter, range: { start: Date; end: Date }) {
+  async getPaymentStatusCounts(
+    filter: DashboardFilter,
+    range: { start: Date; end: Date },
+  ) {
     const rows = await this.prisma.payment.groupBy({
       by: ['status'],
       where: this.buildPaymentWhere(filter, range),
@@ -119,7 +130,10 @@ export class DashboardRepository {
     return map;
   }
 
-  async getRevenueAggregate(filter: DashboardFilter, range: { start: Date; end: Date }) {
+  async getRevenueAggregate(
+    filter: DashboardFilter,
+    range: { start: Date; end: Date },
+  ) {
     const where: Prisma.OrderWhereInput = {
       ...this.buildOrderWhere(filter, range),
       status: { in: REVENUE_ORDER_STATUSES },
@@ -154,7 +168,10 @@ export class DashboardRepository {
     };
   }
 
-  async getPaymentAggregate(filter: DashboardFilter, range: { start: Date; end: Date }) {
+  async getPaymentAggregate(
+    filter: DashboardFilter,
+    range: { start: Date; end: Date },
+  ) {
     const baseWhere = this.buildPaymentWhere(filter, range);
 
     const [success, failed, pending, refunded, total] = await Promise.all([
@@ -186,11 +203,16 @@ export class DashboardRepository {
       refundedPayments: refunded,
       totalPayments: total,
       paymentSuccessRate: successRate,
-      successfulAmount: this.toNumber(success._sum.paidAmount ?? success._sum.amount),
+      successfulAmount: this.toNumber(
+        success._sum.paidAmount ?? success._sum.amount,
+      ),
     };
   }
 
-  async getCustomerMetrics(filter: DashboardFilter, range: { start: Date; end: Date }) {
+  async getCustomerMetrics(
+    filter: DashboardFilter,
+    range: { start: Date; end: Date },
+  ) {
     const orderWhere = {
       ...this.buildOrderWhere(filter, range),
       status: { in: REVENUE_ORDER_STATUSES },
@@ -209,7 +231,9 @@ export class DashboardRepository {
       }),
     ]);
 
-    const returningCustomers = orderGroups.filter((g) => g._count._all > 1).length;
+    const returningCustomers = orderGroups.filter(
+      (g) => g._count._all > 1,
+    ).length;
     const repeatPurchaseRate =
       orderGroups.length > 0
         ? Number(((returningCustomers / orderGroups.length) * 100).toFixed(2))
@@ -217,8 +241,10 @@ export class DashboardRepository {
 
     const averageSpend =
       orderGroups.length > 0
-        ? orderGroups.reduce((sum, g) => sum + this.toNumber(g._sum.grandTotal), 0) /
-          orderGroups.length
+        ? orderGroups.reduce(
+            (sum, g) => sum + this.toNumber(g._sum.grandTotal),
+            0,
+          ) / orderGroups.length
         : 0;
 
     return {
@@ -245,7 +271,11 @@ export class DashboardRepository {
     ] = await Promise.all([
       this.prisma.product.count({ where: { deletedAt: null } }),
       this.prisma.product.count({
-        where: { deletedAt: null, status: ProductStatus.ACTIVE, isAvailable: true },
+        where: {
+          deletedAt: null,
+          status: ProductStatus.ACTIVE,
+          isAvailable: true,
+        },
       }),
       this.prisma.product.count({
         where: { deletedAt: null, status: ProductStatus.INACTIVE },
@@ -261,7 +291,10 @@ export class DashboardRepository {
 
     const [lowStockItems, outOfStockItems] = await Promise.all([
       this.prisma.centralInventory.count({
-        where: { availableQty: { gt: 0, lte: LOW_STOCK_THRESHOLD }, status: 'ACTIVE' },
+        where: {
+          availableQty: { gt: 0, lte: LOW_STOCK_THRESHOLD },
+          status: 'ACTIVE',
+        },
       }),
       this.prisma.centralInventory.count({
         where: { availableQty: { lte: 0 }, status: 'ACTIVE' },
@@ -283,7 +316,10 @@ export class DashboardRepository {
     };
   }
 
-  async getDeliveryMetrics(filter: DashboardFilter, range: { start: Date; end: Date }) {
+  async getDeliveryMetrics(
+    filter: DashboardFilter,
+    range: { start: Date; end: Date },
+  ) {
     const delivered = await this.prisma.order.findMany({
       where: {
         ...this.buildOrderWhere(filter, range),
@@ -294,7 +330,7 @@ export class DashboardRepository {
 
     const durations = delivered
       .filter((o) => o.deliveredAt)
-      .map((o) => o.deliveredAt!.getTime() - o.createdAt.getTime());
+      .map((o) => o.deliveredAt.getTime() - o.createdAt.getTime());
 
     const avgMs =
       durations.length > 0
@@ -305,16 +341,28 @@ export class DashboardRepository {
     const [confirmedCount, deliveredCount, cancelledCount, paidCount] =
       await Promise.all([
         this.prisma.order.count({
-          where: { ...this.buildOrderWhere(filter, range), confirmedAt: { not: null } },
+          where: {
+            ...this.buildOrderWhere(filter, range),
+            confirmedAt: { not: null },
+          },
         }),
         this.prisma.order.count({
-          where: { ...this.buildOrderWhere(filter, range), status: OrderStatus.DELIVERED },
+          where: {
+            ...this.buildOrderWhere(filter, range),
+            status: OrderStatus.DELIVERED,
+          },
         }),
         this.prisma.order.count({
-          where: { ...this.buildOrderWhere(filter, range), status: OrderStatus.CANCELLED },
+          where: {
+            ...this.buildOrderWhere(filter, range),
+            status: OrderStatus.CANCELLED,
+          },
         }),
         this.prisma.order.count({
-          where: { ...this.buildOrderWhere(filter, range), status: OrderStatus.PAID },
+          where: {
+            ...this.buildOrderWhere(filter, range),
+            status: OrderStatus.PAID,
+          },
         }),
       ]);
 
@@ -326,7 +374,11 @@ export class DashboardRepository {
       cancelledDeliveries: cancelledCount,
       acceptanceRate:
         paidCount + confirmedCount > 0
-          ? Number(((confirmedCount / (paidCount + confirmedCount)) * 100).toFixed(2))
+          ? Number(
+              ((confirmedCount / (paidCount + confirmedCount)) * 100).toFixed(
+                2,
+              ),
+            )
           : 0,
       completionRate:
         confirmedCount > 0
@@ -335,7 +387,10 @@ export class DashboardRepository {
     };
   }
 
-  async getDailyTrend(filter: DashboardFilter, range: { start: Date; end: Date }) {
+  async getDailyTrend(
+    filter: DashboardFilter,
+    range: { start: Date; end: Date },
+  ) {
     const orders = await this.prisma.order.findMany({
       where: {
         ...this.buildOrderWhere(filter, range),
@@ -361,7 +416,11 @@ export class DashboardRepository {
     }));
   }
 
-  async getTopProducts(filter: DashboardFilter, range: { start: Date; end: Date }, limit = 10) {
+  async getTopProducts(
+    filter: DashboardFilter,
+    range: { start: Date; end: Date },
+    limit = 10,
+  ) {
     const items = await this.prisma.orderItem.groupBy({
       by: ['productId', 'productName', 'productImage'],
       where: {
@@ -413,7 +472,11 @@ export class DashboardRepository {
     });
   }
 
-  async getTopCategories(filter: DashboardFilter, range: { start: Date; end: Date }, limit = 10) {
+  async getTopCategories(
+    filter: DashboardFilter,
+    range: { start: Date; end: Date },
+    limit = 10,
+  ) {
     const rows = await this.prisma.orderItem.groupBy({
       by: ['productId'],
       where: {
@@ -427,12 +490,22 @@ export class DashboardRepository {
 
     const products = await this.prisma.product.findMany({
       where: { id: { in: rows.map((r) => r.productId) } },
-      select: { id: true, categoryId: true, category: { select: { name: true } } },
+      select: {
+        id: true,
+        categoryId: true,
+        category: { select: { name: true } },
+      },
     });
 
     const categoryMap = new Map<
       string,
-      { categoryId: string; categoryName: string; revenue: number; orders: number; units: number }
+      {
+        categoryId: string;
+        categoryName: string;
+        revenue: number;
+        orders: number;
+        units: number;
+      }
     >();
 
     for (const row of rows) {
@@ -463,7 +536,11 @@ export class DashboardRepository {
       }));
   }
 
-  async getTopOutlets(filter: DashboardFilter, range: { start: Date; end: Date }, limit = 10) {
+  async getTopOutlets(
+    filter: DashboardFilter,
+    range: { start: Date; end: Date },
+    limit = 10,
+  ) {
     const rows = await this.prisma.order.groupBy({
       by: ['outletId'],
       where: {
@@ -494,7 +571,11 @@ export class DashboardRepository {
     }));
   }
 
-  async getTopCustomers(filter: DashboardFilter, range: { start: Date; end: Date }, limit = 10) {
+  async getTopCustomers(
+    filter: DashboardFilter,
+    range: { start: Date; end: Date },
+    limit = 10,
+  ) {
     const rows = await this.prisma.order.groupBy({
       by: ['customerId'],
       where: {
@@ -540,7 +621,11 @@ export class DashboardRepository {
           select: { phone: true, profile: { select: { fullName: true } } },
         },
         outlet: { select: { name: true } },
-        payments: { orderBy: { createdAt: 'desc' }, take: 1, select: { status: true } },
+        payments: {
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+          select: { status: true },
+        },
         items: { select: { id: true } },
       },
     });
@@ -598,7 +683,9 @@ export class DashboardRepository {
       orderBy: { availableQty: 'asc' },
       take: limit,
       include: {
-        stockItem: { select: { id: true, name: true, unit: true, status: true } },
+        stockItem: {
+          select: { id: true, name: true, unit: true, status: true },
+        },
       },
     });
 
@@ -629,12 +716,29 @@ export class DashboardRepository {
       await Promise.all([
         this.getRevenueAggregate(filter, today),
         this.getRevenueAggregate(filter, yesterday),
-        this.getRevenueAggregate(filter, resolveDashboardDateRange({ period: DashboardPeriod.LAST_7_DAYS })),
-        this.getRevenueAggregate(filter, resolveDashboardDateRange({ period: DashboardPeriod.THIS_MONTH })),
-        this.getRevenueAggregate(filter, resolveDashboardDateRange({ period: DashboardPeriod.THIS_YEAR })),
+        this.getRevenueAggregate(
+          filter,
+          resolveDashboardDateRange({ period: DashboardPeriod.LAST_7_DAYS }),
+        ),
+        this.getRevenueAggregate(
+          filter,
+          resolveDashboardDateRange({ period: DashboardPeriod.THIS_MONTH }),
+        ),
+        this.getRevenueAggregate(
+          filter,
+          resolveDashboardDateRange({ period: DashboardPeriod.THIS_YEAR }),
+        ),
         this.getRevenueAggregate(filter, mainRange),
       ]);
 
-    return { range: mainRange, today: todayAgg, yesterday: yesterdayAgg, weekly: weeklyAgg, monthly: monthlyAgg, yearly: yearlyAgg, filtered: mainAgg };
+    return {
+      range: mainRange,
+      today: todayAgg,
+      yesterday: yesterdayAgg,
+      weekly: weeklyAgg,
+      monthly: monthlyAgg,
+      yearly: yearlyAgg,
+      filtered: mainAgg,
+    };
   }
 }

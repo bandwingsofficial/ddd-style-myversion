@@ -19,9 +19,7 @@ import { OutletService } from '../services/outlet.service';
     origin: '*',
   },
 })
-export class OutletPublicGateway
-  implements OnGatewayConnection
-{
+export class OutletPublicGateway implements OnGatewayConnection {
   constructor(
     private readonly outletService: OutletService, // ⭐ NEW
   ) {}
@@ -34,48 +32,40 @@ export class OutletPublicGateway
   /* ================================================= */
 
   async handleConnection(client: Socket) {
-  try {
-    // ⭐ SAFE READ (query OR auth OR string)
-    const lat =
-      client.handshake.query?.lat ??
-      client.handshake.auth?.lat;
+    try {
+      // ⭐ SAFE READ (query OR auth OR string)
+      const lat = client.handshake.query?.lat ?? client.handshake.auth?.lat;
 
-    const lng =
-      client.handshake.query?.lng ??
-      client.handshake.auth?.lng;
+      const lng = client.handshake.query?.lng ?? client.handshake.auth?.lng;
 
-    console.log('🔍 FULL HANDSHAKE =>', client.handshake);
+      console.log('🔍 FULL HANDSHAKE =>', client.handshake);
 
-    if (!lat || !lng) {
-      console.log('⚠️ Socket connected without lat/lng');
-      return;
-    }
+      if (!lat || !lng) {
+        console.log('⚠️ Socket connected without lat/lng');
+        return;
+      }
 
-    const latitude = Number(lat);
-    const longitude = Number(lng);
+      const latitude = Number(lat);
+      const longitude = Number(lng);
 
-    console.log(
-      `📡 Outlet socket connect → lat=${latitude}, lng=${longitude}`,
-    );
+      console.log(
+        `📡 Outlet socket connect → lat=${latitude}, lng=${longitude}`,
+      );
 
-    const outlets =
-      await this.outletService.getNearbyOutlets(
+      const outlets = await this.outletService.getNearbyOutlets(
         latitude,
         longitude,
       );
 
-    console.log(
-      `📦 Initial outlets sent → count=${outlets.length}`,
-    );
+      console.log(`📦 Initial outlets sent → count=${outlets.length}`);
 
-    client.emit('outlets.updated', {
-      outlets,
-    });
-  } catch (e) {
-    console.error('❌ Outlet socket init failed', e);
+      client.emit('outlets.updated', {
+        outlets,
+      });
+    } catch (e) {
+      console.error('❌ Outlet socket init failed', e);
+    }
   }
-}
-
 
   /* ================================================= */
   /* ROOM MANAGEMENT                                   */
@@ -115,10 +105,7 @@ export class OutletPublicGateway
   /* WORKING STATUS                                    */
   /* ================================================= */
 
-  emitWorkingStatus(payload: {
-    outletId: string;
-    status: string;
-  }): void {
+  emitWorkingStatus(payload: { outletId: string; status: string }): void {
     this.server
       .to(`outlet:${payload.outletId}`)
       .emit('outlet.working-status', payload);
@@ -128,10 +115,7 @@ export class OutletPublicGateway
   /* CAMERA                                            */
   /* ================================================= */
 
-  emitCameraStatus(payload: {
-    outletId: string;
-    status: 'ON' | 'OFF';
-  }): void {
+  emitCameraStatus(payload: { outletId: string; status: 'ON' | 'OFF' }): void {
     this.server
       .to(`outlet:${payload.outletId}`)
       .emit('outlet.camera-status', payload);

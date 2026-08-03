@@ -133,10 +133,7 @@ export class CustomerProfile {
     });
   }
 
-  changeAvatar(
-    avatarUrl: string,
-    now = new Date(),
-  ): CustomerProfile {
+  changeAvatar(avatarUrl: string, now = new Date()): CustomerProfile {
     return new CustomerProfile({
       ...this,
       avatarUrl,
@@ -172,10 +169,7 @@ export class CustomerProfile {
     }
 
     if (this.email && this.email.length > 150) {
-      throw new ValidationError(
-        'PROFILE_EMAIL_TOO_LONG',
-        'Email too long',
-      );
+      throw new ValidationError('PROFILE_EMAIL_TOO_LONG', 'Email too long');
     }
   }
 }

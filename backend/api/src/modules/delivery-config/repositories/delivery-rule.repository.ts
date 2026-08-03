@@ -61,7 +61,10 @@ export class DeliveryRuleRepository {
     return rows.map((row) => this.toDomain(row));
   }
 
-  async create(rule: DeliveryRule, tx?: PrismaTransaction): Promise<DeliveryRule> {
+  async create(
+    rule: DeliveryRule,
+    tx?: PrismaTransaction,
+  ): Promise<DeliveryRule> {
     const client = tx ?? this.prisma;
     const row = await client.deliveryRule.create({
       data: this.toPrisma(rule),
@@ -69,7 +72,10 @@ export class DeliveryRuleRepository {
     return this.toDomain(row);
   }
 
-  async update(rule: DeliveryRule, tx?: PrismaTransaction): Promise<DeliveryRule> {
+  async update(
+    rule: DeliveryRule,
+    tx?: PrismaTransaction,
+  ): Promise<DeliveryRule> {
     const client = tx ?? this.prisma;
     const row = await client.deliveryRule.update({
       where: { id: rule.id },

@@ -14,24 +14,18 @@ export class OrderRepository {
   /* CREATE (ALWAYS TRANSACTION SAFE)                  */
   /* ================================================= */
 
-  async create(
-    order: Order,
-    tx?: PrismaTransaction,
-  ): Promise<Order> {
+  async create(order: Order, tx?: PrismaTransaction): Promise<Order> {
     if (tx) {
       return this.createInternal(order, tx);
     }
 
-    return this.prisma.$transaction((trx) =>
-      this.createInternal(order, trx),
-    );
+    return this.prisma.$transaction((trx) => this.createInternal(order, trx));
   }
 
   private async createInternal(
     order: Order,
     client: PrismaTransaction,
   ): Promise<Order> {
-
     /* ------------------------------------------------- */
     /* 1️⃣ CREATE (DB generates orderSequence)            */
     /* ------------------------------------------------- */
@@ -91,24 +85,21 @@ export class OrderRepository {
   /* READ (BY ID)                                      */
   /* ================================================= */
 
-async findById(
-  id: string,
-  tx?: PrismaTransaction,
-): Promise<Order | null> {
-  const row = await (tx ?? this.prisma).order.findUnique({
-    where: { id },
-    include: {
-      items: true,
-      customer: {
-        include: {
-          profile: true,
+  async findById(id: string, tx?: PrismaTransaction): Promise<Order | null> {
+    const row = await (tx ?? this.prisma).order.findUnique({
+      where: { id },
+      include: {
+        items: true,
+        customer: {
+          include: {
+            profile: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  return row ? OrderMapper.toDomain(row) : null;
-}
+    return row ? OrderMapper.toDomain(row) : null;
+  }
 
   /* ================================================= */
   /* READ (BY OUTLET)                                  */
@@ -171,10 +162,7 @@ async findById(
   /* UPDATE (OPTIMISTIC LOCKING)                       */
   /* ================================================= */
 
-  async update(
-    order: Order,
-    tx?: PrismaTransaction,
-  ): Promise<Order> {
+  async update(order: Order, tx?: PrismaTransaction): Promise<Order> {
     const client = tx ?? this.prisma;
 
     const result = await client.order.updateMany({
@@ -200,10 +188,7 @@ async findById(
   /* DELETE                                            */
   /* ================================================= */
 
-  async delete(
-    id: string,
-    tx?: PrismaTransaction,
-  ): Promise<void> {
+  async delete(id: string, tx?: PrismaTransaction): Promise<void> {
     await (tx ?? this.prisma).order.delete({
       where: { id },
     });

@@ -5,8 +5,8 @@ import { X, MapPin, Plus, Loader2, Home, Briefcase, Pencil, Trash2, AlertCircle,
 import { AddressService, Address } from "@/features/addresses/address.service";
 import { useLiveLocation } from "@/features/location/hooks/useLiveLocation";
 import { reverseGeocode, forwardGeocode } from "@/features/location/utils/reverseGeocode";
-import { useOutletStore } from "@/features/outlet/outlet.store";
 import { useCartStore } from "@/features/cart/cart.store";
+import { getEffectiveCartOutletName } from "@/features/cart/cart-outlet.util";
 import { useLocationStore } from "@/features/location/location.store";
 import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
 import { validateAddressForCheckout } from "@/features/checkout/validate-address-outlet.util";
@@ -46,7 +46,7 @@ const INITIAL_FORM_STATE = {
 export default function AddressSelectionModal({ isOpen, onClose, onSelect }: AddressModalProps) {
   const cartOutletId = useCartStore((state) => state.cartOutletId);
   const clearCart = useCartStore((state) => state.clear);
-  const cartOutletName = useOutletStore((state) => state.selectedOutlet?.name ?? null);
+  const cartOutletName = useCartStore((state) => state.cartOutletName);
   const { isAuthenticated, sessionChecked } = useCustomerAuthStore();
 
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -222,7 +222,7 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
       const validation = validateAddressForCheckout({
         address: freshAddress,
         cartOutletId,
-        cartOutletName,
+        cartOutletName: cartOutletName ?? getEffectiveCartOutletName(),
       });
 
       if (validation.status === "not_serviceable") {

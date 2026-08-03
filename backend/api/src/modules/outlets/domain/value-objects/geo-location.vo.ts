@@ -15,11 +15,9 @@ export class GeoLocation {
 
   static create(lat: number, lng: number): GeoLocation {
     if (lat < -90 || lat > 90) {
-      throw new ValidationError(
-        'OUTLET_INVALID_LATITUDE',
-        'Invalid latitude',
-        { latitude: lat },
-      );
+      throw new ValidationError('OUTLET_INVALID_LATITUDE', 'Invalid latitude', {
+        latitude: lat,
+      });
     }
 
     if (lng < -180 || lng > 180) {
@@ -53,10 +51,7 @@ export class GeoLocation {
   /**
    * Create a new GeoLocation with partial updates
    */
-  withUpdates(params: {
-    latitude?: number;
-    longitude?: number;
-  }): GeoLocation {
+  withUpdates(params: { latitude?: number; longitude?: number }): GeoLocation {
     return GeoLocation.create(
       params.latitude ?? this.latitude,
       params.longitude ?? this.longitude,
@@ -66,8 +61,7 @@ export class GeoLocation {
   equals(other?: GeoLocation): boolean {
     if (!other) return false;
     return (
-      this.latitude === other.latitude &&
-      this.longitude === other.longitude
+      this.latitude === other.latitude && this.longitude === other.longitude
     );
   }
 

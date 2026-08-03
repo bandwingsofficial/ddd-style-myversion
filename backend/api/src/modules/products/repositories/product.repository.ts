@@ -34,190 +34,171 @@ export class ProductRepository {
   /* READ – LIST                                      */
   /* ================================================= */
 
-async findAll(
-  context: 'admin' | 'public' = 'public',
-  query?: PublicProductQueryDto,
-  tx?: PrismaTransaction,
-): Promise<{
-  product: Product;
-  category: { id: string; name: string };
-}[]> {
-  const client = tx ?? this.prisma;
+  async findAll(
+    context: 'admin' | 'public' = 'public',
+    query?: PublicProductQueryDto,
+    tx?: PrismaTransaction,
+  ): Promise<
+    {
+      product: Product;
+      category: { id: string; name: string };
+    }[]
+  > {
+    const client = tx ?? this.prisma;
 
-  const page = query?.page ?? 1;
-  const limit = query?.limit ?? 20;
-  const skip = (page - 1) * limit;
+    const page = query?.page ?? 1;
+    const limit = query?.limit ?? 20;
+    const skip = (page - 1) * limit;
 
-  const where: Prisma.ProductWhereInput = {
-    ...(context === 'public' && {
+    const where: Prisma.ProductWhereInput = {
+      ...(context === 'public' && {
+        status: ProductStatusMapper.toPrisma(ProductStatus.ACTIVE),
+        isAvailable: true,
+      }),
+
+      ...(query?.categoryId && {
+        categoryId: query.categoryId,
+      }),
+
+      ...(query?.search && {
+        productName: {
+          contains: query.search,
+          mode: 'insensitive',
+        },
+      }),
+
+      ...(query?.trending && {
+        isTrending: true, // adjust if your field name differs
+      }),
+    };
+
+    const rows = await client.product.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+      include: {
+        galleryImages: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    return rows.map((row) => ({
+      product: this.toDomain(row),
+      category: row.category,
+    }));
+  }
+  async findAllWithCategory(query: PublicProductQuery = {}): Promise<
+    {
+      product: Product;
+      category: { id: string; name: string };
+    }[]
+  > {
+    const { categoryId, search, trending, page = 1, limit = 20 } = query;
+
+    const where: Prisma.ProductWhereInput = {
       status: ProductStatusMapper.toPrisma(ProductStatus.ACTIVE),
       isAvailable: true,
-    }),
 
-    ...(query?.categoryId && {
-      categoryId: query.categoryId,
-    }),
+      ...(categoryId && { categoryId }),
 
-    ...(query?.search && {
-      productName: {
-        contains: query.search,
-        mode: 'insensitive',
-      },
-    }),
+      ...(typeof trending === 'boolean' && {
+        isTrending: trending,
+      }),
 
-    ...(query?.trending && {
-      isTrending: true, // adjust if your field name differs
-    }),
-  };
+      ...(search && {
+        productName: {
+          contains: search,
+          mode: 'insensitive',
+        },
+      }),
+    };
 
-  const rows = await client.product.findMany({
-    where,
-    skip,
-    take: limit,
-    orderBy: [
-      { sortOrder: 'asc' },
-      { createdAt: 'desc' },
-    ],
-    include: {
-      galleryImages: true,
-      category: {
-        select: {
-          id: true,
-          name: true,
+    const rows = await this.prisma.product.findMany({
+      where,
+
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+
+      skip: (page - 1) * limit,
+      take: limit,
+
+      include: {
+        galleryImages: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  return rows.map((row) => ({
-    product: this.toDomain(row),
-    category: row.category,
-  }));
-}
-  async findAllWithCategory(
-  query: PublicProductQuery = {},
-): Promise<
-  {
+    return rows.map((row) => ({
+      product: this.toDomain(row),
+      category: row.category,
+    }));
+  }
+
+  async findBySlugWithCategory(slug: string): Promise<{
     product: Product;
     category: { id: string; name: string };
-  }[]
-> {
-  const {
-    categoryId,
-    search,
-    trending,
-    page = 1,
-    limit = 20,
-  } = query;
-
-  const where: Prisma.ProductWhereInput = {
-    status: ProductStatusMapper.toPrisma(ProductStatus.ACTIVE),
-    isAvailable: true,
-
-    ...(categoryId && { categoryId }),
-
-    ...(typeof trending === 'boolean' && {
-      isTrending: trending,
-    }),
-
-    ...(search && {
-      productName: {
-        contains: search,
-        mode: 'insensitive',
-      },
-    }),
-  };
-
-  const rows = await this.prisma.product.findMany({
-    where,
-
-    orderBy: [
-      { sortOrder: 'asc' },
-      { createdAt: 'desc' },
-    ],
-
-    skip: (page - 1) * limit,
-    take: limit,
-
-    include: {
-      galleryImages: true,
-      category: {
-        select: {
-          id: true,
-          name: true,
+  } | null> {
+    const row = await this.prisma.product.findUnique({
+      where: { slug },
+      include: {
+        galleryImages: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  return rows.map((row) => ({
-    product: this.toDomain(row),
-    category: row.category,
-  }));
-}
+    if (!row) return null;
 
-async findBySlugWithCategory(
-  slug: string,
-): Promise<{
-  product: Product;
-  category: { id: string; name: string };
-} | null> {
-  const row = await this.prisma.product.findUnique({
-    where: { slug },
-    include: {
-      galleryImages: true,
-      category: {
-        select: {
-          id: true,
-          name: true,
+    return {
+      product: this.toDomain(row),
+      category: row.category,
+    };
+  }
+
+  async findByIdWithCategory(id: string): Promise<{
+    product: Product;
+    category: { id: string; name: string };
+  } | null> {
+    const row = await this.prisma.product.findUnique({
+      where: { id },
+      include: {
+        galleryImages: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  if (!row) return null;
+    if (!row) return null;
 
-  return {
-    product: this.toDomain(row),
-    category: row.category,
-  };
-}
-
-async findByIdWithCategory(
-  id: string,
-): Promise<{
-  product: Product;
-  category: { id: string; name: string };
-} | null> {
-  const row = await this.prisma.product.findUnique({
-    where: { id },
-    include: {
-      galleryImages: true,
-      category: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-    },
-  });
-
-  if (!row) return null;
-
-  return {
-    product: this.toDomain(row),
-    category: row.category,
-  };
-}
+    return {
+      product: this.toDomain(row),
+      category: row.category,
+    };
+  }
 
   /* ================================================= */
   /* READ – SINGLE                                    */
   /* ================================================= */
 
-  async findById(
-    id: string,
-    tx?: PrismaTransaction,
-  ): Promise<Product | null> {
+  async findById(id: string, tx?: PrismaTransaction): Promise<Product | null> {
     const row = await (tx ?? this.prisma).product.findUnique({
       where: { id },
       include: { galleryImages: true },
@@ -291,12 +272,10 @@ async findByIdWithCategory(
         updatedAt: product.updatedAt,
 
         galleryImages: {
-          create: product.images.getGallery().map(
-            (imageUrl, index) => ({
-              imageUrl,
-              sortOrder: index,
-            }),
-          ),
+          create: product.images.getGallery().map((imageUrl, index) => ({
+            imageUrl,
+            sortOrder: index,
+          })),
         },
       } satisfies Prisma.ProductUncheckedCreateInput,
       include: { galleryImages: true },
@@ -356,7 +335,7 @@ async findByIdWithCategory(
   async updateIngredients(
     product: Product,
     tx?: PrismaTransaction,
-  ): Promise<Product> { 
+  ): Promise<Product> {
     const client = tx ?? this.prisma;
     const row = await client.product.update({
       where: { id: product.id },
@@ -372,7 +351,6 @@ async findByIdWithCategory(
 
     return this.toDomain(row);
   }
-
 
   /* ================================================= */
   /* GALLERY RECORDS                                   */
@@ -559,38 +537,33 @@ async findByIdWithCategory(
     return this.toDomain(row);
   }
 
-async updateImages(
-  product: Product,
-  tx: PrismaTransaction,
-): Promise<Product> {
-  await tx.productImage.deleteMany({
-    where: { productId: product.id },
-  });
+  async updateImages(
+    product: Product,
+    tx: PrismaTransaction,
+  ): Promise<Product> {
+    await tx.productImage.deleteMany({
+      where: { productId: product.id },
+    });
 
-  const row = await tx.product.update({
-    where: { id: product.id },
-    data: {
-      mainImage: product.images.getMain(),
-      updatedAt: product.updatedAt,
-      galleryImages: {
-        create: product.images.getGallery().map(
-          (imageUrl, index) => ({
+    const row = await tx.product.update({
+      where: { id: product.id },
+      data: {
+        mainImage: product.images.getMain(),
+        updatedAt: product.updatedAt,
+        galleryImages: {
+          create: product.images.getGallery().map((imageUrl, index) => ({
             imageUrl,
             sortOrder: index,
-          }),
-        ),
+          })),
+        },
       },
-    },
-    include: { galleryImages: true },
-  });
+      include: { galleryImages: true },
+    });
 
-  return this.toDomain(row);
-}
+    return this.toDomain(row);
+  }
 
-  async hardDelete(
-    productId: string,
-    tx?: PrismaTransaction,
-  ): Promise<void> {
+  async hardDelete(productId: string, tx?: PrismaTransaction): Promise<void> {
     const client = tx ?? this.prisma;
 
     await client.product.delete({
@@ -734,43 +707,43 @@ async updateImages(
     });
 
     return this.toDomain(row);
-  } 
+  }
 
   async updateAvailability(
-  product: Product,
-  tx?: PrismaTransaction,
-): Promise<Product> {
-  const client = tx ?? this.prisma;
+    product: Product,
+    tx?: PrismaTransaction,
+  ): Promise<Product> {
+    const client = tx ?? this.prisma;
 
-  const row = await client.product.update({
-    where: { id: product.id },
-    data: {
-      isAvailable: product.isAvailable,
-      updatedAt: product.updatedAt,
-    },
-    include: { galleryImages: true },
-  });
+    const row = await client.product.update({
+      where: { id: product.id },
+      data: {
+        isAvailable: product.isAvailable,
+        updatedAt: product.updatedAt,
+      },
+      include: { galleryImages: true },
+    });
 
-  return this.toDomain(row);
-}
+    return this.toDomain(row);
+  }
 
-async updateSortOrder(
-  product: Product,
-  tx?: PrismaTransaction,
-): Promise<Product> {
-  const client = tx ?? this.prisma;
+  async updateSortOrder(
+    product: Product,
+    tx?: PrismaTransaction,
+  ): Promise<Product> {
+    const client = tx ?? this.prisma;
 
-  const row = await client.product.update({
-    where: { id: product.id },
-    data: {
-      sortOrder: product.sortOrder,
-      updatedAt: product.updatedAt,
-    },
-    include: { galleryImages: true },
-  });
+    const row = await client.product.update({
+      where: { id: product.id },
+      data: {
+        sortOrder: product.sortOrder,
+        updatedAt: product.updatedAt,
+      },
+      include: { galleryImages: true },
+    });
 
-  return this.toDomain(row);
-}
+    return this.toDomain(row);
+  }
 
   async findPaginatedAdmin(params: {
     page: number;
@@ -799,7 +772,11 @@ async updateSortOrder(
             },
           },
         },
-        orderBy: [{ status: 'asc' }, { sortOrder: 'asc' }, { createdAt: 'desc' }],
+        orderBy: [
+          { status: 'asc' },
+          { sortOrder: 'asc' },
+          { createdAt: 'desc' },
+        ],
         skip: (params.page - 1) * params.limit,
         take: params.limit,
       }),
@@ -980,9 +957,7 @@ async updateSortOrder(
 
       price: ProductPrice.create(
         Number(row.originalPrice),
-        row.discountPrice !== null
-          ? Number(row.discountPrice)
-          : undefined,
+        row.discountPrice !== null ? Number(row.discountPrice) : undefined,
       ),
 
       images: ProductImages.create(
@@ -997,10 +972,7 @@ async updateSortOrder(
       unitValue: row.unitValue,
       unitType: UnitTypeMapper.toDomain(row.unitType),
 
-      ratingAverage:
-        row.ratingAverage !== null
-          ? Number(row.ratingAverage)
-          : 0,
+      ratingAverage: row.ratingAverage !== null ? Number(row.ratingAverage) : 0,
 
       ratingCount: row.ratingCount ?? 0,
 

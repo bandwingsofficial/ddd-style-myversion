@@ -15,9 +15,7 @@ export class SuperAdminProfileMapper {
   /* TO DOMAIN                                        */
   /* ================================================= */
 
-  static toDomain(
-    row: PrismaSuperAdminProfile,
-  ): SuperAdminProfile {
+  static toDomain(row: PrismaSuperAdminProfile): SuperAdminProfile {
     return SuperAdminProfile.rehydrate({
       id: row.id,
       superAdminId: row.superAdminId,
@@ -38,9 +36,7 @@ export class SuperAdminProfileMapper {
   /* TO PRISMA (CREATE)                               */
   /* ================================================= */
 
-  static toCreateInput(
-    profile: SuperAdminProfile,
-  ) {
+  static toCreateInput(profile: SuperAdminProfile) {
     return {
       id: profile.id,
       superAdminId: profile.superAdminId,
@@ -61,9 +57,7 @@ export class SuperAdminProfileMapper {
   /* TO PRISMA (UPDATE)                               */
   /* ================================================= */
 
-  static toUpdateInput(
-    profile: SuperAdminProfile,
-  ) {
+  static toUpdateInput(profile: SuperAdminProfile) {
     return {
       fullName: profile.fullName,
       avatarUrl: profile.avatarUrl ?? null,

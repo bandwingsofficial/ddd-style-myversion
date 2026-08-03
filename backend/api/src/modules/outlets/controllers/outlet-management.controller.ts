@@ -35,29 +35,24 @@ import { randomUUID } from 'crypto';
 @Controller('outlets')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class OutletManagementController {
-  constructor(
-    private readonly orchestrator: OutletOrchestratorService,
-  ) {}
-
-
-
+  constructor(private readonly orchestrator: OutletOrchestratorService) {}
 
   /* ================================================= */
-/* OUTLET – LIST ALL (SUPER ADMIN ONLY)               */
-/* ================================================= */
+  /* OUTLET – LIST ALL (SUPER ADMIN ONLY)               */
+  /* ================================================= */
 
-@Get()
-@Roles(ActorType.SUPER_ADMIN)
-async getAllOutlets() {
-  const data = await this.orchestrator.getAllOutlets();
+  @Get()
+  @Roles(ActorType.SUPER_ADMIN)
+  async getAllOutlets() {
+    const data = await this.orchestrator.getAllOutlets();
 
-  return {
-    success: true,
-    code: 'OUTLETS_FETCHED',
-    message: 'Outlets fetched successfully',
-    data,
-  };
-}
+    return {
+      success: true,
+      code: 'OUTLETS_FETCHED',
+      message: 'Outlets fetched successfully',
+      data,
+    };
+  }
 
   /* ================================================= */
   /* OUTLET – READS                                    */
@@ -81,28 +76,24 @@ async getAllOutlets() {
 
   @Post()
   @Roles(ActorType.SUPER_ADMIN)
-  async createOutlet(
-    @Body() dto: CreateOutletDto,
-    @CurrentUser() user,
-  ) {
+  async createOutlet(@Body() dto: CreateOutletDto, @CurrentUser() user) {
     const location =
-      dto.latitude !== undefined &&
-      dto.longitude !== undefined
+      dto.latitude !== undefined && dto.longitude !== undefined
         ? GeoLocation.create(dto.latitude, dto.longitude)
         : undefined;
 
-const outlet = Outlet.createNew({
-  id: randomUUID(),
-  name: dto.name,
-  branch: dto.branch,
-  address: dto.address,
-  pincode: dto.pincode,
-  location,
-  deliveryRadiusKm: dto.deliveryRadiusKm,
-  cameraEnabled: dto.cameraEnabled,
-  isCentral: dto.isCentral,
-  createdBy: user.actorId,
-});
+    const outlet = Outlet.createNew({
+      id: randomUUID(),
+      name: dto.name,
+      branch: dto.branch,
+      address: dto.address,
+      pincode: dto.pincode,
+      location,
+      deliveryRadiusKm: dto.deliveryRadiusKm,
+      cameraEnabled: dto.cameraEnabled,
+      isCentral: dto.isCentral,
+      createdBy: user.actorId,
+    });
 
     const data = await this.orchestrator.createOutlet({
       outlet,
@@ -186,10 +177,7 @@ const outlet = Outlet.createNew({
 
   @Post(':outletId/enable')
   @Roles(ActorType.SUPER_ADMIN)
-  async enableOutlet(
-    @Param('outletId') outletId: string,
-    @CurrentUser() user,
-  ) {
+  async enableOutlet(@Param('outletId') outletId: string, @CurrentUser() user) {
     const data = await this.orchestrator.enableOutlet({
       outletId,
       adminId: user.actorId,
@@ -338,9 +326,7 @@ const outlet = Outlet.createNew({
 
   @Get(':outletId/products')
   @Roles(ActorType.SUPER_ADMIN, ActorType.OUTLET_USER)
-  async getOutletProducts(
-    @Param('outletId') outletId: string,
-  ) {
+  async getOutletProducts(@Param('outletId') outletId: string) {
     const data = await this.orchestrator.getOutletProducts(outletId);
 
     return {

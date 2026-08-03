@@ -11,5 +11,4 @@ export const UploadFolders = {
   TEMP: 'temp',
 } as const;
 
-export type UploadFolder =
-  (typeof UploadFolders)[keyof typeof UploadFolders];
+export type UploadFolder = (typeof UploadFolders)[keyof typeof UploadFolders];

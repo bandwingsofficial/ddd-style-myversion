@@ -40,17 +40,11 @@ export class CategoryResponseMapper {
     };
   }
 
-  async toResponseList(
-    categories: Category[],
-  ): Promise<CategoryResponse[]> {
-    return Promise.all(
-      categories.map((category) => this.toResponse(category)),
-    );
+  async toResponseList(categories: Category[]): Promise<CategoryResponse[]> {
+    return Promise.all(categories.map((category) => this.toResponse(category)));
   }
 
-  async toPublicResponse(
-    category: Category,
-  ): Promise<CategoryPublicResponse> {
+  async toPublicResponse(category: Category): Promise<CategoryPublicResponse> {
     return {
       id: category.id,
       name: category.name,

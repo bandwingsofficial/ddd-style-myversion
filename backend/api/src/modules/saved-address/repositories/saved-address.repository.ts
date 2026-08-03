@@ -71,14 +71,13 @@ export class SavedAddressRepository {
     customerId: string,
     tx?: PrismaTransaction,
   ): Promise<SavedAddress | null> {
-    const row =
-      await (tx ?? this.prisma).customerSavedAddress.findFirst({
-        where: {
-          id,
-          customerId,
-          isDeleted: false,
-        },
-      });
+    const row = await (tx ?? this.prisma).customerSavedAddress.findFirst({
+      where: {
+        id,
+        customerId,
+        isDeleted: false,
+      },
+    });
 
     return row ? this.toDomain(row) : null;
   }
@@ -88,15 +87,14 @@ export class SavedAddressRepository {
     customerId: string,
     tx?: PrismaTransaction,
   ): Promise<boolean> {
-    const address =
-      await (tx ?? this.prisma).customerSavedAddress.findFirst({
-        where: {
-          id,
-          customerId,
-          isDeleted: false,
-        },
-        select: { id: true },
-      });
+    const address = await (tx ?? this.prisma).customerSavedAddress.findFirst({
+      where: {
+        id,
+        customerId,
+        isDeleted: false,
+      },
+      select: { id: true },
+    });
 
     return !!address;
   }
@@ -109,16 +107,15 @@ export class SavedAddressRepository {
     customerId: string,
     tx?: PrismaTransaction,
   ): Promise<SavedAddress[]> {
-    const rows =
-      await (tx ?? this.prisma).customerSavedAddress.findMany({
-        where: {
-          customerId,
-          isDeleted: false,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
+    const rows = await (tx ?? this.prisma).customerSavedAddress.findMany({
+      where: {
+        customerId,
+        isDeleted: false,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
 
     return rows.map((row) => this.toDomain(row));
   }
@@ -132,14 +129,13 @@ export class SavedAddressRepository {
     type: SavedAddressType,
     tx?: PrismaTransaction,
   ): Promise<SavedAddress | null> {
-    const row =
-      await (tx ?? this.prisma).customerSavedAddress.findFirst({
-        where: {
-          customerId,
-          type: SavedAddressTypeMapper.toPrisma(type),
-          isDeleted: false,
-        },
-      });
+    const row = await (tx ?? this.prisma).customerSavedAddress.findFirst({
+      where: {
+        customerId,
+        type: SavedAddressTypeMapper.toPrisma(type),
+        isDeleted: false,
+      },
+    });
 
     return row ? this.toDomain(row) : null;
   }
@@ -149,14 +145,13 @@ export class SavedAddressRepository {
     type: SavedAddressType,
     tx?: PrismaTransaction,
   ): Promise<SavedAddress | null> {
-    const row =
-      await (tx ?? this.prisma).customerSavedAddress.findFirst({
-        where: {
-          customerId,
-          type: SavedAddressTypeMapper.toPrisma(type),
-          isDeleted: true,
-        },
-      });
+    const row = await (tx ?? this.prisma).customerSavedAddress.findFirst({
+      where: {
+        customerId,
+        type: SavedAddressTypeMapper.toPrisma(type),
+        isDeleted: true,
+      },
+    });
 
     return row ? this.toDomain(row) : null;
   }

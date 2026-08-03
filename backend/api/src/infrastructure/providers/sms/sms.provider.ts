@@ -10,9 +10,9 @@ export class SmsProvider {
 
   async sendOtp(phone: string, otp: string): Promise<void> {
     if (process.env.SMS_ENABLED !== 'true') {
-  this.logger.log(`[DEV SMS] ${phone} → OTP: ${otp}`);
-  return;
-}
+      this.logger.log(`[DEV SMS] ${phone} → OTP: ${otp}`);
+      return;
+    }
 
     const formattedPhone = this.formatPhone(phone);
 
@@ -20,7 +20,7 @@ export class SmsProvider {
 
     try {
       const response = await firstValueFrom(
-        this.httpService.get(process.env.SMS_API_URL!, {
+        this.httpService.get(process.env.SMS_API_URL, {
           params: {
             user: process.env.SMS_USERNAME,
             pass: process.env.SMS_PASSWORD,
@@ -51,9 +51,7 @@ export class SmsProvider {
         throw new Error(result);
       }
 
-      const messageId = result.startsWith('S.')
-        ? result.substring(2)
-        : result;
+      const messageId = result.startsWith('S.') ? result.substring(2) : result;
 
       this.logger.log(
         `SMS successfully sent to ${formattedPhone}. MessageId: ${messageId}`,

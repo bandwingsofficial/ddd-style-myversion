@@ -84,26 +84,6 @@ export class CheckoutService {
     }
   }
 
-  private async assertOutletServesLocation(params: {
-    outletId: string;
-    latitude: number;
-    longitude: number;
-  }): Promise<void> {
-    const nearby = await this.outletService.getNearbyOutlets(
-      params.latitude,
-      params.longitude,
-    );
-
-    const serves = nearby.some((entry) => entry.outlet.id === params.outletId);
-
-    if (!serves) {
-      throw new ValidationError(
-        'LOCATION_NOT_SERVICEABLE',
-        'The selected outlet does not deliver to this address. Please choose a nearer outlet or update your delivery location.',
-      );
-    }
-  }
-
   private assertAddressResolvedOutlet(
     address: {
       resolvedOutletId?: string | null;
@@ -170,177 +150,14 @@ export class CheckoutService {
   /* GET CHECKOUT SUMMARY                              */
   /* ================================================= */
 
-async getCheckoutSummary(params: {
-  customerId: string;
-  outletId: string; // 🔥 REQUIRED
-  savedAddressId: string;
-}) {
-  this.validateParams(params);
+  async getCheckoutSummary(params: {
+    customerId: string;
+    outletId: string; // 🔥 REQUIRED
+    savedAddressId: string;
+  }) {
+    this.validateParams(params);
 
-  /* 🔥 outlet-aware cart fetch */
-  const cart = await this.cartService.getActiveCart({
-    customerId: params.customerId,
-    outletId: params.outletId,
-  });
-
-  if (!cart || !cart.hasItems()) {
-    throw new ValidationError('EMPTY_CART', 'Cart is empty');
-  }
-
-  this.assertCartOutletMatch(cart.outletId, params.outletId, 'checkout.summary');
-
-  const address = await this.savedAddressService.getById({
-    customerId: params.customerId,
-    savedAddressId: params.savedAddressId,
-  });
-
-  const requestedOutletName = await this.resolveOutletName(params.outletId);
-  this.assertAddressResolvedOutlet(
-    address,
-    params.outletId,
-    requestedOutletName,
-  );
-
-  if (address.latitude != null && address.longitude != null) {
-    await this.assertOutletServesLocation({
-      outletId: params.outletId,
-      latitude: address.latitude,
-      longitude: address.longitude,
-    });
-  }
-
-  const cartResponse = await this.cartResponseMapper.toResponse(cart);
-
-  if (!cartResponse) {
-    throw new ValidationError('EMPTY_CART', 'Cart is empty');
-  }
-
-  return {
-    address: {
-      id: address.id,
-      label: address.label,
-      addressText: address.addressText,
-      latitude: address.latitude ?? undefined,
-      longitude: address.longitude ?? undefined,
-    },
-    items: cartResponse.items.map((item) => ({
-      productId: item.productId,
-      productName: item.productName,
-      productImage: item.productImage,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      discountPrice: item.discountPrice,
-      lineTotal: item.lineTotal,
-    })),
-    subtotal: cartResponse.subtotal,
-    discount: cartResponse.discount,
-    netSubtotal: cartResponse.netSubtotal,
-    afterDiscountTotal: cartResponse.afterDiscountTotal,
-    deliveryFee: cartResponse.deliveryFee,
-    grandTotal: cartResponse.grandTotal,
-    itemCount: cartResponse.itemCount,
-    deliveryRuleId: cartResponse.deliveryRuleId,
-    deliveryRuleName: cartResponse.deliveryRuleName,
-    matchedDeliveryRuleId: cartResponse.matchedDeliveryRuleId,
-    matchedDeliveryRuleName: cartResponse.matchedDeliveryRuleName,
-    minimumOrderAmount: cartResponse.minimumOrderAmount,
-    isFreeDelivery: cartResponse.isFreeDelivery,
-    freeDeliveryThreshold: cartResponse.freeDeliveryThreshold,
-    remainingForFreeDelivery: cartResponse.remainingForFreeDelivery,
-    amountToFreeDelivery: cartResponse.amountToFreeDelivery,
-    remainingAmountForFreeDelivery: cartResponse.remainingAmountForFreeDelivery,
-    remainingAmountForNextRule: cartResponse.remainingAmountForNextRule,
-    currency: cartResponse.currency,
-  };
-}
-
-async getActiveCheckout(params: {
-  customerId: string;
-  outletId: string;
-}): Promise<{
-  orderId: string;
-  orderNumber: string;
-  status: string;
-  grandTotal: number;
-  currency: string;
-} | null> {
-  const order = await this.prisma.order.findFirst({
-    where: {
-      customerId: params.customerId,
-      outletId: params.outletId,
-      status: OrderStatus.PAYMENT_PENDING,
-    },
-    orderBy: { createdAt: 'desc' },
-    select: {
-      id: true,
-      orderNumber: true,
-      status: true,
-      grandTotal: true,
-      currency: true,
-    },
-  });
-
-  if (!order) {
-    return null;
-  }
-
-  return {
-    orderId: order.id,
-    orderNumber: order.orderNumber ?? '',
-    status: order.status,
-    grandTotal: Number(order.grandTotal),
-    currency: order.currency ?? 'INR',
-  };
-}
-
-/* ================================================= */
-/* START CHECKOUT (GATEWAY STYLE)                    */
-/* ================================================= */
-
-async startCheckout(params: {
-  customerId: string;
-  outletId: string;
-  savedAddressId: string;
-}): Promise<CheckoutStartResult> {
-  this.validateParams(params);
-
-  const checkoutAddress = await this.savedAddressService.getById({
-    customerId: params.customerId,
-    savedAddressId: params.savedAddressId,
-  });
-
-  const requestedOutletName = await this.resolveOutletName(params.outletId);
-  this.assertAddressResolvedOutlet(
-    checkoutAddress,
-    params.outletId,
-    requestedOutletName,
-  );
-
-  if (
-    checkoutAddress.latitude != null &&
-    checkoutAddress.longitude != null
-  ) {
-    await this.assertOutletServesLocation({
-      outletId: params.outletId,
-      latitude: checkoutAddress.latitude,
-      longitude: checkoutAddress.longitude,
-    });
-  }
-
-  const customerContact = await this.loadCustomerCheckoutContact(
-    params.customerId,
-  );
-
-  const pendingOrder = await this.prisma.order.findFirst({
-    where: {
-      customerId: params.customerId,
-      outletId: params.outletId,
-      status: OrderStatus.PAYMENT_PENDING,
-    },
-    orderBy: { createdAt: 'desc' },
-  });
-
-  if (pendingOrder) {
+    /* 🔥 outlet-aware cart fetch */
     const cart = await this.cartService.getActiveCart({
       customerId: params.customerId,
       outletId: params.outletId,
@@ -353,7 +170,7 @@ async startCheckout(params: {
     this.assertCartOutletMatch(
       cart.outletId,
       params.outletId,
-      'checkout.startCheckout.pending',
+      'checkout.summary',
     );
 
     const address = await this.savedAddressService.getById({
@@ -361,36 +178,139 @@ async startCheckout(params: {
       savedAddressId: params.savedAddressId,
     });
 
-    const syncedOrder = await this.orderOrchestrator.resyncPendingOrderFromCart({
-      orderId: pendingOrder.id,
-      cart,
+    const requestedOutletName = await this.resolveOutletName(params.outletId);
+    this.assertAddressResolvedOutlet(
       address,
-    });
+      params.outletId,
+      requestedOutletName,
+    );
 
-    const paymentResult = await this.paymentOrchestrator.createPayment({
-      orderId: syncedOrder.id,
-    });
+    const cartResponse = await this.cartResponseMapper.toResponse(cart);
 
-    return this.buildCheckoutStartResult({
-      order: syncedOrder,
-      paymentId: paymentResult.payment.id,
-      razorpayOrderId: paymentResult.razorpayOrderId,
-      amountInPaise: paymentResult.amountInPaise,
-      isRetry: true,
-      customerContact,
-    });
+    if (!cartResponse) {
+      throw new ValidationError('EMPTY_CART', 'Cart is empty');
+    }
+
+    return {
+      address: {
+        id: address.id,
+        label: address.label,
+        addressText: address.addressText,
+        latitude: address.latitude ?? undefined,
+        longitude: address.longitude ?? undefined,
+      },
+      items: cartResponse.items.map((item) => ({
+        productId: item.productId,
+        productName: item.productName,
+        productImage: item.productImage,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        discountPrice: item.discountPrice,
+        lineTotal: item.lineTotal,
+      })),
+      subtotal: cartResponse.subtotal,
+      discount: cartResponse.discount,
+      netSubtotal: cartResponse.netSubtotal,
+      afterDiscountTotal: cartResponse.afterDiscountTotal,
+      deliveryFee: cartResponse.deliveryFee,
+      grandTotal: cartResponse.grandTotal,
+      itemCount: cartResponse.itemCount,
+      deliveryRuleId: cartResponse.deliveryRuleId,
+      deliveryRuleName: cartResponse.deliveryRuleName,
+      matchedDeliveryRuleId: cartResponse.matchedDeliveryRuleId,
+      matchedDeliveryRuleName: cartResponse.matchedDeliveryRuleName,
+      minimumOrderAmount: cartResponse.minimumOrderAmount,
+      isFreeDelivery: cartResponse.isFreeDelivery,
+      freeDeliveryThreshold: cartResponse.freeDeliveryThreshold,
+      remainingForFreeDelivery: cartResponse.remainingForFreeDelivery,
+      amountToFreeDelivery: cartResponse.amountToFreeDelivery,
+      remainingAmountForFreeDelivery:
+        cartResponse.remainingAmountForFreeDelivery,
+      remainingAmountForNextRule: cartResponse.remainingAmountForNextRule,
+      currency: cartResponse.currency,
+    };
   }
 
-  const order = await this.prisma.$transaction(
-    async (tx: PrismaTransaction) => {
+  async getActiveCheckout(params: {
+    customerId: string;
+    outletId: string;
+  }): Promise<{
+    orderId: string;
+    orderNumber: string;
+    status: string;
+    grandTotal: number;
+    currency: string;
+  } | null> {
+    const order = await this.prisma.order.findFirst({
+      where: {
+        customerId: params.customerId,
+        outletId: params.outletId,
+        status: OrderStatus.PAYMENT_PENDING,
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        orderNumber: true,
+        status: true,
+        grandTotal: true,
+        currency: true,
+      },
+    });
 
-      const cart = await this.cartService.getActiveCart(
-        {
-          customerId: params.customerId,
-          outletId: params.outletId,
-        },
-        tx,
-      );
+    if (!order) {
+      return null;
+    }
+
+    return {
+      orderId: order.id,
+      orderNumber: order.orderNumber ?? '',
+      status: order.status,
+      grandTotal: Number(order.grandTotal),
+      currency: order.currency ?? 'INR',
+    };
+  }
+
+  /* ================================================= */
+  /* START CHECKOUT (GATEWAY STYLE)                    */
+  /* ================================================= */
+
+  async startCheckout(params: {
+    customerId: string;
+    outletId: string;
+    savedAddressId: string;
+  }): Promise<CheckoutStartResult> {
+    this.validateParams(params);
+
+    const checkoutAddress = await this.savedAddressService.getById({
+      customerId: params.customerId,
+      savedAddressId: params.savedAddressId,
+    });
+
+    const requestedOutletName = await this.resolveOutletName(params.outletId);
+    this.assertAddressResolvedOutlet(
+      checkoutAddress,
+      params.outletId,
+      requestedOutletName,
+    );
+
+    const customerContact = await this.loadCustomerCheckoutContact(
+      params.customerId,
+    );
+
+    const pendingOrder = await this.prisma.order.findFirst({
+      where: {
+        customerId: params.customerId,
+        outletId: params.outletId,
+        status: OrderStatus.PAYMENT_PENDING,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (pendingOrder) {
+      const cart = await this.cartService.getActiveCart({
+        customerId: params.customerId,
+        outletId: params.outletId,
+      });
 
       if (!cart || !cart.hasItems()) {
         throw new ValidationError('EMPTY_CART', 'Cart is empty');
@@ -399,95 +319,135 @@ async startCheckout(params: {
       this.assertCartOutletMatch(
         cart.outletId,
         params.outletId,
-        'checkout.startCheckout.create',
+        'checkout.startCheckout.pending',
       );
 
-      await this.ensureNoActiveOrder(
-        params.customerId,
-        params.outletId,
-        tx,
-      );
+      const address = await this.savedAddressService.getById({
+        customerId: params.customerId,
+        savedAddressId: params.savedAddressId,
+      });
 
-      if (cart.status === CartStatus.LOCKED) {
-        throw new ValidationError(
-          'CHECKOUT_ALREADY_IN_PROGRESS',
-          'Checkout already started for this cart',
-        );
-      }
-
-      const lockedCart = await this.cartService.lockCart(
-        {
-          customerId: params.customerId,
-          outletId: params.outletId,
-        },
-        tx,
-      );
-
-      const address = await this.savedAddressService.getById(
-        {
-          customerId: params.customerId,
-          savedAddressId: params.savedAddressId,
-        },
-        tx,
-      );
-
-      return this.orderOrchestrator.createOrderFromCart(
-        {
-          cart: lockedCart,
+      const syncedOrder =
+        await this.orderOrchestrator.resyncPendingOrderFromCart({
+          orderId: pendingOrder.id,
+          cart,
           address,
-        },
-        tx,
-      );
-    },
-  );
+        });
 
-  traceOutletLifecycle('checkout.startCheckout.orderCreated', {
-    requestedOutletId: params.outletId,
-    orderOutletId: order.outletId,
-    orderId: order.id,
-    customerId: params.customerId,
-  });
+      const paymentResult = await this.paymentOrchestrator.createPayment({
+        orderId: syncedOrder.id,
+      });
 
-  /* ================================================= */
-  /* 2️⃣ CREATE PAYMENT SESSION                         */
-  /* ================================================= */
+      return this.buildCheckoutStartResult({
+        order: syncedOrder,
+        paymentId: paymentResult.payment.id,
+        razorpayOrderId: paymentResult.razorpayOrderId,
+        amountInPaise: paymentResult.amountInPaise,
+        isRetry: true,
+        customerContact,
+      });
+    }
 
-  try {
+    const order = await this.prisma.$transaction(
+      async (tx: PrismaTransaction) => {
+        const cart = await this.cartService.getActiveCart(
+          {
+            customerId: params.customerId,
+            outletId: params.outletId,
+          },
+          tx,
+        );
 
-    const paymentResult = await this.paymentOrchestrator.createPayment({
+        if (!cart || !cart.hasItems()) {
+          throw new ValidationError('EMPTY_CART', 'Cart is empty');
+        }
+
+        this.assertCartOutletMatch(
+          cart.outletId,
+          params.outletId,
+          'checkout.startCheckout.create',
+        );
+
+        await this.ensureNoActiveOrder(params.customerId, params.outletId, tx);
+
+        if (cart.status === CartStatus.LOCKED) {
+          throw new ValidationError(
+            'CHECKOUT_ALREADY_IN_PROGRESS',
+            'Checkout already started for this cart',
+          );
+        }
+
+        const lockedCart = await this.cartService.lockCart(
+          {
+            customerId: params.customerId,
+            outletId: params.outletId,
+          },
+          tx,
+        );
+
+        const address = await this.savedAddressService.getById(
+          {
+            customerId: params.customerId,
+            savedAddressId: params.savedAddressId,
+          },
+          tx,
+        );
+
+        return this.orderOrchestrator.createOrderFromCart(
+          {
+            cart: lockedCart,
+            address,
+          },
+          tx,
+        );
+      },
+    );
+
+    traceOutletLifecycle('checkout.startCheckout.orderCreated', {
+      requestedOutletId: params.outletId,
+      orderOutletId: order.outletId,
       orderId: order.id,
-    });
-
-    this.checkoutEvents.emitCheckoutStarted({
-      checkoutId: order.id,
-      orderId: order.id,
-      paymentId: paymentResult.payment.id,
       customerId: params.customerId,
-      grandTotal: order.grandTotal.toNumber(),
     });
 
     /* ================================================= */
-    /* 🔥 RETURN RAZORPAY DATA TO FRONTEND               */
+    /* 2️⃣ CREATE PAYMENT SESSION                         */
     /* ================================================= */
 
-    return this.buildCheckoutStartResult({
-      order,
-      paymentId: paymentResult.payment.id,
-      razorpayOrderId: paymentResult.razorpayOrderId,
-      amountInPaise: paymentResult.amountInPaise,
-      isRetry: false,
-      customerContact,
-    });
+    try {
+      const paymentResult = await this.paymentOrchestrator.createPayment({
+        orderId: order.id,
+      });
 
-  } catch (err) {
-    this.checkoutEvents.emitCheckoutFailed({
-      customerId: params.customerId,
-      reason: err?.message ?? 'Payment failed',
-    });
+      this.checkoutEvents.emitCheckoutStarted({
+        checkoutId: order.id,
+        orderId: order.id,
+        paymentId: paymentResult.payment.id,
+        customerId: params.customerId,
+        grandTotal: order.grandTotal.toNumber(),
+      });
 
-    throw err;
+      /* ================================================= */
+      /* 🔥 RETURN RAZORPAY DATA TO FRONTEND               */
+      /* ================================================= */
+
+      return this.buildCheckoutStartResult({
+        order,
+        paymentId: paymentResult.payment.id,
+        razorpayOrderId: paymentResult.razorpayOrderId,
+        amountInPaise: paymentResult.amountInPaise,
+        isRetry: false,
+        customerContact,
+      });
+    } catch (err) {
+      this.checkoutEvents.emitCheckoutFailed({
+        customerId: params.customerId,
+        reason: err?.message ?? 'Payment failed',
+      });
+
+      throw err;
+    }
   }
-}
 
   private async ensureNoActiveOrder(
     customerId: string,
@@ -585,7 +545,7 @@ async startCheckout(params: {
       amount: amountInPaise,
       razorpayAmount: amountInPaise,
       currency: 'INR',
-      key: process.env.RAZORPAY_KEY_ID!,
+      key: process.env.RAZORPAY_KEY_ID,
       isRetry: params.isRetry,
       subtotal,
       discount,
@@ -594,5 +554,4 @@ async startCheckout(params: {
       ...customerContact,
     };
   }
-
 }

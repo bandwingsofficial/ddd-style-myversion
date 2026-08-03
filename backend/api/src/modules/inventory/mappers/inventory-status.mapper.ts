@@ -4,9 +4,7 @@ import { InventoryStatus as PrismaInventoryStatus } from '@prisma/client';
 import { InventoryStatus } from '../domain/enums/inventory-status.enum';
 
 export class InventoryStatusMapper {
-  static toDomain(
-    status: PrismaInventoryStatus,
-  ): InventoryStatus {
+  static toDomain(status: PrismaInventoryStatus): InventoryStatus {
     switch (status) {
       case PrismaInventoryStatus.ACTIVE:
         return InventoryStatus.ACTIVE;
@@ -15,15 +13,11 @@ export class InventoryStatusMapper {
         return InventoryStatus.INACTIVE;
 
       default:
-        throw new Error(
-          `Unknown Prisma InventoryStatus: ${status}`,
-        );
+        throw new Error(`Unknown Prisma InventoryStatus: ${status}`);
     }
   }
 
-  static toPrisma(
-    status: InventoryStatus,
-  ): PrismaInventoryStatus {
+  static toPrisma(status: InventoryStatus): PrismaInventoryStatus {
     switch (status) {
       case InventoryStatus.ACTIVE:
         return PrismaInventoryStatus.ACTIVE;
@@ -32,9 +26,7 @@ export class InventoryStatusMapper {
         return PrismaInventoryStatus.INACTIVE;
 
       default:
-        throw new Error(
-          `Unknown Domain InventoryStatus: ${status}`,
-        );
+        throw new Error(`Unknown Domain InventoryStatus: ${status}`);
     }
   }
 }

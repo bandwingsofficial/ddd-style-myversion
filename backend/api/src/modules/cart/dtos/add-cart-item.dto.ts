@@ -12,7 +12,6 @@ export class AddCartItemDto {
   @Min(1)
   quantity: number;
 
-  
   @IsOptional()
   @IsBoolean()
   @Transform(({ value }) => value === 'true' || value === true)

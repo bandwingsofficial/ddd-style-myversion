@@ -30,8 +30,6 @@ import { PaymentPublicGateway } from '../gateways/payment-public.gateway';
 
 import { PaymentPublicListener } from '../listeners/payment.listener';
 
-
-
 /* ---------------------------------------------- */
 /* DEPENDENCY MODULES                             */
 /* ---------------------------------------------- */
@@ -71,10 +69,6 @@ import { OrdersModule } from '../../orders/modules/orders.module';
     /* Listeners */
     PaymentPublicListener,
   ],
-  exports: [
-    PaymentOrchestratorService,
-    PaymentService,
-    PaymentRepository,
-  ],
+  exports: [PaymentOrchestratorService, PaymentService, PaymentRepository],
 })
 export class PaymentsModule {}

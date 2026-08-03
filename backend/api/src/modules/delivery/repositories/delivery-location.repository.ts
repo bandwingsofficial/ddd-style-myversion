@@ -44,10 +44,7 @@ export class DeliveryLocationRepository {
   /* used by live tracking page                        */
   /* ================================================= */
 
-  async findLatest(
-    deliveryId: string,
-    tx?: PrismaTransaction,
-  ) {
+  async findLatest(deliveryId: string, tx?: PrismaTransaction) {
     if (!deliveryId) return null;
 
     return (tx ?? this.prisma).deliveryLocation.findFirst({
@@ -60,11 +57,7 @@ export class DeliveryLocationRepository {
   /* READ – RECENT N (map polyline)                     */
   /* ================================================= */
 
-  async findRecent(
-    deliveryId: string,
-    limit = 50,
-    tx?: PrismaTransaction,
-  ) {
+  async findRecent(deliveryId: string, limit = 50, tx?: PrismaTransaction) {
     if (!deliveryId) return [];
 
     return (tx ?? this.prisma).deliveryLocation.findMany({
@@ -78,10 +71,7 @@ export class DeliveryLocationRepository {
   /* READ – ALL (history / debug only)                  */
   /* ================================================= */
 
-  async findAll(
-    deliveryId: string,
-    tx?: PrismaTransaction,
-  ) {
+  async findAll(deliveryId: string, tx?: PrismaTransaction) {
     if (!deliveryId) return [];
 
     return (tx ?? this.prisma).deliveryLocation.findMany({
@@ -94,10 +84,7 @@ export class DeliveryLocationRepository {
   /* DELETE – cleanup only (rare)                       */
   /* ================================================= */
 
-  async deleteAll(
-    deliveryId: string,
-    tx?: PrismaTransaction,
-  ): Promise<void> {
+  async deleteAll(deliveryId: string, tx?: PrismaTransaction): Promise<void> {
     await (tx ?? this.prisma).deliveryLocation.deleteMany({
       where: { deliveryId },
     });

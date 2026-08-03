@@ -12,10 +12,7 @@ import { RefreshTokenRepository } from '../repositories/refresh-token.repository
 import { TokenHash } from '../domain/value-objects/token-hash.vo';
 import { SessionValidPolicy } from '../policies/session-valid.policy';
 
-import {
-  ForbiddenError,
-  UnauthorizedError,
-} from '../../../common/errors';
+import { ForbiddenError, UnauthorizedError } from '../../../common/errors';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { AuthErrors } from '../constants/auth-errors';
@@ -62,11 +59,7 @@ export class TokenService {
       })();
 
     // ✅ Infra helper initialization
-    this.jwtHelper = new JwtHelper(
-      this.jwt,
-      accessSecret,
-      this.accessTtl,
-    );
+    this.jwtHelper = new JwtHelper(this.jwt, accessSecret, this.accessTtl);
   }
 
   /* ================================================= */
@@ -82,19 +75,14 @@ export class TokenService {
     const session = await this.sessionRepo.findById(params.sessionId);
 
     if (!session) {
-      throw new ForbiddenError(
-        AuthErrors.FORBIDDEN,
-        'Invalid session',
-      );
+      throw new ForbiddenError(AuthErrors.FORBIDDEN, 'Invalid session');
     }
 
     SessionValidPolicy.check(session);
 
-    const accessTokenExpiresAt =
-      TokenTimeHelper.expiresAt(this.accessTtl);
+    const accessTokenExpiresAt = TokenTimeHelper.expiresAt(this.accessTtl);
 
-    const refreshTokenExpiresAt =
-      TokenTimeHelper.expiresAt(this.refreshTtl);
+    const refreshTokenExpiresAt = TokenTimeHelper.expiresAt(this.refreshTtl);
 
     return this.prisma.$transaction(async (tx) => {
       const accessToken = this.jwtHelper.signAccessToken({
@@ -104,16 +92,12 @@ export class TokenService {
         tokenVersion: params.tokenVersion,
       });
 
-      const refreshPlain =
-        TokenCryptoHelper.generateRandomHex(
-          TOKEN_CONSTANTS.REFRESH.BYTE_LENGTH,
-        );
+      const refreshPlain = TokenCryptoHelper.generateRandomHex(
+        TOKEN_CONSTANTS.REFRESH.BYTE_LENGTH,
+      );
 
       const refreshHash = TokenHash.fromHash(
-        TokenCryptoHelper.hash(
-          refreshPlain,
-          TOKEN_CONSTANTS.HASH.ALGORITHM,
-        ),
+        TokenCryptoHelper.hash(refreshPlain, TOKEN_CONSTANTS.HASH.ALGORITHM),
       );
 
       await this.refreshTokenRepo.create(
@@ -169,8 +153,7 @@ export class TokenService {
       ),
     );
 
-    const stored =
-      await this.refreshTokenRepo.findByTokenHash(tokenHash);
+    const stored = await this.refreshTokenRepo.findByTokenHash(tokenHash);
 
     if (!stored) {
       throw new UnauthorizedError(
@@ -209,36 +192,25 @@ export class TokenService {
       );
     }
 
-    const session = await this.sessionRepo.findById(
-      stored.sessionId,
-    );
+    const session = await this.sessionRepo.findById(stored.sessionId);
 
     if (!session) {
-      throw new UnauthorizedError(
-        AuthErrors.UNAUTHORIZED,
-        'Invalid session',
-      );
+      throw new UnauthorizedError(AuthErrors.UNAUTHORIZED, 'Invalid session');
     }
 
     SessionValidPolicy.check(session);
 
-    const accessTokenExpiresAt =
-      TokenTimeHelper.expiresAt(this.accessTtl);
+    const accessTokenExpiresAt = TokenTimeHelper.expiresAt(this.accessTtl);
 
-    const refreshTokenExpiresAt =
-      TokenTimeHelper.expiresAt(this.refreshTtl);
+    const refreshTokenExpiresAt = TokenTimeHelper.expiresAt(this.refreshTtl);
 
     return this.prisma.$transaction(async (tx) => {
-      const newPlain =
-        TokenCryptoHelper.generateRandomHex(
-          TOKEN_CONSTANTS.REFRESH.BYTE_LENGTH,
-        );
+      const newPlain = TokenCryptoHelper.generateRandomHex(
+        TOKEN_CONSTANTS.REFRESH.BYTE_LENGTH,
+      );
 
       const newHash = TokenHash.fromHash(
-        TokenCryptoHelper.hash(
-          newPlain,
-          TOKEN_CONSTANTS.HASH.ALGORITHM,
-        ),
+        TokenCryptoHelper.hash(newPlain, TOKEN_CONSTANTS.HASH.ALGORITHM),
       );
 
       const newToken = await this.refreshTokenRepo.create(
@@ -250,11 +222,7 @@ export class TokenService {
         tx,
       );
 
-      await this.refreshTokenRepo.markAsRotated(
-        stored.id,
-        newToken.id,
-        tx,
-      );
+      await this.refreshTokenRepo.markAsRotated(stored.id, newToken.id, tx);
 
       const accessToken = this.jwtHelper.signAccessToken({
         actorType: session.actorType,
@@ -294,16 +262,10 @@ export class TokenService {
     params: { ipAddress?: string; userAgent?: string },
   ): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
-      const session = await this.sessionRepo.findById(
-        sessionId,
-        tx,
-      );
+      const session = await this.sessionRepo.findById(sessionId, tx);
       if (!session || session.isRevoked()) return;
 
-      await this.refreshTokenRepo.revokeBySessionId(
-        session.id,
-        tx,
-      );
+      await this.refreshTokenRepo.revokeBySessionId(session.id, tx);
       await this.sessionRepo.revoke(session.id, tx);
 
       await this.auditRepo.create(

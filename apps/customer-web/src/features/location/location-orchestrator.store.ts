@@ -9,8 +9,8 @@ import {
   bumpLookupGeneration,
   cancelActiveOutletLookup,
   lookupOutletsForLocation,
+  toNearbyOutlet,
 } from "@/features/location/services/location-orchestrator.service";
-import { pickAutoOutlet } from "@/features/location/services/outlet-resolution.service";
 import { reverseGeocode } from "@/features/location/utils/reverseGeocode";
 import { requestGpsOnce } from "@/features/location/utils/request-gps";
 import {
@@ -211,12 +211,12 @@ export const useLocationOrchestratorStore = create<LocationOrchestratorStore>(
         set({
           fsmState: "ERROR",
           isRefreshing: false,
-          errorMessage: "Something went wrong. Please try again.",
+          errorMessage: "Unable to connect. Please try again.",
         });
         return;
       }
 
-      if (result.status === "empty") {
+      if (result.status === "empty" || !result.resolvedOutlet) {
         await applyOutletSwitch(null);
         set({
           fsmState: "NO_OUTLET",
@@ -226,7 +226,7 @@ export const useLocationOrchestratorStore = create<LocationOrchestratorStore>(
         return;
       }
 
-      const selectedOutlet = pickAutoOutlet(result.outlets);
+      const selectedOutlet = toNearbyOutlet(result.resolvedOutlet);
       await applyOutletSwitch(selectedOutlet);
 
       if (generation !== get().activeLookupGeneration) return;

@@ -55,6 +55,7 @@ function PaymentProcessor() {
   );
 
   const selectedOutlet = useOutletStore((state) => state.selectedOutlet);
+  const cartOutletName = useCartStore((state) => state.cartOutletName);
 
   const refreshCartAfterSuccess = useCallback(async () => {
     await useCartStore.getState().loadCart(true);
@@ -243,7 +244,8 @@ function PaymentProcessor() {
     orderDetails?.orderNumber ?? orderNumber ?? undefined;
   const displayAmount =
     orderDetails?.grandTotal ?? (amount ? Number(amount) : undefined);
-  const outletName = selectedOutlet?.name;
+  const outletName =
+    orderDetails?.outletName ?? cartOutletName ?? selectedOutlet?.name;
 
   return (
     <div className="w-full max-w-lg space-y-6">

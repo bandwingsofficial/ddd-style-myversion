@@ -22,10 +22,10 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     console.log('🛡️ path:', req.method, req.originalUrl);
     console.log('🛡️ cookies:', req.headers.cookie || 'NONE');
 
-    const isPublic = this.reflector.getAllAndOverride<boolean>(
-      IS_PUBLIC_KEY,
-      [context.getHandler(), context.getClass()],
-    );
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
 
     if (isPublic) {
       console.log('🛡️ route is PUBLIC — skipping auth');
@@ -36,12 +36,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     return super.canActivate(context);
   }
 
-  handleRequest(
-    err: any,
-    user: any,
-    info: any,
-    context: ExecutionContext,
-  ) {
+  handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
     const req = context.switchToHttp().getRequest();
 
     console.log('🛡️ [JWT GUARD] handleRequest');

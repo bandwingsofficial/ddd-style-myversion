@@ -13,14 +13,9 @@ import {
 } from '../errors/domain-errors';
 
 @Catch(AppError, ValidationError, InvariantViolationError)
-export class DomainExceptionFilter
-  implements ExceptionFilter
-{
+export class DomainExceptionFilter implements ExceptionFilter {
   catch(
-    exception:
-      | AppError
-      | ValidationError
-      | InvariantViolationError,
+    exception: AppError | ValidationError | InvariantViolationError,
     host: ArgumentsHost,
   ) {
     const ctx = host.switchToHttp();

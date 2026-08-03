@@ -12,9 +12,9 @@ export class DeliveryConfigOrchestratorService {
   ) {}
 
   listRules() {
-    return this.deliveryRuleService.listRules().then((rules) =>
-      rules.map(DeliveryRuleResponseMapper.toDto),
-    );
+    return this.deliveryRuleService
+      .listRules()
+      .then((rules) => rules.map(DeliveryRuleResponseMapper.toDto));
   }
 
   getRuleById(ruleId: string) {

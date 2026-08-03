@@ -19,10 +19,7 @@ export class OutletRepository {
   /* CREATE                                            */
   /* ================================================= */
 
-  async create(
-    outlet: Outlet,
-    tx?: PrismaTransaction,
-  ): Promise<Outlet> {
+  async create(outlet: Outlet, tx?: PrismaTransaction): Promise<Outlet> {
     const client = tx ?? this.prisma;
 
     const row = await client.outlet.create({
@@ -33,11 +30,8 @@ export class OutletRepository {
         address: outlet.address,
         pincode: outlet.pincode,
 
-
         status: OutletStatusMapper.toPrisma(outlet.status),
-        workingStatus: OutletWorkingStateMapper.toPrisma(
-          outlet.workingState,
-        ),
+        workingStatus: OutletWorkingStateMapper.toPrisma(outlet.workingState),
 
         ...CameraStateMapper.toPrisma(outlet.cameraState),
         ...GeoLocationMapper.toPrisma(outlet.location),
@@ -58,10 +52,7 @@ export class OutletRepository {
   /* READS                                             */
   /* ================================================= */
 
-  async findById(
-    id: string,
-    tx?: PrismaTransaction,
-  ): Promise<Outlet | null> {
+  async findById(id: string, tx?: PrismaTransaction): Promise<Outlet | null> {
     const row = await (tx ?? this.prisma).outlet.findUnique({
       where: { id },
     });
@@ -69,10 +60,7 @@ export class OutletRepository {
     return row ? this.toDomain(row) : null;
   }
 
-  async existsById(
-    id: string,
-    tx?: PrismaTransaction,
-  ): Promise<boolean> {
+  async existsById(id: string, tx?: PrismaTransaction): Promise<boolean> {
     const outlet = await (tx ?? this.prisma).outlet.findUnique({
       where: { id },
       select: { id: true },
@@ -81,47 +69,39 @@ export class OutletRepository {
     return !!outlet;
   }
 
+  /* ================================================= */
+  /* READ – ALL OUTLETS                                */
+  /* ================================================= */
+
+  async findAll(tx?: PrismaTransaction): Promise<Outlet[]> {
+    const rows = await (tx ?? this.prisma).outlet.findMany({
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return rows.map((row) => this.toDomain(row));
+  }
 
   /* ================================================= */
-/* READ – ALL OUTLETS                                */
-/* ================================================= */
-
-async findAll(
-  tx?: PrismaTransaction,
-): Promise<Outlet[]> {
-  const rows = await (tx ?? this.prisma).outlet.findMany({
-    orderBy: {
-      createdAt: 'desc',
-    },
-  });
-
-  return rows.map(row => this.toDomain(row));
-}
-
+  /* READ – OUTLETS WITH LOCATION ONLY                 */
   /* ================================================= */
-/* READ – OUTLETS WITH LOCATION ONLY                 */
-/* ================================================= */
 
-async findWithLocation(
-  tx?: PrismaTransaction,
-): Promise<Outlet[]> {
-  const rows = await (tx ?? this.prisma).outlet.findMany({
-    where: {
-      latitude: { not: null },
-      longitude: { not: null },
-    },
-  });
+  async findWithLocation(tx?: PrismaTransaction): Promise<Outlet[]> {
+    const rows = await (tx ?? this.prisma).outlet.findMany({
+      where: {
+        latitude: { not: null },
+        longitude: { not: null },
+      },
+    });
 
-  return rows.map(row => this.toDomain(row));
-}
+    return rows.map((row) => this.toDomain(row));
+  }
   /* ================================================= */
   /* UPDATE DETAILS (PARTIAL STRUCTURAL UPDATE)        */
   /* ================================================= */
 
-  async updateDetails(
-    outlet: Outlet,
-    tx?: PrismaTransaction,
-  ): Promise<Outlet> {
+  async updateDetails(outlet: Outlet, tx?: PrismaTransaction): Promise<Outlet> {
     const client = tx ?? this.prisma;
 
     const row = await client.outlet.update({
@@ -146,10 +126,7 @@ async findWithLocation(
   /* UPDATE (FULL AGGREGATE – DOMAIN CONTROLLED)       */
   /* ================================================= */
 
-  async update(
-    outlet: Outlet,
-    tx?: PrismaTransaction,
-  ): Promise<Outlet> {
+  async update(outlet: Outlet, tx?: PrismaTransaction): Promise<Outlet> {
     const client = tx ?? this.prisma;
 
     const row = await client.outlet.update({
@@ -161,9 +138,7 @@ async findWithLocation(
         pincode: outlet.pincode,
 
         status: OutletStatusMapper.toPrisma(outlet.status),
-        workingStatus: OutletWorkingStateMapper.toPrisma(
-          outlet.workingState,
-        ),
+        workingStatus: OutletWorkingStateMapper.toPrisma(outlet.workingState),
 
         ...CameraStateMapper.toPrisma(outlet.cameraState),
         ...GeoLocationMapper.toPrisma(outlet.location),
@@ -182,19 +157,14 @@ async findWithLocation(
   /* STATUS (ENABLE / DISABLE)                          */
   /* ================================================= */
 
-  async updateStatus(
-    outlet: Outlet,
-    tx?: PrismaTransaction,
-  ): Promise<Outlet> {
+  async updateStatus(outlet: Outlet, tx?: PrismaTransaction): Promise<Outlet> {
     const client = tx ?? this.prisma;
 
     const row = await client.outlet.update({
       where: { id: outlet.id },
       data: {
         status: OutletStatusMapper.toPrisma(outlet.status),
-        workingStatus: OutletWorkingStateMapper.toPrisma(
-          outlet.workingState,
-        ),
+        workingStatus: OutletWorkingStateMapper.toPrisma(outlet.workingState),
 
         ...CameraStateMapper.toPrisma(outlet.cameraState),
 
@@ -218,9 +188,7 @@ async findWithLocation(
     const row = await client.outlet.update({
       where: { id: outlet.id },
       data: {
-        workingStatus: OutletWorkingStateMapper.toPrisma(
-          outlet.workingState,
-        ),
+        workingStatus: OutletWorkingStateMapper.toPrisma(outlet.workingState),
         updatedAt: outlet.updatedAt,
       },
     });
@@ -330,9 +298,7 @@ async findWithLocation(
       pincode: row.pincode ?? undefined,
 
       status: OutletStatusMapper.toDomain(row.status),
-      workingState: OutletWorkingStateMapper.toDomain(
-        row.workingStatus,
-      ),
+      workingState: OutletWorkingStateMapper.toDomain(row.workingStatus),
 
       cameraState: CameraStateMapper.toDomain({
         isCameraEnabled: row.isCameraEnabled,
@@ -340,10 +306,7 @@ async findWithLocation(
         cameraStreamUrl: row.cameraStreamUrl,
       }),
 
-      location: GeoLocationMapper.toDomain(
-        row.latitude,
-        row.longitude,
-      ),
+      location: GeoLocationMapper.toDomain(row.latitude, row.longitude),
 
       deliveryRadiusKm: row.deliveryRadiusKm ?? undefined,
       isCentral: row.isCentral,

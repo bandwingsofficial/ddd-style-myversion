@@ -28,102 +28,98 @@ export class OutletOrderController {
   ) {}
 
   private async toDetailedResponse(order: any) {
-  const latestPayment = await this.paymentRepo.findLatestByOrderId(order.id);
+    const latestPayment = await this.paymentRepo.findLatestByOrderId(order.id);
 
-  return {
-    id: order.id,
-    orderNumber: order.orderNumber,
-    customerFullName: order.customerFullName,
-    customerId: order.customerId,
+    return {
+      id: order.id,
+      orderNumber: order.orderNumber,
+      customerFullName: order.customerFullName,
+      customerId: order.customerId,
 
-    address: {
-      label: order.address.label,
-      addressText: order.address.addressText,
-      latitude: order.address.latitude,
-      longitude: order.address.longitude,
-    },
+      address: {
+        label: order.address.label,
+        addressText: order.address.addressText,
+        latitude: order.address.latitude,
+        longitude: order.address.longitude,
+      },
 
-    subtotal: order.subtotal.toNumber(),
-    discount: order.discount.toNumber(),
-    afterDiscountTotal: order.afterDiscountTotal.toNumber(),
-    netSubtotal: order.afterDiscountTotal.toNumber(),
-    deliveryFee: order.deliveryFee.toNumber(),
-    grandTotal: order.grandTotal.toNumber(),
-    itemCount: order.itemCount,
+      subtotal: order.subtotal.toNumber(),
+      discount: order.discount.toNumber(),
+      afterDiscountTotal: order.afterDiscountTotal.toNumber(),
+      netSubtotal: order.afterDiscountTotal.toNumber(),
+      deliveryFee: order.deliveryFee.toNumber(),
+      grandTotal: order.grandTotal.toNumber(),
+      itemCount: order.itemCount,
 
-    status: order.status,
-    paymentStatus: OutletOrderResponseDto.resolvePaymentStatus(
-      order.status,
-      latestPayment,
-    ),
+      status: order.status,
+      paymentStatus: OutletOrderResponseDto.resolvePaymentStatus(
+        order.status,
+        latestPayment,
+      ),
 
-    items: order.items.map((item: any) => ({
-      id: item.id,
-      productId: item.productId,
-      productName: item.productName,
-      productImage: item.productImage,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice.toNumber(),
-      discountPrice: item.discountPrice?.toNumber(),
-      totalPrice: item.totalPrice.toNumber(),
-      createdAt: item.createdAt,
-    })),
+      items: order.items.map((item: any) => ({
+        id: item.id,
+        productId: item.productId,
+        productName: item.productName,
+        productImage: item.productImage,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice.toNumber(),
+        discountPrice: item.discountPrice?.toNumber(),
+        totalPrice: item.totalPrice.toNumber(),
+        createdAt: item.createdAt,
+      })),
 
-    createdAt: order.createdAt,
-    updatedAt: order.updatedAt,
-  };
-}
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+    };
+  }
 
   /* ================================================= */
   /* LIST ORDERS                                      */
   /* ================================================= */
 
-@Get()
-async getOrders(@CurrentUser() user: any) {
-  if (!user?.outletId) {
-    throw new ForbiddenException('Outlet not found');
+  @Get()
+  async getOrders(@CurrentUser() user: any) {
+    if (!user?.outletId) {
+      throw new ForbiddenException('Outlet not found');
+    }
+
+    const orders = await this.orderOrchestrator.getOutletOrders(user.outletId);
+
+    const paymentMap = await this.paymentRepo.findLatestByOrderIds(
+      orders.map((order) => order.id),
+    );
+
+    return {
+      success: true,
+      code: 'OUTLET_ORDERS_FETCHED',
+      message: 'Outlet orders fetched successfully',
+      data: orders.map(
+        (order) =>
+          new OutletOrderResponseDto(order, paymentMap.get(order.id) ?? null),
+      ),
+    };
   }
 
-  const orders =
-    await this.orderOrchestrator.getOutletOrders(user.outletId);
+  @Get(':id')
+  async getOrderById(@Param('id') id: string, @CurrentUser() user: any) {
+    if (!user?.outletId) {
+      throw new ForbiddenException('Outlet not found');
+    }
 
-  const paymentMap = await this.paymentRepo.findLatestByOrderIds(
-    orders.map((order) => order.id),
-  );
+    const order = await this.orderOrchestrator.getOrderById(id);
 
-  return {
-    success: true,
-    code: 'OUTLET_ORDERS_FETCHED',
-    message: 'Outlet orders fetched successfully',
-    data: orders.map(
-      (order) =>
-        new OutletOrderResponseDto(order, paymentMap.get(order.id) ?? null),
-    ),
-  };
-}
+    if (!order || order.outletId !== user.outletId) {
+      throw new ForbiddenException('Access denied for this order');
+    }
 
-@Get(':id')
-async getOrderById(
-  @Param('id') id: string,
-  @CurrentUser() user: any,
-) {
-  if (!user?.outletId) {
-    throw new ForbiddenException('Outlet not found');
+    return {
+      success: true,
+      code: 'OUTLET_ORDER_FETCHED',
+      message: 'Order fetched successfully',
+      data: await this.toDetailedResponse(order),
+    };
   }
-
-  const order = await this.orderOrchestrator.getOrderById(id);
-
-  if (!order || order.outletId !== user.outletId) {
-    throw new ForbiddenException('Access denied for this order');
-  }
-
-  return {
-    success: true,
-    code: 'OUTLET_ORDER_FETCHED',
-    message: 'Order fetched successfully',
-    data: await this.toDetailedResponse(order),
-  };
-}
   /* ================================================= */
   /* 🔥 INTERNAL HELPER                                */
   /* ================================================= */

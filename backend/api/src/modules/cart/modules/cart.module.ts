@@ -25,13 +25,8 @@ import { CartResponseMapper } from '../mappers/cart-response.mapper';
 import { PricingEngineService } from '../../../common/services/pricing-engine.service';
 
 @Module({
-  imports: [
-    DeliveryConfigModule,
-    UploadsModule,
-  ],
-  controllers: [
-    CartManagementController,
-  ],
+  imports: [DeliveryConfigModule, UploadsModule],
+  controllers: [CartManagementController],
   providers: [
     // Infrastructure
     PrismaService,
@@ -45,10 +40,6 @@ import { PricingEngineService } from '../../../common/services/pricing-engine.se
     // Repositories
     CartRepository,
   ],
-  exports: [
-    CartService,
-    CartOrchestratorService,
-    CartResponseMapper,
-  ],
+  exports: [CartService, CartOrchestratorService, CartResponseMapper],
 })
 export class CartModule {}

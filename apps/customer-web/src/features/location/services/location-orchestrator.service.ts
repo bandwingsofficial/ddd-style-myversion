@@ -1,4 +1,7 @@
-import { getNearbyOutlets } from "@/features/outlet/api/outlet.api";
+import {
+  resolveDeliveryOutlet,
+  ResolvedDeliveryOutlet,
+} from "@/features/outlet/api/outlet.api";
 import { NearbyOutlet } from "@/features/outlet/outlet.type";
 import { buildLocationKey } from "@/features/location/location.types";
 import { traceCoordinates } from "@/features/location/utils/coordinate.utils";
@@ -7,7 +10,8 @@ const LOOKUP_TIMEOUT_MS = 10_000;
 
 export interface OutletLookupResult {
   locationKey: string;
-  outlets: NearbyOutlet[];
+  resolvedOutlet: ResolvedDeliveryOutlet | null;
+  nearbyOutlets: NearbyOutlet[];
   status: "success" | "empty" | "timeout" | "aborted" | "error";
 }
 
@@ -91,8 +95,12 @@ export function lookupOutletsForLocation(params: {
     }
 
     try {
-      const outlets = await withTimeout(
-        getNearbyOutlets(params.latitude, params.longitude, controller.signal),
+      const resolution = await withTimeout(
+        resolveDeliveryOutlet(
+          params.latitude,
+          params.longitude,
+          controller.signal,
+        ),
         LOOKUP_TIMEOUT_MS,
         controller,
       );
@@ -100,48 +108,55 @@ export function lookupOutletsForLocation(params: {
       if (activeLookup?.generation !== params.generation) {
         return {
           locationKey,
-          outlets: [],
+          resolvedOutlet: null,
+          nearbyOutlets: [],
           status: "aborted",
         };
       }
+
+      const resolvedOutlet = resolution.resolvedOutlet;
+      const nearbyOutlets = resolution.nearbyOutlets ?? [];
 
       if (process.env.NODE_ENV !== "production") {
         console.info("[location-orchestrator] lookup success", {
           generation: params.generation,
           latitude: params.latitude,
           longitude: params.longitude,
-          outletCount: outlets.length,
-          outlets: outlets.map((outlet) => ({
-            id: outlet.id,
-            name: outlet.name,
-            distanceKm: outlet.distanceKm,
-          })),
+          status: resolution.status,
+          resolvedOutletId: resolvedOutlet?.outletId ?? null,
+          resolvedOutletName: resolvedOutlet?.outletName ?? null,
+          outletCount: nearbyOutlets.length,
         });
       }
 
-      if (outlets[0]) {
+      if (resolvedOutlet) {
         traceCoordinates({
           stage: "API_REQUEST",
           latitude: params.latitude,
           longitude: params.longitude,
           extra: {
-            selectedOutletId: outlets[0].id,
-            selectedOutletName: outlets[0].name,
-            distanceKm: outlets[0].distanceKm,
+            selectedOutletId: resolvedOutlet.outletId,
+            selectedOutletName: resolvedOutlet.outletName,
+            distanceKm: resolvedOutlet.distanceKm,
           },
         });
       }
 
       return {
         locationKey,
-        outlets,
-        status: outlets.length === 0 ? "empty" : "success",
+        resolvedOutlet,
+        nearbyOutlets,
+        status:
+          resolution.status === "NO_SERVICE" || !resolvedOutlet
+            ? "empty"
+            : "success",
       };
     } catch (error) {
       if (activeLookup?.generation !== params.generation) {
         return {
           locationKey,
-          outlets: [],
+          resolvedOutlet: null,
+          nearbyOutlets: [],
           status: "aborted",
         };
       }
@@ -150,7 +165,8 @@ export function lookupOutletsForLocation(params: {
         const message = error instanceof Error ? error.message : "";
         return {
           locationKey,
-          outlets: [],
+          resolvedOutlet: null,
+          nearbyOutlets: [],
           status: message === "TIMEOUT" ? "timeout" : "aborted",
         };
       }
@@ -158,7 +174,8 @@ export function lookupOutletsForLocation(params: {
       console.error("[location-orchestrator] lookup failed", error);
       return {
         locationKey,
-        outlets: [],
+        resolvedOutlet: null,
+        nearbyOutlets: [],
         status: "error",
       };
     } finally {
@@ -181,19 +198,11 @@ export function lookupOutletsForLocation(params: {
   return promise;
 }
 
-export function selectDefaultOutlet(
-  outlets: NearbyOutlet[],
-): {
-  outlet: NearbyOutlet | null;
-  promptSelection: boolean;
-} {
-  if (outlets.length === 0) {
-    return { outlet: null, promptSelection: false };
-  }
-
-  if (outlets.length === 1) {
-    return { outlet: outlets[0], promptSelection: false };
-  }
-
-  return { outlet: outlets[0], promptSelection: true };
+export function toNearbyOutlet(
+  resolved: ResolvedDeliveryOutlet,
+): NearbyOutlet {
+  return {
+    ...resolved.outlet,
+    distanceKm: resolved.distanceKm,
+  };
 }

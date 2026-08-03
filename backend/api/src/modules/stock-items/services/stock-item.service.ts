@@ -28,18 +28,13 @@ export class StockItemService {
     const stockItem = await this.stockItemRepo.findById(stockItemId);
 
     if (!stockItem) {
-      throw new ValidationError(
-        'STOCK_ITEM_NOT_FOUND',
-        'Stock item not found',
-      );
+      throw new ValidationError('STOCK_ITEM_NOT_FOUND', 'Stock item not found');
     }
 
     return stockItem;
   }
 
-  async getAll(params?: {
-    includeInactive?: boolean;
-  }): Promise<StockItem[]> {
+  async getAll(params?: { includeInactive?: boolean }): Promise<StockItem[]> {
     return this.stockItemRepo.findAll(params?.includeInactive ?? true);
   }
 
@@ -244,15 +239,12 @@ export class StockItemService {
   async analyzeStockItemDelete(stockItemId: string): Promise<DeleteAnalysis> {
     await this.getById(stockItemId);
 
-    const [
-      centralInventoryCount,
-      transactionCount,
-      outletStockCount,
-    ] = await Promise.all([
-      this.stockItemRepo.countCentralInventoryByStockItemId(stockItemId),
-      this.stockItemRepo.countStockTransactionsByStockItemId(stockItemId),
-      this.stockItemRepo.countOutletStocksByStockItemId(stockItemId),
-    ]);
+    const [centralInventoryCount, transactionCount, outletStockCount] =
+      await Promise.all([
+        this.stockItemRepo.countCentralInventoryByStockItemId(stockItemId),
+        this.stockItemRepo.countStockTransactionsByStockItemId(stockItemId),
+        this.stockItemRepo.countOutletStocksByStockItemId(stockItemId),
+      ]);
 
     const permanentBlockers = [];
     const removableDependencies = [];

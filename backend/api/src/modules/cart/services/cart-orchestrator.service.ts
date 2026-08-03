@@ -38,7 +38,6 @@ export class CartOrchestratorService {
     customerId: string,
   ): Promise<Cart | null> {
     return this.prisma.$transaction(async (tx) => {
-
       /* ===================================== */
       /* 🔥 Step 1 — get guest cart            */
       /* ===================================== */
@@ -81,10 +80,7 @@ export class CartOrchestratorService {
           },
         });
 
-        return this.cartService.getActiveCart(
-          { customerId, outletId },
-          tx,
-        );
+        return this.cartService.getActiveCart({ customerId, outletId }, tx);
       }
 
       /* ===================================== */
@@ -110,15 +106,9 @@ export class CartOrchestratorService {
       /* 🔥 Step 5 — clear guest cart           */
       /* ===================================== */
 
-      await this.cartService.clearCart(
-        { sessionId, outletId },
-        tx,
-      );
+      await this.cartService.clearCart({ sessionId, outletId }, tx);
 
-      return this.cartService.getActiveCart(
-        { customerId, outletId },
-        tx,
-      );
+      return this.cartService.getActiveCart({ customerId, outletId }, tx);
     });
   }
 
@@ -130,7 +120,10 @@ export class CartOrchestratorService {
     return this.cartService.addItem(params, tx);
   }
 
-  async updateCartItemQuantity(params: any, tx?: PrismaTransaction): Promise<Cart> {
+  async updateCartItemQuantity(
+    params: any,
+    tx?: PrismaTransaction,
+  ): Promise<Cart> {
     return this.cartService.updateItemQuantity(params, tx);
   }
 
@@ -142,7 +135,10 @@ export class CartOrchestratorService {
     return this.cartService.clearCart(params, tx);
   }
 
-  async lockCartForCheckout(params: any, tx?: PrismaTransaction): Promise<Cart> {
+  async lockCartForCheckout(
+    params: any,
+    tx?: PrismaTransaction,
+  ): Promise<Cart> {
     return this.cartService.lockCart(params, tx);
   }
 

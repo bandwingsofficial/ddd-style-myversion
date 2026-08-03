@@ -55,6 +55,15 @@ function ProductCardComponent({ product }: { product: ProductListItem }) {
     return "";
   }, [p.unit]);
 
+  const outletDisplayName = useMemo(() => {
+    return (
+      p.outletName ??
+      p.outlet?.name ??
+      currentOutlet?.name ??
+      null
+    );
+  }, [p.outletName, p.outlet?.name, currentOutlet?.name]);
+
   const isTrending = p.trendState?.trending || false;
   const description = String(p.shortDescription || "");
   const tags = (p.tags as string[]) || [];
@@ -200,13 +209,13 @@ function ProductCardComponent({ product }: { product: ProductListItem }) {
 
           <div className="flex min-h-4 items-center gap-1 text-[10px] font-medium text-ink-muted">
             {unitLabel ? <span className="truncate">{unitLabel}</span> : null}
-            {unitLabel && currentOutlet?.name ? (
+            {unitLabel && outletDisplayName ? (
               <span className="shrink-0 text-surface-border">|</span>
             ) : null}
-            {currentOutlet?.name ? (
+            {outletDisplayName ? (
               <span className="inline-flex min-w-0 items-center gap-0.5 font-semibold text-brand-outlet">
                 <MapPin size={10} className="shrink-0" aria-hidden />
-                <span className="truncate">{currentOutlet.name}</span>
+                <span className="truncate">{outletDisplayName}</span>
               </span>
             ) : null}
           </div>

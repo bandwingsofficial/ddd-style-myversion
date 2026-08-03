@@ -127,13 +127,13 @@ export class DashboardService {
     const rows: Array<Array<string | number>> = [];
 
     Object.entries(summary.revenue).forEach(([key, value]) => {
-      rows.push(['Revenue', key, value as number]);
+      rows.push(['Revenue', key, value]);
     });
     Object.entries(summary.orders).forEach(([key, value]) => {
-      rows.push(['Orders', key, value as number]);
+      rows.push(['Orders', key, value]);
     });
     Object.entries(summary.payments).forEach(([key, value]) => {
-      rows.push(['Payments', key, value as number]);
+      rows.push(['Payments', key, value]);
     });
 
     return this.toCsv(headers, rows);
@@ -148,6 +148,8 @@ export class DashboardService {
       return text;
     };
 
-    return [headers, ...rows].map((row) => row.map(escape).join(',')).join('\n');
+    return [headers, ...rows]
+      .map((row) => row.map(escape).join(','))
+      .join('\n');
   }
 }

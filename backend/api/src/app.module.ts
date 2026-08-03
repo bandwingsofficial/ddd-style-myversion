@@ -10,7 +10,6 @@ import { QueueModule } from './infrastructure/queue/queue.module';
 import { RedisModule } from './infrastructure/redis/redis.module';
 import { HttpModule } from '@nestjs/axios';
 
-
 import { AuthModule } from './modules/auth/modules/auth.module';
 import { CartModule } from './modules/cart/modules/cart.module';
 import { CategoriesModule } from './modules/categories/modules/categories.module';
@@ -44,8 +43,6 @@ import { OtpWorker } from './workers/otp.worker';
       wildcard: true,
       delimiter: '.',
     }),
-
-    
 
     AuthModule,
     UploadsModule,

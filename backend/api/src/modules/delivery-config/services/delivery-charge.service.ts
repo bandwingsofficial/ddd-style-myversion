@@ -18,12 +18,14 @@ export class DeliveryChargeService {
    * Rule matching and free-delivery progress use net subtotal (after discounts).
    */
   async calculate(
-    params: DeliveryChargeInput | {
-      subtotal: Prisma.Decimal | number;
-      discount: Prisma.Decimal | number;
-      netSubtotal: Prisma.Decimal | number;
-      itemCount: number;
-    },
+    params:
+      | DeliveryChargeInput
+      | {
+          subtotal: Prisma.Decimal | number;
+          discount: Prisma.Decimal | number;
+          netSubtotal: Prisma.Decimal | number;
+          itemCount: number;
+        },
   ): Promise<DeliveryChargeResult> {
     const subtotal = Number(params.subtotal);
     const discount = Number(params.discount);
@@ -35,10 +37,15 @@ export class DeliveryChargeService {
     }
 
     const merchandiseSubtotal = netSubtotal;
-    const activeRules = await this.deliveryRuleRepo.findActiveOrderedByMinDesc();
+    const activeRules =
+      await this.deliveryRuleRepo.findActiveOrderedByMinDesc();
     const hasActiveRules = activeRules.length > 0;
     const candidates = this.buildCandidates(activeRules);
-    const matched = this.matchRule(candidates, merchandiseSubtotal, hasActiveRules);
+    const matched = this.matchRule(
+      candidates,
+      merchandiseSubtotal,
+      hasActiveRules,
+    );
 
     const deliveryFee = matched.isFreeDelivery ? 0 : matched.deliveryFee;
     const isFreeDelivery = deliveryFee === 0;
@@ -95,7 +102,8 @@ export class DeliveryChargeService {
     };
     hasActiveRules: boolean;
   }> {
-    const activeRules = await this.deliveryRuleRepo.findActiveOrderedByMinDesc();
+    const activeRules =
+      await this.deliveryRuleRepo.findActiveOrderedByMinDesc();
 
     return {
       rules: activeRules.map((rule) => ({
@@ -254,9 +262,7 @@ export class DeliveryChargeService {
       return freeThresholds[freeThresholds.length - 1] ?? null;
     }
 
-    const nextFree = freeThresholds.filter(
-      (min) => min > merchandiseSubtotal,
-    );
+    const nextFree = freeThresholds.filter((min) => min > merchandiseSubtotal);
 
     return nextFree.length > 0 ? nextFree[0] : null;
   }

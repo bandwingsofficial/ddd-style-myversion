@@ -16,7 +16,6 @@ import { OrderService } from '../services/order.service';
 import { OrderStatusService } from '../services/order-status.service';
 import { OrderOrchestratorService } from '../services/order-orchestrator.service';
 
-
 /* ---------------------------------------------- */
 /* REPOSITORIES                                   */
 /* ---------------------------------------------- */
@@ -35,18 +34,10 @@ import { OrderResponseMapper } from '../mappers/order-response.mapper';
 import { CartModule } from '../../cart/modules/cart.module';
 import { UploadsModule } from '../../uploads/uploads.module';
 
-
 @Module({
-  controllers: [
-    OrderController,
-    MyOrdersController,
-    OrderAdminController,
-  ],
+  controllers: [OrderController, MyOrdersController, OrderAdminController],
 
-  imports: [
-    CartModule,
-    UploadsModule,
-  ],
+  imports: [CartModule, UploadsModule],
   providers: [
     /* Infrastructure */
     PrismaService,
@@ -68,8 +59,8 @@ import { UploadsModule } from '../../uploads/uploads.module';
     OrderPublicGateway,
 
     /* Listeners */
-    OrderPublicListener,   // socket updates
-    OrderPaymentListener,  // 🔥 payment → order glue
+    OrderPublicListener, // socket updates
+    OrderPaymentListener, // 🔥 payment → order glue
   ],
   exports: [
     /* used by payments/checkout modules */

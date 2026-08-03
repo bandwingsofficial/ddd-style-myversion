@@ -33,7 +33,9 @@ export function resolveEffectivePriceNumber(
   originalPrice: number,
   discountPrice?: number | null,
 ): number {
-  return normalizeDiscountPriceNumber(originalPrice, discountPrice) ?? originalPrice;
+  return (
+    normalizeDiscountPriceNumber(originalPrice, discountPrice) ?? originalPrice
+  );
 }
 
 export function computeLineTotalNumber(
@@ -137,7 +139,10 @@ export function resolveCartItemPricingFromSources(params: {
     };
   }
 
-  const effectivePrice = resolveEffectivePrice(catalogOriginal, catalogDiscount);
+  const effectivePrice = resolveEffectivePrice(
+    catalogOriginal,
+    catalogDiscount,
+  );
 
   return {
     unitPrice: catalogOriginal,
@@ -182,7 +187,9 @@ export interface CartItemTotalsResult {
  * afterDiscountTotal = Σ(effectivePrice × qty)
  * discount = subtotal − afterDiscountTotal
  */
-export function computeCartItemTotals(items: CartLineInput[]): CartItemTotalsResult {
+export function computeCartItemTotals(
+  items: CartLineInput[],
+): CartItemTotalsResult {
   let subtotal = new Decimal(0);
   let afterDiscountTotal = new Decimal(0);
   let itemCount = 0;
@@ -246,9 +253,7 @@ export interface PersistedCartItemRow {
   lineTotal: Decimal;
 }
 
-export function cartItemRowNeedsRepair(
-  row: PersistedCartItemRow,
-): boolean {
+export function cartItemRowNeedsRepair(row: PersistedCartItemRow): boolean {
   const normalizedDiscount = normalizeDiscountPrice(
     row.unitPrice,
     row.discountPrice,
@@ -266,9 +271,7 @@ export function cartItemRowNeedsRepair(
   return !row.lineTotal.equals(expectedLineTotal) || !discountMatches;
 }
 
-export function repairPersistedCartItemRow(
-  row: PersistedCartItemRow,
-): {
+export function repairPersistedCartItemRow(row: PersistedCartItemRow): {
   unitPrice: Decimal;
   discountPrice?: Decimal;
   lineTotal: Decimal;
@@ -281,7 +284,11 @@ export function repairPersistedCartItemRow(
   return {
     unitPrice: row.unitPrice,
     discountPrice: normalizedDiscount,
-    lineTotal: computeLineTotal(row.unitPrice, normalizedDiscount, row.quantity),
+    lineTotal: computeLineTotal(
+      row.unitPrice,
+      normalizedDiscount,
+      row.quantity,
+    ),
   };
 }
 

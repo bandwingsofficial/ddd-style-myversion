@@ -20,26 +20,16 @@ export class OutletEventsService {
   /* WORKING STATUS                                    */
   /* ================================================= */
 
-  emitWorkingStatusChanged(
-    payload: OutletWorkingStatusChangedEvent,
-  ): void {
-    this.eventEmitter.emit(
-      OutletEvents.WORKING_STATUS_CHANGED,
-      payload,
-    );
+  emitWorkingStatusChanged(payload: OutletWorkingStatusChangedEvent): void {
+    this.eventEmitter.emit(OutletEvents.WORKING_STATUS_CHANGED, payload);
   }
 
   /* ================================================= */
   /* CAMERA                                            */
   /* ================================================= */
 
-  emitCameraStatusChanged(
-    payload: OutletCameraStatusChangedEvent,
-  ): void {
-    this.eventEmitter.emit(
-      OutletEvents.CAMERA_STATUS_CHANGED,
-      payload,
-    );
+  emitCameraStatusChanged(payload: OutletCameraStatusChangedEvent): void {
+    this.eventEmitter.emit(OutletEvents.CAMERA_STATUS_CHANGED, payload);
   }
 
   /* ================================================= */
@@ -47,48 +37,26 @@ export class OutletEventsService {
   /* ================================================= */
 
   emitOutletEnabled(payload: OutletLifecycleEvent): void {
-    this.eventEmitter.emit(
-      OutletEvents.OUTLET_ENABLED,
-      payload,
-    );
+    this.eventEmitter.emit(OutletEvents.OUTLET_ENABLED, payload);
   }
 
   emitOutletDisabled(payload: OutletLifecycleEvent): void {
-    this.eventEmitter.emit(
-      OutletEvents.OUTLET_DISABLED,
-      payload,
-    );
+    this.eventEmitter.emit(OutletEvents.OUTLET_DISABLED, payload);
   }
 
   emitOutletActivated(payload: OutletLifecycleEvent): void {
-    this.eventEmitter.emit(
-      OutletEvents.OUTLET_ACTIVATED,
-      payload,
-    );
+    this.eventEmitter.emit(OutletEvents.OUTLET_ACTIVATED, payload);
   }
 
   emitOutletInactivated(payload: OutletLifecycleEvent): void {
-    this.eventEmitter.emit(
-      OutletEvents.OUTLET_INACTIVATED,
-      payload,
-    );
+    this.eventEmitter.emit(OutletEvents.OUTLET_INACTIVATED, payload);
   }
 
-  emitOutletUsersInactivated(
-    payload: OutletUsersInactivatedEvent,
-  ): void {
-    this.eventEmitter.emit(
-      OutletEvents.OUTLET_USERS_INACTIVATED,
-      payload,
-    );
+  emitOutletUsersInactivated(payload: OutletUsersInactivatedEvent): void {
+    this.eventEmitter.emit(OutletEvents.OUTLET_USERS_INACTIVATED, payload);
   }
 
-  emitUserSessionsInvalidated(
-    payload: UserSessionsInvalidatedEvent,
-  ): void {
-    this.eventEmitter.emit(
-      OutletEvents.USER_SESSIONS_INVALIDATED,
-      payload,
-    );
+  emitUserSessionsInvalidated(payload: UserSessionsInvalidatedEvent): void {
+    this.eventEmitter.emit(OutletEvents.USER_SESSIONS_INVALIDATED, payload);
   }
 }

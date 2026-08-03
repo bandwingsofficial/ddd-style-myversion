@@ -29,8 +29,7 @@ export class SavedAddressPublicGateway
      * - or handshake query (temporary)
      */
     const customerId =
-      client.handshake.auth?.customerId ||
-      client.handshake.query?.customerId;
+      client.handshake.auth?.customerId || client.handshake.query?.customerId;
 
     if (!customerId) {
       client.disconnect(true);

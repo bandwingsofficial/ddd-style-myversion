@@ -59,9 +59,7 @@ export class CustomerProfileController {
   /* ================================================= */
 
   @Post()
-  @UseInterceptors(
-    FileInterceptor('avatar', customerProfileImageUploadOptions),
-  )
+  @UseInterceptors(FileInterceptor('avatar', customerProfileImageUploadOptions))
   async createProfile(
     @CurrentUser() user,
     @Body() dto: CreateCustomerProfileDto,
@@ -93,9 +91,7 @@ export class CustomerProfileController {
   /* ================================================= */
 
   @Patch()
-  @UseInterceptors(
-    FileInterceptor('avatar', customerProfileImageUploadOptions),
-  )
+  @UseInterceptors(FileInterceptor('avatar', customerProfileImageUploadOptions))
   async updateProfile(
     @CurrentUser() user,
     @Body() dto: UpdateCustomerProfileDto,
@@ -129,9 +125,7 @@ export class CustomerProfileController {
   /* ================================================= */
 
   @Post('upsert')
-  @UseInterceptors(
-    FileInterceptor('avatar', customerProfileImageUploadOptions),
-  )
+  @UseInterceptors(FileInterceptor('avatar', customerProfileImageUploadOptions))
   async upsertProfile(
     @CurrentUser() user,
     @Body() dto: UpdateCustomerProfileDto,

@@ -31,9 +31,7 @@ import { Unit } from '../domain/enums/unit.enum';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(ActorType.SUPER_ADMIN)
 export class StockItemManagementController {
-  constructor(
-    private readonly orchestrator: StockItemOrchestratorService,
-  ) {}
+  constructor(private readonly orchestrator: StockItemOrchestratorService) {}
 
   @Get()
   async listStockItems(@Query() query: ListStockItemsQueryDto) {
@@ -62,7 +60,7 @@ export class StockItemManagementController {
     const stockItem = StockItem.createNew({
       id: randomUUID(),
       name: dto.name,
-      unit: dto.unit as Unit,
+      unit: dto.unit,
     });
 
     const data = await this.orchestrator.createStockItem({ stockItem });
@@ -82,7 +80,7 @@ export class StockItemManagementController {
     const data = await this.orchestrator.updateStockItem({
       stockItemId,
       name: dto.name,
-      unit: dto.unit as Unit | undefined,
+      unit: dto.unit,
     });
 
     return {

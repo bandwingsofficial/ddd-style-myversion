@@ -35,8 +35,8 @@ export class AuthSessionRepository {
         deviceId: params.deviceInfo?.deviceId,
         ipAddress: params.deviceInfo?.ipAddress,
         userAgent: params.deviceInfo?.userAgent,
-        createdAt: now,   // ✅ explicit
-        lastUsedAt: now,  // ✅ identical
+        createdAt: now, // ✅ explicit
+        lastUsedAt: now, // ✅ identical
       },
     });
 

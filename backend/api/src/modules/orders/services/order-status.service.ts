@@ -55,10 +55,12 @@ export class OrderStatusService {
   private async transitionInternal(
     orderId: string,
     transitionFn: (order: Order) => Order,
-    actor: {
-      actorType: ActorType;
-      actorId: string;
-    } | undefined,
+    actor:
+      | {
+          actorType: ActorType;
+          actorId: string;
+        }
+      | undefined,
     client: PrismaTransaction,
   ): Promise<Order> {
     const order = await this.orderRepo.findById(orderId, client);
@@ -82,7 +84,7 @@ export class OrderStatusService {
     await this.orderEventRepo.create(
       {
         orderId: updated.id,
-        type: updated.status as OrderEventType,
+        type: updated.status,
         actorType: actor?.actorType,
         actorId: actor?.actorId,
         metadata: {
@@ -182,28 +184,48 @@ export class OrderStatusService {
   }
 
   async confirm(orderId: string, tx?: PrismaTransaction) {
-    const order = await this.transition(orderId, (o) => o.confirm(), undefined, tx);
+    const order = await this.transition(
+      orderId,
+      (o) => o.confirm(),
+      undefined,
+      tx,
+    );
 
     this.events.emitConfirmed(this.basePayload(order));
     return order;
   }
 
   async startPreparing(orderId: string, tx?: PrismaTransaction) {
-    const order = await this.transition(orderId, (o) => o.startPreparing(), undefined, tx);
+    const order = await this.transition(
+      orderId,
+      (o) => o.startPreparing(),
+      undefined,
+      tx,
+    );
 
     this.events.emitPreparing(this.basePayload(order));
     return order;
   }
 
   async outForDelivery(orderId: string, tx?: PrismaTransaction) {
-    const order = await this.transition(orderId, (o) => o.outForDelivery(), undefined, tx);
+    const order = await this.transition(
+      orderId,
+      (o) => o.outForDelivery(),
+      undefined,
+      tx,
+    );
 
     this.events.emitOutForDelivery(this.basePayload(order));
     return order;
   }
 
   async deliver(orderId: string, tx?: PrismaTransaction) {
-    const order = await this.transition(orderId, (o) => o.deliver(), undefined, tx);
+    const order = await this.transition(
+      orderId,
+      (o) => o.deliver(),
+      undefined,
+      tx,
+    );
 
     this.events.emitDelivered(this.basePayload(order));
     return order;
@@ -222,7 +244,12 @@ export class OrderStatusService {
   }
 
   async fail(orderId: string, tx?: PrismaTransaction) {
-    const order = await this.transition(orderId, (o) => o.fail(), undefined, tx);
+    const order = await this.transition(
+      orderId,
+      (o) => o.fail(),
+      undefined,
+      tx,
+    );
 
     this.events.emitFailed(this.basePayload(order));
     return order;

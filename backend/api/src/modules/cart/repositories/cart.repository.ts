@@ -41,7 +41,8 @@ export class CartRepository {
 
         deliveryRuleId: cart.deliveryRuleId ?? null,
         deliveryRuleName: cart.deliveryRuleName ?? null,
-        deliveryRuleMinimumOrderAmount: cart.deliveryRuleMinimumOrderAmount ?? null,
+        deliveryRuleMinimumOrderAmount:
+          cart.deliveryRuleMinimumOrderAmount ?? null,
         isFreeDelivery: cart.isFreeDelivery,
         amountToFreeDelivery: cart.amountToFreeDelivery ?? null,
 
@@ -61,26 +62,26 @@ export class CartRepository {
   /* ================================================= */
 
   async findActiveByCustomerAndOutlet(
-  customerId: string,
-  outletId: string,
-  tx?: PrismaTransaction,
-): Promise<Cart | null> {
-  const client = tx ?? this.prisma;
+    customerId: string,
+    outletId: string,
+    tx?: PrismaTransaction,
+  ): Promise<Cart | null> {
+    const client = tx ?? this.prisma;
 
-  const row = await client.cart.findFirst({
-    where: {
-      customerId,
-      outletId,
-      status: CartStatusMapper.toPrisma(CartStatus.ACTIVE),
-    },
-    orderBy: {
-      createdAt: 'desc', // 🔥 always pick latest cart
-    },
-    include: { items: true },
-  });
+    const row = await client.cart.findFirst({
+      where: {
+        customerId,
+        outletId,
+        status: CartStatusMapper.toPrisma(CartStatus.ACTIVE),
+      },
+      orderBy: {
+        createdAt: 'desc', // 🔥 always pick latest cart
+      },
+      include: { items: true },
+    });
 
-  return row ? this.toDomain(row) : null;
-}
+    return row ? this.toDomain(row) : null;
+  }
 
   /** ACTIVE or LOCKED — for checkout display and session recovery */
   async findOpenByCustomerAndOutlet(
@@ -109,26 +110,26 @@ export class CartRepository {
   }
 
   async findActiveBySessionAndOutlet(
-  sessionId: string,
-  outletId: string,
-  tx?: PrismaTransaction,
-): Promise<Cart | null> {
-  const client = tx ?? this.prisma;
+    sessionId: string,
+    outletId: string,
+    tx?: PrismaTransaction,
+  ): Promise<Cart | null> {
+    const client = tx ?? this.prisma;
 
-  const row = await client.cart.findFirst({
-    where: {
-      sessionId,
-      outletId, // 🔥 REQUIRED (same fix as customer)
-      status: CartStatusMapper.toPrisma(CartStatus.ACTIVE),
-    },
-    orderBy: {
-      createdAt: 'desc', // 🔥 always latest
-    },
-    include: { items: true },
-  });
+    const row = await client.cart.findFirst({
+      where: {
+        sessionId,
+        outletId, // 🔥 REQUIRED (same fix as customer)
+        status: CartStatusMapper.toPrisma(CartStatus.ACTIVE),
+      },
+      orderBy: {
+        createdAt: 'desc', // 🔥 always latest
+      },
+      include: { items: true },
+    });
 
-  return row ? this.toDomain(row) : null;
-}
+    return row ? this.toDomain(row) : null;
+  }
   async findById(id: string, tx?: PrismaTransaction): Promise<Cart | null> {
     const client = tx ?? this.prisma;
 
@@ -163,7 +164,8 @@ export class CartRepository {
 
         deliveryRuleId: cart.deliveryRuleId ?? null,
         deliveryRuleName: cart.deliveryRuleName ?? null,
-        deliveryRuleMinimumOrderAmount: cart.deliveryRuleMinimumOrderAmount ?? null,
+        deliveryRuleMinimumOrderAmount:
+          cart.deliveryRuleMinimumOrderAmount ?? null,
         isFreeDelivery: cart.isFreeDelivery,
         amountToFreeDelivery: cart.amountToFreeDelivery ?? null,
 
@@ -188,8 +190,8 @@ export class CartRepository {
   }
 
   public mapToDomain(row: any): Cart {
-  return this.toDomain(row);
-}
+    return this.toDomain(row);
+  }
 
   /* ================================================= */
   /* CART ITEM CRUD                                    */
@@ -317,7 +319,7 @@ export class CartRepository {
   /* ================================================= */
 
   private toDomain(
-    row: Prisma.CartGetPayload<{ include: { items: true } }>
+    row: Prisma.CartGetPayload<{ include: { items: true } }>,
   ): Cart {
     return Cart.rehydrate({
       id: row.id,
@@ -336,7 +338,8 @@ export class CartRepository {
 
       deliveryRuleId: row.deliveryRuleId ?? null,
       deliveryRuleName: row.deliveryRuleName ?? null,
-      deliveryRuleMinimumOrderAmount: row.deliveryRuleMinimumOrderAmount ?? null,
+      deliveryRuleMinimumOrderAmount:
+        row.deliveryRuleMinimumOrderAmount ?? null,
       isFreeDelivery: row.isFreeDelivery,
       amountToFreeDelivery: row.amountToFreeDelivery ?? null,
 
@@ -350,18 +353,18 @@ export class CartRepository {
   }
 
   private toItemDomain(row: PrismaCartItem): CartItem {
-  return CartItem.rehydrate({
-    id: row.id,
-    cartId: row.cartId,
-    productId: row.productId,
-    quantity: row.quantity,
-    unitPrice: row.unitPrice,
-    discountPrice: row.discountPrice ?? undefined,
-    lineTotal: row.lineTotal, // ✅ FIXED
-    productName: row.productName,
-    productImage: row.productImage,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  });
-}
+    return CartItem.rehydrate({
+      id: row.id,
+      cartId: row.cartId,
+      productId: row.productId,
+      quantity: row.quantity,
+      unitPrice: row.unitPrice,
+      discountPrice: row.discountPrice ?? undefined,
+      lineTotal: row.lineTotal, // ✅ FIXED
+      productName: row.productName,
+      productImage: row.productImage,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    });
+  }
 }

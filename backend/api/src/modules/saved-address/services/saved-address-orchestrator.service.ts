@@ -7,9 +7,7 @@ import { SavedAddress } from '../domain/models/saved-address.model';
 
 @Injectable()
 export class SavedAddressOrchestratorService {
-  constructor(
-    private readonly savedAddressService: SavedAddressService,
-  ) {}
+  constructor(private readonly savedAddressService: SavedAddressService) {}
 
   /* ================================================= */
   /* SAVED ADDRESS – READS                             */

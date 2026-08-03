@@ -24,7 +24,6 @@ import { UseInterceptors, UploadedFile } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { superAdminProfileImageUploadOptions } from '../../../common/upload/superadminprofile-image-upload.options';
 
-
 /* ================================================= */
 /* CONTROLLER                                        */
 /* ================================================= */
@@ -33,9 +32,7 @@ import { superAdminProfileImageUploadOptions } from '../../../common/upload/supe
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(ActorType.SUPER_ADMIN)
 export class SuperAdminProfileController {
-  constructor(
-    private readonly orchestrator: AuthOrchestratorService,
-  ) {}
+  constructor(private readonly orchestrator: AuthOrchestratorService) {}
 
   /* ================================================= */
   /* GET PROFILE                                       */
@@ -43,9 +40,7 @@ export class SuperAdminProfileController {
 
   @Get()
   async getProfile(@CurrentUser() user) {
-    const data = await this.orchestrator.getSuperAdminProfile(
-      user.actorId,
-    );
+    const data = await this.orchestrator.getSuperAdminProfile(user.actorId);
 
     return {
       success: true,
@@ -61,10 +56,7 @@ export class SuperAdminProfileController {
 
   @Post()
   @UseInterceptors(
-    FileInterceptor(
-      'avatar',
-      superAdminProfileImageUploadOptions,
-    ),
+    FileInterceptor('avatar', superAdminProfileImageUploadOptions),
   )
   async createProfile(
     @CurrentUser() user,
@@ -75,15 +67,14 @@ export class SuperAdminProfileController {
       ? `images/superadminprofile/avatar/${file.filename}`
       : undefined;
 
-    const data =
-      await this.orchestrator.createSuperAdminProfile({
-        superAdminId: user.actorId,
-        fullName: dto.fullName,
-        title: dto.title,
-        phone: dto.phone,
-        notes: dto.notes,
-        avatarUrl,
-      });
+    const data = await this.orchestrator.createSuperAdminProfile({
+      superAdminId: user.actorId,
+      fullName: dto.fullName,
+      title: dto.title,
+      phone: dto.phone,
+      notes: dto.notes,
+      avatarUrl,
+    });
 
     return {
       success: true,
@@ -99,10 +90,7 @@ export class SuperAdminProfileController {
 
   @Patch()
   @UseInterceptors(
-    FileInterceptor(
-      'avatar',
-      superAdminProfileImageUploadOptions,
-    ),
+    FileInterceptor('avatar', superAdminProfileImageUploadOptions),
   )
   async updateProfile(
     @CurrentUser() user,
@@ -113,14 +101,13 @@ export class SuperAdminProfileController {
       ? `images/superadminprofile/avatar/${file.filename}`
       : undefined;
 
-    const data =
-      await this.orchestrator.updateSuperAdminProfile({
-        superAdminId: user.actorId,
-        updates: {
-          ...dto,
-          avatarUrl,
-        },
-      });
+    const data = await this.orchestrator.updateSuperAdminProfile({
+      superAdminId: user.actorId,
+      updates: {
+        ...dto,
+        avatarUrl,
+      },
+    });
 
     return {
       success: true,
@@ -136,9 +123,7 @@ export class SuperAdminProfileController {
 
   @Delete()
   async deleteProfile(@CurrentUser() user) {
-    await this.orchestrator.deleteSuperAdminProfile(
-      user.actorId,
-    );
+    await this.orchestrator.deleteSuperAdminProfile(user.actorId);
 
     return {
       success: true,
@@ -148,4 +133,3 @@ export class SuperAdminProfileController {
     };
   }
 }
-

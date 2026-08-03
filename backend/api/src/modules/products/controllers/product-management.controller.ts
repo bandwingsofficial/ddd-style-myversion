@@ -50,9 +50,7 @@ import { UpdateProductStatusDto } from '../dtos/update-product-status.dto';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(ActorType.SUPER_ADMIN)
 export class ProductManagementController {
-  constructor(
-    private readonly orchestrator: ProductOrchestratorService,
-  ) {}
+  constructor(private readonly orchestrator: ProductOrchestratorService) {}
 
   /* ================================================= */
   /* PRODUCT – LIST (SUPER ADMIN ONLY)                 */
@@ -232,9 +230,7 @@ export class ProductManagementController {
 
   @Post(':productId/images/main')
   @Roles(ActorType.SUPER_ADMIN)
-  @UseInterceptors(
-    FileInterceptor('mainImage', productImageUploadOptions),
-  )
+  @UseInterceptors(FileInterceptor('mainImage', productImageUploadOptions))
   async replaceMainImage(
     @Param('productId') productId: string,
     @UploadedFile() file: Express.Multer.File,
@@ -420,9 +416,7 @@ export class ProductManagementController {
     return {
       success: true,
       code:
-        data.outcome === 'ARCHIVED'
-          ? 'PRODUCT_ARCHIVED'
-          : 'PRODUCT_DELETED',
+        data.outcome === 'ARCHIVED' ? 'PRODUCT_ARCHIVED' : 'PRODUCT_DELETED',
       message,
       data,
     };

@@ -28,334 +28,325 @@ export class DeliveryService {
   ) {}
 
   /* ================================================= */
-/* ASSIGN DELIVERY                                  */
-/* ================================================= */
-
-async assignDelivery(params: {
-  orderId: string;
-  partnerId: string;
-}): Promise<Delivery> {
-  const { orderId, partnerId } = params ?? {};
-
-  if (!orderId) {
-    throw new ValidationError('ORDER_ID_REQUIRED', 'Order id required');
-  }
-
-  if (!partnerId) {
-    throw new ValidationError('PARTNER_ID_REQUIRED', 'Partner id required');
-  }
-
-  /* ================================================= */
-  /* PHASE 1 — DB ONLY                                 */
+  /* ASSIGN DELIVERY                                  */
   /* ================================================= */
 
-  const saved = await this.prisma.$transaction(async (tx) => {
-    const delivery = Delivery.createNew({
-      id: crypto.randomUUID(),
-      orderId,
-      partnerId,
+  async assignDelivery(params: {
+    orderId: string;
+    partnerId: string;
+  }): Promise<Delivery> {
+    const { orderId, partnerId } = params ?? {};
+
+    if (!orderId) {
+      throw new ValidationError('ORDER_ID_REQUIRED', 'Order id required');
+    }
+
+    if (!partnerId) {
+      throw new ValidationError('PARTNER_ID_REQUIRED', 'Partner id required');
+    }
+
+    /* ================================================= */
+    /* PHASE 1 — DB ONLY                                 */
+    /* ================================================= */
+
+    const saved = await this.prisma.$transaction(async (tx) => {
+      const delivery = Delivery.createNew({
+        id: crypto.randomUUID(),
+        orderId,
+        partnerId,
+      });
+
+      const saved = await this.deliveryRepo.create(delivery, tx);
+
+      await this.deliveryEventRepo.create(
+        {
+          deliveryId: saved.id,
+          type: DeliveryEventType.ASSIGNED,
+        },
+        tx,
+      );
+
+      return saved;
     });
 
-    const saved = await this.deliveryRepo.create(delivery, tx);
+    /* ================================================= */
+    /* 🔥 EMIT AFTER COMMIT (CRITICAL)                    */
+    /* ================================================= */
 
-    await this.deliveryEventRepo.create(
-      {
-        deliveryId: saved.id,
-        type: DeliveryEventType.ASSIGNED,
-      },
-      tx,
-    );
+    this.deliveryEvents.emitAssigned({
+      deliveryId: saved.id,
+      orderId: saved.orderId,
+      riderId: saved.partnerId,
+      occurredAt: new Date(),
+    });
 
     return saved;
-  });
+  }
 
   /* ================================================= */
-  /* 🔥 EMIT AFTER COMMIT (CRITICAL)                    */
+  /* PICKUP                                           */
   /* ================================================= */
 
-  this.deliveryEvents.emitAssigned({
-    deliveryId: saved.id,
-    orderId: saved.orderId,
-    riderId: saved.partnerId,
-    occurredAt: new Date(),
-  });
+  async pickup(deliveryId: string): Promise<Delivery> {
+    /* ================================================= */
+    /* PHASE 1 — DB ONLY                                 */
+    /* ================================================= */
 
-  return saved;
-}
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const delivery = await this.deliveryRepo.findById(deliveryId, tx);
 
-  /* ================================================= */
-/* PICKUP                                           */
-/* ================================================= */
+      if (!delivery) {
+        throw new ValidationError('DELIVERY_NOT_FOUND', 'Delivery not found');
+      }
 
-async pickup(deliveryId: string): Promise<Delivery> {
-  /* ================================================= */
-  /* PHASE 1 — DB ONLY                                 */
-  /* ================================================= */
+      /* 🔥 domain transition */
+      const updated = delivery.markPickedUp();
 
-  const updated = await this.prisma.$transaction(async (tx) => {
-    const delivery = await this.deliveryRepo.findById(deliveryId, tx);
+      /* persist delivery */
+      await this.deliveryRepo.update(updated, tx);
 
-    if (!delivery) {
-      throw new ValidationError(
-        'DELIVERY_NOT_FOUND',
-        'Delivery not found',
+      /* timeline event */
+      await this.deliveryEventRepo.create(
+        {
+          deliveryId,
+          type: DeliveryEventType.PICKED_UP,
+        },
+        tx,
       );
-    }
 
-    /* 🔥 domain transition */
-    const updated = delivery.markPickedUp();
+      /* 🔥 sync order state */
+      await this.orderStatusService.outForDelivery(updated.orderId, tx);
 
-    /* persist delivery */
-    await this.deliveryRepo.update(updated, tx);
+      return updated;
+    });
 
-    /* timeline event */
-    await this.deliveryEventRepo.create(
-      {
-        deliveryId,
-        type: DeliveryEventType.PICKED_UP,
-      },
-      tx,
-    );
+    /* ================================================= */
+    /* 🔥 EMIT AFTER COMMIT                              */
+    /* ================================================= */
 
-    /* 🔥 sync order state */
-    await this.orderStatusService.outForDelivery(
-      updated.orderId,
-      tx,
-    );
+    this.deliveryEvents.emitPickedUp({
+      deliveryId: updated.id,
+      orderId: updated.orderId,
+      riderId: updated.partnerId,
+      occurredAt: new Date(),
+    });
 
     return updated;
-  });
-
+  }
   /* ================================================= */
-  /* 🔥 EMIT AFTER COMMIT                              */
-  /* ================================================= */
-
-  this.deliveryEvents.emitPickedUp({
-    deliveryId: updated.id,
-    orderId: updated.orderId,
-    riderId: updated.partnerId,
-    occurredAt: new Date(),
-  });
-
-  return updated;
-}
-  /* ================================================= */
-/* START TRANSIT                                    */
-/* ================================================= */
-
-async startTransit(deliveryId: string): Promise<Delivery> {
-  /* ================================================= */
-  /* PHASE 1 — DB ONLY                                 */
+  /* START TRANSIT                                    */
   /* ================================================= */
 
-  const updated = await this.prisma.$transaction(async (tx) => {
-    const delivery = await this.deliveryRepo.findById(deliveryId, tx);
+  async startTransit(deliveryId: string): Promise<Delivery> {
+    /* ================================================= */
+    /* PHASE 1 — DB ONLY                                 */
+    /* ================================================= */
 
-    if (!delivery) {
-      throw new ValidationError(
-        'DELIVERY_NOT_FOUND',
-        'Delivery not found',
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const delivery = await this.deliveryRepo.findById(deliveryId, tx);
+
+      if (!delivery) {
+        throw new ValidationError('DELIVERY_NOT_FOUND', 'Delivery not found');
+      }
+
+      const updated = delivery.markInTransit();
+
+      await this.deliveryRepo.update(updated, tx);
+
+      await this.deliveryEventRepo.create(
+        {
+          deliveryId,
+          type: DeliveryEventType.IN_TRANSIT,
+        },
+        tx,
       );
-    }
 
-    const updated = delivery.markInTransit();
+      return updated;
+    });
 
-    await this.deliveryRepo.update(updated, tx);
+    /* ================================================= */
+    /* 🔥 EMIT AFTER COMMIT                              */
+    /* ================================================= */
 
-    await this.deliveryEventRepo.create(
-      {
-        deliveryId,
-        type: DeliveryEventType.IN_TRANSIT,
-      },
-      tx,
-    );
+    this.deliveryEvents.emitInTransit({
+      deliveryId: updated.id,
+      orderId: updated.orderId,
+      riderId: updated.partnerId,
+      occurredAt: new Date(),
+    });
 
     return updated;
-  });
-
-  /* ================================================= */
-  /* 🔥 EMIT AFTER COMMIT                              */
-  /* ================================================= */
-
-  this.deliveryEvents.emitInTransit({
-  deliveryId: updated.id,
-  orderId: updated.orderId,
-  riderId: updated.partnerId,
-  occurredAt: new Date(),
-});
-
-  return updated;
-}
+  }
   /* ================================================= */
   /* LOCATION UPDATE                                  */
   /* ================================================= */
 
   async updateLocation(params: {
-  deliveryId: string;
-  lat: number;
-  lng: number;
-}): Promise<void> {
-  await this.prisma.$transaction(async (tx) => {
-    /* ---------------------------------- */
-    /* persist location snapshot          */
-    /* ---------------------------------- */
+    deliveryId: string;
+    lat: number;
+    lng: number;
+  }): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      /* ---------------------------------- */
+      /* persist location snapshot          */
+      /* ---------------------------------- */
 
-    await this.locationRepo.create(
-      {
-        deliveryId: params.deliveryId,
-        lat: params.lat,
-        lng: params.lng,
-      },
-      tx,
-    );
-
-    /* ---------------------------------- */
-    /* timeline event (DB history)        */
-    /* ---------------------------------- */
-
-    await this.deliveryEventRepo.create(
-      {
-        deliveryId: params.deliveryId,
-        type: DeliveryEventType.LOCATION_UPDATED,
-        metadata: {
+      await this.locationRepo.create(
+        {
+          deliveryId: params.deliveryId,
           lat: params.lat,
           lng: params.lng,
         },
-      },
-      tx,
-    );
-  });
+        tx,
+      );
 
-  /* ---------------------------------- */
-  /* 🔥 realtime socket emit (OUTSIDE TX) */
-  /* ---------------------------------- */
+      /* ---------------------------------- */
+      /* timeline event (DB history)        */
+      /* ---------------------------------- */
 
-  this.deliveryEvents.emitLocationUpdated({
-    deliveryId: params.deliveryId,
-    orderId: '', // optional if not needed
-    latitude: params.lat,
-    longitude: params.lng,
-    occurredAt: new Date(),
-  });
-}
+      await this.deliveryEventRepo.create(
+        {
+          deliveryId: params.deliveryId,
+          type: DeliveryEventType.LOCATION_UPDATED,
+          metadata: {
+            lat: params.lat,
+            lng: params.lng,
+          },
+        },
+        tx,
+      );
+    });
+
+    /* ---------------------------------- */
+    /* 🔥 realtime socket emit (OUTSIDE TX) */
+    /* ---------------------------------- */
+
+    this.deliveryEvents.emitLocationUpdated({
+      deliveryId: params.deliveryId,
+      orderId: '', // optional if not needed
+      latitude: params.lat,
+      longitude: params.lng,
+      occurredAt: new Date(),
+    });
+  }
   /* ================================================= */
   /* DELIVERED                                        */
   /* ================================================= */
 
-async deliver(deliveryId: string): Promise<Delivery> {
-  const delivery = await this.prisma.$transaction(async (tx) => {
-    const delivery = await this.deliveryRepo.findById(deliveryId, tx);
+  async deliver(deliveryId: string): Promise<Delivery> {
+    const delivery = await this.prisma.$transaction(async (tx) => {
+      const delivery = await this.deliveryRepo.findById(deliveryId, tx);
 
-    if (!delivery) {
-      throw new ValidationError('DELIVERY_NOT_FOUND', 'Delivery not found');
-    }
+      if (!delivery) {
+        throw new ValidationError('DELIVERY_NOT_FOUND', 'Delivery not found');
+      }
 
-    /* ------------------------------- */
-    /* domain transition               */
-    /* ------------------------------- */
+      /* ------------------------------- */
+      /* domain transition               */
+      /* ------------------------------- */
 
-    const updated = delivery.markDelivered();
+      const updated = delivery.markDelivered();
 
-    /* ------------------------------- */
-    /* persist delivery                */
-    /* ------------------------------- */
+      /* ------------------------------- */
+      /* persist delivery                */
+      /* ------------------------------- */
 
-    await this.deliveryRepo.update(updated, tx);
+      await this.deliveryRepo.update(updated, tx);
 
-    /* ------------------------------- */
-    /* timeline event (DB)             */
-    /* ------------------------------- */
+      /* ------------------------------- */
+      /* timeline event (DB)             */
+      /* ------------------------------- */
 
-    await this.deliveryEventRepo.create(
-      {
-        deliveryId,
-        type: DeliveryEventType.DELIVERED,
-      },
-      tx,
-    );
+      await this.deliveryEventRepo.create(
+        {
+          deliveryId,
+          type: DeliveryEventType.DELIVERED,
+        },
+        tx,
+      );
 
-    /* ------------------------------- */
-    /* sync order                     */
-    /* ------------------------------- */
+      /* ------------------------------- */
+      /* sync order                     */
+      /* ------------------------------- */
 
-    await this.orderStatusService.deliver(updated.orderId, tx);
+      await this.orderStatusService.deliver(updated.orderId, tx);
 
-    return updated;
-  });
+      return updated;
+    });
 
-  /* ================================= */
-  /* 🔥 REALTIME SOCKET (outside TX)   */
-  /* ================================= */
+    /* ================================= */
+    /* 🔥 REALTIME SOCKET (outside TX)   */
+    /* ================================= */
 
-  this.deliveryEvents.emitDelivered({
-    deliveryId: delivery.id,
-    orderId: delivery.orderId,
-    riderId: delivery.partnerId,
-    occurredAt: new Date(),
-  });
+    this.deliveryEvents.emitDelivered({
+      deliveryId: delivery.id,
+      orderId: delivery.orderId,
+      riderId: delivery.partnerId,
+      occurredAt: new Date(),
+    });
 
-  return delivery;
-}
+    return delivery;
+  }
 
   /* ================================================= */
   /* FAILED                                           */
   /* ================================================= */
 
-async fail(deliveryId: string): Promise<Delivery> {
-  const delivery = await this.prisma.$transaction(async (tx) => {
-    const delivery = await this.deliveryRepo.findById(deliveryId, tx);
+  async fail(deliveryId: string): Promise<Delivery> {
+    const delivery = await this.prisma.$transaction(async (tx) => {
+      const delivery = await this.deliveryRepo.findById(deliveryId, tx);
 
-    if (!delivery) {
-      throw new ValidationError('DELIVERY_NOT_FOUND', 'Delivery not found');
-    }
+      if (!delivery) {
+        throw new ValidationError('DELIVERY_NOT_FOUND', 'Delivery not found');
+      }
 
-    /* ------------------------------- */
-    /* domain transition               */
-    /* ------------------------------- */
+      /* ------------------------------- */
+      /* domain transition               */
+      /* ------------------------------- */
 
-    const updated = delivery.markFailed();
+      const updated = delivery.markFailed();
 
-    /* ------------------------------- */
-    /* persist delivery                */
-    /* ------------------------------- */
+      /* ------------------------------- */
+      /* persist delivery                */
+      /* ------------------------------- */
 
-    await this.deliveryRepo.update(updated, tx);
+      await this.deliveryRepo.update(updated, tx);
 
-    /* ------------------------------- */
-    /* timeline event (DB)             */
-    /* ------------------------------- */
+      /* ------------------------------- */
+      /* timeline event (DB)             */
+      /* ------------------------------- */
 
-    await this.deliveryEventRepo.create(
-      {
-        deliveryId,
-        type: DeliveryEventType.FAILED,
-      },
-      tx,
-    );
+      await this.deliveryEventRepo.create(
+        {
+          deliveryId,
+          type: DeliveryEventType.FAILED,
+        },
+        tx,
+      );
 
-    /* ------------------------------- */
-    /* sync order                     */
-    /* ------------------------------- */
+      /* ------------------------------- */
+      /* sync order                     */
+      /* ------------------------------- */
 
-    await this.orderStatusService.fail(updated.orderId, tx);
+      await this.orderStatusService.fail(updated.orderId, tx);
 
-    return updated;
-  });
+      return updated;
+    });
 
-  /* ================================= */
-  /* 🔥 REALTIME SOCKET (outside TX)   */
-  /* ================================= */
+    /* ================================= */
+    /* 🔥 REALTIME SOCKET (outside TX)   */
+    /* ================================= */
 
-  this.deliveryEvents.emitFailed({
-    deliveryId: delivery.id,
-    orderId: delivery.orderId,
-    riderId: delivery.partnerId,
-    occurredAt: new Date(),
-    reason: 'DELIVERY_FAILED', // optional
-  });
+    this.deliveryEvents.emitFailed({
+      deliveryId: delivery.id,
+      orderId: delivery.orderId,
+      riderId: delivery.partnerId,
+      occurredAt: new Date(),
+      reason: 'DELIVERY_FAILED', // optional
+    });
 
-  return delivery;
-}
+    return delivery;
+  }
 
   /* ================================================= */
   /* READS                                            */
@@ -363,7 +354,8 @@ async fail(deliveryId: string): Promise<Delivery> {
 
   async getById(deliveryId: string): Promise<Delivery> {
     const delivery = await this.deliveryRepo.findById(deliveryId);
-    if (!delivery) throw new ValidationError('DELIVERY_NOT_FOUND', 'Delivery not found');
+    if (!delivery)
+      throw new ValidationError('DELIVERY_NOT_FOUND', 'Delivery not found');
     return delivery;
   }
 

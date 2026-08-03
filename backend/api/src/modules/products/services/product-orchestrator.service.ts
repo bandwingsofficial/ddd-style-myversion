@@ -88,10 +88,7 @@ export class ProductOrchestratorService {
     const galleryRecords =
       await this.productRepository.findGalleryRecords(productId);
 
-    return this.productResponseMapper.toResponse(
-      product,
-      galleryRecords,
-    );
+    return this.productResponseMapper.toResponse(product, galleryRecords);
   }
 
   async getProductBySlug(slug: string): Promise<Product> {
@@ -102,9 +99,7 @@ export class ProductOrchestratorService {
   /* PRODUCT – READS (PUBLIC)                          */
   /* ================================================= */
 
-  async getPublicProducts(
-    query: PublicProductQueryDto,
-  ): Promise<
+  async getPublicProducts(query: PublicProductQueryDto): Promise<
     {
       product: Product;
       category: { id: string; name: string };
@@ -131,14 +126,10 @@ export class ProductOrchestratorService {
   async getPublicProductById(
     productId: string,
   ): Promise<ProductPublicResponse> {
-    const result =
-      await this.productService.getByIdWithCategory(productId);
+    const result = await this.productService.getByIdWithCategory(productId);
 
     if (!result.product.canBeShown()) {
-      throw new ValidationError(
-        'PRODUCT_NOT_FOUND',
-        'Product not found',
-      );
+      throw new ValidationError('PRODUCT_NOT_FOUND', 'Product not found');
     }
 
     const galleryRecords =
@@ -151,23 +142,18 @@ export class ProductOrchestratorService {
     );
   }
 
-  async getPublicProductBySlug(
-    slug: string,
-  ): Promise<ProductSlugPageResponse> {
-    const result =
-      await this.productService.getBySlugWithCategory(slug);
+  async getPublicProductBySlug(slug: string): Promise<ProductSlugPageResponse> {
+    const result = await this.productService.getBySlugWithCategory(slug);
 
-    const galleryRecords =
-      await this.productRepository.findGalleryRecords(
-        result.product.id,
-      );
+    const galleryRecords = await this.productRepository.findGalleryRecords(
+      result.product.id,
+    );
 
-    const productResponse =
-      await this.productResponseMapper.toPublicResponse(
-        result.product,
-        result.category,
-        galleryRecords,
-      );
+    const productResponse = await this.productResponseMapper.toPublicResponse(
+      result.product,
+      result.category,
+      galleryRecords,
+    );
 
     if (result.product.canBeShown()) {
       return {
@@ -204,10 +190,7 @@ export class ProductOrchestratorService {
       };
     }
 
-    throw new ValidationError(
-      'PRODUCT_NOT_FOUND',
-      'Product not found',
-    );
+    throw new ValidationError('PRODUCT_NOT_FOUND', 'Product not found');
   }
 
   /* ================================================= */
@@ -220,13 +203,11 @@ export class ProductOrchestratorService {
     galleryImageFiles?: MulterUploadFile[];
   }): Promise<ProductResponse> {
     const created = await this.productService.createProduct(params);
-    const galleryRecords =
-      await this.productRepository.findGalleryRecords(created.id);
-
-    return this.productResponseMapper.toResponse(
-      created,
-      galleryRecords,
+    const galleryRecords = await this.productRepository.findGalleryRecords(
+      created.id,
     );
+
+    return this.productResponseMapper.toResponse(created, galleryRecords);
   }
 
   async updateProductDetails(params: {
@@ -238,13 +219,11 @@ export class ProductOrchestratorService {
     };
   }): Promise<ProductResponse> {
     const updated = await this.productService.updateDetails(params);
-    const galleryRecords =
-      await this.productRepository.findGalleryRecords(updated.id);
-
-    return this.productResponseMapper.toResponse(
-      updated,
-      galleryRecords,
+    const galleryRecords = await this.productRepository.findGalleryRecords(
+      updated.id,
     );
+
+    return this.productResponseMapper.toResponse(updated, galleryRecords);
   }
 
   async updateProductPrice(params: {
@@ -253,13 +232,11 @@ export class ProductOrchestratorService {
     discountPrice?: number;
   }): Promise<ProductResponse> {
     const updated = await this.productService.updatePrice(params);
-    const galleryRecords =
-      await this.productRepository.findGalleryRecords(updated.id);
-
-    return this.productResponseMapper.toResponse(
-      updated,
-      galleryRecords,
+    const galleryRecords = await this.productRepository.findGalleryRecords(
+      updated.id,
     );
+
+    return this.productResponseMapper.toResponse(updated, galleryRecords);
   }
 
   async updateProductIngredients(params: {
@@ -269,15 +246,12 @@ export class ProductOrchestratorService {
     extraInfo1?: string;
     extraInfo2?: string;
   }): Promise<ProductResponse> {
-    const updated =
-      await this.productService.updateIngredients(params);
-    const galleryRecords =
-      await this.productRepository.findGalleryRecords(updated.id);
-
-    return this.productResponseMapper.toResponse(
-      updated,
-      galleryRecords,
+    const updated = await this.productService.updateIngredients(params);
+    const galleryRecords = await this.productRepository.findGalleryRecords(
+      updated.id,
     );
+
+    return this.productResponseMapper.toResponse(updated, galleryRecords);
   }
 
   async replaceMainImage(params: {
@@ -285,13 +259,11 @@ export class ProductOrchestratorService {
     imageFile: MulterUploadFile;
   }): Promise<ProductResponse> {
     const updated = await this.productService.replaceMainImage(params);
-    const galleryRecords =
-      await this.productRepository.findGalleryRecords(updated.id);
-
-    return this.productResponseMapper.toResponse(
-      updated,
-      galleryRecords,
+    const galleryRecords = await this.productRepository.findGalleryRecords(
+      updated.id,
     );
+
+    return this.productResponseMapper.toResponse(updated, galleryRecords);
   }
 
   async replaceGalleryImage(params: {
@@ -299,15 +271,12 @@ export class ProductOrchestratorService {
     galleryImageId: string;
     imageFile: MulterUploadFile;
   }): Promise<ProductResponse> {
-    const updated =
-      await this.productService.replaceGalleryImage(params);
-    const galleryRecords =
-      await this.productRepository.findGalleryRecords(updated.id);
-
-    return this.productResponseMapper.toResponse(
-      updated,
-      galleryRecords,
+    const updated = await this.productService.replaceGalleryImage(params);
+    const galleryRecords = await this.productRepository.findGalleryRecords(
+      updated.id,
     );
+
+    return this.productResponseMapper.toResponse(updated, galleryRecords);
   }
 
   async addGalleryImage(params: {
@@ -315,43 +284,35 @@ export class ProductOrchestratorService {
     imageFile: MulterUploadFile;
   }): Promise<ProductResponse> {
     const updated = await this.productService.addGalleryImage(params);
-    const galleryRecords =
-      await this.productRepository.findGalleryRecords(updated.id);
-
-    return this.productResponseMapper.toResponse(
-      updated,
-      galleryRecords,
+    const galleryRecords = await this.productRepository.findGalleryRecords(
+      updated.id,
     );
+
+    return this.productResponseMapper.toResponse(updated, galleryRecords);
   }
 
   async deleteProductImage(params: {
     productId: string;
     galleryImageId: string;
   }): Promise<ProductResponse> {
-    const updated =
-      await this.productService.deleteProductImage(params);
-    const galleryRecords =
-      await this.productRepository.findGalleryRecords(updated.id);
-
-    return this.productResponseMapper.toResponse(
-      updated,
-      galleryRecords,
+    const updated = await this.productService.deleteProductImage(params);
+    const galleryRecords = await this.productRepository.findGalleryRecords(
+      updated.id,
     );
+
+    return this.productResponseMapper.toResponse(updated, galleryRecords);
   }
 
   async reorderGalleryImages(params: {
     productId: string;
     galleryImageIds: string[];
   }): Promise<ProductResponse> {
-    const updated =
-      await this.productService.reorderGalleryImages(params);
-    const galleryRecords =
-      await this.productRepository.findGalleryRecords(updated.id);
-
-    return this.productResponseMapper.toResponse(
-      updated,
-      galleryRecords,
+    const updated = await this.productService.reorderGalleryImages(params);
+    const galleryRecords = await this.productRepository.findGalleryRecords(
+      updated.id,
     );
+
+    return this.productResponseMapper.toResponse(updated, galleryRecords);
   }
 
   async deleteProduct(params: {
@@ -366,16 +327,12 @@ export class ProductOrchestratorService {
   async restoreProduct(params: {
     productId: string;
   }): Promise<ProductResponse> {
-    const restored = await this.productService.restoreProduct(
-      params.productId,
+    const restored = await this.productService.restoreProduct(params.productId);
+    const galleryRecords = await this.productRepository.findGalleryRecords(
+      restored.id,
     );
-    const galleryRecords =
-      await this.productRepository.findGalleryRecords(restored.id);
 
-    return this.productResponseMapper.toResponse(
-      restored,
-      galleryRecords,
-    );
+    return this.productResponseMapper.toResponse(restored, galleryRecords);
   }
 
   /* ================================================= */
@@ -387,8 +344,9 @@ export class ProductOrchestratorService {
     status: ProductStatus;
   }): Promise<ProductResponse> {
     const updated = await this.productService.updateProductStatus(params);
-    const galleryRecords =
-      await this.productRepository.findGalleryRecords(updated.id);
+    const galleryRecords = await this.productRepository.findGalleryRecords(
+      updated.id,
+    );
 
     return this.productResponseMapper.toResponse(updated, galleryRecords);
   }
@@ -409,15 +367,11 @@ export class ProductOrchestratorService {
   /* PRODUCT – TRENDING                               */
   /* ================================================= */
 
-  async markProductTrending(params: {
-    productId: string;
-  }): Promise<void> {
+  async markProductTrending(params: { productId: string }): Promise<void> {
     return this.productService.markTrending(params.productId);
   }
 
-  async unmarkProductTrending(params: {
-    productId: string;
-  }): Promise<void> {
+  async unmarkProductTrending(params: { productId: string }): Promise<void> {
     return this.productService.unmarkTrending(params.productId);
   }
 
@@ -425,15 +379,11 @@ export class ProductOrchestratorService {
   /* PRODUCT – FEATURED                               */
   /* ================================================= */
 
-  async markProductFeatured(params: {
-    productId: string;
-  }): Promise<void> {
+  async markProductFeatured(params: { productId: string }): Promise<void> {
     return this.productService.markFeatured(params.productId);
   }
 
-  async unmarkProductFeatured(params: {
-    productId: string;
-  }): Promise<void> {
+  async unmarkProductFeatured(params: { productId: string }): Promise<void> {
     return this.productService.unmarkFeatured(params.productId);
   }
 

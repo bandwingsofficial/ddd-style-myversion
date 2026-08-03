@@ -148,11 +148,9 @@ export class S3StorageProvider implements IStorageProvider {
         Key: params.objectKey,
       });
 
-      const presignedUrl = await getSignedUrl(
-        this.s3Client,
-        command,
-        { expiresIn: expiresInSeconds },
-      );
+      const presignedUrl = await getSignedUrl(this.s3Client, command, {
+        expiresIn: expiresInSeconds,
+      });
 
       return {
         objectKey: params.objectKey,
@@ -182,9 +180,7 @@ export class S3StorageProvider implements IStorageProvider {
   }
 
   private buildPublicUrl(objectKey: string): string | undefined {
-    const publicUrlBase = this.configService.get<string>(
-      'aws.publicUrlBase',
-    );
+    const publicUrlBase = this.configService.get<string>('aws.publicUrlBase');
 
     if (!publicUrlBase) {
       return undefined;

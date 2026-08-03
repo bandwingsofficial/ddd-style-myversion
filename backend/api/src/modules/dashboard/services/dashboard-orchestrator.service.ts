@@ -48,7 +48,11 @@ export class DashboardOrchestratorService {
     });
   }
 
-  async getSummary(filter: DashboardFilter, actorId: string, sessionId?: string) {
+  async getSummary(
+    filter: DashboardFilter,
+    actorId: string,
+    sessionId?: string,
+  ) {
     await this.auditAccess(actorId, sessionId, 'summary', filter);
     return this.withCache('summary', filter, () =>
       this.dashboardService.getSummary(filter),

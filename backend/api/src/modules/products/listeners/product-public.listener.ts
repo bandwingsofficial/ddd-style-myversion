@@ -7,9 +7,7 @@ import { ProductPublicGateway } from '../gateways/product-public.gateway';
 export class ProductPublicListener {
   private emitTimeout: NodeJS.Timeout | null = null;
 
-  constructor(
-    private readonly gateway: ProductPublicGateway,
-  ) {}
+  constructor(private readonly gateway: ProductPublicGateway) {}
 
   /* ================================================= */
   /* 🔥 BATCHED REAL-TIME EMIT                          */

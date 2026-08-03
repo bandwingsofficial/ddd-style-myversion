@@ -18,7 +18,10 @@ export class DeliveryRuleService {
   async getById(ruleId: string): Promise<DeliveryRule> {
     const rule = await this.deliveryRuleRepo.findById(ruleId);
     if (!rule) {
-      throw new ValidationError('DELIVERY_RULE_NOT_FOUND', 'Delivery rule not found');
+      throw new ValidationError(
+        'DELIVERY_RULE_NOT_FOUND',
+        'Delivery rule not found',
+      );
     }
     return rule;
   }

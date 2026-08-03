@@ -18,9 +18,7 @@ export interface IStorageProvider {
 
   deleteObject(params: DeleteObjectOptions): Promise<void>;
 
-  deleteMultipleObjects(
-    params: DeleteMultipleObjectsOptions,
-  ): Promise<void>;
+  deleteMultipleObjects(params: DeleteMultipleObjectsOptions): Promise<void>;
 
   generatePresignedGetUrl(
     params: GeneratePresignedGetUrlOptions,

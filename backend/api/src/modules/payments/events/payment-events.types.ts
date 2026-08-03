@@ -15,20 +15,17 @@ export type PaymentSocketEvent =
   | PaymentFailedEvent
   | PaymentRefundedEvent;
 
-
 /* ================================================= */
 /* INITIATED                                         */
 /* ================================================= */
 
-export interface PaymentInitiatedEvent
-  extends PaymentBaseEvent {}
+export interface PaymentInitiatedEvent extends PaymentBaseEvent {}
 
 /* ================================================= */
 /* SUCCESS                                           */
 /* ================================================= */
 
-export interface PaymentSuccessEvent
-  extends PaymentBaseEvent {
+export interface PaymentSuccessEvent extends PaymentBaseEvent {
   transactionId: string;
 }
 
@@ -36,8 +33,7 @@ export interface PaymentSuccessEvent
 /* FAILED                                            */
 /* ================================================= */
 
-export interface PaymentFailedEvent
-  extends PaymentBaseEvent {
+export interface PaymentFailedEvent extends PaymentBaseEvent {
   reason?: string;
 }
 
@@ -45,5 +41,4 @@ export interface PaymentFailedEvent
 /* REFUNDED                                          */
 /* ================================================= */
 
-export interface PaymentRefundedEvent
-  extends PaymentBaseEvent {}
+export interface PaymentRefundedEvent extends PaymentBaseEvent {}

@@ -47,10 +47,7 @@ export function detectCoordinateCorruption(
   return null;
 }
 
-export function assertValidCustomerCoordinates(
-  lat: number,
-  lng: number,
-): void {
+export function assertValidCustomerCoordinates(lat: number, lng: number): void {
   const result = validateCoordinateRange(lat, lng);
   if (!result.valid) {
     throw new ValidationError(

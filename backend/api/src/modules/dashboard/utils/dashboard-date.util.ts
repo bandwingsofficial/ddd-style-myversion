@@ -35,8 +35,13 @@ function getIstOffsetMs(date: Date): number {
   return new Date(istString).getTime() - new Date(utcString).getTime();
 }
 
-function addDays(parts: { year: number; month: number; day: number }, days: number) {
-  const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + days));
+function addDays(
+  parts: { year: number; month: number; day: number },
+  days: number,
+) {
+  const date = new Date(
+    Date.UTC(parts.year, parts.month - 1, parts.day + days),
+  );
   return {
     year: date.getUTCFullYear(),
     month: date.getUTCMonth() + 1,
@@ -46,8 +51,11 @@ function addDays(parts: { year: number; month: number; day: number }, days: numb
 
 function monthBounds(year: number, month: number) {
   const start = istDayStart(year, month, 1);
-  const nextMonth = month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 };
-  const end = new Date(istDayStart(nextMonth.year, nextMonth.month, 1).getTime() - 1);
+  const nextMonth =
+    month === 12 ? { year: year + 1, month: 1 } : { year, month: month + 1 };
+  const end = new Date(
+    istDayStart(nextMonth.year, nextMonth.month, 1).getTime() - 1,
+  );
   return { start, end };
 }
 
@@ -61,7 +69,11 @@ export function resolveDashboardDateRange(
   if (period === DashboardPeriod.CUSTOM && filter.startDate && filter.endDate) {
     const startParts = getISTParts(filter.startDate);
     const endParts = getISTParts(filter.endDate);
-    const start = istDayStart(startParts.year, startParts.month, startParts.day);
+    const start = istDayStart(
+      startParts.year,
+      startParts.month,
+      startParts.day,
+    );
     const end = istDayEnd(endParts.year, endParts.month, endParts.day);
     const duration = end.getTime() - start.getTime();
 
@@ -82,7 +94,11 @@ export function resolveDashboardDateRange(
       return {
         start,
         end,
-        previousStart: istDayStart(yesterday.year, yesterday.month, yesterday.day),
+        previousStart: istDayStart(
+          yesterday.year,
+          yesterday.month,
+          yesterday.day,
+        ),
         previousEnd: istDayEnd(yesterday.year, yesterday.month, yesterday.day),
         label: 'Today',
       };
@@ -95,7 +111,11 @@ export function resolveDashboardDateRange(
       return {
         start,
         end,
-        previousStart: istDayStart(dayBefore.year, dayBefore.month, dayBefore.day),
+        previousStart: istDayStart(
+          dayBefore.year,
+          dayBefore.month,
+          dayBefore.day,
+        ),
         previousEnd: istDayEnd(dayBefore.year, dayBefore.month, dayBefore.day),
         label: 'Yesterday',
       };
@@ -109,8 +129,16 @@ export function resolveDashboardDateRange(
       return {
         start,
         end,
-        previousStart: istDayStart(prevStartDay.year, prevStartDay.month, prevStartDay.day),
-        previousEnd: istDayEnd(prevEndDay.year, prevEndDay.month, prevEndDay.day),
+        previousStart: istDayStart(
+          prevStartDay.year,
+          prevStartDay.month,
+          prevStartDay.day,
+        ),
+        previousEnd: istDayEnd(
+          prevEndDay.year,
+          prevEndDay.month,
+          prevEndDay.day,
+        ),
         label: 'Last 7 Days',
       };
     }
@@ -123,8 +151,16 @@ export function resolveDashboardDateRange(
       return {
         start,
         end,
-        previousStart: istDayStart(prevStartDay.year, prevStartDay.month, prevStartDay.day),
-        previousEnd: istDayEnd(prevEndDay.year, prevEndDay.month, prevEndDay.day),
+        previousStart: istDayStart(
+          prevStartDay.year,
+          prevStartDay.month,
+          prevStartDay.day,
+        ),
+        previousEnd: istDayEnd(
+          prevEndDay.year,
+          prevEndDay.month,
+          prevEndDay.day,
+        ),
         label: 'Last 30 Days',
       };
     }

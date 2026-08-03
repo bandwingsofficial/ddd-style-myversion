@@ -11,67 +11,33 @@ import {
 
 @Injectable()
 export class PaymentEventsService {
-  constructor(
-    private readonly eventEmitter: EventEmitter2,
-  ) {}
+  constructor(private readonly eventEmitter: EventEmitter2) {}
 
   /* ================================================= */
   /* PAYMENT LIFECYCLE                                 */
   /* ================================================= */
 
-  emitPaymentInitiated(
-    payload: PaymentInitiatedEvent,
-  ): void {
-    console.log(
-      '💳 [EVENT EMIT] payment.initiated',
-      payload,
-    );
+  emitPaymentInitiated(payload: PaymentInitiatedEvent): void {
+    console.log('💳 [EVENT EMIT] payment.initiated', payload);
 
-    this.eventEmitter.emit(
-      PaymentEvents.PAYMENT_INITIATED,
-      payload,
-    );
+    this.eventEmitter.emit(PaymentEvents.PAYMENT_INITIATED, payload);
   }
 
-  emitPaymentSuccess(
-    payload: PaymentSuccessEvent,
-  ): void {
-    console.log(
-      '💚 [EVENT EMIT] payment.success',
-      payload,
-    );
+  emitPaymentSuccess(payload: PaymentSuccessEvent): void {
+    console.log('💚 [EVENT EMIT] payment.success', payload);
 
-    this.eventEmitter.emit(
-      PaymentEvents.PAYMENT_SUCCESS,
-      payload,
-    );
+    this.eventEmitter.emit(PaymentEvents.PAYMENT_SUCCESS, payload);
   }
 
-  emitPaymentFailed(
-    payload: PaymentFailedEvent,
-  ): void {
-    console.log(
-      '❤️‍🩹 [EVENT EMIT] payment.failed',
-      payload,
-    );
+  emitPaymentFailed(payload: PaymentFailedEvent): void {
+    console.log('❤️‍🩹 [EVENT EMIT] payment.failed', payload);
 
-    this.eventEmitter.emit(
-      PaymentEvents.PAYMENT_FAILED,
-      payload,
-    );
+    this.eventEmitter.emit(PaymentEvents.PAYMENT_FAILED, payload);
   }
 
-  emitPaymentRefunded(
-    payload: PaymentRefundedEvent,
-  ): void {
-    console.log(
-      '↩️ [EVENT EMIT] payment.refunded',
-      payload,
-    );
+  emitPaymentRefunded(payload: PaymentRefundedEvent): void {
+    console.log('↩️ [EVENT EMIT] payment.refunded', payload);
 
-    this.eventEmitter.emit(
-      PaymentEvents.PAYMENT_REFUNDED,
-      payload,
-    );
+    this.eventEmitter.emit(PaymentEvents.PAYMENT_REFUNDED, payload);
   }
 }

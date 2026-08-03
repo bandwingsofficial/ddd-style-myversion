@@ -2,9 +2,7 @@ import { ProductTag as PrismaProductTag } from '@prisma/client';
 import { ProductTag } from '../domain/enums/product-tag.enum';
 
 export class ProductTagMapper {
-  static toDomain(
-    tags: PrismaProductTag[],
-  ): ProductTag[] {
+  static toDomain(tags: PrismaProductTag[]): ProductTag[] {
     return tags.map((tag) => {
       switch (tag) {
         case PrismaProductTag.FRESH:
@@ -32,16 +30,12 @@ export class ProductTagMapper {
           return ProductTag.VEGAN;
 
         default:
-          throw new Error(
-            `Unknown Prisma ProductTag: ${tag}`,
-          );
+          throw new Error(`Unknown Prisma ProductTag: ${tag}`);
       }
     });
   }
 
-  static toPrisma(
-    tags: ProductTag[],
-  ): PrismaProductTag[] {
+  static toPrisma(tags: ProductTag[]): PrismaProductTag[] {
     return tags.map((tag) => {
       switch (tag) {
         case ProductTag.FRESH:
@@ -69,9 +63,7 @@ export class ProductTagMapper {
           return PrismaProductTag.VEGAN;
 
         default:
-          throw new Error(
-            `Unknown Domain ProductTag: ${tag}`,
-          );
+          throw new Error(`Unknown Domain ProductTag: ${tag}`);
       }
     });
   }

@@ -86,10 +86,7 @@ export class OutletUser {
     return new OutletUser(props);
   }
 
-  resetPassword(params: {
-    newPasswordHash: string;
-    now?: Date;
-  }): OutletUser {
+  resetPassword(params: { newPasswordHash: string; now?: Date }): OutletUser {
     return new OutletUser({
       ...this.toProps(),
       passwordHash: params.newPasswordHash,

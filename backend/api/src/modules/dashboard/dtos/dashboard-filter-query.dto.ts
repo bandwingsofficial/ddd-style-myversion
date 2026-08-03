@@ -1,4 +1,10 @@
-import { IsEnum, IsISO8601, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsEnum,
+  IsISO8601,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
 import { DashboardPeriod } from '../domain/enums/dashboard-period.enum';
 

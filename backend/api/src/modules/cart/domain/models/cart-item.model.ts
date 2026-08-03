@@ -149,7 +149,11 @@ export class CartItem {
       quantity: this.quantity,
       unitPrice: params.unitPrice,
       discountPrice,
-      lineTotal: computeLineTotal(params.unitPrice, discountPrice, this.quantity),
+      lineTotal: computeLineTotal(
+        params.unitPrice,
+        discountPrice,
+        this.quantity,
+      ),
       productName: params.productName ?? this.productName,
       productImage: params.productImage ?? this.productImage,
       createdAt: this.createdAt,

@@ -17,10 +17,7 @@ export interface PaginatedCategories {
 export class CategoryRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(
-    category: Category,
-    tx?: PrismaTransaction,
-  ): Promise<Category> {
+  async create(category: Category, tx?: PrismaTransaction): Promise<Category> {
     const client = tx ?? this.prisma;
 
     const row = await client.category.create({
@@ -39,10 +36,7 @@ export class CategoryRepository {
     return this.toDomain(row);
   }
 
-  async findById(
-    id: string,
-    tx?: PrismaTransaction,
-  ): Promise<Category | null> {
+  async findById(id: string, tx?: PrismaTransaction): Promise<Category | null> {
     const row = await (tx ?? this.prisma).category.findUnique({
       where: { id },
     });
@@ -132,9 +126,7 @@ export class CategoryRepository {
     });
   }
 
-  async findActiveCategories(
-    tx?: PrismaTransaction,
-  ): Promise<Category[]> {
+  async findActiveCategories(tx?: PrismaTransaction): Promise<Category[]> {
     const rows = await (tx ?? this.prisma).category.findMany({
       where: {
         status: CategoryStatusMapper.toPrisma(CategoryStatus.ACTIVE),
@@ -168,10 +160,7 @@ export class CategoryRepository {
     });
   }
 
-  async update(
-    category: Category,
-    tx?: PrismaTransaction,
-  ): Promise<Category> {
+  async update(category: Category, tx?: PrismaTransaction): Promise<Category> {
     const client = tx ?? this.prisma;
 
     const row = await client.category.update({
@@ -223,9 +212,7 @@ export class CategoryRepository {
     );
   }
 
-  async normalizeActiveSortOrders(
-    tx?: PrismaTransaction,
-  ): Promise<void> {
+  async normalizeActiveSortOrders(tx?: PrismaTransaction): Promise<void> {
     const client = tx ?? this.prisma;
 
     const active = await client.category.findMany({
@@ -247,10 +234,7 @@ export class CategoryRepository {
     }
   }
 
-  async deleteById(
-    categoryId: string,
-    tx?: PrismaTransaction,
-  ): Promise<void> {
+  async deleteById(categoryId: string, tx?: PrismaTransaction): Promise<void> {
     await (tx ?? this.prisma).category.delete({
       where: { id: categoryId },
     });

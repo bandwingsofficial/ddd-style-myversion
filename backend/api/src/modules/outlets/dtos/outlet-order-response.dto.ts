@@ -2,11 +2,7 @@ import { Payment } from '../../payments/domain/models/payment.model';
 import { PaymentStatus } from '../../payments/domain/enums/payment-status.enum';
 import { OrderStatus } from '../../orders/domain/enums/order-status.enum';
 
-export type OutletPaymentStatus =
-  | 'PENDING'
-  | 'PAID'
-  | 'FAILED'
-  | 'CANCELLED';
+export type OutletPaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED';
 
 export class OutletOrderResponseDto {
   id: string;

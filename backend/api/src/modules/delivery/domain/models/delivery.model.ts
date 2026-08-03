@@ -43,7 +43,6 @@ export class Delivery {
   readonly createdAt: Date;
   readonly updatedAt: Date;
 
-
   /* ---------------------------------------------- */
   /* CONSTRUCTOR (PRIVATE)                          */
   /* ---------------------------------------------- */
@@ -142,10 +141,7 @@ export class Delivery {
 
   markInTransit(now = new Date()): Delivery {
     if (this.status !== DeliveryStatus.PICKED_UP) {
-      throw new ValidationError(
-        'INVALID_TRANSITION',
-        'Cannot start transit',
-      );
+      throw new ValidationError('INVALID_TRANSITION', 'Cannot start transit');
     }
 
     return new Delivery({
@@ -197,10 +193,7 @@ export class Delivery {
 
   private assertValidState(): void {
     if (!this.orderId) {
-      throw new ValidationError(
-        'DELIVERY_INVALID_ORDER',
-        'Order is required',
-      );
+      throw new ValidationError('DELIVERY_INVALID_ORDER', 'Order is required');
     }
 
     if (!this.partnerId) {

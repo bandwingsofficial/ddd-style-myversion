@@ -97,4 +97,3 @@ export class CreateOutletDto {
   @IsString()
   cameraStreamUrl?: string;
 }
-

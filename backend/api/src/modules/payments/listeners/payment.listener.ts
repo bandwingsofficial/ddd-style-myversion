@@ -10,9 +10,7 @@ export class PaymentPublicListener {
   private emitTimeout: NodeJS.Timeout | null = null;
   private lastPayload: PaymentSocketEvent | null = null;
 
-  constructor(
-    private readonly gateway: PaymentPublicGateway,
-  ) {}
+  constructor(private readonly gateway: PaymentPublicGateway) {}
 
   /* ================================================= */
   /* INTERNAL FLUSH (safe async wrapper)               */
@@ -27,10 +25,7 @@ export class PaymentPublicListener {
     this.emitTimeout = null;
 
     try {
-      console.log(
-        '📡 [PAYMENT SOCKET] payment.updated →',
-        payload,
-      );
+      console.log('📡 [PAYMENT SOCKET] payment.updated →', payload);
 
       await this.gateway.emitPaymentUpdate(payload);
     } catch (err) {

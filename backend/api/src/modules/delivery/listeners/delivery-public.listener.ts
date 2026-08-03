@@ -9,9 +9,7 @@ export class DeliveryPublicListener {
   private emitTimeout: ReturnType<typeof setTimeout> | null = null;
   private lastPayload: DeliverySocketEvent | null = null;
 
-  constructor(
-    private readonly gateway: DeliveryPublicGateway,
-  ) {}
+  constructor(private readonly gateway: DeliveryPublicGateway) {}
 
   /* ================================================= */
   /* 🔥 BATCHED REAL-TIME EMIT                         */
@@ -48,10 +46,7 @@ export class DeliveryPublicListener {
 
   @OnEvent('delivery.*')
   async handleAll(payload: DeliverySocketEvent): Promise<void> {
-    console.log(
-      '🔥 [EVENT LISTENER] delivery.* fired:',
-      payload,
-    );
+    console.log('🔥 [EVENT LISTENER] delivery.* fired:', payload);
 
     this.scheduleEmit(payload);
   }

@@ -42,11 +42,11 @@ export async function createRazorpayOrder(params: {
   currency: string;
 }) {
   return razorpayClient.orders.create({
-  receipt: params.receipt,
-  amount: Math.round(params.amount * 100),
-  currency: params.currency,
-  payment_capture: true,
-});
+    receipt: params.receipt,
+    amount: Math.round(params.amount * 100),
+    currency: params.currency,
+    payment_capture: true,
+  });
 }
 
 /**

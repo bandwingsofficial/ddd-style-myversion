@@ -42,7 +42,10 @@ export class DashboardAnalyticsService {
       cancellationTrend: [],
       averageOrderValueTrend: trend.map((point) => ({
         date: point.date,
-        value: point.orders > 0 ? Number((point.revenue / point.orders).toFixed(2)) : 0,
+        value:
+          point.orders > 0
+            ? Number((point.revenue / point.orders).toFixed(2))
+            : 0,
       })),
     };
   }
@@ -107,7 +110,11 @@ export class DashboardAnalyticsService {
 
   async getCategoryAnalytics(filter: DashboardFilter, limit = 10) {
     const range = resolveDashboardDateRange(filter);
-    const topCategories = await this.repo.getTopCategories(filter, range, limit);
+    const topCategories = await this.repo.getTopCategories(
+      filter,
+      range,
+      limit,
+    );
     return { range, topCategories };
   }
 

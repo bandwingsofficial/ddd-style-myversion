@@ -23,9 +23,7 @@ export class UnitMapper {
         return Unit.PACKET;
 
       default:
-        throw new Error(
-          `Unknown Prisma Unit: ${unit}`,
-        );
+        throw new Error(`Unknown Prisma Unit: ${unit}`);
     }
   }
 
@@ -50,9 +48,7 @@ export class UnitMapper {
         return PrismaUnit.PACKET;
 
       default:
-        throw new Error(
-          `Unknown Domain Unit: ${unit}`,
-        );
+        throw new Error(`Unknown Domain Unit: ${unit}`);
     }
   }
 }

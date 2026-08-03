@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
+import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { UploadService } from '../../uploads/services/upload.service';
 import { Cart } from '../domain/models/cart.model';
 import { resolveEffectivePrice } from '../../../common/utils/product-pricing.util';
@@ -9,7 +10,10 @@ const toNumber = (value: Prisma.Decimal | number): number => Number(value);
 
 @Injectable()
 export class CartResponseMapper {
-  constructor(private readonly uploadService: UploadService) {}
+  constructor(
+    private readonly uploadService: UploadService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async toResponse(cart: Cart | null) {
     if (!cart) {
@@ -23,12 +27,11 @@ export class CartResponseMapper {
         productId: item.productId,
         productName: item.productName,
         productImage: await this.resolveImageUrl(item.productImage),
+        outletId: cart.outletId,
         quantity: item.quantity,
         unitPrice: toNumber(item.unitPrice),
         discountPrice:
-          item.discountPrice != null
-            ? toNumber(item.discountPrice)
-            : undefined,
+          item.discountPrice != null ? toNumber(item.discountPrice) : undefined,
         effectivePrice: toNumber(
           resolveEffectivePrice(item.unitPrice, item.discountPrice),
         ),
@@ -44,11 +47,17 @@ export class CartResponseMapper {
     const deliveryFee = toNumber(cart.deliveryFee);
     const grandTotal = toNumber(cart.grandTotal);
 
+    const outlet = await this.prisma.outlet.findUnique({
+      where: { id: cart.outletId },
+      select: { name: true },
+    });
+
     return {
       id: cart.id,
       customerId: cart.customerId,
       sessionId: cart.sessionId,
       outletId: cart.outletId,
+      outletName: outlet?.name ?? null,
       status: cart.status,
       currency: cart.currency,
       subtotal,

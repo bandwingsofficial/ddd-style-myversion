@@ -13,10 +13,11 @@ export interface CheckoutOutletResolution {
  */
 export function resolveCheckoutOutletId(): CheckoutOutletResolution {
   const { selectedOutlet } = useOutletStore.getState();
-  const { items, cartOutletId } = useCartStore.getState();
+  const { items, cartOutletId, cartOutletName } = useCartStore.getState();
 
   const outletId = cartOutletId ?? selectedOutlet?.id ?? null;
-  const outletName = selectedOutlet?.name ?? null;
+  const outletName =
+    cartOutletName ?? selectedOutlet?.name ?? null;
 
   traceOutletBinding({
     stage: "checkout.resolveOutlet",

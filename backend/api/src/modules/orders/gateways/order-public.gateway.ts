@@ -49,7 +49,10 @@ export class OrderPublicGateway implements OnGatewayConnection {
       return;
     }
 
-    console.log('✅ [SOCKET CONNECT] order client connected (no outlet room):', client.id);
+    console.log(
+      '✅ [SOCKET CONNECT] order client connected (no outlet room):',
+      client.id,
+    );
   }
 
   async emitOrderUpdate(
@@ -66,7 +69,11 @@ export class OrderPublicGateway implements OnGatewayConnection {
       return;
     }
 
-    this.emitToOutlet(payload.outletId as string | undefined, ORDER_SOCKET_EVENTS.UPDATED, data);
+    this.emitToOutlet(
+      payload.outletId as string | undefined,
+      ORDER_SOCKET_EVENTS.UPDATED,
+      data,
+    );
   }
 
   async emitOrderEvent(
@@ -104,8 +111,6 @@ export class OrderPublicGateway implements OnGatewayConnection {
       return;
     }
 
-    console.warn(
-      `[SOCKET] Dropped ${eventName} — missing outletId on payload`,
-    );
+    console.warn(`[SOCKET] Dropped ${eventName} — missing outletId on payload`);
   }
 }

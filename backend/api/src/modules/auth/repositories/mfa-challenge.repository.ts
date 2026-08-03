@@ -32,9 +32,7 @@ export class MfaChallengeRepository {
   ): Promise<MfaChallenge> {
     const client = tx ?? this.prisma;
 
-    const expiresAt = new Date(
-      Date.now() + MFA_CHALLENGE_TTL_SECONDS * 1000,
-    );
+    const expiresAt = new Date(Date.now() + MFA_CHALLENGE_TTL_SECONDS * 1000);
 
     const row = await client.mfaChallenge.create({
       data: {
@@ -101,9 +99,7 @@ export class MfaChallengeRepository {
   /* CLEANUP                                          */
   /* ------------------------------------------------ */
 
-  async deleteExpired(
-    tx?: PrismaTransaction,
-  ): Promise<number> {
+  async deleteExpired(tx?: PrismaTransaction): Promise<number> {
     const client = tx ?? this.prisma;
 
     const result = await client.mfaChallenge.deleteMany({

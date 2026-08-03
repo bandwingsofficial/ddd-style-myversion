@@ -11,8 +11,7 @@ export function isProductPurchasableStatus(
 
 export function isProductPubliclyVisibleStatus(status: ProductStatus): boolean {
   return (
-    status === ProductStatus.ACTIVE ||
-    status === ProductStatus.OUT_OF_STOCK
+    status === ProductStatus.ACTIVE || status === ProductStatus.OUT_OF_STOCK
   );
 }
 
@@ -26,8 +25,7 @@ export function isProductCatalogHiddenStatus(status: ProductStatus): boolean {
 
 export function isProductArchivedStatus(status: ProductStatus): boolean {
   return (
-    status === ProductStatus.ARCHIVED ||
-    status === ProductStatus.SOFT_DELETED
+    status === ProductStatus.ARCHIVED || status === ProductStatus.SOFT_DELETED
   );
 }
 

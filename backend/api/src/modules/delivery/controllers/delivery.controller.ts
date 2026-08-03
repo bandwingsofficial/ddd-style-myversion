@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 
 import { DeliveryOrchestratorService } from '../services/delivery-orchestrator.service';
 
@@ -19,9 +12,7 @@ import { ActorType } from '../../auth/domain/enums/actor-type.enum';
 @Controller('deliveries')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class DeliveryController {
-  constructor(
-    private readonly orchestrator: DeliveryOrchestratorService,
-  ) {}
+  constructor(private readonly orchestrator: DeliveryOrchestratorService) {}
 
   /* ================================================= */
   /* ASSIGN DELIVERY (ADMIN / SYSTEM)                  */
@@ -52,9 +43,7 @@ export class DeliveryController {
 
   @Post(':deliveryId/pickup')
   @Roles(ActorType.DELIVERY)
-  async pickup(
-    @Param('deliveryId') deliveryId: string,
-  ) {
+  async pickup(@Param('deliveryId') deliveryId: string) {
     const data = await this.orchestrator.pickup(deliveryId);
 
     return {
@@ -67,9 +56,7 @@ export class DeliveryController {
 
   @Post(':deliveryId/in-transit')
   @Roles(ActorType.DELIVERY)
-  async startTransit(
-    @Param('deliveryId') deliveryId: string,
-  ) {
+  async startTransit(@Param('deliveryId') deliveryId: string) {
     const data = await this.orchestrator.startTransit(deliveryId);
 
     return {
@@ -82,9 +69,7 @@ export class DeliveryController {
 
   @Post(':deliveryId/deliver')
   @Roles(ActorType.DELIVERY)
-  async deliver(
-    @Param('deliveryId') deliveryId: string,
-  ) {
+  async deliver(@Param('deliveryId') deliveryId: string) {
     const data = await this.orchestrator.deliver(deliveryId);
 
     return {
@@ -97,9 +82,7 @@ export class DeliveryController {
 
   @Post(':deliveryId/fail')
   @Roles(ActorType.DELIVERY)
-  async fail(
-    @Param('deliveryId') deliveryId: string,
-  ) {
+  async fail(@Param('deliveryId') deliveryId: string) {
     const data = await this.orchestrator.fail(deliveryId);
 
     return {
@@ -145,10 +128,7 @@ export class DeliveryController {
   @Get('me')
   @Roles(ActorType.DELIVERY)
   async myDeliveries(@CurrentUser() user) {
-    const data =
-      await this.orchestrator.getPartnerDeliveries(
-        user.actorId,
-      );
+    const data = await this.orchestrator.getPartnerDeliveries(user.actorId);
 
     return {
       success: true,
@@ -160,11 +140,8 @@ export class DeliveryController {
   /* Customer tracking */
   @Get('order/:orderId')
   @Roles(ActorType.CUSTOMER)
-  async getByOrder(
-    @Param('orderId') orderId: string,
-  ) {
-    const data =
-      await this.orchestrator.getByOrderId(orderId);
+  async getByOrder(@Param('orderId') orderId: string) {
+    const data = await this.orchestrator.getByOrderId(orderId);
 
     return {
       success: true,

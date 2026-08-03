@@ -4,19 +4,13 @@ import { CartStatus as PrismaCartStatus } from '@prisma/client';
 import { CartStatus } from '../domain/enums/cart-status.enum';
 
 export class CartStatusMapper {
-  private static prismaToDomainMap: Record<
-    PrismaCartStatus,
-    CartStatus
-  > = {
+  private static prismaToDomainMap: Record<PrismaCartStatus, CartStatus> = {
     ACTIVE: CartStatus.ACTIVE,
     LOCKED: CartStatus.LOCKED,
     EXPIRED: CartStatus.EXPIRED,
   };
 
-  private static domainToPrismaMap: Record<
-    CartStatus,
-    PrismaCartStatus
-  > = {
+  private static domainToPrismaMap: Record<CartStatus, PrismaCartStatus> = {
     [CartStatus.ACTIVE]: PrismaCartStatus.ACTIVE,
     [CartStatus.LOCKED]: PrismaCartStatus.LOCKED,
     [CartStatus.EXPIRED]: PrismaCartStatus.EXPIRED,

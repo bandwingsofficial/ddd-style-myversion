@@ -12,11 +12,9 @@ export class Quantity {
 
   static create(value: number): Quantity {
     if (value === null || value === undefined) {
-      throw new ValidationError(
-        'INVALID_QUANTITY',
-        'Quantity is required',
-        { value },
-      );
+      throw new ValidationError('INVALID_QUANTITY', 'Quantity is required', {
+        value,
+      });
     }
 
     if (typeof value !== 'number' || isNaN(value)) {

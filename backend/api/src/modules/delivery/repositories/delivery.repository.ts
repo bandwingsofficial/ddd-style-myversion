@@ -14,10 +14,7 @@ export class DeliveryRepository {
   /* CREATE (TX SAFE)                                  */
   /* ================================================= */
 
-  async create(
-    delivery: Delivery,
-    tx?: PrismaTransaction,
-  ): Promise<Delivery> {
+  async create(delivery: Delivery, tx?: PrismaTransaction): Promise<Delivery> {
     if (tx) {
       return this.createInternal(delivery, tx);
     }
@@ -42,10 +39,7 @@ export class DeliveryRepository {
   /* READ (BY ID)                                      */
   /* ================================================= */
 
-  async findById(
-    id: string,
-    tx?: PrismaTransaction,
-  ): Promise<Delivery | null> {
+  async findById(id: string, tx?: PrismaTransaction): Promise<Delivery | null> {
     const row = await (tx ?? this.prisma).delivery.findUnique({
       where: { id },
     });
@@ -90,10 +84,7 @@ export class DeliveryRepository {
   /* UPDATE (STATUS ONLY — no version locking)          */
   /* ================================================= */
 
-  async update(
-    delivery: Delivery,
-    tx?: PrismaTransaction,
-  ): Promise<Delivery> {
+  async update(delivery: Delivery, tx?: PrismaTransaction): Promise<Delivery> {
     const client = tx ?? this.prisma;
 
     const row = await client.delivery.update({
@@ -108,10 +99,7 @@ export class DeliveryRepository {
   /* DELETE                                            */
   /* ================================================= */
 
-  async delete(
-    id: string,
-    tx?: PrismaTransaction,
-  ): Promise<void> {
+  async delete(id: string, tx?: PrismaTransaction): Promise<void> {
     await (tx ?? this.prisma).delivery.delete({
       where: { id },
     });

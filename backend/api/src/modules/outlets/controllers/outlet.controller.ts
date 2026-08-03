@@ -30,20 +30,15 @@ import {
 @Controller('outlets')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class OutletController {
-  constructor(
-    private readonly orchestrator: OutletOrchestratorService,
-  ) {}
+  constructor(private readonly orchestrator: OutletOrchestratorService) {}
 
   /* ================================================= */
   /* OUTLET USER – READS                               */
   /* ================================================= */
 
   @Get('users/:userId')
-  async getOutletUserById(
-    @Param('userId') userId: string,
-  ) {
-    const data =
-      await this.orchestrator.getOutletUserById(userId);
+  async getOutletUserById(@Param('userId') userId: string) {
+    const data = await this.orchestrator.getOutletUserById(userId);
 
     return {
       success: true,
@@ -54,13 +49,8 @@ export class OutletController {
   }
 
   @Get(':outletId/users')
-  async getOutletUsersByOutlet(
-    @Param('outletId') outletId: string,
-  ) {
-    const data =
-      await this.orchestrator.getOutletUsersByOutlet(
-        outletId,
-      );
+  async getOutletUsersByOutlet(@Param('outletId') outletId: string) {
+    const data = await this.orchestrator.getOutletUsersByOutlet(outletId);
 
     return {
       success: true,
@@ -80,16 +70,15 @@ export class OutletController {
     @Body() dto: CreateOutletUserDto,
     @CurrentUser() user,
   ) {
-    const data =
-      await this.orchestrator.createOutletUser({
-        outletId: dto.outletId,
-        name: dto.name,
-        email: dto.email,
-        phone: dto.phone,
-        role: dto.role,
-        rawPassword: dto.password,
-        adminId: user.actorId,
-      });
+    const data = await this.orchestrator.createOutletUser({
+      outletId: dto.outletId,
+      name: dto.name,
+      email: dto.email,
+      phone: dto.phone,
+      role: dto.role,
+      rawPassword: dto.password,
+      adminId: user.actorId,
+    });
 
     return {
       success: true,
@@ -125,10 +114,7 @@ export class OutletController {
 
   @Delete('users/:userId')
   @Roles(ActorType.SUPER_ADMIN)
-  async deleteOutletUser(
-    @Param('userId') userId: string,
-    @CurrentUser() user,
-  ) {
+  async deleteOutletUser(@Param('userId') userId: string, @CurrentUser() user) {
     const data = await this.orchestrator.deleteOutletUser({
       outletUserId: userId,
       adminId: user.actorId,
@@ -152,12 +138,11 @@ export class OutletController {
     @Body() dto: ResetOutletUserPasswordDto,
     @CurrentUser() user,
   ) {
-    const data =
-      await this.orchestrator.resetOutletUserPassword({
-        email: dto.email,
-        newRawPassword: dto.newPassword,
-        adminId: user.actorId,
-      });
+    const data = await this.orchestrator.resetOutletUserPassword({
+      email: dto.email,
+      newRawPassword: dto.newPassword,
+      adminId: user.actorId,
+    });
 
     return {
       success: true,
@@ -177,11 +162,10 @@ export class OutletController {
     @Param('userId') userId: string,
     @CurrentUser() user,
   ) {
-    const data =
-      await this.orchestrator.disableOutletUser({
-        outletUserId: userId,
-        adminId: user.actorId,
-      });
+    const data = await this.orchestrator.disableOutletUser({
+      outletUserId: userId,
+      adminId: user.actorId,
+    });
 
     return {
       success: true,
@@ -193,15 +177,11 @@ export class OutletController {
 
   @Post('users/:userId/enable')
   @Roles(ActorType.SUPER_ADMIN)
-  async enableOutletUser(
-    @Param('userId') userId: string,
-    @CurrentUser() user,
-  ) {
-    const data =
-      await this.orchestrator.enableOutletUser({
-        outletUserId: userId,
-        adminId: user.actorId,
-      });
+  async enableOutletUser(@Param('userId') userId: string, @CurrentUser() user) {
+    const data = await this.orchestrator.enableOutletUser({
+      outletUserId: userId,
+      adminId: user.actorId,
+    });
 
     return {
       success: true,

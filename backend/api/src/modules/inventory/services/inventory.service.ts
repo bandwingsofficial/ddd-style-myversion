@@ -41,8 +41,7 @@ export class InventoryService {
   /* ================================================= */
 
   private async ensureStockItemExists(stockItemId: string) {
-    const stockItem =
-      await this.stockItemRepo.findById(stockItemId);
+    const stockItem = await this.stockItemRepo.findById(stockItemId);
 
     if (!stockItem) {
       throw new ValidationError(
@@ -67,26 +66,22 @@ export class InventoryService {
   /* ================================================= */
 
   private async ensureOutletExists(outletId: string) {
-  const outlet = await this.outletRepo.findById(outletId);
+    const outlet = await this.outletRepo.findById(outletId);
 
-  if (!outlet) {
-    throw new ValidationError(
-      'INVALID_OUTLET_ID',
-      'Outlet does not exist',
-      { outletId },
-    );
+    if (!outlet) {
+      throw new ValidationError('INVALID_OUTLET_ID', 'Outlet does not exist', {
+        outletId,
+      });
+    }
+
+    if (!outlet.isActive || outlet.status !== 'ACTIVE') {
+      throw new ValidationError('OUTLET_INACTIVE', 'Outlet is inactive', {
+        outletId,
+      });
+    }
+
+    return outlet;
   }
-
-  if (!outlet.isActive || outlet.status !== 'ACTIVE') {
-    throw new ValidationError(
-      'OUTLET_INACTIVE',
-      'Outlet is inactive',
-      { outletId },
-    );
-  }
-
-  return outlet;
-}
 
   /* ================================================= */
   /* INITIALIZE INVENTORY (ONCE PER STOCK ITEM)        */
@@ -98,16 +93,14 @@ export class InventoryService {
     quantity: number;
     performedBy?: string;
   }): Promise<CentralInventory> {
-
     // ✅ EARLY VALIDATION (FIX)
     await this.ensureStockItemExists(params.stockItemId);
 
     const qty = Quantity.create(params.quantity);
 
-    const exists =
-      await this.inventoryRepo.existsByStockItemId(
-        params.stockItemId,
-      );
+    const exists = await this.inventoryRepo.existsByStockItemId(
+      params.stockItemId,
+    );
 
     if (exists) {
       throw new ValidationError(
@@ -124,8 +117,7 @@ export class InventoryService {
         initialQty: qty,
       });
 
-      const created =
-        await this.inventoryRepo.create(inventory, tx);
+      const created = await this.inventoryRepo.create(inventory, tx);
 
       const transaction = StockTransaction.initialize({
         id: randomUUID(),
@@ -151,18 +143,16 @@ export class InventoryService {
     performedBy?: string;
     remarks?: string;
   }): Promise<CentralInventory> {
-
     // ✅ EARLY VALIDATION
     await this.ensureStockItemExists(params.stockItemId);
 
     const qty = Quantity.create(params.quantity);
 
     return this.prisma.$transaction(async (tx) => {
-      const inventory =
-        await this.inventoryRepo.findByStockItemId(
-          params.stockItemId,
-          tx,
-        );
+      const inventory = await this.inventoryRepo.findByStockItemId(
+        params.stockItemId,
+        tx,
+      );
 
       if (!inventory) {
         throw new ValidationError(
@@ -205,18 +195,16 @@ export class InventoryService {
     performedBy?: string;
     remarks: string;
   }): Promise<CentralInventory> {
-
     // ✅ EARLY VALIDATION
     await this.ensureStockItemExists(params.stockItemId);
 
     const adjustmentQty = Quantity.create(params.adjustmentQuantity);
 
     return this.prisma.$transaction(async (tx) => {
-      const inventory =
-        await this.inventoryRepo.findByStockItemId(
-          params.stockItemId,
-          tx,
-        );
+      const inventory = await this.inventoryRepo.findByStockItemId(
+        params.stockItemId,
+        tx,
+      );
 
       if (!inventory) {
         throw new ValidationError(
@@ -247,8 +235,7 @@ export class InventoryService {
       const newQty = Quantity.create(newAvailableRaw);
       InventoryAdjustPolicy.ensure(inventory, newQty);
 
-      const updated =
-        inventory.adjustAvailableStock(newQty);
+      const updated = inventory.adjustAvailableStock(newQty);
 
       await this.inventoryRepo.update(updated, tx);
 
@@ -281,7 +268,6 @@ export class InventoryService {
     inventory: CentralInventory;
     outletStock: OutletStock;
   }> {
-
     // ✅ EARLY VALIDATION
     await this.ensureStockItemExists(params.stockItemId);
     await this.ensureOutletExists(params.outletId);
@@ -289,11 +275,10 @@ export class InventoryService {
     const qty = Quantity.create(params.quantity);
 
     return this.prisma.$transaction(async (tx) => {
-      const inventory =
-        await this.inventoryRepo.findByStockItemId(
-          params.stockItemId,
-          tx,
-        );
+      const inventory = await this.inventoryRepo.findByStockItemId(
+        params.stockItemId,
+        tx,
+      );
 
       if (!inventory) {
         throw new ValidationError(
@@ -306,13 +291,9 @@ export class InventoryService {
       InventoryTransferPolicy.ensure(inventory, qty);
 
       /* 1️⃣ Reduce central inventory */
-      const updatedInventory =
-        inventory.transferOut(qty);
+      const updatedInventory = inventory.transferOut(qty);
 
-      await this.inventoryRepo.update(
-        updatedInventory,
-        tx,
-      );
+      await this.inventoryRepo.update(updatedInventory, tx);
 
       /* 2️⃣ Add or create outlet stock */
       const existingOutletStock =
@@ -338,46 +319,37 @@ export class InventoryService {
           initialQty: qty,
         });
 
-        await this.outletStockRepo.create(
-          outletStock,
-          tx,
-        );
+        await this.outletStockRepo.create(outletStock, tx);
       } else {
-        outletStock =
-          existingOutletStock.addStock(qty);
+        outletStock = existingOutletStock.addStock(qty);
 
-        await this.outletStockRepo.update(
-          outletStock,
-          tx,
-        );
+        await this.outletStockRepo.update(outletStock, tx);
       }
 
       /* 3️⃣ Transaction log */
-      const transferOutTransaction =
-        StockTransaction.transferToOutlet({
-          id: randomUUID(),
-          stockItemId: params.stockItemId,
-          inventoryId: inventory.id,
-          outletId: params.outletId,
-          quantity: qty,
-          previousAvailable: inventory.availableQty,
-          newAvailable: updatedInventory.availableQty,
-          performedBy: params.performedBy,
-        });
+      const transferOutTransaction = StockTransaction.transferToOutlet({
+        id: randomUUID(),
+        stockItemId: params.stockItemId,
+        inventoryId: inventory.id,
+        outletId: params.outletId,
+        quantity: qty,
+        previousAvailable: inventory.availableQty,
+        newAvailable: updatedInventory.availableQty,
+        performedBy: params.performedBy,
+      });
 
       await this.transactionRepo.create(transferOutTransaction, tx);
 
-      const transferInTransaction =
-        StockTransaction.transferReceiveAtOutlet({
-          id: randomUUID(),
-          stockItemId: params.stockItemId,
-          inventoryId: inventory.id,
-          outletId: params.outletId,
-          quantity: qty,
-          previousOutletQty,
-          newOutletQty: outletStock.quantity,
-          performedBy: params.performedBy,
-        });
+      const transferInTransaction = StockTransaction.transferReceiveAtOutlet({
+        id: randomUUID(),
+        stockItemId: params.stockItemId,
+        inventoryId: inventory.id,
+        outletId: params.outletId,
+        quantity: qty,
+        previousOutletQty,
+        newOutletQty: outletStock.quantity,
+        performedBy: params.performedBy,
+      });
 
       await this.transactionRepo.create(transferInTransaction, tx);
 
@@ -397,15 +369,11 @@ export class InventoryService {
   }
 
   async getInventoryTransactions(stockItemId: string) {
-    return this.transactionRepo.findAllByStockItem(
-      stockItemId,
-    );
+    return this.transactionRepo.findAllByStockItem(stockItemId);
   }
 
   async getOutletStock(outletId: string) {
     await this.ensureOutletExists(outletId);
     return this.outletStockRepo.findAllByOutlet(outletId);
   }
-
-  
 }

@@ -34,8 +34,7 @@ export class OtpService {
     config: ConfigService,
   ) {
     this.ttlSeconds =
-      config.get<number>('otp.ttlSeconds') ??
-      OTP_CONSTANTS.DEFAULT_TTL_SECONDS;
+      config.get<number>('otp.ttlSeconds') ?? OTP_CONSTANTS.DEFAULT_TTL_SECONDS;
   }
 
   /* ================================================= */
@@ -143,10 +142,7 @@ export class OtpService {
 
     return {
       cooldownSeconds: OTP_CONSTANTS.RESEND_COOLDOWN_SECONDS,
-      remainingResends: Math.max(
-        0,
-        OTP_CONSTANTS.MAX_SEND_PER_HOUR - count,
-      ),
+      remainingResends: Math.max(0, OTP_CONSTANTS.MAX_SEND_PER_HOUR - count),
     };
   }
 
@@ -187,10 +183,7 @@ export class OtpService {
       !/^\d+$/.test(params.otp) ||
       params.otp.length !== OTP_CONSTANTS.CODE_LENGTH
     ) {
-      throw new ValidationError(
-        AuthErrors.INVALID_OTP,
-        'Invalid OTP',
-      );
+      throw new ValidationError(AuthErrors.INVALID_OTP, 'Invalid OTP');
     }
 
     const otpRequest = await this.otpRepo.findLatestValid({
@@ -205,14 +198,10 @@ export class OtpService {
       const attempts = await this.redis.incr(ghostAttemptKey);
 
       if (attempts === 1) {
-        await this.redis.expire(
-          ghostAttemptKey,
-          this.ttlSeconds,
-        );
+        await this.redis.expire(ghostAttemptKey, this.ttlSeconds);
       }
 
-      const remaining =
-        OTP_CONSTANTS.MAX_VERIFY_ATTEMPTS - attempts;
+      const remaining = OTP_CONSTANTS.MAX_VERIFY_ATTEMPTS - attempts;
 
       if (remaining <= 0) {
         await this.redis.set(
@@ -225,17 +214,14 @@ export class OtpService {
           AuthErrors.OTP_BLOCKED,
           'OTP temporarily blocked due to multiple failures',
           {
-            retryAfterSeconds:
-              OTP_CONSTANTS.BLOCK_DURATION_SECONDS,
+            retryAfterSeconds: OTP_CONSTANTS.BLOCK_DURATION_SECONDS,
           },
         );
       }
 
-      throw new ValidationError(
-        AuthErrors.INVALID_OTP,
-        'Invalid OTP',
-        { remainingAttempts: remaining },
-      );
+      throw new ValidationError(AuthErrors.INVALID_OTP, 'Invalid OTP', {
+        remainingAttempts: remaining,
+      });
     }
 
     otpRequest.assertCanVerify(new Date());
@@ -251,8 +237,7 @@ export class OtpService {
         await this.redis.expire(attemptKey, this.ttlSeconds);
       }
 
-      const remaining =
-        OTP_CONSTANTS.MAX_VERIFY_ATTEMPTS - attempts;
+      const remaining = OTP_CONSTANTS.MAX_VERIFY_ATTEMPTS - attempts;
 
       if (remaining <= 0) {
         await this.redis.set(
@@ -265,17 +250,14 @@ export class OtpService {
           AuthErrors.OTP_BLOCKED,
           'OTP temporarily blocked due to multiple failures',
           {
-            retryAfterSeconds:
-              OTP_CONSTANTS.BLOCK_DURATION_SECONDS,
+            retryAfterSeconds: OTP_CONSTANTS.BLOCK_DURATION_SECONDS,
           },
         );
       }
 
-      throw new ValidationError(
-        AuthErrors.INVALID_OTP,
-        'Invalid OTP',
-        { remainingAttempts: remaining },
-      );
+      throw new ValidationError(AuthErrors.INVALID_OTP, 'Invalid OTP', {
+        remainingAttempts: remaining,
+      });
     }
 
     /* ---------- SUCCESS ---------- */

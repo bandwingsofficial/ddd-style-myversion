@@ -127,9 +127,7 @@ export class SuperAdminProfile {
     });
   }
 
-  changeAvatar(
-    avatarUrl: string,
-  ): SuperAdminProfile {
+  changeAvatar(avatarUrl: string): SuperAdminProfile {
     return new SuperAdminProfile({
       ...this,
       avatarUrl,
@@ -165,17 +163,11 @@ export class SuperAdminProfile {
     }
 
     if (this.title && this.title.length > 100) {
-      throw new ValidationError(
-        'SUPER_ADMIN_TITLE_TOO_LONG',
-        'Title too long',
-      );
+      throw new ValidationError('SUPER_ADMIN_TITLE_TOO_LONG', 'Title too long');
     }
 
     if (this.notes && this.notes.length > 1000) {
-      throw new ValidationError(
-        'SUPER_ADMIN_NOTES_TOO_LONG',
-        'Notes too long',
-      );
+      throw new ValidationError('SUPER_ADMIN_NOTES_TOO_LONG', 'Notes too long');
     }
   }
 }

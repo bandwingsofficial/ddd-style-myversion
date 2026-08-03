@@ -101,9 +101,7 @@ export class PaymentMapper {
 
   /* -------- STATUS -------- */
 
-  private static toDomainStatus(
-    status: PrismaPaymentStatus,
-  ): PaymentStatus {
+  private static toDomainStatus(status: PrismaPaymentStatus): PaymentStatus {
     switch (status) {
       case PrismaPaymentStatus.INITIATED:
         return PaymentStatus.INITIATED;
@@ -122,9 +120,7 @@ export class PaymentMapper {
     }
   }
 
-  private static toPrismaStatus(
-    status: PaymentStatus,
-  ): PrismaPaymentStatus {
+  private static toPrismaStatus(status: PaymentStatus): PrismaPaymentStatus {
     switch (status) {
       case PaymentStatus.INITIATED:
         return PrismaPaymentStatus.INITIATED;
@@ -145,9 +141,7 @@ export class PaymentMapper {
 
   /* -------- METHOD -------- */
 
-  private static toDomainMethod(
-    method: PrismaPaymentMethod,
-  ): PaymentMethod {
+  private static toDomainMethod(method: PrismaPaymentMethod): PaymentMethod {
     switch (method) {
       case PrismaPaymentMethod.ONLINE:
         return PaymentMethod.ONLINE;
@@ -160,9 +154,7 @@ export class PaymentMapper {
     }
   }
 
-  private static toPrismaMethod(
-    method: PaymentMethod,
-  ): PrismaPaymentMethod {
+  private static toPrismaMethod(method: PaymentMethod): PrismaPaymentMethod {
     switch (method) {
       case PaymentMethod.ONLINE:
         return PrismaPaymentMethod.ONLINE;

@@ -99,73 +99,73 @@ export class Order {
   }
 
   static createNew(params: {
-  id: string;
+    id: string;
 
-  customerId: string;
-  customerFullName?: string | null;
-  outletId: string;
+    customerId: string;
+    customerFullName?: string | null;
+    outletId: string;
 
-  cartId?: string;
+    cartId?: string;
 
-  address: OrderAddress;
+    address: OrderAddress;
 
-  /* 🔥 SNAPSHOT FROM CART ONLY */
-  subtotal: number;
-  discount: number;
-  afterDiscountTotal: number;
-  deliveryFee: number;
-  grandTotal: number;
-  itemCount: number;
+    /* 🔥 SNAPSHOT FROM CART ONLY */
+    subtotal: number;
+    discount: number;
+    afterDiscountTotal: number;
+    deliveryFee: number;
+    grandTotal: number;
+    itemCount: number;
 
-  deliveryRuleId?: string | null;
-  deliveryRuleName?: string | null;
-  deliveryRuleMinimumOrderAmount?: number | null;
-  isFreeDelivery?: boolean;
+    deliveryRuleId?: string | null;
+    deliveryRuleName?: string | null;
+    deliveryRuleMinimumOrderAmount?: number | null;
+    isFreeDelivery?: boolean;
 
-  items: OrderItem[];
+    items: OrderItem[];
 
-  now?: Date;
-}): Order {
-  const now = params.now ?? new Date();
+    now?: Date;
+  }): Order {
+    const now = params.now ?? new Date();
 
-  return new Order({
-    id: params.id,
+    return new Order({
+      id: params.id,
 
-    // 🔥 These will be set after DB persistence
-    orderSequence: 0,
-    orderNumber: '',
+      // 🔥 These will be set after DB persistence
+      orderSequence: 0,
+      orderNumber: '',
 
-    customerId: params.customerId,
-    customerFullName: params.customerFullName,
-    outletId: params.outletId,
-    cartId: params.cartId,
+      customerId: params.customerId,
+      customerFullName: params.customerFullName,
+      outletId: params.outletId,
+      cartId: params.cartId,
 
-    address: params.address,
+      address: params.address,
 
-    subtotal: Money.create(params.subtotal),
-    discount: Money.create(params.discount),
-    afterDiscountTotal: Money.create(params.afterDiscountTotal),
-    deliveryFee: Money.create(params.deliveryFee),
-    grandTotal: Money.create(params.grandTotal),
-    itemCount: params.itemCount,
+      subtotal: Money.create(params.subtotal),
+      discount: Money.create(params.discount),
+      afterDiscountTotal: Money.create(params.afterDiscountTotal),
+      deliveryFee: Money.create(params.deliveryFee),
+      grandTotal: Money.create(params.grandTotal),
+      itemCount: params.itemCount,
 
-    deliveryRuleId: params.deliveryRuleId ?? null,
-    deliveryRuleName: params.deliveryRuleName ?? null,
-    deliveryRuleMinimumOrderAmount:
-      params.deliveryRuleMinimumOrderAmount != null
-        ? Money.create(params.deliveryRuleMinimumOrderAmount)
-        : null,
-    isFreeDelivery: params.isFreeDelivery ?? params.deliveryFee === 0,
+      deliveryRuleId: params.deliveryRuleId ?? null,
+      deliveryRuleName: params.deliveryRuleName ?? null,
+      deliveryRuleMinimumOrderAmount:
+        params.deliveryRuleMinimumOrderAmount != null
+          ? Money.create(params.deliveryRuleMinimumOrderAmount)
+          : null,
+      isFreeDelivery: params.isFreeDelivery ?? params.deliveryFee === 0,
 
-    items: params.items,
+      items: params.items,
 
-    status: OrderStatus.CREATED,
-    version: 0,
+      status: OrderStatus.CREATED,
+      version: 0,
 
-    createdAt: now,
-    updatedAt: now,
-  });
-}
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
 
   static rehydrate(props: OrderProps): Order {
     return new Order(props);

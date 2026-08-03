@@ -22,10 +22,7 @@ export class AuthOtpController {
   /* ================================================= */
 
   @Post('customer/otp/request')
-  async requestCustomerOtp(
-    @Body() body: RequestOtpDto,
-    @Req() req: Request,
-  ) {
+  async requestCustomerOtp(@Body() body: RequestOtpDto, @Req() req: Request) {
     const data = await this.auth.requestOtp({
       actorType: ActorType.CUSTOMER,
       phone: body.phone,
@@ -98,10 +95,7 @@ export class AuthOtpController {
   /* ================================================= */
 
   @Post('delivery/otp/request')
-  async requestDeliveryOtp(
-    @Body() body: RequestOtpDto,
-    @Req() req: Request,
-  ) {
+  async requestDeliveryOtp(@Body() body: RequestOtpDto, @Req() req: Request) {
     const data = await this.auth.requestOtp({
       actorType: ActorType.DELIVERY,
       phone: body.phone,

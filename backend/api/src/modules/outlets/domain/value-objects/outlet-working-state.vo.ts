@@ -23,9 +23,7 @@ export class OutletWorkingState {
   }
 
   static temporarilyClosed(): OutletWorkingState {
-    return new OutletWorkingState(
-      OutletWorkingStatus.TEMPORARILY_CLOSED,
-    );
+    return new OutletWorkingState(OutletWorkingStatus.TEMPORARILY_CLOSED);
   }
 
   /* ---------------------------------------------- */

@@ -28,10 +28,7 @@ export class CustomerRepository {
     return this.toDomain(row);
   }
 
-  async findById(
-    id: string,
-    tx?: PrismaTransaction,
-  ): Promise<Customer | null> {
+  async findById(id: string, tx?: PrismaTransaction): Promise<Customer | null> {
     const client = tx ?? this.prisma;
 
     const row = await client.customer.findUnique({
@@ -57,10 +54,7 @@ export class CustomerRepository {
   /**
    * Idempotent block operation
    */
-  async block(
-    customerId: string,
-    tx?: PrismaTransaction,
-  ): Promise<Customer> {
+  async block(customerId: string, tx?: PrismaTransaction): Promise<Customer> {
     const client = tx ?? this.prisma;
 
     await client.customer.updateMany({
@@ -92,10 +86,7 @@ export class CustomerRepository {
   /**
    * Idempotent unblock operation
    */
-  async unblock(
-    customerId: string,
-    tx?: PrismaTransaction,
-  ): Promise<Customer> {
+  async unblock(customerId: string, tx?: PrismaTransaction): Promise<Customer> {
     const client = tx ?? this.prisma;
 
     await client.customer.updateMany({

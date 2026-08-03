@@ -16,8 +16,7 @@ import { RequestLoggerMiddleware } from './common/middleware/request-logger.midd
 
 async function bootstrap() {
   const repoRoot =
-    process.env.APP_ROOT ??
-    path.resolve(__dirname, '..', '..', '..');
+    process.env.APP_ROOT ?? path.resolve(__dirname, '..', '..', '..');
 
   if (!process.env.APP_ROOT) {
     console.warn('⚠️ APP_ROOT not set, using fallback:', repoRoot);
@@ -42,10 +41,7 @@ async function bootstrap() {
   /* STATIC FILES                                       */
   /* -------------------------------------------------- */
 
-  app.use(
-    '/images',
-    express.static(path.join(repoRoot, 'images')),
-  );
+  app.use('/images', express.static(path.join(repoRoot, 'images')));
 
   /* -------------------------------------------------- */
   /* FILTERS / INTERCEPTORS                             */

@@ -37,9 +37,7 @@ export class OutletProfileMapper {
   /* Domain → Prisma (create)                          */
   /* ================================================= */
 
-  static toCreateInput(
-    profile: OutletProfile,
-  ): PrismaOutletProfile {
+  static toCreateInput(profile: OutletProfile): PrismaOutletProfile {
     return {
       id: profile.id,
       outletId: profile.outletId,
@@ -58,7 +56,7 @@ export class OutletProfileMapper {
 
       createdAt: profile.createdAt,
       updatedAt: profile.updatedAt,
-    } as PrismaOutletProfile;
+    };
   }
 
   /* ================================================= */

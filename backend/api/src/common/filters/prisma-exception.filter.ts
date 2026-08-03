@@ -14,8 +14,7 @@ export class PrismaExceptionFilter implements ExceptionFilter {
 
   catch(
     exception:
-      | Prisma.PrismaClientKnownRequestError
-      | Prisma.PrismaClientValidationError,
+      Prisma.PrismaClientKnownRequestError | Prisma.PrismaClientValidationError,
     host: ArgumentsHost,
   ) {
     const ctx = host.switchToHttp();

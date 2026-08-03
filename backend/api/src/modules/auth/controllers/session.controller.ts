@@ -23,16 +23,11 @@ import {
 } from '../../../common/http/auth-cookies';
 
 import { CurrentUser } from '../../../common/decorators/current-user.decorator';
-import {
-  AccessAuthContext,
-  RefreshAuthContext,
-} from '../../../types/express';
+import { AccessAuthContext, RefreshAuthContext } from '../../../types/express';
 
 @Controller('auth/session')
 export class SessionController {
-  constructor(
-    private readonly auth: AuthOrchestratorService,
-  ) {}
+  constructor(private readonly auth: AuthOrchestratorService) {}
 
   /* ================================================= */
   /* REFRESH                                          */
@@ -50,16 +45,11 @@ export class SessionController {
     console.log('🔁 [REFRESH] user:', user);
     console.log('🔁 [REFRESH] ip:', getRequestIp(req));
     console.log('🔁 [REFRESH] ua:', req.headers['user-agent']);
-    console.log(
-      '🔁 [REFRESH] client:',
-      req.headers['x-client-type'],
-    );
+    console.log('🔁 [REFRESH] client:', req.headers['x-client-type']);
 
     if (user.kind !== 'refresh') {
       console.log('❌ [REFRESH] invalid context');
-      throw new UnauthorizedException(
-        'INVALID_AUTH_CONTEXT',
-      );
+      throw new UnauthorizedException('INVALID_AUTH_CONTEXT');
     }
 
     const auth = await this.auth.refreshSession({
@@ -73,8 +63,7 @@ export class SessionController {
 
     console.log('✅ [REFRESH] new session issued');
 
-    const isWeb =
-      req.headers['x-client-type'] === 'web';
+    const isWeb = req.headers['x-client-type'] === 'web';
 
     if (isWeb) {
       console.log('🌐 [REFRESH] setting cookies');
@@ -104,10 +93,8 @@ export class SessionController {
         roles: auth.roles,
         accessToken: auth.accessToken,
         refreshToken: auth.refreshToken,
-        accessTokenExpiresAt:
-          auth.accessTokenExpiresAt,
-        refreshTokenExpiresAt:
-          auth.refreshTokenExpiresAt,
+        accessTokenExpiresAt: auth.accessTokenExpiresAt,
+        refreshTokenExpiresAt: auth.refreshTokenExpiresAt,
       },
     };
   }
@@ -129,9 +116,7 @@ export class SessionController {
 
     if (user.kind !== 'access') {
       console.log('❌ [LOGOUT] invalid context');
-      throw new UnauthorizedException(
-        'INVALID_AUTH_CONTEXT',
-      );
+      throw new UnauthorizedException('INVALID_AUTH_CONTEXT');
     }
 
     await this.auth.logout({
@@ -142,9 +127,7 @@ export class SessionController {
       userAgent: req.headers['user-agent'],
     });
 
-    if (
-      req.headers['x-client-type'] === 'web'
-    ) {
+    if (req.headers['x-client-type'] === 'web') {
       console.log('🧹 [LOGOUT] clearing cookies');
       clearAuthCookies(res);
     }
@@ -163,19 +146,14 @@ export class SessionController {
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  me(
-    @CurrentUser() user: AccessAuthContext,
-    @Req() req: Request,
-  ) {
+  me(@CurrentUser() user: AccessAuthContext, @Req() req: Request) {
     console.log('👤 [ME] hit');
     console.log('👤 [ME] cookies:', req.headers.cookie);
     console.log('👤 [ME] user:', user);
 
     if (user.kind !== 'access') {
       console.log('❌ [ME] invalid context');
-      throw new UnauthorizedException(
-        'INVALID_AUTH_CONTEXT',
-      );
+      throw new UnauthorizedException('INVALID_AUTH_CONTEXT');
     }
 
     return {

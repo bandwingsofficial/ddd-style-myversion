@@ -21,10 +21,7 @@ export class ProductImages {
     galleryImages: string[] = [],
   ): ProductImages {
     if (!mainImage) {
-      throw new ValidationError(
-        'INVALID_MAIN_IMAGE',
-        'Main image is required',
-      );
+      throw new ValidationError('INVALID_MAIN_IMAGE', 'Main image is required');
     }
 
     if (galleryImages.length > this.MAX_GALLERY_IMAGES) {

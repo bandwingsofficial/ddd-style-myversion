@@ -37,16 +37,9 @@ import { ProductEventsService } from '../events/product-events.service';
 import { ProductPublicGateway } from '../gateways/product-public.gateway';
 import { ProductPublicListener } from '../listeners/product-public.listener';
 
-
 @Module({
-  imports: [
-    UploadsModule,
-    CategoriesModule,
-  ],
-  controllers: [
-    ProductManagementController,
-    PublicProductController,
-  ],
+  imports: [UploadsModule, CategoriesModule],
+  controllers: [ProductManagementController, PublicProductController],
   providers: [
     PrismaService,
     ProductService,
@@ -57,9 +50,6 @@ import { ProductPublicListener } from '../listeners/product-public.listener';
     ProductPublicGateway,
     ProductPublicListener,
   ],
-  exports: [
-    ProductService,
-    ProductOrchestratorService,
-  ],
+  exports: [ProductService, ProductOrchestratorService],
 })
 export class ProductsModule {}

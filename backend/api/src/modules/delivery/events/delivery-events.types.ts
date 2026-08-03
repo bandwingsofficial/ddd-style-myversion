@@ -13,8 +13,7 @@ export interface DeliveryBaseEvent {
 /* LOCATION                                          */
 /* ================================================= */
 
-export interface DeliveryLocationEvent
-  extends DeliveryBaseEvent {
+export interface DeliveryLocationEvent extends DeliveryBaseEvent {
   latitude: number;
   longitude: number;
 }
@@ -23,8 +22,7 @@ export interface DeliveryLocationEvent
 /* FAILED                                            */
 /* ================================================= */
 
-export interface DeliveryFailedEvent
-  extends DeliveryBaseEvent {
+export interface DeliveryFailedEvent extends DeliveryBaseEvent {
   reason?: string;
 }
 
@@ -33,6 +31,4 @@ export interface DeliveryFailedEvent
 /* ================================================= */
 
 export type DeliverySocketEvent =
-  | DeliveryBaseEvent
-  | DeliveryLocationEvent
-  | DeliveryFailedEvent;
+  DeliveryBaseEvent | DeliveryLocationEvent | DeliveryFailedEvent;

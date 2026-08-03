@@ -230,15 +230,9 @@ describe('product-pricing.util (pricing engine)', () => {
 
   describe('normalizeDiscountPrice', () => {
     it('returns undefined for invalid discounts', () => {
-      expect(
-        normalizeDiscountPrice(new D('50'), new D('0')),
-      ).toBeUndefined();
-      expect(
-        normalizeDiscountPrice(new D('50'), new D('50')),
-      ).toBeUndefined();
-      expect(
-        normalizeDiscountPrice(new D('50'), new D('55')),
-      ).toBeUndefined();
+      expect(normalizeDiscountPrice(new D('50'), new D('0'))).toBeUndefined();
+      expect(normalizeDiscountPrice(new D('50'), new D('50'))).toBeUndefined();
+      expect(normalizeDiscountPrice(new D('50'), new D('55'))).toBeUndefined();
     });
 
     it('number variant mirrors decimal variant', () => {

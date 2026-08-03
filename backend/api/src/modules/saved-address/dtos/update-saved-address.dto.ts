@@ -1,4 +1,10 @@
-import { IsOptional, IsString, MaxLength, MinLength, IsNumber } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+  IsNumber,
+} from 'class-validator';
 
 export class UpdateSavedAddressDto {
   @IsOptional()

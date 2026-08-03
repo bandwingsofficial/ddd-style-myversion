@@ -36,12 +36,9 @@ import { InventoryResponseMapper } from '../mappers/inventory-response.mapper';
 @Module({
   imports: [
     StockItemsModule, // StockItem validation / reads
-    OutletsModule,    // Outlet validation / reads
+    OutletsModule, // Outlet validation / reads
   ],
-  controllers: [
-    InventoryAdminController,
-    InventoryPublicController,
-  ],
+  controllers: [InventoryAdminController, InventoryPublicController],
   providers: [
     // Infrastructure
     PrismaService,
@@ -59,9 +56,6 @@ import { InventoryResponseMapper } from '../mappers/inventory-response.mapper';
     // Events (optional but ready)
     // InventoryEventsService,
   ],
-  exports: [
-    InventoryService,
-    InventoryOrchestratorService,
-  ],
+  exports: [InventoryService, InventoryOrchestratorService],
 })
 export class InventoryModule {}

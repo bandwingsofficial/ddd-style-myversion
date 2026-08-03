@@ -128,9 +128,7 @@ export class Payment {
    * Final but NOT success
    */
   isFinal(): boolean {
-    return [PaymentStatus.FAILED, PaymentStatus.REFUNDED].includes(
-      this.status,
-    );
+    return [PaymentStatus.FAILED, PaymentStatus.REFUNDED].includes(this.status);
   }
 
   /**
@@ -154,10 +152,7 @@ export class Payment {
    * 🔥 NEW
    * Attach provider reference after session creation
    */
-  attachProviderRef(
-    providerRefId: string,
-    now = new Date(),
-  ): Payment {
+  attachProviderRef(providerRefId: string, now = new Date()): Payment {
     if (!providerRefId) {
       throw new ValidationError(
         'PROVIDER_REF_REQUIRED',
@@ -172,10 +167,7 @@ export class Payment {
     });
   }
 
-  markSuccess(params: {
-    transactionId: string;
-    now?: Date;
-  }): Payment {
+  markSuccess(params: { transactionId: string; now?: Date }): Payment {
     if (!this.isInitiated()) {
       throw new ValidationError(
         'INVALID_TRANSITION',

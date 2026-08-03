@@ -9,12 +9,11 @@ import { SavedAddress } from '../domain/models/saved-address.model';
 import { SavedAddressRepository } from '../repositories/saved-address.repository';
 
 import { ValidationError } from '../../../common/errors';
-import { pickPreferredOutlet } from '../../../common/utils/outlet-pick.util';
+import { OutletResolutionService } from '../../outlets/services/outlet-resolution.service';
 
 /* 🔥 EVENTS */
 import { SavedAddressEventsService } from '../events/saved-address-events.service';
 import { SavedAddressType } from '../domain/enums/saved-address-type.enum';
-import { OutletOrchestratorService } from '../../outlets/services/outlet-orchestrator.service';
 
 export interface AddressOutletResolution {
   resolvedOutletId: string | null;
@@ -28,7 +27,7 @@ export class SavedAddressService {
     private readonly prisma: PrismaService,
     private readonly savedAddressRepo: SavedAddressRepository,
     private readonly savedAddressEvents: SavedAddressEventsService,
-    private readonly outletOrchestrator: OutletOrchestratorService,
+    private readonly outletResolution: OutletResolutionService,
   ) {}
 
   /* ================================================= */
@@ -59,8 +58,7 @@ export class SavedAddressService {
   }
 
   async getAllByCustomer(customerId: string): Promise<SavedAddress[]> {
-    const addresses =
-      await this.savedAddressRepo.findAllByCustomer(customerId);
+    const addresses = await this.savedAddressRepo.findAllByCustomer(customerId);
 
     return Promise.all(
       addresses.map((address) => this.ensureAddressOutletResolved(address)),
@@ -79,14 +77,12 @@ export class SavedAddressService {
       };
     }
 
-    const nearby = await this.outletOrchestrator.getNearbyOutlets(
+    const resolution = await this.outletResolution.resolveForCoordinates(
       latitude,
       longitude,
     );
 
-    const picked = pickPreferredOutlet(nearby);
-
-    if (!picked) {
+    if (resolution.status === 'NO_SERVICE' || !resolution.resolvedOutlet) {
       return {
         resolvedOutletId: null,
         resolvedOutletName: null,
@@ -95,8 +91,8 @@ export class SavedAddressService {
     }
 
     return {
-      resolvedOutletId: picked.outletId,
-      resolvedOutletName: picked.outletName,
+      resolvedOutletId: resolution.resolvedOutlet.outletId,
+      resolvedOutletName: resolution.resolvedOutlet.outletName,
       serviceable: true,
     };
   }
@@ -143,11 +139,8 @@ export class SavedAddressService {
   /* PRIMARY                                           */
   /* ================================================= */
 
-  async getPrimaryAddress(
-    customerId: string,
-  ): Promise<SavedAddress | null> {
-    const addresses =
-      await this.savedAddressRepo.findAllByCustomer(customerId);
+  async getPrimaryAddress(customerId: string): Promise<SavedAddress | null> {
+    const addresses = await this.savedAddressRepo.findAllByCustomer(customerId);
 
     const primary = addresses.find((a) => a.isActive()) ?? null;
     return primary ? this.ensureAddressOutletResolved(primary) : null;
@@ -157,9 +150,7 @@ export class SavedAddressService {
   /* CREATE (RESTORE OR CREATE)                        */
   /* ================================================= */
 
-  async createSavedAddress(
-    address: SavedAddress,
-  ): Promise<SavedAddress> {
+  async createSavedAddress(address: SavedAddress): Promise<SavedAddress> {
     const resolution = await this.resolveOutletForCoordinates(
       address.latitude,
       address.longitude,
@@ -186,12 +177,11 @@ export class SavedAddressService {
         addressWithOutlet.type === SavedAddressType.HOME ||
         addressWithOutlet.type === SavedAddressType.WORK
       ) {
-        const active =
-          await this.savedAddressRepo.findActiveByCustomerAndType(
-            addressWithOutlet.customerId,
-            addressWithOutlet.type,
-            tx,
-          );
+        const active = await this.savedAddressRepo.findActiveByCustomerAndType(
+          addressWithOutlet.customerId,
+          addressWithOutlet.type,
+          tx,
+        );
 
         if (active) {
           throw new ValidationError(
@@ -213,17 +203,15 @@ export class SavedAddressService {
           );
 
         if (deleted) {
-          const restored = deleted
-            .restore()
-            .updateDetails({
-              label: addressWithOutlet.label,
-              addressText: addressWithOutlet.addressText,
-              latitude: addressWithOutlet.latitude,
-              longitude: addressWithOutlet.longitude,
-              resolvedOutletId: resolution.resolvedOutletId,
-              resolvedOutletName: resolution.resolvedOutletName,
-              serviceable: resolution.serviceable,
-            });
+          const restored = deleted.restore().updateDetails({
+            label: addressWithOutlet.label,
+            addressText: addressWithOutlet.addressText,
+            latitude: addressWithOutlet.latitude,
+            longitude: addressWithOutlet.longitude,
+            resolvedOutletId: resolution.resolvedOutletId,
+            resolvedOutletName: resolution.resolvedOutletName,
+            serviceable: resolution.serviceable,
+          });
 
           result = await this.savedAddressRepo.save(restored, tx);
           return;

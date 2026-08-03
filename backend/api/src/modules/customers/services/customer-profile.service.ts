@@ -82,9 +82,7 @@ export class CustomerProfileService {
     gender?: string;
     dob?: Date;
   }): Promise<CustomerProfile> {
-    const existing = await this.profileRepo.findByCustomerId(
-      params.customerId,
-    );
+    const existing = await this.profileRepo.findByCustomerId(params.customerId);
 
     if (existing) {
       throw new ValidationError(
@@ -184,9 +182,7 @@ export class CustomerProfileService {
     gender?: string;
     dob?: Date;
   }): Promise<CustomerProfile> {
-    const existing = await this.profileRepo.findByCustomerId(
-      params.customerId,
-    );
+    const existing = await this.profileRepo.findByCustomerId(params.customerId);
 
     if (!existing) {
       return this.createProfile(params);

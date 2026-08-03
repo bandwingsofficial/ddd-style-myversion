@@ -5,10 +5,7 @@ export class TokenCryptoHelper {
     return crypto.randomBytes(bytes).toString('hex');
   }
 
-  static hash(
-    value: string,
-    algorithm: string = 'sha256',
-  ): string {
+  static hash(value: string, algorithm: string = 'sha256'): string {
     return crypto.createHash(algorithm).update(value).digest('hex');
   }
 }

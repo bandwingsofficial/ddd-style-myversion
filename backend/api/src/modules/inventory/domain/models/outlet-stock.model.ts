@@ -98,10 +98,7 @@ export class OutletStock {
   /**
    * Add stock to outlet (from central inventory)
    */
-  addStock(
-    quantity: Quantity,
-    now = new Date(),
-  ): OutletStock {
+  addStock(quantity: Quantity, now = new Date()): OutletStock {
     return new OutletStock({
       ...this,
       quantity: this.quantity.add(quantity),
@@ -112,10 +109,7 @@ export class OutletStock {
   /**
    * Remove stock from outlet (future use: sales / returns)
    */
-  removeStock(
-    quantity: Quantity,
-    now = new Date(),
-  ): OutletStock {
+  removeStock(quantity: Quantity, now = new Date()): OutletStock {
     return new OutletStock({
       ...this,
       quantity: this.quantity.subtract(quantity),

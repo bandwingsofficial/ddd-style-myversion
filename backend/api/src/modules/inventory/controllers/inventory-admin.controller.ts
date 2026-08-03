@@ -1,11 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Post,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 
 import { InventoryOrchestratorService } from '../services/inventory-orchestrator.service';
 
@@ -29,9 +22,7 @@ import { Unit } from '../../stock-items/domain/enums/unit.enum';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(ActorType.SUPER_ADMIN)
 export class InventoryAdminController {
-  constructor(
-    private readonly orchestrator: InventoryOrchestratorService,
-  ) {}
+  constructor(private readonly orchestrator: InventoryOrchestratorService) {}
 
   /* ================================================= */
   /* INVENTORY – READS                                 */
@@ -39,8 +30,7 @@ export class InventoryAdminController {
 
   @Get()
   async getCentralInventory() {
-    const data =
-      await this.orchestrator.getCentralInventory();
+    const data = await this.orchestrator.getCentralInventory();
 
     return {
       success: true,
@@ -49,18 +39,13 @@ export class InventoryAdminController {
       data,
     };
   }
-    /* ================================================= */
-/* INVENTORY –  STOCK items                      */
-/* ================================================= */
+  /* ================================================= */
+  /* INVENTORY –  STOCK items                      */
+  /* ================================================= */
 
   @Get(':stockItemId/transactions')
-  async getInventoryTransactions(
-    @Param('stockItemId') stockItemId: string,
-  ) {
-    const data =
-      await this.orchestrator.getInventoryTransactions(
-        stockItemId,
-      );
+  async getInventoryTransactions(@Param('stockItemId') stockItemId: string) {
+    const data = await this.orchestrator.getInventoryTransactions(stockItemId);
 
     return {
       success: true,
@@ -71,23 +56,20 @@ export class InventoryAdminController {
   }
 
   /* ================================================= */
-/* INVENTORY – OUTLET STOCK                          */
-/* ================================================= */
+  /* INVENTORY – OUTLET STOCK                          */
+  /* ================================================= */
 
-@Get('outlet/:outletId')
-async getOutletStock(
-  @Param('outletId') outletId: string,
-) {
-  const data =
-    await this.orchestrator.getOutletStock(outletId);
+  @Get('outlet/:outletId')
+  async getOutletStock(@Param('outletId') outletId: string) {
+    const data = await this.orchestrator.getOutletStock(outletId);
 
-  return {
-    success: true,
-    code: 'OUTLET_STOCK_FETCHED',
-    message: 'Outlet stock fetched successfully',
-    data,
-  };
-}
+    return {
+      success: true,
+      code: 'OUTLET_STOCK_FETCHED',
+      message: 'Outlet stock fetched successfully',
+      data,
+    };
+  }
 
   /* ================================================= */
   /* INVENTORY – INITIALIZE                            */
@@ -98,13 +80,12 @@ async getOutletStock(
     @Body() dto: InitializeInventoryDto,
     @CurrentUser() user,
   ) {
-    const data =
-      await this.orchestrator.initializeInventory({
-        stockItemId: dto.stockItemId,
-        unit: dto.unit as Unit,
-        quantity: dto.quantity,
-        performedBy: user.id,
-      });
+    const data = await this.orchestrator.initializeInventory({
+      stockItemId: dto.stockItemId,
+      unit: dto.unit,
+      quantity: dto.quantity,
+      performedBy: user.id,
+    });
 
     return {
       success: true,
@@ -119,10 +100,7 @@ async getOutletStock(
   /* ================================================= */
 
   @Post('add-stock')
-  async addStock(
-    @Body() dto: AddInventoryStockDto,
-    @CurrentUser() user,
-  ) {
+  async addStock(@Body() dto: AddInventoryStockDto, @CurrentUser() user) {
     const data = await this.orchestrator.addStock({
       stockItemId: dto.stockItemId,
       quantity: dto.quantity,
@@ -147,14 +125,13 @@ async getOutletStock(
     @Body() dto: AdjustInventoryStockDto,
     @CurrentUser() user,
   ) {
-    const data =
-      await this.orchestrator.adjustAvailableStock({
-        stockItemId: dto.stockItemId,
-        adjustmentType: dto.adjustmentType,
-        adjustmentQuantity: dto.adjustmentQuantity,
-        remarks: dto.remarks,
-        performedBy: user.id,
-      });
+    const data = await this.orchestrator.adjustAvailableStock({
+      stockItemId: dto.stockItemId,
+      adjustmentType: dto.adjustmentType,
+      adjustmentQuantity: dto.adjustmentQuantity,
+      remarks: dto.remarks,
+      performedBy: user.id,
+    });
 
     return {
       success: true,
@@ -173,13 +150,12 @@ async getOutletStock(
     @Body() dto: TransferInventoryStockDto,
     @CurrentUser() user,
   ) {
-    const data =
-      await this.orchestrator.transferToOutlet({
-        stockItemId: dto.stockItemId,
-        outletId: dto.outletId,
-        quantity: dto.quantity,
-        performedBy: user.id,
-      });
+    const data = await this.orchestrator.transferToOutlet({
+      stockItemId: dto.stockItemId,
+      outletId: dto.outletId,
+      quantity: dto.quantity,
+      performedBy: user.id,
+    });
 
     return {
       success: true,

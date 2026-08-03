@@ -3,11 +3,10 @@ import { Product } from '../domain/models/product.model';
 export class PublicProductListDto {
   id: string;
 
-   category: {
+  category: {
     id: string;
     name: string;
   };
-
 
   name: {
     value: string;
@@ -59,17 +58,17 @@ export class PublicProductListDto {
   /* FACTORY                                          */
   /* ================================================= */
 
- static fromDomain(
-  product: Product,
-  category: { id: string; name: string },
-): PublicProductListDto{
+  static fromDomain(
+    product: Product,
+    category: { id: string; name: string },
+  ): PublicProductListDto {
     return {
       id: product.id,
 
       category: {
-    id: category.id,
-    name: category.name,
-  },
+        id: category.id,
+        name: category.name,
+      },
 
       name: {
         value: product.name.getValue(),
@@ -114,8 +113,7 @@ export class PublicProductListDto {
       ingredients: product.ingredients ?? null,
       benefits: product.benefits ?? null,
       extraInfo1: product.extraInfo1 ?? null,
-      extraInfo2: product.extraInfo2 ?? null, 
+      extraInfo2: product.extraInfo2 ?? null,
     };
   }
 }
-  

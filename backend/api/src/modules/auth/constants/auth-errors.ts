@@ -39,5 +39,4 @@ export const AuthErrors = {
 /**
  * Union of all auth error codes
  */
-export type AuthErrorCode =
-  (typeof AuthErrors)[keyof typeof AuthErrors];
+export type AuthErrorCode = (typeof AuthErrors)[keyof typeof AuthErrors];

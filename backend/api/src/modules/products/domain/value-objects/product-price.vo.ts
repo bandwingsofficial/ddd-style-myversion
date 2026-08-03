@@ -11,10 +11,7 @@ export class ProductPrice {
     Object.freeze(this);
   }
 
-  static create(
-    originalPrice: number,
-    discountPrice?: number,
-  ): ProductPrice {
+  static create(originalPrice: number, discountPrice?: number): ProductPrice {
     if (originalPrice === undefined || originalPrice <= 0) {
       throw new ValidationError(
         'INVALID_ORIGINAL_PRICE',

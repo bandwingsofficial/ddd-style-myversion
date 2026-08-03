@@ -9,9 +9,7 @@ import {
 
 @Injectable()
 export class CheckoutEventsService {
-  constructor(
-    private readonly eventEmitter: EventEmitter2,
-  ) {}
+  constructor(private readonly eventEmitter: EventEmitter2) {}
 
   /* ================================================= */
   /* STARTED                                           */
@@ -20,10 +18,7 @@ export class CheckoutEventsService {
   emitCheckoutStarted(payload: CheckoutStartedEvent): void {
     console.log('🟢 [EVENT EMIT] checkout.started', payload);
 
-    this.eventEmitter.emit(
-      CheckoutEvents.CHECKOUT_STARTED,
-      payload,
-    );
+    this.eventEmitter.emit(CheckoutEvents.CHECKOUT_STARTED, payload);
   }
 
   /* ================================================= */
@@ -33,9 +28,6 @@ export class CheckoutEventsService {
   emitCheckoutFailed(payload: CheckoutFailedEvent): void {
     console.log('🔴 [EVENT EMIT] checkout.failed', payload);
 
-    this.eventEmitter.emit(
-      CheckoutEvents.CHECKOUT_FAILED,
-      payload,
-    );
+    this.eventEmitter.emit(CheckoutEvents.CHECKOUT_FAILED, payload);
   }
 }

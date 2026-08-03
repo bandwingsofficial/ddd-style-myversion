@@ -38,6 +38,7 @@ export interface Cart {
   id?: string;
   customerId?: string;
   outletId?: string;
+  outletName?: string | null;
   subtotal?: number;
   discount?: number;
   afterDiscountTotal?: number;

@@ -236,10 +236,7 @@ export class AuthOrchestratorService {
     const challenge = await this.mfaRepo.findById(params.challengeId);
 
     if (!challenge) {
-      throw new UnauthorizedError(
-        AuthErrors.MFA_INVALID,
-        'Invalid MFA code',
-      );
+      throw new UnauthorizedError(AuthErrors.MFA_INVALID, 'Invalid MFA code');
     }
 
     challenge.assertCanVerify();
@@ -354,7 +351,7 @@ export class AuthOrchestratorService {
     return this.sessionService.revokeAllSessions(params);
   }
 
-/* ================================================= */
+  /* ================================================= */
   /* SUPER ADMIN PROFILE (delegation only)            */
   /* ================================================= */
 
@@ -399,9 +396,7 @@ export class AuthOrchestratorService {
     return this.superAdminProfileService.upsertProfile(params);
   }
 
-  async deleteSuperAdminProfile(
-    superAdminId: string,
-  ): Promise<void> {
+  async deleteSuperAdminProfile(superAdminId: string): Promise<void> {
     return this.superAdminProfileService.deleteProfile(superAdminId);
   }
 }

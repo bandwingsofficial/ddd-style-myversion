@@ -150,68 +150,68 @@ export class Cart {
   /* ---------------------------------------------- */
 
   lock(now = new Date()): Cart {
-  if (!this.hasItems()) {
-    throw new ValidationError('CART_EMPTY', 'Cannot checkout empty cart');
+    if (!this.hasItems()) {
+      throw new ValidationError('CART_EMPTY', 'Cannot checkout empty cart');
+    }
+
+    return new Cart({
+      ...this.toProps(),
+      status: CartStatus.LOCKED,
+      updatedAt: now,
+      lockedAt: now,
+    });
   }
 
-  return new Cart({
-    ...this.toProps(),
-    status: CartStatus.LOCKED,
-    updatedAt: now,
-    lockedAt: now,
-  });
-}
-
   expire(now = new Date()): Cart {
-  return new Cart({
-    ...this.toProps(),
-    status: CartStatus.EXPIRED,
-    updatedAt: now,
-    expiresAt: now,
-  });
-}
+    return new Cart({
+      ...this.toProps(),
+      status: CartStatus.EXPIRED,
+      updatedAt: now,
+      expiresAt: now,
+    });
+  }
 
-unlock(now = new Date()): Cart {
-  return new Cart({
-    ...this.toProps(),
-    status: CartStatus.ACTIVE,
-    updatedAt: now,
-    lockedAt: undefined,
-  });
-}
+  unlock(now = new Date()): Cart {
+    return new Cart({
+      ...this.toProps(),
+      status: CartStatus.ACTIVE,
+      updatedAt: now,
+      lockedAt: undefined,
+    });
+  }
   /* ---------------------------------------------- */
   /* private mapper                                */
   /* ---------------------------------------------- */
 
-private toProps(): CartProps {
-  return {
-    id: this.id,
-    customerId: this.customerId,
-    sessionId: this.sessionId,
-    outletId: this.outletId,
-    status: this.status,
-    items: [...this.items],
-    currency: this.currency,
+  private toProps(): CartProps {
+    return {
+      id: this.id,
+      customerId: this.customerId,
+      sessionId: this.sessionId,
+      outletId: this.outletId,
+      status: this.status,
+      items: [...this.items],
+      currency: this.currency,
 
-    subtotal: this.subtotal,
-    discount: this.discount,
-    afterDiscountTotal: this.afterDiscountTotal,
-    deliveryFee: this.deliveryFee,
-    grandTotal: this.grandTotal,
-    itemCount: this.itemCount,
+      subtotal: this.subtotal,
+      discount: this.discount,
+      afterDiscountTotal: this.afterDiscountTotal,
+      deliveryFee: this.deliveryFee,
+      grandTotal: this.grandTotal,
+      itemCount: this.itemCount,
 
-    deliveryRuleId: this.deliveryRuleId,
-    deliveryRuleName: this.deliveryRuleName,
-    deliveryRuleMinimumOrderAmount: this.deliveryRuleMinimumOrderAmount,
-    isFreeDelivery: this.isFreeDelivery,
-    amountToFreeDelivery: this.amountToFreeDelivery,
+      deliveryRuleId: this.deliveryRuleId,
+      deliveryRuleName: this.deliveryRuleName,
+      deliveryRuleMinimumOrderAmount: this.deliveryRuleMinimumOrderAmount,
+      isFreeDelivery: this.isFreeDelivery,
+      amountToFreeDelivery: this.amountToFreeDelivery,
 
-    createdAt: this.createdAt,
-    updatedAt: this.updatedAt,
-    lockedAt: this.lockedAt,
-    expiresAt: this.expiresAt,
-  };
-}
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+      lockedAt: this.lockedAt,
+      expiresAt: this.expiresAt,
+    };
+  }
 
   /* ---------------------------------------------- */
   /* INVARIANTS                                     */

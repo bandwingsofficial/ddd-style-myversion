@@ -6,14 +6,9 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 
-import {
-  AccessAuthContext,
-  RefreshAuthContext,
-} from '../../types/express';
+import { AccessAuthContext, RefreshAuthContext } from '../../types/express';
 
-export type CurrentUserContext =
-  | AccessAuthContext
-  | RefreshAuthContext;
+export type CurrentUserContext = AccessAuthContext | RefreshAuthContext;
 
 export const CurrentUser = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): CurrentUserContext => {

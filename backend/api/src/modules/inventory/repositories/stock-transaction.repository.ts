@@ -33,29 +33,17 @@ export class StockTransactionRepository {
         stockItemId: transaction.stockItemId,
         inventoryId: transaction.inventoryId,
 
-        type: StockTransactionTypeMapper.toPrisma(
-          transaction.type,
-        ),
+        type: StockTransactionTypeMapper.toPrisma(transaction.type),
 
-        quantity: QuantityMapper.toPrisma(
-          transaction.quantity,
-        ),
+        quantity: QuantityMapper.toPrisma(transaction.quantity),
 
-        previousQuantity: QuantityMapper.toPrisma(
-          transaction.previousQuantity,
-        ),
-        newQuantity: QuantityMapper.toPrisma(
-          transaction.newQuantity,
-        ),
+        previousQuantity: QuantityMapper.toPrisma(transaction.previousQuantity),
+        newQuantity: QuantityMapper.toPrisma(transaction.newQuantity),
         quantityChange: new Prisma.Decimal(transaction.quantityChange),
 
-        source: StockSourceMapper.toPrisma(
-          transaction.source,
-        ),
+        source: StockSourceMapper.toPrisma(transaction.source),
 
-        destination: StockDestinationMapper.toPrisma(
-          transaction.destination,
-        ),
+        destination: StockDestinationMapper.toPrisma(transaction.destination),
 
         outletId: transaction.outletId,
         performedBy: transaction.performedBy,
@@ -76,10 +64,9 @@ export class StockTransactionRepository {
     id: string,
     tx?: PrismaTransaction,
   ): Promise<StockTransaction | null> {
-    const row =
-      await (tx ?? this.prisma).stockTransaction.findUnique(
-        { where: { id } },
-      );
+    const row = await (tx ?? this.prisma).stockTransaction.findUnique({
+      where: { id },
+    });
 
     return row ? this.toDomain(row) : null;
   }
@@ -91,13 +78,10 @@ export class StockTransactionRepository {
     stockItemId: string,
     tx?: PrismaTransaction,
   ): Promise<StockTransaction[]> {
-    const rows =
-      await (tx ?? this.prisma).stockTransaction.findMany(
-        {
-          where: { stockItemId },
-          orderBy: { createdAt: 'desc' },
-        },
-      );
+    const rows = await (tx ?? this.prisma).stockTransaction.findMany({
+      where: { stockItemId },
+      orderBy: { createdAt: 'desc' },
+    });
 
     return rows.map((row) => this.toDomain(row));
   }
@@ -109,13 +93,10 @@ export class StockTransactionRepository {
     inventoryId: string,
     tx?: PrismaTransaction,
   ): Promise<StockTransaction[]> {
-    const rows =
-      await (tx ?? this.prisma).stockTransaction.findMany(
-        {
-          where: { inventoryId },
-          orderBy: { createdAt: 'desc' },
-        },
-      );
+    const rows = await (tx ?? this.prisma).stockTransaction.findMany({
+      where: { inventoryId },
+      orderBy: { createdAt: 'desc' },
+    });
 
     return rows.map((row) => this.toDomain(row));
   }
@@ -127,13 +108,10 @@ export class StockTransactionRepository {
     outletId: string,
     tx?: PrismaTransaction,
   ): Promise<StockTransaction[]> {
-    const rows =
-      await (tx ?? this.prisma).stockTransaction.findMany(
-        {
-          where: { outletId },
-          orderBy: { createdAt: 'desc' },
-        },
-      );
+    const rows = await (tx ?? this.prisma).stockTransaction.findMany({
+      where: { outletId },
+      orderBy: { createdAt: 'desc' },
+    });
 
     return rows.map((row) => this.toDomain(row));
   }
@@ -141,15 +119,10 @@ export class StockTransactionRepository {
   /**
    * ADMIN – full audit log
    */
-  async findAll(
-    tx?: PrismaTransaction,
-  ): Promise<StockTransaction[]> {
-    const rows =
-      await (tx ?? this.prisma).stockTransaction.findMany(
-        {
-          orderBy: { createdAt: 'desc' },
-        },
-      );
+  async findAll(tx?: PrismaTransaction): Promise<StockTransaction[]> {
+    const rows = await (tx ?? this.prisma).stockTransaction.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
 
     return rows.map((row) => this.toDomain(row));
   }
@@ -193,16 +166,12 @@ export class StockTransactionRepository {
       type,
 
       quantity: QuantityMapper.toDomain(row.quantity),
-      previousQuantity: QuantityMapper.toDomain(
-        row.previousQuantity,
-      ),
+      previousQuantity: QuantityMapper.toDomain(row.previousQuantity),
       newQuantity: QuantityMapper.toDomain(row.newQuantity),
       quantityChange,
 
       source: StockSourceMapper.toDomain(row.source),
-      destination: StockDestinationMapper.toDomain(
-        row.destination,
-      ),
+      destination: StockDestinationMapper.toDomain(row.destination),
 
       outletId: row.outletId ?? undefined,
       performedBy: row.performedBy ?? undefined,

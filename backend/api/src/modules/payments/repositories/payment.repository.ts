@@ -23,10 +23,7 @@ export class PaymentRepository {
     attemptNo = 1,
   ): Promise<Payment> {
     if (!payment) {
-      throw new ValidationError(
-        'PAYMENT_REQUIRED',
-        'Payment is required',
-      );
+      throw new ValidationError('PAYMENT_REQUIRED', 'Payment is required');
     }
 
     if (tx) {
@@ -57,10 +54,7 @@ export class PaymentRepository {
   /* READ (BY ID)                                      */
   /* ================================================= */
 
-  async findById(
-    id: string,
-    tx?: PrismaTransaction,
-  ): Promise<Payment | null> {
+  async findById(id: string, tx?: PrismaTransaction): Promise<Payment | null> {
     if (!id) return null;
 
     const row = await (tx ?? this.prisma).payment.findUnique({
@@ -205,11 +199,11 @@ export class PaymentRepository {
               customerId: true,
               outletId: true,
               customer: {
-              select: {
-                phone: true,
-                profile: { select: { fullName: true } },
+                select: {
+                  phone: true,
+                  profile: { select: { fullName: true } },
+                },
               },
-            },
               outlet: { select: { name: true } },
             },
           },
@@ -322,24 +316,16 @@ export class PaymentRepository {
   /* UPDATE (TX SAFE)                                  */
   /* ================================================= */
 
-  async update(
-    payment: Payment,
-    tx?: PrismaTransaction,
-  ): Promise<Payment> {
+  async update(payment: Payment, tx?: PrismaTransaction): Promise<Payment> {
     if (!payment) {
-      throw new ValidationError(
-        'PAYMENT_REQUIRED',
-        'Payment is required',
-      );
+      throw new ValidationError('PAYMENT_REQUIRED', 'Payment is required');
     }
 
     if (tx) {
       return this.updateInternal(payment, tx);
     }
 
-    return this.prisma.$transaction((trx) =>
-      this.updateInternal(payment, trx),
-    );
+    return this.prisma.$transaction((trx) => this.updateInternal(payment, trx));
   }
 
   private async updateInternal(
@@ -358,10 +344,7 @@ export class PaymentRepository {
   /* DELETE                                            */
   /* ================================================= */
 
-  async delete(
-    id: string,
-    tx?: PrismaTransaction,
-  ): Promise<void> {
+  async delete(id: string, tx?: PrismaTransaction): Promise<void> {
     if (!id) return;
 
     await (tx ?? this.prisma).payment.delete({

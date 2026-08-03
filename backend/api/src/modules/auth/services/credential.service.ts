@@ -9,10 +9,7 @@ import { SuperAdminRepository } from '../repositories/super-admin.repository';
 
 import { IdentityActivePolicy } from '../policies/identity-active.policy';
 
-import {
-  UnauthorizedError,
-  ForbiddenError,
-} from '../../../common/errors';
+import { UnauthorizedError, ForbiddenError } from '../../../common/errors';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { AuthErrors } from '../constants/auth-errors';
@@ -96,22 +93,15 @@ export class CredentialService {
 
     if (!valid) {
       await this.prisma.$transaction(async (tx) => {
-        const updated =
-          await this.outletUserRepo.incrementFailedAttempts(
-            user.id,
-            tx,
-          );
+        const updated = await this.outletUserRepo.incrementFailedAttempts(
+          user.id,
+          tx,
+        );
 
         if (updated.failedAttempts >= MAX_FAILED_ATTEMPTS) {
-          const lockUntil = LockTimeHelper.lockUntil(
-            LOCK_DURATION_MINUTES,
-          );
+          const lockUntil = LockTimeHelper.lockUntil(LOCK_DURATION_MINUTES);
 
-          await this.outletUserRepo.lockUntil(
-            user.id,
-            lockUntil,
-            tx,
-          );
+          await this.outletUserRepo.lockUntil(user.id, lockUntil, tx);
         }
 
         await this.auditRepo.create(
@@ -181,10 +171,7 @@ export class CredentialService {
   /* ================================================= */
 
   async hashPassword(password: string): Promise<string> {
-    return PasswordHelper.hash(
-      password,
-      PASSWORD_SALT_ROUNDS,
-    );
+    return PasswordHelper.hash(password, PASSWORD_SALT_ROUNDS);
   }
 
   /* ================================================= */
@@ -223,10 +210,7 @@ export class CredentialService {
       );
     }
 
-    const isValid = TotpHelper.verify(
-      params.code,
-      admin.totpSecret,
-    );
+    const isValid = TotpHelper.verify(params.code, admin.totpSecret);
 
     if (!isValid) {
       await this.auditRepo.create({
@@ -238,10 +222,7 @@ export class CredentialService {
         userAgent: params.userAgent,
       });
 
-      throw new UnauthorizedError(
-        AuthErrors.MFA_INVALID,
-        'Invalid MFA code',
-      );
+      throw new UnauthorizedError(AuthErrors.MFA_INVALID, 'Invalid MFA code');
     }
   }
 }

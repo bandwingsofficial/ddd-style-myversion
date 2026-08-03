@@ -2,16 +2,9 @@ import multer, { Options as MulterOptions } from 'multer';
 import * as path from 'path';
 import * as fs from 'fs';
 
-const appRoot =
-  process.env.APP_ROOT ??
-  path.resolve(process.cwd(), '..', '..');
+const appRoot = process.env.APP_ROOT ?? path.resolve(process.cwd(), '..', '..');
 
-const uploadDir = path.join(
-  appRoot,
-  'images',
-  'superadminprofile',
-  'avatar',
-);
+const uploadDir = path.join(appRoot, 'images', 'superadminprofile', 'avatar');
 
 /* -------------------------------------------------- */
 /* CREATE DIRECTORY IF NOT EXISTS 🔥                 */
@@ -29,8 +22,7 @@ export const superAdminProfileImageUploadOptions: MulterOptions = {
     filename: (_req, file, cb) => {
       const ext = path.extname(file.originalname);
 
-      const filename =
-        Date.now() + '-' + Math.round(Math.random() * 1e9);
+      const filename = Date.now() + '-' + Math.round(Math.random() * 1e9);
 
       cb(null, `${filename}${ext}`);
     },

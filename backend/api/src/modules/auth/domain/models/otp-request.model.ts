@@ -123,14 +123,10 @@ export class OtpRequest {
     }
 
     if (this.isExpired(now)) {
-      throw new ValidationError(
-        'OTP_EXPIRED',
-        'OTP has expired',
-        {
-          otpRequestId: this.id,
-          expiresAt: this.expiresAt,
-        },
-      );
+      throw new ValidationError('OTP_EXPIRED', 'OTP has expired', {
+        otpRequestId: this.id,
+        expiresAt: this.expiresAt,
+      });
     }
 
     if (this.attempts < 0) {

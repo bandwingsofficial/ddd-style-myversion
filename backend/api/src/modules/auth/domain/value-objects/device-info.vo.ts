@@ -101,8 +101,7 @@ export class DeviceInfo {
       /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
 
     // Relaxed IPv6 (supports compressed forms)
-    const ipv6 =
-      /^(([0-9a-fA-F]{1,4}:){1,7}:?|:)((:[0-9a-fA-F]{1,4}){1,7})$/;
+    const ipv6 = /^(([0-9a-fA-F]{1,4}:){1,7}:?|:)((:[0-9a-fA-F]{1,4}){1,7})$/;
 
     return ipv4.test(ip) || ipv6.test(ip);
   }

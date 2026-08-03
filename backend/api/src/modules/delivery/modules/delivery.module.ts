@@ -36,9 +36,7 @@ import { OrdersModule } from '../../orders/modules/orders.module';
     OrdersModule, // 🔥 delivery updates order state
   ],
 
-  controllers: [
-    DeliveryController,
-  ],
+  controllers: [DeliveryController],
 
   providers: [
     /* Repositories */

@@ -1,10 +1,6 @@
 // src/modules/auth/guards/refresh-token.guard.ts
 
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Request } from 'express';
 
 import { AuthErrors } from '../../modules/auth/constants/auth-errors';
@@ -13,15 +9,10 @@ import { UnauthorizedError } from '../errors';
 
 @Injectable()
 export class RefreshTokenGuard implements CanActivate {
-  constructor(
-    private readonly refreshTokenService: RefreshTokenService,
-  ) {}
+  constructor(private readonly refreshTokenService: RefreshTokenService) {}
 
-  async canActivate(
-    context: ExecutionContext,
-  ): Promise<boolean> {
-    const req =
-      context.switchToHttp().getRequest<Request>();
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const req = context.switchToHttp().getRequest<Request>();
 
     /**
      * 1️⃣ Extract refresh token
@@ -45,9 +36,7 @@ export class RefreshTokenGuard implements CanActivate {
      * 2️⃣ Validate refresh token
      */
     const authContext =
-      await this.refreshTokenService.validateRefreshToken(
-        refreshToken,
-      );
+      await this.refreshTokenService.validateRefreshToken(refreshToken);
 
     /**
      * 3️⃣ Inject trusted REFRESH auth context

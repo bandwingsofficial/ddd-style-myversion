@@ -8,8 +8,7 @@ import { Decimal } from '@prisma/client/runtime/library';
 /* HELPERS                                        */
 /* ---------------------------------------------- */
 
-const toNumber = (d?: Decimal | null): number =>
-  d == null ? 0 : Number(d);
+const toNumber = (d?: Decimal | null): number => (d == null ? 0 : Number(d));
 
 /* ---------------------------------------------- */
 /* DTOs (✅ SAME NAMES AS CART)                    */
@@ -77,9 +76,7 @@ export class CheckoutSummaryMapper {
       unitPrice: toNumber(item.unitPrice),
 
       discountPrice:
-        item.discountPrice != null
-          ? toNumber(item.discountPrice)
-          : undefined,
+        item.discountPrice != null ? toNumber(item.discountPrice) : undefined,
 
       // ✅ same as cart
       lineTotal: toNumber(item.getLineTotal()),

@@ -69,9 +69,7 @@ export class StockItemOrchestratorService {
     stockItemId: string;
     status: StockItemStatus;
   }): Promise<StockItemResponse> {
-    const stockItem = await this.stockItemService.updateStockItemStatus(
-      params,
-    );
+    const stockItem = await this.stockItemService.updateStockItemStatus(params);
 
     return this.stockItemResponseMapper.toResponse(stockItem);
   }

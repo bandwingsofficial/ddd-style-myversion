@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  Header,
-  Query,
-  Res,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Header, Query, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
@@ -45,19 +38,25 @@ export class DashboardController {
 
   @Get('revenue')
   async getRevenue(@Query() query: DashboardFilterQueryDto) {
-    const data = await this.orchestrator.getRevenue(this.queries.toFilter(query));
+    const data = await this.orchestrator.getRevenue(
+      this.queries.toFilter(query),
+    );
     return this.mapper.wrap(data, 'Revenue analytics fetched successfully');
   }
 
   @Get('orders')
   async getOrders(@Query() query: DashboardFilterQueryDto) {
-    const data = await this.orchestrator.getOrders(this.queries.toFilter(query));
+    const data = await this.orchestrator.getOrders(
+      this.queries.toFilter(query),
+    );
     return this.mapper.wrap(data, 'Order analytics fetched successfully');
   }
 
   @Get('payments')
   async getPayments(@Query() query: DashboardFilterQueryDto) {
-    const data = await this.orchestrator.getPayments(this.queries.toFilter(query));
+    const data = await this.orchestrator.getPayments(
+      this.queries.toFilter(query),
+    );
     return this.mapper.wrap(data, 'Payment analytics fetched successfully');
   }
 
@@ -71,7 +70,9 @@ export class DashboardController {
 
   @Get('customers')
   async getCustomers(@Query() query: DashboardFilterQueryDto) {
-    const data = await this.orchestrator.getCustomers(this.queries.toFilter(query));
+    const data = await this.orchestrator.getCustomers(
+      this.queries.toFilter(query),
+    );
     return this.mapper.wrap(data, 'Customer analytics fetched successfully');
   }
 
@@ -122,7 +123,9 @@ export class DashboardController {
 
   @Get('charts')
   async getCharts(@Query() query: DashboardFilterQueryDto) {
-    const data = await this.orchestrator.getCharts(this.queries.toFilter(query));
+    const data = await this.orchestrator.getCharts(
+      this.queries.toFilter(query),
+    );
     return this.mapper.wrap(data, 'Dashboard charts fetched successfully');
   }
 

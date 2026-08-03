@@ -4,9 +4,7 @@ import { CameraStatus as PrismaCameraStatus } from '@prisma/client';
 import { CameraStatus } from '../domain/enums/camera-status.enum';
 
 export class CameraStatusMapper {
-  static toDomain(
-    status: PrismaCameraStatus,
-  ): CameraStatus {
+  static toDomain(status: PrismaCameraStatus): CameraStatus {
     switch (status) {
       case PrismaCameraStatus.OFF:
         return CameraStatus.OFF;
@@ -18,15 +16,11 @@ export class CameraStatusMapper {
         return CameraStatus.MAINTENANCE;
 
       default:
-        throw new Error(
-          `Unknown Prisma CameraStatus: ${status}`,
-        );
+        throw new Error(`Unknown Prisma CameraStatus: ${status}`);
     }
   }
 
-  static toPrisma(
-    status: CameraStatus,
-  ): PrismaCameraStatus {
+  static toPrisma(status: CameraStatus): PrismaCameraStatus {
     switch (status) {
       case CameraStatus.OFF:
         return PrismaCameraStatus.OFF;
@@ -38,9 +32,7 @@ export class CameraStatusMapper {
         return PrismaCameraStatus.MAINTENANCE;
 
       default:
-        throw new Error(
-          `Unknown Domain CameraStatus: ${status}`,
-        );
+        throw new Error(`Unknown Domain CameraStatus: ${status}`);
     }
   }
 }

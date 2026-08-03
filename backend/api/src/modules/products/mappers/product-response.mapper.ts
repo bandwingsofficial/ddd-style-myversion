@@ -118,9 +118,7 @@ export class ProductResponseMapper {
         discountPrice: product.price.getDiscount() ?? null,
       },
       images: {
-        mainImageUrl: await this.resolveImageUrl(
-          product.images.getMain(),
-        ),
+        mainImageUrl: await this.resolveImageUrl(product.images.getMain()),
         galleryImages: await Promise.all(
           sortedRecords.map(async (record) => ({
             id: record.id,
@@ -155,10 +153,7 @@ export class ProductResponseMapper {
   ): Promise<ProductResponse[]> {
     return Promise.all(
       products.map((product) =>
-        this.toResponse(
-          product,
-          galleryRecordsMap.get(product.id) ?? [],
-        ),
+        this.toResponse(product, galleryRecordsMap.get(product.id) ?? []),
       ),
     );
   }
@@ -182,13 +177,9 @@ export class ProductResponseMapper {
         discountPrice: product.price.getDiscount() ?? null,
       },
       images: {
-        mainImageUrl: await this.resolveImageUrl(
-          product.images.getMain(),
-        ),
+        mainImageUrl: await this.resolveImageUrl(product.images.getMain()),
         galleryImageUrls: await Promise.all(
-          sortedRecords.map((record) =>
-            this.resolveImageUrl(record.imageUrl),
-          ),
+          sortedRecords.map((record) => this.resolveImageUrl(record.imageUrl)),
         ),
       },
       unit: {

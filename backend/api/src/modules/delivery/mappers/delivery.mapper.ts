@@ -16,9 +16,7 @@ export class DeliveryMapper {
   /* ENUM                                              */
   /* ================================================= */
 
-  static toDomainStatus(
-    status: PrismaDeliveryStatus,
-  ): DeliveryStatus {
+  static toDomainStatus(status: PrismaDeliveryStatus): DeliveryStatus {
     switch (status) {
       case PrismaDeliveryStatus.ASSIGNED:
         return DeliveryStatus.ASSIGNED;
@@ -40,9 +38,7 @@ export class DeliveryMapper {
     }
   }
 
-  static toPrismaStatus(
-    status: DeliveryStatus,
-  ): PrismaDeliveryStatus {
+  static toPrismaStatus(status: DeliveryStatus): PrismaDeliveryStatus {
     switch (status) {
       case DeliveryStatus.ASSIGNED:
         return PrismaDeliveryStatus.ASSIGNED;

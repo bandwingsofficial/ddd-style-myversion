@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Get,
-  Param,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
@@ -17,9 +11,7 @@ import { OrderOrchestratorService } from '../services/order-orchestrator.service
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(ActorType.SUPER_ADMIN)
 export class OrderAdminController {
-  constructor(
-    private readonly orchestrator: OrderOrchestratorService,
-  ) {}
+  constructor(private readonly orchestrator: OrderOrchestratorService) {}
 
   @Get()
   async listOrders(

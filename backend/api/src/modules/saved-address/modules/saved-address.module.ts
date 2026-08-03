@@ -40,9 +40,7 @@ import { SavedAddressPublicListener } from '../listeners/saved-address-public.li
     OutletsModule, // ⭐⭐⭐ REQUIRED FOR OutletOrchestratorService ⭐⭐⭐
   ],
 
-  controllers: [
-    SavedAddressManagementController,
-  ],
+  controllers: [SavedAddressManagementController],
 
   providers: [
     /* Infrastructure */

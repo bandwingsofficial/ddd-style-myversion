@@ -13,6 +13,11 @@ export function invalidateProductCatalogCache(): void {
   catalogCache = null;
 }
 
+/** Clears product catalog cache when delivery location or outlet changes. */
+export function invalidateOutletPipelineCache(): void {
+  invalidateProductCatalogCache();
+}
+
 async function getPublicCatalog(): Promise<ProductListItem[]> {
   if (
     catalogCache &&

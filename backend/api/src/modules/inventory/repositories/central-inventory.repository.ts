@@ -32,16 +32,10 @@ export class CentralInventoryRepository {
 
         unit: UnitMapper.toPrisma(inventory.unit),
 
-        availableQty: QuantityMapper.toPrisma(
-          inventory.availableQty,
-        ),
-        totalQty: QuantityMapper.toPrisma(
-          inventory.totalQty,
-        ),
+        availableQty: QuantityMapper.toPrisma(inventory.availableQty),
+        totalQty: QuantityMapper.toPrisma(inventory.totalQty),
 
-        status: InventoryStatusMapper.toPrisma(
-          inventory.status,
-        ),
+        status: InventoryStatusMapper.toPrisma(inventory.status),
 
         createdAt: inventory.createdAt,
         updatedAt: inventory.updatedAt,
@@ -59,10 +53,9 @@ export class CentralInventoryRepository {
     id: string,
     tx?: PrismaTransaction,
   ): Promise<CentralInventory | null> {
-    const row =
-      await (tx ?? this.prisma).centralInventory.findUnique(
-        { where: { id } },
-      );
+    const row = await (tx ?? this.prisma).centralInventory.findUnique({
+      where: { id },
+    });
 
     return row ? this.toDomain(row) : null;
   }
@@ -71,10 +64,9 @@ export class CentralInventoryRepository {
     stockItemId: string,
     tx?: PrismaTransaction,
   ): Promise<CentralInventory | null> {
-    const row =
-      await (tx ?? this.prisma).centralInventory.findUnique(
-        { where: { stockItemId } },
-      );
+    const row = await (tx ?? this.prisma).centralInventory.findUnique({
+      where: { stockItemId },
+    });
 
     return row ? this.toDomain(row) : null;
   }
@@ -83,13 +75,10 @@ export class CentralInventoryRepository {
     stockItemId: string,
     tx?: PrismaTransaction,
   ): Promise<boolean> {
-    const inventory =
-      await (tx ?? this.prisma).centralInventory.findUnique(
-        {
-          where: { stockItemId },
-          select: { id: true },
-        },
-      );
+    const inventory = await (tx ?? this.prisma).centralInventory.findUnique({
+      where: { stockItemId },
+      select: { id: true },
+    });
 
     return !!inventory;
   }
@@ -97,15 +86,10 @@ export class CentralInventoryRepository {
   /**
    * ADMIN LIST – central inventory table
    */
-  async findAll(
-    tx?: PrismaTransaction,
-  ): Promise<CentralInventory[]> {
-    const rows =
-      await (tx ?? this.prisma).centralInventory.findMany(
-        {
-          orderBy: { createdAt: 'asc' },
-        },
-      );
+  async findAll(tx?: PrismaTransaction): Promise<CentralInventory[]> {
+    const rows = await (tx ?? this.prisma).centralInventory.findMany({
+      orderBy: { createdAt: 'asc' },
+    });
 
     return rows.map((row) => this.toDomain(row));
   }
@@ -113,16 +97,11 @@ export class CentralInventoryRepository {
   /**
    * ADMIN LIST – only ACTIVE inventory
    */
-  async findAllActive(
-    tx?: PrismaTransaction,
-  ): Promise<CentralInventory[]> {
-    const rows =
-      await (tx ?? this.prisma).centralInventory.findMany(
-        {
-          where: { status: 'ACTIVE' },
-          orderBy: { createdAt: 'asc' },
-        },
-      );
+  async findAllActive(tx?: PrismaTransaction): Promise<CentralInventory[]> {
+    const rows = await (tx ?? this.prisma).centralInventory.findMany({
+      where: { status: 'ACTIVE' },
+      orderBy: { createdAt: 'asc' },
+    });
 
     return rows.map((row) => this.toDomain(row));
   }
@@ -140,16 +119,10 @@ export class CentralInventoryRepository {
     const row = await client.centralInventory.update({
       where: { id: inventory.id },
       data: {
-        availableQty: QuantityMapper.toPrisma(
-          inventory.availableQty,
-        ),
-        totalQty: QuantityMapper.toPrisma(
-          inventory.totalQty,
-        ),
+        availableQty: QuantityMapper.toPrisma(inventory.availableQty),
+        totalQty: QuantityMapper.toPrisma(inventory.totalQty),
 
-        status: InventoryStatusMapper.toPrisma(
-          inventory.status,
-        ),
+        status: InventoryStatusMapper.toPrisma(inventory.status),
 
         updatedAt: inventory.updatedAt,
       },
@@ -171,9 +144,7 @@ export class CentralInventoryRepository {
     const row = await client.centralInventory.update({
       where: { id: inventory.id },
       data: {
-        status: InventoryStatusMapper.toPrisma(
-          inventory.status,
-        ),
+        status: InventoryStatusMapper.toPrisma(inventory.status),
         updatedAt: inventory.updatedAt,
       },
     });
@@ -204,9 +175,7 @@ export class CentralInventoryRepository {
 
       unit: UnitMapper.toDomain(row.unit),
 
-      availableQty: QuantityMapper.toDomain(
-        row.availableQty,
-      ),
+      availableQty: QuantityMapper.toDomain(row.availableQty),
       totalQty: QuantityMapper.toDomain(row.totalQty),
 
       status: InventoryStatusMapper.toDomain(row.status),

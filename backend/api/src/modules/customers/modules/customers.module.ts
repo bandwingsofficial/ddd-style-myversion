@@ -19,9 +19,7 @@ import { CustomerProfileOrchestratorService } from '../services/customer-profile
 import { CustomerProfileRepository } from '../repositories/customer-profile.repository';
 
 @Module({
-  controllers: [
-    CustomerProfileController,
-  ],
+  controllers: [CustomerProfileController],
   providers: [
     /* Infrastructure */
     PrismaService,
@@ -33,9 +31,6 @@ import { CustomerProfileRepository } from '../repositories/customer-profile.repo
     /* Repository */
     CustomerProfileRepository,
   ],
-  exports: [
-    CustomerProfileService,
-    CustomerProfileOrchestratorService,
-  ],
+  exports: [CustomerProfileService, CustomerProfileOrchestratorService],
 })
 export class CustomersModule {}

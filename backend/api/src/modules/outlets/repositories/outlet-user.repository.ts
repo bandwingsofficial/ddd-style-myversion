@@ -65,10 +65,7 @@ export class OutletUserRepository {
     return rows.map((row) => this.toDomain(row));
   }
 
-  async create(
-    user: OutletUser,
-    tx?: PrismaTransaction,
-  ): Promise<OutletUser> {
+  async create(user: OutletUser, tx?: PrismaTransaction): Promise<OutletUser> {
     const client = tx ?? this.prisma;
 
     const row = await client.outletUser.create({

@@ -120,7 +120,7 @@ export default function Footer() {
                 </span>
               </li>
               <li className="contact-item hours-item">
-                <span className="hours">Mon – Sat: 9 AM – 8 PM</span>
+                <span className="hours">Monday – Sunday: 6 AM – 11 PM</span>
               </li>
             </ul>
           </div>

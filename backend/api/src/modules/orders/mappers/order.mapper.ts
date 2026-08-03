@@ -1,7 +1,4 @@
-import {
-  Prisma,
-  OrderStatus as PrismaOrderStatus,
-} from '@prisma/client';
+import { Prisma, OrderStatus as PrismaOrderStatus } from '@prisma/client';
 
 import { Order } from '../domain/models/order.model';
 import { OrderItem } from '../domain/models/order-item.model';
@@ -15,24 +12,22 @@ import { OrderAddress } from '../domain/value-objects/order-address.vo';
 /* TYPES                                          */
 /* ---------------------------------------------- */
 
-type PrismaOrderWithItems =
-  Prisma.OrderGetPayload<{
-    include: {
-      items: true;
-      customer: {
-        include: {
-          profile: true;
-        };
+type PrismaOrderWithItems = Prisma.OrderGetPayload<{
+  include: {
+    items: true;
+    customer: {
+      include: {
+        profile: true;
       };
     };
-  }>;
+  };
+}>;
 
 /* ---------------------------------------------- */
 /* MAPPER                                         */
 /* ---------------------------------------------- */
 
 export class OrderMapper {
-
   /* ---------------------------------------------- */
   /* TO DOMAIN                                      */
   /* ---------------------------------------------- */
@@ -177,9 +172,7 @@ export class OrderMapper {
   /* STATUS MAPPING                                 */
   /* ---------------------------------------------- */
 
-  private static toDomainStatus(
-    status: PrismaOrderStatus,
-  ): OrderStatus {
+  private static toDomainStatus(status: PrismaOrderStatus): OrderStatus {
     switch (status) {
       case PrismaOrderStatus.CREATED:
         return OrderStatus.CREATED;
@@ -204,9 +197,7 @@ export class OrderMapper {
     }
   }
 
-  static toPrismaStatus(
-    status: OrderStatus,
-  ): PrismaOrderStatus {
+  static toPrismaStatus(status: OrderStatus): PrismaOrderStatus {
     return status;
   }
 }

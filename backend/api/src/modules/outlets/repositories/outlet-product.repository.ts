@@ -94,10 +94,7 @@ export class OutletProductRepository {
    * - PublicOutletController
    * - return product details with outlet assignment
    */
-  async findAvailableWithProduct(
-    outletId: string,
-    tx?: PrismaTransaction,
-  ) {
+  async findAvailableWithProduct(outletId: string, tx?: PrismaTransaction) {
     const client = tx ?? this.prisma;
 
     return client.outletProduct.findMany({
@@ -110,12 +107,12 @@ export class OutletProductRepository {
         },
       },
       include: {
-  product: {
-    include: {
-      galleryImages: true, // 🔥 THIS LINE
-    },
-  },
-},
+        product: {
+          include: {
+            galleryImages: true, // 🔥 THIS LINE
+          },
+        },
+      },
       orderBy: { createdAt: 'asc' },
     });
   }
@@ -212,7 +209,7 @@ export class OutletProductRepository {
   /* ================================================= */
 
   private toDomain = (
-    row: Prisma.OutletProductGetPayload<{}>
+    row: Prisma.OutletProductGetPayload<{}>,
   ): OutletProduct => {
     return OutletProduct.rehydrate({
       id: row.id,

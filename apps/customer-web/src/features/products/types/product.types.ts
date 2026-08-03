@@ -38,6 +38,7 @@ export interface ProductBase {
   category?: ProductCategory;
   status?: "ACTIVE" | "INACTIVE";
   outletId?: string;
+  outletName?: string;
   outlet?: {
     id: string;
     name?: string;

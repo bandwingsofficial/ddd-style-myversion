@@ -6,9 +6,7 @@ const baseCookieOptions = {
   httpOnly: true,
   secure: isProduction,
   sameSite: isProduction ? ('none' as const) : ('lax' as const),
-  ...(process.env.COOKIE_DOMAIN
-    ? { domain: process.env.COOKIE_DOMAIN }
-    : {}),
+  ...(process.env.COOKIE_DOMAIN ? { domain: process.env.COOKIE_DOMAIN } : {}),
   path: '/',
 };
 

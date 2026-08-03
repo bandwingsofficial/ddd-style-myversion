@@ -12,9 +12,7 @@ import { InventoryOrchestratorService } from '../services/inventory-orchestrator
  */
 @Controller('public/inventory')
 export class InventoryPublicController {
-  constructor(
-    private readonly orchestrator: InventoryOrchestratorService,
-  ) {}
+  constructor(private readonly orchestrator: InventoryOrchestratorService) {}
 
   /* ================================================= */
   /* INVENTORY – PUBLIC LIST                           */
@@ -28,8 +26,7 @@ export class InventoryPublicController {
    */
   @Get()
   async getActiveInventory() {
-    const data =
-      await this.orchestrator.getCentralInventory();
+    const data = await this.orchestrator.getCentralInventory();
 
     return {
       success: true,
@@ -48,13 +45,8 @@ export class InventoryPublicController {
    * (availability check)
    */
   @Get(':stockItemId')
-  async getInventoryByStockItem(
-    @Param('stockItemId') stockItemId: string,
-  ) {
-    const data =
-      await this.orchestrator.getInventoryTransactions(
-        stockItemId,
-      );
+  async getInventoryByStockItem(@Param('stockItemId') stockItemId: string) {
+    const data = await this.orchestrator.getInventoryTransactions(stockItemId);
 
     return {
       success: true,

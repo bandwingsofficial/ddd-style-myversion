@@ -118,16 +118,12 @@ export class Outlet {
    */
   canAcceptOrders(): boolean {
     return (
-      this.status === OutletStatus.ACTIVE &&
-      this.workingState.canAcceptOrders()
+      this.status === OutletStatus.ACTIVE && this.workingState.canAcceptOrders()
     );
   }
 
   canStreamCamera(): boolean {
-    return (
-      this.status === OutletStatus.ACTIVE &&
-      this.cameraState.canStream()
-    );
+    return this.status === OutletStatus.ACTIVE && this.cameraState.canStream();
   }
 
   /* ---------------------------------------------- */
@@ -238,8 +234,7 @@ export class Outlet {
       address: params.address ?? this.address,
       pincode: params.pincode ?? this.pincode,
       location: params.location ?? this.location,
-      deliveryRadiusKm:
-        params.deliveryRadiusKm ?? this.deliveryRadiusKm,
+      deliveryRadiusKm: params.deliveryRadiusKm ?? this.deliveryRadiusKm,
       updatedAt: params.now ?? new Date(),
     });
   }
@@ -256,10 +251,7 @@ export class Outlet {
       );
     }
 
-    if (
-      this.deliveryRadiusKm !== undefined &&
-      this.deliveryRadiusKm <= 0
-    ) {
+    if (this.deliveryRadiusKm !== undefined && this.deliveryRadiusKm <= 0) {
       throw new ValidationError(
         'OUTLET_INVALID_RADIUS',
         'Delivery radius must be greater than 0',

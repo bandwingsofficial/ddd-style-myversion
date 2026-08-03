@@ -67,10 +67,7 @@ export class OutletProductService {
     });
 
     // ✅ prevent duplicate assignment
-    const existing = await this.repo.findOne(
-      params.outletId,
-      params.productId,
-    );
+    const existing = await this.repo.findOne(params.outletId, params.productId);
 
     if (existing) return existing;
 
@@ -120,11 +117,7 @@ export class OutletProductService {
 
     const entity = await this.getExisting(params);
 
-    await this.persistAvailability(
-      entity.enable(),
-      params,
-      'ENABLED',
-    );
+    await this.persistAvailability(entity.enable(), params, 'ENABLED');
   }
 
   async disableProduct(params: {
@@ -136,11 +129,7 @@ export class OutletProductService {
   }): Promise<void> {
     const entity = await this.getExisting(params);
 
-    await this.persistAvailability(
-      entity.disable(),
-      params,
-      'DISABLED',
-    );
+    await this.persistAvailability(entity.disable(), params, 'DISABLED');
   }
 
   /* ================================================= */
@@ -186,10 +175,7 @@ export class OutletProductService {
     outletId: string;
     productId: string;
   }): Promise<OutletProduct> {
-    const entity = await this.repo.findOne(
-      params.outletId,
-      params.productId,
-    );
+    const entity = await this.repo.findOne(params.outletId, params.productId);
 
     if (!entity) {
       throw new ValidationError(

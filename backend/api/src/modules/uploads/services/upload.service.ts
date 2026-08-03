@@ -51,10 +51,7 @@ export class UploadService {
       maxSizeBytes: options.maxSizeBytes,
     });
 
-    const contentType = this.resolveContentType(
-      file,
-      options.allowedMimeTypes,
-    );
+    const contentType = this.resolveContentType(file, options.allowedMimeTypes);
 
     const objectKey = this.generateObjectKey({
       folder: options.folder,
@@ -74,9 +71,7 @@ export class UploadService {
   async uploadMultipleImages(
     options: UploadMultipleImagesOptions,
   ): Promise<UploadResult[]> {
-    const files = options.files.map((file) =>
-      this.toUploadFileInput(file),
-    );
+    const files = options.files.map((file) => this.toUploadFileInput(file));
 
     this.uploadValidationService.validateMultipleImages(files, {
       allowedMimeTypes: options.allowedMimeTypes,
@@ -103,9 +98,7 @@ export class UploadService {
     return results;
   }
 
-  async deleteObject(
-    options: DeleteObjectOptions,
-  ): Promise<void> {
+  async deleteObject(options: DeleteObjectOptions): Promise<void> {
     await this.storageProvider.deleteObject(options);
   }
 
@@ -115,9 +108,7 @@ export class UploadService {
     await this.storageProvider.deleteMultipleObjects(options);
   }
 
-  async updateImage(
-    options: UpdateImageOptions,
-  ): Promise<UploadResult> {
+  async updateImage(options: UpdateImageOptions): Promise<UploadResult> {
     const result = await this.uploadSingleImage({
       folder: options.folder,
       file: options.file,
@@ -134,17 +125,14 @@ export class UploadService {
     return result;
   }
 
-  async replaceImage(
-    options: ReplaceImageOptions,
-  ): Promise<UploadResult> {
+  async replaceImage(options: ReplaceImageOptions): Promise<UploadResult> {
     return this.updateImage(options);
   }
 
   async generatePresignedGetUrl(
     options: GeneratePresignedGetUrlOptions,
   ): Promise<string> {
-    const result =
-      await this.storageProvider.generatePresignedGetUrl(options);
+    const result = await this.storageProvider.generatePresignedGetUrl(options);
 
     return result.presignedUrl;
   }
@@ -152,9 +140,7 @@ export class UploadService {
   generateObjectKey(options: GenerateObjectKeyOptions): string {
     const normalizedFolder = options.folder.replace(/^\/+|\/+$/g, '');
     const useUuidFilename = options.useUuidFilename ?? true;
-    const extension = this.resolveExtension(
-      options.originalFilename,
-    );
+    const extension = this.resolveExtension(options.originalFilename);
 
     const filename = useUuidFilename
       ? `${randomUUID()}${extension}`
@@ -173,9 +159,7 @@ export class UploadService {
       return mimeType;
     }
 
-    const extension = path
-      .extname(file.originalname)
-      .toLowerCase();
+    const extension = path.extname(file.originalname).toLowerCase();
 
     const extensionToMime: Record<string, string> = {
       '.jpg': 'image/jpeg',
@@ -189,9 +173,7 @@ export class UploadService {
   }
 
   private resolveExtension(originalFilename: string): string {
-    const extension = path
-      .extname(originalFilename)
-      .toLowerCase();
+    const extension = path.extname(originalFilename).toLowerCase();
 
     if (
       extension &&

@@ -17,6 +17,7 @@ import { OutletOrderController } from './../controllers/outlet-order.controller'
 /* SERVICES                                       */
 /* ---------------------------------------------- */
 import { OutletOrchestratorService } from './../services/outlet-orchestrator.service';
+import { OutletResolutionService } from './../services/outlet-resolution.service';
 import { OutletUserService } from './../services/outlet-user.service';
 import { OutletService } from './../services/outlet.service';
 import { OutletProductService } from './../services/outlet-product.service';
@@ -27,7 +28,6 @@ import { OutletProductService } from './../services/outlet-product.service';
 import { OutletProfileController } from './../controllers/outlet-profile.controller';
 import { OutletProfileService } from './../services/outlet-profile.service';
 import { OutletProfileRepository } from './../repositories/outlet-profile.repository';
-
 
 /* ---------------------------------------------- */
 /* REPOSITORIES                                   */
@@ -61,20 +61,27 @@ import { OutletPublicListener } from './../listeners/outlet-public.listener';
 
 /* ---------------------------------------------- */
 /* MODULE                                         */
-/* ---------------------------------------------- */  
+/* ---------------------------------------------- */
 import { OrdersModule } from '../../orders/modules/orders.module';
 import { ProductsModule } from '../../products/modules/products.module';
 import { PaymentsModule } from '../../payments/modules/payments.module';
 
-
 @Module({
-  controllers: [OutletController, OutletManagementController, PublicOutletController, MyOutletController, OutletOrderController, OutletProfileController],
+  controllers: [
+    OutletController,
+    OutletManagementController,
+    PublicOutletController,
+    MyOutletController,
+    OutletOrderController,
+    OutletProfileController,
+  ],
   providers: [
     // Infrastructure
     PrismaService,
 
     // Orchestrator
     OutletOrchestratorService,
+    OutletResolutionService,
 
     // Core services
     OutletUserService,
@@ -91,7 +98,6 @@ import { PaymentsModule } from '../../payments/modules/payments.module';
     OutletProductRepository,
     OutletProfileRepository,
 
-
     // Policies
     OutletUserActivePolicy,
     OutletActivePolicy,
@@ -104,11 +110,7 @@ import { PaymentsModule } from '../../payments/modules/payments.module';
     OutletPublicGateway,
     OutletPublicListener,
   ],
-  imports: [
-    OrdersModule,
-    ProductsModule,
-    PaymentsModule,
-  ],
+  imports: [OrdersModule, ProductsModule, PaymentsModule],
   exports: [
     OutletUserService,
     OutletService,
@@ -117,6 +119,7 @@ import { PaymentsModule } from '../../payments/modules/payments.module';
     OutletRepository,
     OutletProductRepository,
     OutletOrchestratorService,
+    OutletResolutionService,
     OutletEventsService,
     OutletProfileService,
   ],

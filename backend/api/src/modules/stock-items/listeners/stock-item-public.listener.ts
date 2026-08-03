@@ -12,36 +12,28 @@ import { StockItemPublicGateway } from '../gateways/stock-item-public.gateway';
 
 @Injectable()
 export class StockItemPublicListener {
-  constructor(
-    private readonly gateway: StockItemPublicGateway,
-  ) {}
+  constructor(private readonly gateway: StockItemPublicGateway) {}
 
   /* ================================================= */
   /* LIFECYCLE                                         */
   /* ================================================= */
 
   @OnEvent(StockItemEvents.STOCK_ITEM_CREATED)
-  handleStockItemCreated(
-    event: StockItemLifecycleEvent,
-  ): void {
+  handleStockItemCreated(event: StockItemLifecycleEvent): void {
     this.gateway.emitStockItemCreated({
       stockItemId: event.stockItemId,
     });
   }
 
   @OnEvent(StockItemEvents.STOCK_ITEM_ENABLED)
-  handleStockItemEnabled(
-    event: StockItemLifecycleEvent,
-  ): void {
+  handleStockItemEnabled(event: StockItemLifecycleEvent): void {
     this.gateway.emitStockItemEnabled({
       stockItemId: event.stockItemId,
     });
   }
 
   @OnEvent(StockItemEvents.STOCK_ITEM_DISABLED)
-  handleStockItemDisabled(
-    event: StockItemLifecycleEvent,
-  ): void {
+  handleStockItemDisabled(event: StockItemLifecycleEvent): void {
     this.gateway.emitStockItemDisabled({
       stockItemId: event.stockItemId,
     });
@@ -52,9 +44,7 @@ export class StockItemPublicListener {
   /* ================================================= */
 
   @OnEvent(StockItemEvents.STOCK_ITEM_UPDATED)
-  handleStockItemUpdated(
-    event: StockItemUpdatedEvent,
-  ): void {
+  handleStockItemUpdated(event: StockItemUpdatedEvent): void {
     this.gateway.emitStockItemUpdated({
       stockItemId: event.stockItemId,
       name: event.name,
@@ -66,9 +56,7 @@ export class StockItemPublicListener {
   /* ================================================= */
 
   @OnEvent(StockItemEvents.STOCK_ITEM_UNIT_CHANGED)
-  handleStockItemUnitChanged(
-    event: StockItemUnitChangedEvent,
-  ): void {
+  handleStockItemUnitChanged(event: StockItemUnitChangedEvent): void {
     this.gateway.emitStockItemUnitChanged({
       stockItemId: event.stockItemId,
       unit: event.unit,
@@ -76,9 +64,7 @@ export class StockItemPublicListener {
   }
 
   @OnEvent(StockItemEvents.STOCK_ITEM_DELETED)
-  handleStockItemDeleted(
-    event: StockItemLifecycleEvent,
-  ): void {
+  handleStockItemDeleted(event: StockItemLifecycleEvent): void {
     this.gateway.emitStockItemDeleted({
       stockItemId: event.stockItemId,
     });

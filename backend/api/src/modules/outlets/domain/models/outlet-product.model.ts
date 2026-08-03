@@ -151,10 +151,7 @@ export class OutletProduct {
       );
     }
 
-    if (
-      this.discountOverride !== null &&
-      this.discountOverride < 0
-    ) {
+    if (this.discountOverride !== null && this.discountOverride < 0) {
       throw new ValidationError(
         'OUTLET_PRODUCT_INVALID_DISCOUNT',
         'Discount override cannot be negative',

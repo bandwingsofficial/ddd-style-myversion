@@ -8,14 +8,11 @@ import { Public } from '../../../common/decorators/public.decorator';
 @Controller('public/categories')
 @Public()
 export class CategoryPublicController {
-  constructor(
-    private readonly orchestrator: CategoryOrchestratorService,
-  ) {}
+  constructor(private readonly orchestrator: CategoryOrchestratorService) {}
 
   @Get()
   async getCategoriesForPublic() {
-    const data =
-      await this.orchestrator.getAllCategoriesForPublic();
+    const data = await this.orchestrator.getAllCategoriesForPublic();
 
     return {
       success: true,

@@ -31,8 +31,7 @@ export class UploadValidationService {
     const allowedExtensions =
       options?.allowedExtensions ?? UPLOAD_ALLOWED_IMAGE_EXTENSIONS;
     const maxSizeBytes =
-      options?.maxSizeBytes ??
-      UPLOAD_DEFAULTS.MAX_SINGLE_IMAGE_SIZE_BYTES;
+      options?.maxSizeBytes ?? UPLOAD_DEFAULTS.MAX_SINGLE_IMAGE_SIZE_BYTES;
 
     if (file.size > maxSizeBytes) {
       throw new UploadFileTooLargeError(
@@ -46,10 +45,7 @@ export class UploadValidationService {
       allowedMimeTypes,
     );
 
-    ImageUploadValidator.assertImageMimeType(
-      contentType,
-      allowedMimeTypes,
-    );
+    ImageUploadValidator.assertImageMimeType(contentType, allowedMimeTypes);
     ImageUploadValidator.assertImageExtension(
       file.originalname,
       allowedExtensions,
@@ -71,18 +67,15 @@ export class UploadValidationService {
       throw new UploadTooManyFilesError('At least one file is required');
     }
 
-    const maxFiles =
-      options?.maxFiles ?? UPLOAD_DEFAULTS.MAX_MULTIPLE_IMAGES;
+    const maxFiles = options?.maxFiles ?? UPLOAD_DEFAULTS.MAX_MULTIPLE_IMAGES;
 
     if (files.length > maxFiles) {
-      throw new UploadTooManyFilesError(
-        `Maximum ${maxFiles} files allowed`,
-        { count: files.length, maxFiles },
-      );
+      throw new UploadTooManyFilesError(`Maximum ${maxFiles} files allowed`, {
+        count: files.length,
+        maxFiles,
+      });
     }
 
-    return files.map((file) =>
-      this.validateSingleImage(file, options),
-    );
+    return files.map((file) => this.validateSingleImage(file, options));
   }
 }

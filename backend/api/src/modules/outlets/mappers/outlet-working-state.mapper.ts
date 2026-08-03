@@ -16,15 +16,11 @@ export class OutletWorkingStateMapper {
         return OutletWorkingState.temporarilyClosed();
 
       default:
-        throw new Error(
-          `Unknown OutletWorkingStatus: ${status}`,
-        );
+        throw new Error(`Unknown OutletWorkingStatus: ${status}`);
     }
   }
 
-  static toPrisma(
-    state: OutletWorkingState,
-  ): OutletWorkingStatus {
+  static toPrisma(state: OutletWorkingState): OutletWorkingStatus {
     return state.getRaw();
   }
 }

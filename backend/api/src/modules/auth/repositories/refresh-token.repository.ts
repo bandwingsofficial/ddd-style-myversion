@@ -120,9 +120,7 @@ export class RefreshTokenRepository {
     return result.count;
   }
 
-  async deleteExpired(
-    tx?: PrismaTransaction,
-  ): Promise<number> {
+  async deleteExpired(tx?: PrismaTransaction): Promise<number> {
     const client = tx ?? this.prisma;
 
     const result = await client.refreshToken.deleteMany({

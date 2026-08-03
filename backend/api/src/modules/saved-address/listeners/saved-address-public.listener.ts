@@ -11,18 +11,14 @@ import { SavedAddressPublicGateway } from '../gateways/saved-address-public.gate
 
 @Injectable()
 export class SavedAddressPublicListener {
-  constructor(
-    private readonly gateway: SavedAddressPublicGateway,
-  ) {}
+  constructor(private readonly gateway: SavedAddressPublicGateway) {}
 
   /* ================================================= */
   /* LIFECYCLE                                         */
   /* ================================================= */
 
   @OnEvent(SavedAddressEvents.SAVED_ADDRESS_CREATED)
-  handleSavedAddressCreated(
-    event: SavedAddressLifecycleEvent,
-  ): void {
+  handleSavedAddressCreated(event: SavedAddressLifecycleEvent): void {
     this.gateway.emitSavedAddressCreated({
       savedAddressId: event.savedAddressId,
       customerId: event.customerId,
@@ -30,9 +26,7 @@ export class SavedAddressPublicListener {
   }
 
   @OnEvent(SavedAddressEvents.SAVED_ADDRESS_DELETED)
-  handleSavedAddressDeleted(
-    event: SavedAddressLifecycleEvent,
-  ): void {
+  handleSavedAddressDeleted(event: SavedAddressLifecycleEvent): void {
     this.gateway.emitSavedAddressDeleted({
       savedAddressId: event.savedAddressId,
       customerId: event.customerId,
@@ -44,9 +38,7 @@ export class SavedAddressPublicListener {
   /* ================================================= */
 
   @OnEvent(SavedAddressEvents.SAVED_ADDRESS_UPDATED)
-  handleSavedAddressUpdated(
-    event: SavedAddressUpdatedEvent,
-  ): void {
+  handleSavedAddressUpdated(event: SavedAddressUpdatedEvent): void {
     this.gateway.emitSavedAddressUpdated({
       savedAddressId: event.savedAddressId,
       customerId: event.customerId,

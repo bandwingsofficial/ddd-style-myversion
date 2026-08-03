@@ -179,46 +179,44 @@ export class OutletProfileService {
   }
 
   /* ================================================= */
-/* UPSERT                                            */
-/* ================================================= */
+  /* UPSERT                                            */
+  /* ================================================= */
 
-async upsertProfile(params: {
-  outletId: string;
+  async upsertProfile(params: {
+    outletId: string;
 
-  avatarUrl?: string;
-  bannerUrl?: string;
+    avatarUrl?: string;
+    bannerUrl?: string;
 
-  contactPhone?: string;
-  contactEmail?: string;
+    contactPhone?: string;
+    contactEmail?: string;
 
-  ownerName?: string;
-  description?: string;
+    ownerName?: string;
+    description?: string;
 
-  gstNumber?: string;
-  fssaiNumber?: string;
-}): Promise<OutletProfile> {
-  const existing = await this.profileRepo.findByOutletId(
-    params.outletId,
-  );
+    gstNumber?: string;
+    fssaiNumber?: string;
+  }): Promise<OutletProfile> {
+    const existing = await this.profileRepo.findByOutletId(params.outletId);
 
-  if (!existing) {
-    return this.createProfile(params);
+    if (!existing) {
+      return this.createProfile(params);
+    }
+
+    return this.updateProfile({
+      outletId: params.outletId,
+      updates: {
+        avatarUrl: params.avatarUrl,
+        bannerUrl: params.bannerUrl,
+        contactPhone: params.contactPhone,
+        contactEmail: params.contactEmail,
+        ownerName: params.ownerName,
+        description: params.description,
+        gstNumber: params.gstNumber,
+        fssaiNumber: params.fssaiNumber,
+      },
+    });
   }
-
-  return this.updateProfile({
-    outletId: params.outletId,
-    updates: {
-      avatarUrl: params.avatarUrl,
-      bannerUrl: params.bannerUrl,
-      contactPhone: params.contactPhone,
-      contactEmail: params.contactEmail,
-      ownerName: params.ownerName,
-      description: params.description,
-      gstNumber: params.gstNumber,
-      fssaiNumber: params.fssaiNumber,
-    },
-  });
-}
 
   /* ================================================= */
   /* DELETE                                            */

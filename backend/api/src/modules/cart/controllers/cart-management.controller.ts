@@ -32,9 +32,9 @@ export class CartManagementController {
     private readonly cartResponseMapper: CartResponseMapper,
   ) {}
 
-  private async mapCart(cart: Awaited<
-    ReturnType<CartOrchestratorService['getActiveCart']>
-  >['cart']) {
+  private async mapCart(
+    cart: Awaited<ReturnType<CartOrchestratorService['getActiveCart']>>['cart'],
+  ) {
     return this.cartResponseMapper.toResponse(cart);
   }
 
@@ -51,15 +51,15 @@ export class CartManagementController {
       throw new ValidationError('OUTLET_ID_REQUIRED', 'Outlet id is required');
     }
 
-    const { cart, removedInactiveCount } = await this.orchestrator.getActiveCart({
-      customerId: user.actorId,
-      outletId,
-    });
+    const { cart, removedInactiveCount } =
+      await this.orchestrator.getActiveCart({
+        customerId: user.actorId,
+        outletId,
+      });
 
     return {
       success: true,
-      code:
-        removedInactiveCount > 0 ? 'CART_ITEMS_REMOVED' : 'CART_FETCHED',
+      code: removedInactiveCount > 0 ? 'CART_ITEMS_REMOVED' : 'CART_FETCHED',
       message:
         removedInactiveCount > 0
           ? 'One or more products were removed because they are no longer available.'

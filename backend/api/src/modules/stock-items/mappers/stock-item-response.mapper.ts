@@ -16,10 +16,7 @@ export interface StockItemResponse {
 
 @Injectable()
 export class StockItemResponseMapper {
-  toResponse(
-    stockItem: StockItem,
-    currentQuantity = 0,
-  ): StockItemResponse {
+  toResponse(stockItem: StockItem, currentQuantity = 0): StockItemResponse {
     return {
       id: stockItem.id,
       name: stockItem.name,
@@ -32,9 +29,7 @@ export class StockItemResponseMapper {
     };
   }
 
-  toResponseList(
-    items: PaginatedStockItemRow[],
-  ): StockItemResponse[] {
+  toResponseList(items: PaginatedStockItemRow[]): StockItemResponse[] {
     return items.map((item) =>
       this.toResponse(item.stockItem, item.currentQuantity),
     );

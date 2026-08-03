@@ -72,10 +72,7 @@ export class StockItemRepository {
     return row ? this.toDomain(row) : null;
   }
 
-  async existsById(
-    id: string,
-    tx?: PrismaTransaction,
-  ): Promise<boolean> {
+  async existsById(id: string, tx?: PrismaTransaction): Promise<boolean> {
     const item = await (tx ?? this.prisma).stockItem.findUnique({
       where: { id },
       select: { id: true },
@@ -94,9 +91,7 @@ export class StockItemRepository {
       where: includeInactive
         ? undefined
         : {
-            status: StockItemStatusMapper.toPrisma(
-              StockItemStatus.ACTIVE,
-            ),
+            status: StockItemStatusMapper.toPrisma(StockItemStatus.ACTIVE),
           },
       orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
     });
@@ -121,10 +116,7 @@ export class StockItemRepository {
             },
           },
         },
-        orderBy: [
-          { status: 'asc' },
-          { createdAt: 'desc' },
-        ],
+        orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
         skip: (params.page - 1) * params.limit,
         take: params.limit,
       }),
@@ -176,10 +168,7 @@ export class StockItemRepository {
     return this.toDomain(row);
   }
 
-  async deleteById(
-    stockItemId: string,
-    tx?: PrismaTransaction,
-  ): Promise<void> {
+  async deleteById(stockItemId: string, tx?: PrismaTransaction): Promise<void> {
     await (tx ?? this.prisma).stockItem.delete({
       where: { id: stockItemId },
     });

@@ -1,11 +1,6 @@
 // src/modules/outlets/dtos/update-outlet-details.dto.ts
 
-import {
-  IsNumber,
-  IsOptional,
-  IsString,
-  Min,
-} from 'class-validator';
+import { IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class UpdateOutletDetailsDto {
   @IsOptional()

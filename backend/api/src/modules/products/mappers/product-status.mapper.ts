@@ -2,9 +2,7 @@ import { ProductStatus as PrismaProductStatus } from '@prisma/client';
 import { ProductStatus } from '../../products/domain/enums/product-status.enum';
 
 export class ProductStatusMapper {
-  static toDomain(
-    status: PrismaProductStatus,
-  ): ProductStatus {
+  static toDomain(status: PrismaProductStatus): ProductStatus {
     switch (status) {
       case PrismaProductStatus.ACTIVE:
         return ProductStatus.ACTIVE;
@@ -22,15 +20,11 @@ export class ProductStatusMapper {
         return ProductStatus.SOFT_DELETED;
 
       default:
-        throw new Error(
-          `Unknown Prisma ProductStatus: ${status}`,
-        );
+        throw new Error(`Unknown Prisma ProductStatus: ${status}`);
     }
   }
 
-  static toPrisma(
-    status: ProductStatus,
-  ): PrismaProductStatus {
+  static toPrisma(status: ProductStatus): PrismaProductStatus {
     switch (status) {
       case ProductStatus.ACTIVE:
         return PrismaProductStatus.ACTIVE;
@@ -48,9 +42,7 @@ export class ProductStatusMapper {
         return PrismaProductStatus.SOFT_DELETED;
 
       default:
-        throw new Error(
-          `Unknown Domain ProductStatus: ${status}`,
-        );
+        throw new Error(`Unknown Domain ProductStatus: ${status}`);
     }
   }
 }

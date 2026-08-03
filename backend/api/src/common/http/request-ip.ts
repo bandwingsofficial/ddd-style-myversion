@@ -9,10 +9,7 @@ export function getRequestIp(req: Request): string | undefined {
   if (typeof xff === 'string') {
     ip = xff.split(',')[0].trim();
   } else {
-    ip =
-      req.socket?.remoteAddress ||
-      req.ip ||
-      undefined;
+    ip = req.socket?.remoteAddress || req.ip || undefined;
   }
 
   if (!ip) return undefined;

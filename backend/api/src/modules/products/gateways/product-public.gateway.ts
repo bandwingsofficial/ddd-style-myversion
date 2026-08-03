@@ -18,9 +18,7 @@ export class ProductPublicGateway implements OnGatewayConnection {
   @WebSocketServer()
   private readonly server: Server;
 
-  constructor(
-    private readonly orchestrator: ProductOrchestratorService,
-  ) {
+  constructor(private readonly orchestrator: ProductOrchestratorService) {
     console.log('🚀 ProductPublicGateway initialized');
   }
 
@@ -38,8 +36,7 @@ export class ProductPublicGateway implements OnGatewayConnection {
   /* ================================================= */
 
   async emitFullProducts(client?: Socket): Promise<void> {
-    const products =
-      await this.orchestrator.getPublicProductResponses({});
+    const products = await this.orchestrator.getPublicProductResponses({});
 
     const data = {
       version: Date.now(),

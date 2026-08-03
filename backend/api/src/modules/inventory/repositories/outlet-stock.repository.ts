@@ -31,9 +31,7 @@ export class OutletStockRepository {
 
         unit: UnitMapper.toPrisma(outletStock.unit),
 
-        quantity: QuantityMapper.toPrisma(
-          outletStock.quantity,
-        ),
+        quantity: QuantityMapper.toPrisma(outletStock.quantity),
 
         createdAt: outletStock.createdAt,
         updatedAt: outletStock.updatedAt,
@@ -51,10 +49,9 @@ export class OutletStockRepository {
     id: string,
     tx?: PrismaTransaction,
   ): Promise<OutletStock | null> {
-    const row =
-      await (tx ?? this.prisma).outletStock.findUnique(
-        { where: { id } },
-      );
+    const row = await (tx ?? this.prisma).outletStock.findUnique({
+      where: { id },
+    });
 
     return row ? this.toDomain(row) : null;
   }
@@ -66,17 +63,14 @@ export class OutletStockRepository {
     },
     tx?: PrismaTransaction,
   ): Promise<OutletStock | null> {
-    const row =
-      await (tx ?? this.prisma).outletStock.findUnique(
-        {
-          where: {
-            outletId_stockItemId: {
-              outletId: params.outletId,
-              stockItemId: params.stockItemId,
-            },
-          },
+    const row = await (tx ?? this.prisma).outletStock.findUnique({
+      where: {
+        outletId_stockItemId: {
+          outletId: params.outletId,
+          stockItemId: params.stockItemId,
         },
-      );
+      },
+    });
 
     return row ? this.toDomain(row) : null;
   }
@@ -88,18 +82,15 @@ export class OutletStockRepository {
     },
     tx?: PrismaTransaction,
   ): Promise<boolean> {
-    const record =
-      await (tx ?? this.prisma).outletStock.findUnique(
-        {
-          where: {
-            outletId_stockItemId: {
-              outletId: params.outletId,
-              stockItemId: params.stockItemId,
-            },
-          },
-          select: { id: true },
+    const record = await (tx ?? this.prisma).outletStock.findUnique({
+      where: {
+        outletId_stockItemId: {
+          outletId: params.outletId,
+          stockItemId: params.stockItemId,
         },
-      );
+      },
+      select: { id: true },
+    });
 
     return !!record;
   }
@@ -111,13 +102,10 @@ export class OutletStockRepository {
     outletId: string,
     tx?: PrismaTransaction,
   ): Promise<OutletStock[]> {
-    const rows =
-      await (tx ?? this.prisma).outletStock.findMany(
-        {
-          where: { outletId },
-          orderBy: { createdAt: 'asc' },
-        },
-      );
+    const rows = await (tx ?? this.prisma).outletStock.findMany({
+      where: { outletId },
+      orderBy: { createdAt: 'asc' },
+    });
 
     return rows.map((row) => this.toDomain(row));
   }
@@ -135,9 +123,7 @@ export class OutletStockRepository {
     const row = await client.outletStock.update({
       where: { id: outletStock.id },
       data: {
-        quantity: QuantityMapper.toPrisma(
-          outletStock.quantity,
-        ),
+        quantity: QuantityMapper.toPrisma(outletStock.quantity),
         updatedAt: outletStock.updatedAt,
       },
     });

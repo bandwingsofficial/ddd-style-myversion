@@ -4,9 +4,7 @@ import { StockSource as PrismaStockSource } from '@prisma/client';
 import { StockSource } from '../domain/enums/stock-source.enum';
 
 export class StockSourceMapper {
-  static toDomain(
-    source: PrismaStockSource,
-  ): StockSource {
+  static toDomain(source: PrismaStockSource): StockSource {
     switch (source) {
       case PrismaStockSource.CENTRAL:
         return StockSource.CENTRAL;
@@ -15,15 +13,11 @@ export class StockSourceMapper {
         return StockSource.ADJUSTMENT;
 
       default:
-        throw new Error(
-          `Unknown Prisma StockSource: ${source}`,
-        );
+        throw new Error(`Unknown Prisma StockSource: ${source}`);
     }
   }
 
-  static toPrisma(
-    source: StockSource,
-  ): PrismaStockSource {
+  static toPrisma(source: StockSource): PrismaStockSource {
     switch (source) {
       case StockSource.CENTRAL:
         return PrismaStockSource.CENTRAL;
@@ -32,9 +26,7 @@ export class StockSourceMapper {
         return PrismaStockSource.ADJUSTMENT;
 
       default:
-        throw new Error(
-          `Unknown Domain StockSource: ${source}`,
-        );
+        throw new Error(`Unknown Domain StockSource: ${source}`);
     }
   }
 }

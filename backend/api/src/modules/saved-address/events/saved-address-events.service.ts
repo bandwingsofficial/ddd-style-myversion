@@ -9,42 +9,25 @@ import {
 
 @Injectable()
 export class SavedAddressEventsService {
-  constructor(
-    private readonly eventEmitter: EventEmitter2,
-  ) {}
+  constructor(private readonly eventEmitter: EventEmitter2) {}
 
   /* ================================================= */
   /* LIFECYCLE                                         */
   /* ================================================= */
 
-  emitSavedAddressCreated(
-    payload: SavedAddressLifecycleEvent,
-  ): void {
-    this.eventEmitter.emit(
-      SavedAddressEvents.SAVED_ADDRESS_CREATED,
-      payload,
-    );
+  emitSavedAddressCreated(payload: SavedAddressLifecycleEvent): void {
+    this.eventEmitter.emit(SavedAddressEvents.SAVED_ADDRESS_CREATED, payload);
   }
 
-  emitSavedAddressDeleted(
-    payload: SavedAddressLifecycleEvent,
-  ): void {
-    this.eventEmitter.emit(
-      SavedAddressEvents.SAVED_ADDRESS_DELETED,
-      payload,
-    );
+  emitSavedAddressDeleted(payload: SavedAddressLifecycleEvent): void {
+    this.eventEmitter.emit(SavedAddressEvents.SAVED_ADDRESS_DELETED, payload);
   }
 
   /* ================================================= */
   /* UPDATE                                            */
   /* ================================================= */
 
-  emitSavedAddressUpdated(
-    payload: SavedAddressUpdatedEvent,
-  ): void {
-    this.eventEmitter.emit(
-      SavedAddressEvents.SAVED_ADDRESS_UPDATED,
-      payload,
-    );
+  emitSavedAddressUpdated(payload: SavedAddressUpdatedEvent): void {
+    this.eventEmitter.emit(SavedAddressEvents.SAVED_ADDRESS_UPDATED, payload);
   }
 }

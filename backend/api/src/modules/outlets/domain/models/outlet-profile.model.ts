@@ -206,10 +206,7 @@ export class OutletProfile {
       );
     }
 
-    if (
-      this.contactEmail &&
-      !this.contactEmail.includes('@')
-    ) {
+    if (this.contactEmail && !this.contactEmail.includes('@')) {
       throw new ValidationError(
         'OUTLET_PROFILE_INVALID_EMAIL',
         'Invalid contact email',

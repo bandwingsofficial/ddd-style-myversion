@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  Param,
-  Post,
-  Body,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Param, Post, Body, UseGuards } from '@nestjs/common';
 
 import { OutletOrchestratorService } from '../services/outlet-orchestrator.service';
 
@@ -23,17 +16,14 @@ import { OutletCameraOnDto } from '../dtos/outlet-camera-on.dto';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(ActorType.OUTLET_USER) // 🔥 only outlet users
 export class MyOutletController {
-  constructor(
-    private readonly orchestrator: OutletOrchestratorService,
-  ) {}
+  constructor(private readonly orchestrator: OutletOrchestratorService) {}
 
   /* ================================================= */
   /* HELPER – resolve outletId from current user        */
   /* ================================================= */
 
   private async getMyOutletId(user): Promise<string> {
-    const outletUser =
-      await this.orchestrator.getOutletUserById(user.actorId);
+    const outletUser = await this.orchestrator.getOutletUserById(user.actorId);
 
     return outletUser.outletId;
   }
@@ -171,10 +161,7 @@ export class MyOutletController {
   /* ================================================= */
 
   @Post('camera/on')
-  async turnCameraOn(
-    @Body() dto: OutletCameraOnDto,
-    @CurrentUser() user,
-  ) {
+  async turnCameraOn(@Body() dto: OutletCameraOnDto, @CurrentUser() user) {
     const outletId = await this.getMyOutletId(user);
 
     await this.orchestrator.turnOutletCameraOn({

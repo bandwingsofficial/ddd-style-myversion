@@ -4,9 +4,7 @@ import { OutletWorkingStatus as PrismaOutletWorkingStatus } from '@prisma/client
 import { OutletWorkingStatus } from '../domain/enums/outlet-working-status.enum';
 
 export class OutletWorkingStatusMapper {
-  static toDomain(
-    status: PrismaOutletWorkingStatus,
-  ): OutletWorkingStatus {
+  static toDomain(status: PrismaOutletWorkingStatus): OutletWorkingStatus {
     switch (status) {
       case PrismaOutletWorkingStatus.OPEN:
         return OutletWorkingStatus.OPEN;
@@ -18,15 +16,11 @@ export class OutletWorkingStatusMapper {
         return OutletWorkingStatus.TEMPORARILY_CLOSED;
 
       default:
-        throw new Error(
-          `Unknown Prisma OutletWorkingStatus: ${status}`,
-        );
+        throw new Error(`Unknown Prisma OutletWorkingStatus: ${status}`);
     }
   }
 
-  static toPrisma(
-    status: OutletWorkingStatus,
-  ): PrismaOutletWorkingStatus {
+  static toPrisma(status: OutletWorkingStatus): PrismaOutletWorkingStatus {
     switch (status) {
       case OutletWorkingStatus.OPEN:
         return PrismaOutletWorkingStatus.OPEN;
@@ -38,9 +32,7 @@ export class OutletWorkingStatusMapper {
         return PrismaOutletWorkingStatus.TEMPORARILY_CLOSED;
 
       default:
-        throw new Error(
-          `Unknown Domain OutletWorkingStatus: ${status}`,
-        );
+        throw new Error(`Unknown Domain OutletWorkingStatus: ${status}`);
     }
   }
 }

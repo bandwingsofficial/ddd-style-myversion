@@ -8,13 +8,10 @@ export class RedisService implements OnModuleDestroy {
 
   constructor(private readonly config: ConfigService) {
     // 🔥 Redis MUST be created immediately (Bull requirement)
-    this.client = new Redis(
-  this.config.getOrThrow<string>('REDIS_URL'),
-  {
-    lazyConnect: false,
-    maxRetriesPerRequest: null,
-  },
-);
+    this.client = new Redis(this.config.getOrThrow<string>('REDIS_URL'), {
+      lazyConnect: false,
+      maxRetriesPerRequest: null,
+    });
 
     this.client.on('error', (err) => {
       console.error('[Redis] Error:', err);
@@ -47,11 +44,7 @@ export class RedisService implements OnModuleDestroy {
     return this.client.get(key);
   }
 
-  async set(
-    key: string,
-    value: string,
-    ttlSeconds?: number,
-  ): Promise<void> {
+  async set(key: string, value: string, ttlSeconds?: number): Promise<void> {
     if (ttlSeconds) {
       await this.client.set(key, value, 'EX', ttlSeconds);
     } else {

@@ -3,10 +3,7 @@ import { Quantity } from '../domain/value-objects/quantity.vo';
 import { ValidationError } from '../../../common/errors';
 
 export class InventoryTransferPolicy {
-  static ensure(
-    inventory: CentralInventory,
-    quantity: Quantity,
-  ): void {
+  static ensure(inventory: CentralInventory, quantity: Quantity): void {
     if (!inventory.canTransfer(quantity)) {
       throw new ValidationError(
         'INSUFFICIENT_STOCK',

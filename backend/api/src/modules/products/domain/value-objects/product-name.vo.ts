@@ -28,8 +28,7 @@ export class ProductName {
         'Product name cannot have leading or trailing spaces.',
         {
           errors: {
-            productName:
-              'Product name cannot have leading or trailing spaces.',
+            productName: 'Product name cannot have leading or trailing spaces.',
           },
         },
       );

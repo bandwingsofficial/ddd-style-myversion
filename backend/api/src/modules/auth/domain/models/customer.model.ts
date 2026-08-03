@@ -45,11 +45,7 @@ export class Customer {
   /* FACTORIES                                      */
   /* ---------------------------------------------- */
 
-  static createNew(params: {
-    id: string;
-    phone: Phone;
-    now?: Date;
-  }): Customer {
+  static createNew(params: { id: string; phone: Phone; now?: Date }): Customer {
     const now = params.now ?? new Date();
 
     return new Customer({
