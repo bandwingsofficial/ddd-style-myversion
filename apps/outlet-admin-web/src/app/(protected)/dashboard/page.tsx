@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { TrendingUp, ShoppingBag, AlertCircle, Clock, Filter, Calendar, X, ListChecks } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { CustomerContactDisplay } from '@/features/orders/components/CustomerContactDisplay';
 
 type DateFilter = 'TODAY' | 'YESTERDAY' | 'WEEK' | '15_DAYS' | 'MONTH' | 'ALL';
 type StatusFilter = 'ALL' | 'DELIVERED' | 'CANCELLED' | 'NEW' | 'PREPARING';
@@ -194,7 +195,11 @@ export default function DashboardPage() {
                   }`} />
                   <div>
                     <p className="text-[12px] font-black text-slate-800 uppercase tracking-tight">{order.orderNumber}</p>
-                    <p className="text-[10px] text-slate-500 font-medium">{order.customerFullName}</p>
+                    <CustomerContactDisplay
+                      order={order}
+                      compact
+                      className="text-[10px] text-slate-500 font-medium"
+                    />
                   </div>
                 </div>
                 <div className="text-right">

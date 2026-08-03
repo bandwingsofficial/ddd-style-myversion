@@ -18,6 +18,8 @@ export interface OrderProps {
 
   customerId: string;
   customerFullName?: string | null;
+  customerPhone?: string | null;
+  customerEmail?: string | null;
   outletId: string;
 
   cartId?: string;
@@ -57,6 +59,8 @@ export class Order {
 
   readonly customerId: string;
   readonly customerFullName?: string | null;
+  readonly customerPhone?: string | null;
+  readonly customerEmail?: string | null;
   readonly outletId: string;
 
   readonly cartId?: string;

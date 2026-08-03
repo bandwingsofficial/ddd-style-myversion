@@ -46,6 +46,8 @@ export class OrderMapper {
 
       customerId: order.customerId,
       customerFullName: order.customer?.profile?.fullName ?? null,
+      customerPhone: order.customer?.phone ?? null,
+      customerEmail: order.customer?.profile?.email ?? null,
       outletId: order.outletId,
       cartId: order.cartId ?? undefined,
 

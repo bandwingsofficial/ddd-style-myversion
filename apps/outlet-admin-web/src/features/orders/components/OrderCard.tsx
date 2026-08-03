@@ -1,7 +1,8 @@
 import React from 'react';
 import { Order } from '../types';
-import { Clock, MapPin, User } from 'lucide-react';
+import { Clock, MapPin } from 'lucide-react';
 import { formatTimeIST } from '@/lib/format-datetime';
+import { CustomerContactDisplay } from '@/features/orders/components/CustomerContactDisplay';
 
 interface OrderCardProps {
   order: Order;
@@ -23,12 +24,12 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onAction }) => {
             {order.orderNumber}
           </span>
           {/* Customer Name Token */}
-          <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md border border-blue-100 mb-2">
-            <User size={12} className="shrink-0" />
-            <span className="text-[11px] font-bold uppercase truncate max-w-[120px]">
-              {order.customerFullName}
-            </span>
-          </div>
+          <CustomerContactDisplay
+            order={order}
+            compact
+            className="mb-2 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md border border-blue-100"
+            nameClassName="text-[11px] uppercase truncate max-w-[120px]"
+          />
           <h3 className="text-lg font-bold text-gray-800">₹{order.grandTotal}</h3>
         </div>
         <div className="text-right">
@@ -41,7 +42,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onAction }) => {
 
       {/* Items List */}
       <div className="space-y-2 mb-4">
-        {order.items.map((item) => (
+        {(order.items ?? []).map((item) => (
           <div key={item.id} className="flex justify-between text-sm text-gray-700">
             <div className="flex items-center gap-2">
               <span className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded text-xs font-bold">
@@ -57,7 +58,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onAction }) => {
       {/* Address Snippet */}
       <div className="flex items-start gap-2 text-xs text-gray-500 mb-4 bg-gray-50 p-2 rounded">
         <MapPin size={14} className="mt-0.5 shrink-0" />
-        <p className="line-clamp-2">{order.address.addressText}</p>
+        <p className="line-clamp-2">{order.address?.addressText ?? 'No address provided'}</p>
       </div>
 
       {/* Actions */}

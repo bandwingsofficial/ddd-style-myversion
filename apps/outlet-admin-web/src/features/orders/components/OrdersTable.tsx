@@ -1,10 +1,12 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useOrders } from '../hooks/useOrders';
-import { fetchOrderById } from '../api/orders'; // Assuming the service we discussed
+import { fetchOrderById } from '../api/orders';
 import { Order } from '../types';
-import { RotateCw, User, MapPin, ShoppingBag } from 'lucide-react';
+import { RotateCw, MapPin, ShoppingBag, Receipt } from 'lucide-react';
 import { formatDateIST, formatTimeIST } from '@/lib/format-datetime';
+import { CustomerContactDisplay } from '@/features/orders/components/CustomerContactDisplay';
+import { OrderReceiptPreview } from '@/features/orders/components/OrderReceiptPreview';
 
 export const OrdersTable = () => {
   const { columns, loading, handleStatusChange, refresh } = useOrders();
@@ -107,6 +109,7 @@ export const OrdersTable = () => {
 const TableRow = ({ initialOrder, activeTab, onAction }: { initialOrder: Order; activeTab: string; onAction: any }) => {
   const [order, setOrder] = useState<Order>(initialOrder);
   const [isFetching, setIsFetching] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
 
   useEffect(() => {
     setOrder(initialOrder);
@@ -132,13 +135,16 @@ const TableRow = ({ initialOrder, activeTab, onAction }: { initialOrder: Order; 
   }, [initialOrder]);
 
   return (
+    <>
     <tr className="hover:bg-blue-50/30 transition-colors group">
       {/* Order Info */}
       <td className="p-4 align-top">
         <div className="font-bold text-sm text-gray-900">{order.orderNumber || 'N/A'}</div>
-        <div className="mt-1.5 flex items-center gap-1 text-[10px] font-black text-emerald-600 uppercase tracking-tight">
-          <User size={12} /> {order.customerFullName || 'Unknown'}
-        </div>
+        <CustomerContactDisplay
+          order={order}
+          compact
+          className="mt-1.5 text-[10px] font-black uppercase tracking-tight text-emerald-600"
+        />
       </td>
 
       {/* Time */}
@@ -253,11 +259,24 @@ const TableRow = ({ initialOrder, activeTab, onAction }: { initialOrder: Order; 
         )}
 
         {activeTab === 'COMPLETED' && (
-          <span className="w-full block text-center px-2 py-1.5 bg-gray-100 text-gray-500 text-[10px] font-black rounded uppercase">
-            {order.status}
-          </span>
+          <div className="space-y-2">
+            <span className="w-full block text-center px-2 py-1.5 bg-gray-100 text-gray-500 text-[10px] font-black rounded uppercase">
+              {order.status}
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowReceipt(true)}
+              className="flex w-full items-center justify-center gap-1 rounded bg-slate-100 px-2 py-1.5 text-[10px] font-black uppercase text-slate-600 hover:bg-slate-200"
+            >
+              <Receipt size={12} /> Receipt
+            </button>
+          </div>
         )}
       </td>
     </tr>
+    {showReceipt ? (
+      <OrderReceiptPreview order={order} onClose={() => setShowReceipt(false)} />
+    ) : null}
+    </>
   );
 };

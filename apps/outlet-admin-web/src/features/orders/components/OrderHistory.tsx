@@ -3,8 +3,11 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useOrders } from '../hooks/useOrders';
 import { fetchOrderById } from '../api/orders';
 import { Order } from '../types';
-import { Search, X, User, MapPin, ShoppingBag, RotateCw } from 'lucide-react';
+import { Search, X, MapPin, ShoppingBag, RotateCw } from 'lucide-react';
 import { formatDateIST, formatTimeIST } from '@/lib/format-datetime';
+import { CustomerContactDisplay } from '@/features/orders/components/CustomerContactDisplay';
+import { OrderReceiptPreview } from '@/features/orders/components/OrderReceiptPreview';
+import { customerMatchesSearch } from '@/lib/customer-display';
 
 export const OrderHistory = () => {
   const { columns, loading, refresh } = useOrders();
@@ -30,7 +33,15 @@ export const OrderHistory = () => {
       const searchLower = searchTerm.toLowerCase();
       
       const matchesOrderNumber = order.orderNumber?.toLowerCase().includes(searchLower);
-      const matchesCustomerName = order.customerFullName?.toLowerCase().includes(searchLower);
+      const matchesCustomerName = customerMatchesSearch(
+        order.customer ?? {
+          id: order.customerId,
+          fullName: order.customerFullName,
+          phone: order.customerPhone,
+          email: order.customerEmail,
+        },
+        searchTerm,
+      );
       const matchesAmount = order.grandTotal?.toString().includes(searchTerm);
       
       // Check product names if they exist in the current state
@@ -204,6 +215,7 @@ export const OrderHistory = () => {
 const HistoryRow = ({ initialOrder }: { initialOrder: Order }) => {
   const [order, setOrder] = useState<Order>(initialOrder);
   const [isFetching, setIsFetching] = useState(false);
+  const [showReceipt, setShowReceipt] = useState(false);
 
   // Lazy load product details and address because List API doesn't provide them
   useEffect(() => {
@@ -230,12 +242,15 @@ const HistoryRow = ({ initialOrder }: { initialOrder: Order }) => {
   };
 
   return (
+    <>
     <tr className="hover:bg-emerald-50/20 transition-colors group">
       <td className="p-4">
         <div className="font-bold text-sm text-gray-900">{order.orderNumber}</div>
-        <div className="flex items-center gap-1 mt-1 text-[10px] text-emerald-600 font-bold uppercase tracking-tight">
-          <User size={10} /> {order.customerFullName}
-        </div>
+        <CustomerContactDisplay
+          order={order}
+          compact
+          className="mt-1 text-[10px] font-bold uppercase tracking-tight text-emerald-600"
+        />
       </td>
       <td className="p-4">
         <div className="text-sm font-medium text-gray-700">
@@ -274,10 +289,23 @@ const HistoryRow = ({ initialOrder }: { initialOrder: Order }) => {
         <div className="text-[10px] text-gray-400">Total Bill</div>
       </td>
       <td className="p-4 text-center">
-        <span className={`px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-tight shadow-sm ${statusColors[order.status] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-          {order.status}
-        </span>
+        <div className="flex flex-col items-center gap-2">
+          <span className={`px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-tight shadow-sm ${statusColors[order.status] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+            {order.status}
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowReceipt(true)}
+            className="text-[10px] font-black uppercase tracking-wide text-slate-500 hover:text-emerald-600"
+          >
+            Receipt
+          </button>
+        </div>
       </td>
     </tr>
+    {showReceipt ? (
+      <OrderReceiptPreview order={order} onClose={() => setShowReceipt(false)} />
+    ) : null}
+    </>
   );
 };

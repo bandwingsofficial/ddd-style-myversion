@@ -5,6 +5,7 @@ import { OutletOrderResponseDto } from '../../outlets/dtos/outlet-order-response
 import { PaymentMapper } from '../../payments/mappers/payment.mapper';
 import { Order } from '../domain/models/order.model';
 import { OrderStatus } from '../domain/enums/order-status.enum';
+import { mapOrderCustomerDto } from '../../../common/utils/customer-display.util';
 
 type AdminOrderDetailRow = NonNullable<
   Awaited<
@@ -33,11 +34,24 @@ export class OrderResponseMapper {
       })),
     );
 
+    const customer = mapOrderCustomerDto({
+      id: order.customerId,
+      fullName: order.customerFullName,
+      phone: order.customerPhone,
+      email: order.customerEmail,
+    });
+
     return {
       id: order.id,
       orderNumber: order.orderNumber,
       customerId: order.customerId,
-      customerFullName: order.customerFullName,
+      customer: {
+        id: customer.id,
+        fullName: customer.fullName,
+        phone: customer.phone,
+        email: customer.email,
+      },
+      customerFullName: customer.displayName,
       outletId: order.outletId,
       cartId: order.cartId,
       address: {
@@ -98,6 +112,13 @@ export class OrderResponseMapper {
       note: event.note,
     }));
 
+    const customer = mapOrderCustomerDto({
+      id: row.customer.id,
+      fullName: row.customer.profile?.fullName,
+      phone: row.customer.phone,
+      email: row.customer.profile?.email,
+    });
+
     return {
       id: row.id,
       orderNumber: row.orderNumber,
@@ -111,9 +132,11 @@ export class OrderResponseMapper {
         name: row.outlet.name,
       },
       customer: {
-        name: row.customer.profile?.fullName ?? 'Customer',
-        phone: row.customer.phone,
-        email: row.customer.profile?.email ?? null,
+        id: customer.id,
+        fullName: customer.fullName,
+        phone: customer.phone,
+        email: customer.email,
+        displayName: customer.displayName,
       },
       address: {
         label: row.addressLabel,

@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { useOrders } from '../hooks/useOrders';
 import { Order } from '../types';
+import { CustomerContactDisplay } from '@/features/orders/components/CustomerContactDisplay';
 
 export const OrdersTable = () => {
   const { columns, loading, handleStatusChange, refresh } = useOrders();
@@ -99,9 +100,7 @@ const TableRow = ({ order, activeTab, onAction }: { order: Order; activeTab: str
       {/* Order Info (Number + Customer Name) */}
       <td className="p-4 align-top">
         <div className="font-bold text-sm text-gray-900">{order.orderNumber}</div>
-        <div className="mt-1.5 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100 uppercase tracking-tight">
-          👤 {order.customerFullName}
-        </div>
+        <CustomerContactDisplay order={order} compact className="mt-1.5 inline-flex flex-col text-[10px] font-bold uppercase tracking-tight text-blue-700" />
       </td>
 
       {/* Time */}

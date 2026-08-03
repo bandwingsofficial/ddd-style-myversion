@@ -38,11 +38,22 @@ export interface CustomerAddress {
   longitude: number;
 }
 
+export interface OrderCustomer {
+  id: string;
+  fullName: string | null;
+  phone: string | null;
+  email: string | null;
+}
+
 export interface Order {
   id: string;
   orderNumber: string;
-  customerId?: string; 
+  customerId?: string;
+  customer?: OrderCustomer;
+  /** Resolved display label from API — prefer resolveOrderCustomer() */
   customerFullName: string;
+  customerPhone?: string | null;
+  customerEmail?: string | null;
   address?: CustomerAddress; 
   subtotal?: number;
   discount?: number;

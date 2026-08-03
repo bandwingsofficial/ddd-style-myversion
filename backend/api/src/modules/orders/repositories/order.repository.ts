@@ -5,6 +5,7 @@ import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
 
 import { Order } from '../domain/models/order.model';
 import { OrderMapper } from '../mappers/order.mapper';
+import { mapOrderCustomerDto } from '../../../common/utils/customer-display.util';
 
 @Injectable()
 export class OrderRepository {
@@ -217,7 +218,10 @@ export class OrderRepository {
         {
           customer: {
             profile: {
-              fullName: { contains: term, mode: 'insensitive' },
+              OR: [
+                { fullName: { contains: term, mode: 'insensitive' } },
+                { email: { contains: term, mode: 'insensitive' } },
+              ],
             },
           },
         },
@@ -236,8 +240,9 @@ export class OrderRepository {
         include: {
           customer: {
             select: {
+              id: true,
               phone: true,
-              profile: { select: { fullName: true } },
+              profile: { select: { fullName: true, email: true } },
             },
           },
           outlet: { select: { name: true } },
@@ -253,18 +258,33 @@ export class OrderRepository {
     ]);
 
     return {
-      items: rows.map((row) => ({
-        id: row.id,
-        orderNumber: row.orderNumber,
-        customerName: row.customer.profile?.fullName ?? 'Customer',
-        customerPhone: row.customer.phone,
-        outletName: row.outlet.name,
-        itemCount: row.items.length,
-        paymentStatus: row.payments[0]?.status ?? 'INITIATED',
-        orderStatus: row.status,
-        amount: Number(row.grandTotal),
-        createdAt: row.createdAt,
-      })),
+      items: rows.map((row) => {
+        const customer = mapOrderCustomerDto({
+          id: row.customer.id,
+          fullName: row.customer.profile?.fullName,
+          phone: row.customer.phone,
+          email: row.customer.profile?.email,
+        });
+
+        return {
+          id: row.id,
+          orderNumber: row.orderNumber,
+          customer: {
+            id: customer.id,
+            fullName: customer.fullName,
+            phone: customer.phone,
+            email: customer.email,
+          },
+          customerName: customer.displayName,
+          customerPhone: customer.phone,
+          outletName: row.outlet.name,
+          itemCount: row.items.length,
+          paymentStatus: row.payments[0]?.status ?? 'INITIATED',
+          orderStatus: row.status,
+          amount: Number(row.grandTotal),
+          createdAt: row.createdAt,
+        };
+      }),
       total,
       page: params.page,
       limit: params.limit,

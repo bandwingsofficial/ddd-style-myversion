@@ -17,6 +17,7 @@ import { CurrentUser } from '../../../common/decorators/current-user.decorator';
 
 import { ActorType } from '../../auth/domain/enums/actor-type.enum';
 import { OutletOrderResponseDto } from '../dtos/outlet-order-response.dto';
+import { mapOrderCustomerDto } from '../../../common/utils/customer-display.util';
 
 @Controller('outlet-orders')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -29,11 +30,23 @@ export class OutletOrderController {
 
   private async toDetailedResponse(order: any) {
     const latestPayment = await this.paymentRepo.findLatestByOrderId(order.id);
+    const customer = mapOrderCustomerDto({
+      id: order.customerId,
+      fullName: order.customerFullName,
+      phone: order.customerPhone,
+      email: order.customerEmail,
+    });
 
     return {
       id: order.id,
       orderNumber: order.orderNumber,
-      customerFullName: order.customerFullName,
+      customer: {
+        id: customer.id,
+        fullName: customer.fullName,
+        phone: customer.phone,
+        email: customer.email,
+      },
+      customerFullName: customer.displayName,
       customerId: order.customerId,
 
       address: {

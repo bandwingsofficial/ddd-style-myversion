@@ -24,6 +24,7 @@ import { OrderStatus } from '@/modules/orders/domain/enums/order-status.enum';
 import { Order } from '@/modules/orders/domain/models/order.model';
 import { CheckoutStartResult } from '../types/checkout-start-response.types';
 import { OutletService } from '../../outlets/services/outlet.service';
+import { mapOrderCustomerDto } from '../../../common/utils/customer-display.util';
 
 /* ============================================= */
 /* ACTIVE ORDER GUARD                             */
@@ -494,11 +495,18 @@ export class CheckoutService {
       throw new ValidationError('CUSTOMER_NOT_FOUND', 'Customer not found');
     }
 
+    const customerContact = mapOrderCustomerDto({
+      id: customer.id,
+      fullName: customer.profile?.fullName,
+      phone: customer.phone,
+      email: customer.profile?.email,
+    });
+
     return {
       customerId: customer.id,
-      customerName: customer.profile?.fullName?.trim() || 'Customer',
-      customerEmail: customer.profile?.email?.trim() || '',
-      customerPhone: customer.phone?.trim() || '',
+      customerName: customerContact.displayName,
+      customerEmail: customerContact.email ?? '',
+      customerPhone: customerContact.phone ?? '',
     };
   }
 

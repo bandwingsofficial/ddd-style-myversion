@@ -1,14 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import { Order } from '../types';
 import * as orderApi from '../api/orders';
 import { useOrderSocket } from './useOrderSocket';
 import { outletService } from '@/features/outlet/services/outletService';
+import { resolveOrderCustomer } from '@/lib/customer-display';
 
 export const useOrders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [outletId, setOutletId] = useState<string | null>(null);
+  const knownOrderIdsRef = useRef<Set<string>>(new Set());
+  const initializedRef = useRef(false);
 
   const loadOrders = useCallback(async (silent = false) => {
     try {
@@ -17,11 +20,29 @@ export const useOrders = () => {
       }
 
       const data = await orderApi.fetchOutletOrders();
-      if (data && Array.isArray(data)) {
-         setOrders(data);
-      } else {
-         setOrders([]);
+      const nextOrders = data && Array.isArray(data) ? data : [];
+
+      if (silent && initializedRef.current) {
+        const newPaidOrders = nextOrders.filter(
+          (order) =>
+            !knownOrderIdsRef.current.has(order.id) &&
+            order.status?.toUpperCase() === 'PAID',
+        );
+
+        newPaidOrders.forEach((order) => {
+          const customer = resolveOrderCustomer(order);
+          toast(`New order ${order.orderNumber}`, {
+            description: customer.showPhoneLine
+              ? `👤 ${customer.displayName} • 📞 ${customer.phone}`
+              : `👤 ${customer.displayName}`,
+            duration: 8000,
+          });
+        });
       }
+
+      knownOrderIdsRef.current = new Set(nextOrders.map((order) => order.id));
+      initializedRef.current = true;
+      setOrders(nextOrders);
     } catch (error) {
       console.error("Failed to fetch orders", error);
     } finally {

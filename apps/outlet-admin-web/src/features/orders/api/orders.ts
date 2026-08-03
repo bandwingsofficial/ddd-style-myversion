@@ -1,22 +1,21 @@
 import { api } from '@/http/axios/instance';
 import { Order, OrderResponse, SingleOrderResponse } from '../types';
+import { attachOrderCustomer } from '../utils/order-customer.util';
 
 /**
  * Fetches all orders associated with the current outlet.
- * Uses the updated OrderResponse structure.
  */
 export const fetchOutletOrders = async (): Promise<Order[]> => {
   const { data } = await api.get<OrderResponse>('/outlet-orders');
-  return data.data;
+  return (data.data ?? []).map(attachOrderCustomer);
 };
 
 /**
  * Fetches details for a specific order by ID.
- * Useful for the Order Details modal or page.
  */
 export const fetchOrderById = async (id: string): Promise<Order> => {
   const { data } = await api.get<SingleOrderResponse>(`/outlet-orders/${id}`);
-  return data.data;
+  return attachOrderCustomer(data.data);
 };
 
 // --- Status Update Actions ---
