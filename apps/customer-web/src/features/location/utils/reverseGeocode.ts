@@ -1,9 +1,17 @@
-// features/location/utils/geocoding.ts
-
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
-// 1. REVERSE: Lat/Lng -> Address String
-export async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
+export interface PlaceSuggestion {
+  id: string;
+  label: string;
+  placeName: string;
+  latitude: number;
+  longitude: number;
+}
+
+export async function reverseGeocode(
+  lat: number,
+  lng: number,
+): Promise<string | null> {
   if (!MAPBOX_TOKEN) {
     console.error("Mapbox token missing");
     return null;
@@ -11,7 +19,7 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string |
 
   try {
     const res = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}`
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}`,
     );
 
     if (!res.ok) return null;
@@ -24,17 +32,13 @@ export async function reverseGeocode(lat: number, lng: number): Promise<string |
   }
 }
 
-// 2. FORWARD: Address String -> Lat/Lng
 export async function forwardGeocode(searchText: string) {
-  if (!MAPBOX_TOKEN || !searchText || searchText.length < 5) return null;
+  if (!MAPBOX_TOKEN || !searchText || searchText.length < 3) return null;
 
   try {
-    // Encodes the address safely for URL
     const query = encodeURIComponent(searchText);
-    
-    // We limit to 1 result for efficiency
     const res = await fetch(
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${MAPBOX_TOKEN}&limit=1`
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${MAPBOX_TOKEN}&limit=1&country=in`,
     );
 
     if (!res.ok) return null;
@@ -42,13 +46,53 @@ export async function forwardGeocode(searchText: string) {
     const data = await res.json();
 
     if (data.features && data.features.length > 0) {
-      const [lng, lat] = data.features[0].center; // Mapbox returns [lng, lat]
-      return { lat, lng };
+      const feature = data.features[0];
+      const [lng, lat] = feature.center;
+      return {
+        lat,
+        lng,
+        placeName: feature.place_name as string,
+      };
     }
-    
+
     return null;
   } catch (error) {
     console.error("Forward geocoding error:", error);
     return null;
+  }
+}
+
+export async function searchPlaces(
+  searchText: string,
+  limit = 5,
+): Promise<PlaceSuggestion[]> {
+  if (!MAPBOX_TOKEN || !searchText || searchText.trim().length < 2) {
+    return [];
+  }
+
+  try {
+    const query = encodeURIComponent(searchText.trim());
+    const res = await fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${query}.json?access_token=${MAPBOX_TOKEN}&limit=${limit}&country=in&types=place,locality,neighborhood,address,poi`,
+    );
+
+    if (!res.ok) return [];
+
+    const data = await res.json();
+    const features = Array.isArray(data.features) ? data.features : [];
+
+    return features.map((feature: any) => {
+      const [lng, lat] = feature.center;
+      return {
+        id: String(feature.id),
+        label: feature.text as string,
+        placeName: feature.place_name as string,
+        latitude: lat,
+        longitude: lng,
+      };
+    });
+  } catch (error) {
+    console.error("Place search error:", error);
+    return [];
   }
 }

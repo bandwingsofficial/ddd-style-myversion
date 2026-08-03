@@ -44,7 +44,7 @@ export default function CheckoutPage() {
 
   const { isAuthenticated, isHydrated: authHydrated } = useCustomerAuthStore();
   const { items: cartItems, loadCart, hydrated: cartHydrated } = useCartStore();
-  const { selectedOutlet } = useOutletStore();
+  const { selectedOutlet, outletRevision } = useOutletStore();
 
   useEffect(() => {
     const initCart = async () => {
@@ -67,7 +67,7 @@ export default function CheckoutPage() {
   }, [authHydrated, cartHydrated, isAuthenticated, addressId, loadCart, router, cartItems.length]);
 
   useEffect(() => {
-    if (initializing) return;
+    if (initializing || !addressId) return;
 
     const currentOutletId = cartItems[0]?.outletId || selectedOutlet?.id;
 
@@ -78,8 +78,15 @@ export default function CheckoutPage() {
       return;
     }
 
-    void loadSummary(addressId!, currentOutletId);
-  }, [initializing]);
+    void loadSummary(addressId, currentOutletId);
+  }, [
+    initializing,
+    addressId,
+    selectedOutlet?.id,
+    outletRevision,
+    cartItems,
+    router,
+  ]);
 
   const loadSummary = async (addrId: string, outId: string) => {
     try {

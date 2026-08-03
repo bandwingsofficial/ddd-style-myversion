@@ -1,6 +1,7 @@
 // src/modules/outlets/domain/value-objects/geo-location.vo.ts
 
 import { ValidationError } from '../../../../common/errors';
+import { detectCoordinateCorruption } from '../../../../common/utils/geo-coordinate.validator';
 
 export class GeoLocation {
   private readonly latitude: number;
@@ -26,6 +27,23 @@ export class GeoLocation {
         'OUTLET_INVALID_LONGITUDE',
         'Invalid longitude',
         { longitude: lng },
+      );
+    }
+
+    const corruption = detectCoordinateCorruption(lat, lng);
+    if (corruption === 'LIKELY_LAT_LNG_SWAPPED') {
+      throw new ValidationError(
+        'OUTLET_COORDINATES_SWAPPED',
+        'Latitude and longitude appear to be swapped',
+        { latitude: lat, longitude: lng },
+      );
+    }
+
+    if (corruption === 'LIKELY_LONGITUDE_TYPO_76_INSTEAD_OF_77') {
+      throw new ValidationError(
+        'OUTLET_COORDINATES_INVALID',
+        'Longitude appears incorrect for Bangalore service area (expected ~77.x, got 76.x)',
+        { latitude: lat, longitude: lng },
       );
     }
 

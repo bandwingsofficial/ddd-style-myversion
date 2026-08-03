@@ -1,4 +1,5 @@
 import CustomerAuthProvider from "@/providers/CustomerAuthProvider";
+import LocationProvider from "@/providers/LocationProvider";
 import ClientLayoutWrapper from "@/components/layout/ClientLayoutWrapper";
 import "./globals.css";
 import type { Viewport } from "next";
@@ -19,9 +20,11 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <CustomerAuthProvider>
-          <ClientLayoutWrapper>
-            {children}
-          </ClientLayoutWrapper>
+          <LocationProvider>
+            <ClientLayoutWrapper>
+              {children}
+            </ClientLayoutWrapper>
+          </LocationProvider>
         </CustomerAuthProvider>
       </body>
     </html>

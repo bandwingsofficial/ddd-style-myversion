@@ -1,58 +1,70 @@
 import customerAxios from "@/http/axios/customerAxios";
+import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
 
-export interface Address {
-  id: string;
-  customerId: string;
-  type: "HOME" | "WORK" | "OTHER";
-  label: string;
-  addressText: string;
-  latitude: number;
-  longitude: number;
-  isDeleted: boolean;
-}
+import {
+  Address,
+  AddressPayload,
+  ApiResponse,
+} from "./address.types";
 
-export interface ApiResponse<T> {
-  success: boolean;
-  code: string;
-  message: string;
-  data: T;
-}
+export type { Address, AddressPayload, ApiResponse };
 
-export interface AddressPayload {
-  label?: string;
-  type?: "HOME" | "WORK" | "OTHER";
-  addressText: string;
-  latitude: number;
-  longitude: number;
+function assertAuthenticatedSession(): void {
+  const { sessionChecked, isAuthenticated } = useCustomerAuthStore.getState();
+
+  if (!sessionChecked) {
+    throw new Error("SESSION_NOT_READY");
+  }
+
+  if (!isAuthenticated) {
+    throw new Error("NOT_AUTHENTICATED");
+  }
 }
 
 export const AddressService = {
-  getAll: async () => {
-    const { data } = await customerAxios.get<ApiResponse<Address[]>>("/saved-addresses");
+  getAll: async (): Promise<Address[]> => {
+    assertAuthenticatedSession();
+    const { data } = await customerAxios.get<ApiResponse<Address[]>>(
+      "/saved-addresses",
+    );
     return data.data;
   },
 
-  getOne: async (id: string) => {
-    const { data } = await customerAxios.get<ApiResponse<Address>>(`/saved-addresses/${id}`);
+  getOne: async (id: string): Promise<Address> => {
+    assertAuthenticatedSession();
+    const { data } = await customerAxios.get<ApiResponse<Address>>(
+      `/saved-addresses/${id}`,
+    );
     return data.data;
   },
 
-  create: async (payload: AddressPayload) => {
-    const { data } = await customerAxios.post<ApiResponse<Address>>("/saved-addresses", payload);
+  create: async (payload: AddressPayload): Promise<Address> => {
+    assertAuthenticatedSession();
+    const { data } = await customerAxios.post<ApiResponse<Address>>(
+      "/saved-addresses",
+      payload,
+    );
     return data.data;
   },
 
-  update: async (id: string, payload: Partial<AddressPayload>) => {
-    // ✅ CRITICAL FIX: Backend throws 400 if 'type' is present in update.
-    // We must strip 'type' from the payload before sending it.
+  update: async (
+    id: string,
+    payload: Partial<AddressPayload>,
+  ): Promise<Address> => {
+    assertAuthenticatedSession();
     const { type, ...cleanPayload } = payload;
-    
-    const { data } = await customerAxios.post<ApiResponse<Address>>(`/saved-addresses/${id}/update`, cleanPayload);
+    const { data } = await customerAxios.post<ApiResponse<Address>>(
+      `/saved-addresses/${id}/update`,
+      cleanPayload,
+    );
     return data.data;
   },
 
-  delete: async (id: string) => {
-    const { data } = await customerAxios.post<ApiResponse<{ deleted: boolean }>>(`/saved-addresses/${id}/delete`);
+  delete: async (id: string): Promise<{ deleted: boolean }> => {
+    assertAuthenticatedSession();
+    const { data } = await customerAxios.post<ApiResponse<{ deleted: boolean }>>(
+      `/saved-addresses/${id}/delete`,
+    );
     return data.data;
-  }
+  },
 };

@@ -3,7 +3,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { ChevronDown, MapPin, Home, Briefcase } from "lucide-react";
-import { AddressService, Address } from "@/features/addresses/address.service"; // Ensure this path is correct
+import { AddressService, Address } from "@/features/addresses/address.service";
+import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
 
 interface SavedAddressDropdownProps {
   onSelect: (address: Address) => void;
@@ -15,20 +16,27 @@ export default function SavedAddressDropdown({ onSelect, selectedAddress }: Save
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const { isAuthenticated, sessionChecked } = useCustomerAuthStore();
+
   useEffect(() => {
+    if (!isOpen || !sessionChecked || !isAuthenticated) {
+      if (!isOpen) return;
+      setAddresses([]);
+      return;
+    }
+
     const fetchAddresses = async () => {
       try {
         const data = await AddressService.getAll();
         setAddresses(data.filter((a) => !a.isDeleted));
       } catch (error) {
         console.error("Failed to load saved addresses", error);
+        setAddresses([]);
       }
     };
 
-    if (isOpen) {
-      fetchAddresses();
-    }
-  }, [isOpen]);
+    void fetchAddresses();
+  }, [isOpen, isAuthenticated, sessionChecked]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

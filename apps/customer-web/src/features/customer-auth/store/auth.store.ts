@@ -42,7 +42,12 @@ export const useCustomerAuthStore = create<CustomerAuthState>()(
     {
       name: "customer-auth-storage",
       storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        actorId: state.actorId,
+        sessionId: state.sessionId,
+      }),
       onRehydrateStorage: () => (state) => {
+        state?.clearSession();
         state?.setHydrated();
       },
     }

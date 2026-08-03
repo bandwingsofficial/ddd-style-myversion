@@ -12,6 +12,8 @@ import {
 } from "lucide-react";
 import { useCategories } from "../hooks/useCategories";
 import { useRouter } from "next/navigation";
+import { useDeliveryAppState } from "@/features/location/hooks/useDeliveryAppState";
+import { CategoryCarouselShimmer } from "@/components/ui/Shimmer";
 
 // Fallback Icon Logic
 const getCategoryIcon = (name: string, isMobile = false) => {
@@ -29,6 +31,7 @@ const getCategoryIcon = (name: string, isMobile = false) => {
 
 export const CategoryCarousel = () => {
   const { categories, isLoading } = useCategories();
+  const { showShimmer } = useDeliveryAppState();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const [showControls, setShowControls] = useState(false);
@@ -74,23 +77,8 @@ export const CategoryCarousel = () => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div style={styles.loadingContainer}>
-         <div className="spinner"></div>
-         <style jsx>{`
-            .spinner {
-              width: 40px;
-              height: 40px;
-              border: 4px solid #f0fdf4;
-              border-top-color: #4ade80;
-              border-radius: 50%;
-              animation: spin 1s linear infinite;
-            }
-            @keyframes spin { to { transform: rotate(360deg); } }
-         `}</style>
-      </div>
-    );
+  if (isLoading || showShimmer) {
+    return <CategoryCarouselShimmer />;
   }
 
   if (!sortedCategories || sortedCategories.length === 0) return null;

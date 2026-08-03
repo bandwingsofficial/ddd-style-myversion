@@ -8,6 +8,10 @@ import {
 let catalogCache: { data: ProductListItem[]; at: number } | null = null;
 const CATALOG_CACHE_TTL_MS = 60_000;
 
+export function invalidateProductCatalogCache(): void {
+  catalogCache = null;
+}
+
 async function getPublicCatalog(): Promise<ProductListItem[]> {
   if (
     catalogCache &&

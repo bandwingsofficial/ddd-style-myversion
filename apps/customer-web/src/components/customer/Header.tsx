@@ -81,8 +81,11 @@ export default function Header() {
           <div className="max-w-[1440px] w-full px-4 md:px-6 flex items-center text-white text-[0.8rem] font-semibold tracking-wide">
             <div className="overflow-hidden whitespace-nowrap relative flex-1 [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
               <div className="inline-block animate-[marquee_20s_linear_infinite] pl-full font-medium tracking-[0.5px] group-hover/topbar:[animation-play-state:paused]">
-                🌱 Fresh, Hygienic and Natural Experience Purity. — <span className="opacity-80">Order Fresh Now!</span> &nbsp;&nbsp;&nbsp; 🥥 100% Natural Cane Juice &nbsp;&nbsp;&nbsp; ⚡ Delivery in 20 mins
-              </div>
+  🌱 Fresh, Hygienic & Natural Experience.{" "}
+  <span className="opacity-80">Order Fresh Now!</span>
+  &nbsp;&nbsp;&nbsp; 🥥 Fresh Green Coconut Available
+  &nbsp;&nbsp;&nbsp; ⚡ Freshly Prepared & Delivered in 35 mins
+</div>
             </div>
           </div>
         </div>

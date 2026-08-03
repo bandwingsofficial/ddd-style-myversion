@@ -8,7 +8,7 @@ import { useLiveLocation } from "@/features/location/hooks/useLiveLocation";
 import { reverseGeocode, forwardGeocode } from "@/features/location/utils/reverseGeocode"; 
 import { useOutletStore } from "@/features/outlet/outlet.store";
 import { useCartStore } from "@/features/cart/cart.store";
-import { getPublicOutlets } from "@/features/outlet/api/outlet.api"; 
+import { useLocationOrchestratorStore } from "@/features/location/location-orchestrator.store";
 import { useLocationStore } from "@/features/location/location.store"; 
 import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store"; // ✅ Import Auth Store
 
@@ -39,21 +39,6 @@ const INITIAL_FORM_STATE = {
   longitude: 0,
 };
 
-// --- Helper: Calculate Distance ---
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371; 
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-const MAX_RADIUS_KM = 6; 
-
 export default function AddressSelectionModal({ isOpen, onClose, onSelect }: AddressModalProps) {
   const router = useRouter();
   
@@ -61,7 +46,7 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
   const { selectedOutlet, setOutlet } = useOutletStore();
   const { items: cartItems, clear } = useCartStore(); // ✅ Get clear function
   const { setLocation } = useLocationStore(); 
-  const { isAuthenticated } = useCustomerAuthStore(); // ✅ Get Auth status
+  const { isAuthenticated, sessionChecked } = useCustomerAuthStore(); // ✅ Get Auth status
 
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,14 +68,22 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
   const [geocodingStatus, setGeocodingStatus] = useState<"IDLE" | "SEARCHING" | "FOUND" | "NOT_FOUND">("IDLE");
 
   useEffect(() => {
-    if (isOpen) {
-      fetchAddresses();
-      setView("LIST");
-      setEditingId(null);
-      setPopup(null);
-      setCheckingOutlet(false);
+    if (!isOpen) return;
+
+    if (!sessionChecked) return;
+
+    if (!isAuthenticated) {
+      setAddresses([]);
+      setLoading(false);
+      return;
     }
-  }, [isOpen]);
+
+    void fetchAddresses();
+    setView("LIST");
+    setEditingId(null);
+    setPopup(null);
+    setCheckingOutlet(false);
+  }, [isOpen, isAuthenticated, sessionChecked]);
 
   useEffect(() => {
     if (view === "FORM" && details.area.length > 5 && !detectingLoc) {
@@ -212,66 +205,29 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
   const handleSelectAddress = async (address: Address) => {
     setCheckingOutlet(true);
     try {
-        const allOutlets = await getPublicOutlets();
+        await useLocationOrchestratorStore.getState().onLocationChanged({
+          lat: address.latitude,
+          lng: address.longitude,
+          label: address.label || address.addressText,
+          formattedAddress: address.addressText,
+          source: "saved",
+        });
 
-        if (!allOutlets || allOutlets.length === 0) {
-            setPopup({ type: "error", message: "No outlets found in the system." });
-            setCheckingOutlet(false);
-            return;
-        }
-
-        const validOutlets = allOutlets.map(outlet => {
-             if (!outlet.location?.latitude || !outlet.location?.longitude) return { ...outlet, distance: Infinity };
-             const dist = calculateDistance(
-                 address.latitude, address.longitude, 
-                 outlet.location.latitude, outlet.location.longitude
-             );
-             return { ...outlet, distance: dist };
-        }).filter(o => o.distance <= MAX_RADIUS_KM).sort((a, b) => a.distance - b.distance);
-
-        const nearestOutlet = validOutlets.length > 0 ? validOutlets[0] : null;
-
+        const nearestOutlet = useOutletStore.getState().selectedOutlet;
         if (!nearestOutlet) {
              setPopup({ type: "error", message: "Sorry, no outlet found near this address." });
              setCheckingOutlet(false);
              return;
         }
 
-        const cartOutletId = cartItems.length > 0 ? cartItems[0].outletId : null;
-
-        // ✅ If there's an outlet mismatch (either with Cart items OR current selection)
-        if ((cartOutletId && nearestOutlet.id !== cartOutletId) || (selectedOutlet && nearestOutlet.id !== selectedOutlet.id)) {
-             
-             setCheckingOutlet(false);
-             setPopup({ 
-                 type: "error", // Visual Style
-                 message: `This location is served by a different branch (${nearestOutlet.name}). Your cart will be cleared to load the fresh menu.`,
-                 onConfirm: async () => {
-                     // 1. Clear Cart (Fixes the 400 Error)
-                     await clear(isAuthenticated);
-
-                     // 2. Update Context
-                     setOutlet(nearestOutlet);
-                     setLocation(address.latitude, address.longitude, address.label || address.addressText);
-                     
-                     // 3. Redirect to Home
-                     router.push("/home"); 
-                 }
-             });
-             return; 
-        }
-
-        // ✅ Match or Empty Cart
-        setOutlet(nearestOutlet);
-        setLocation(address.latitude, address.longitude, address.label || address.addressText);
-        onSelect(address); 
-        onClose(); 
+        onSelect(address);
+        onClose();
 
     } catch (error) {
         console.error("Error checking outlet:", error);
         setPopup({ type: "error", message: "Failed to verify delivery location." });
     } finally {
-        if (!selectedOutlet) setCheckingOutlet(false); 
+        setCheckingOutlet(false);
     }
   };
 

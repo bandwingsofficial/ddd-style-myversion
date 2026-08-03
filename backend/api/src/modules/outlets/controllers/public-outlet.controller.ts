@@ -5,13 +5,22 @@ import {
   Get,
   Param,
   Query,
+  Logger,
 } from '@nestjs/common';
 
 import { OutletOrchestratorService } from '../services/outlet-orchestrator.service';
 import { ProductOrchestratorService } from '../../products/services/product-orchestrator.service';
+import { PublicOutletMapper } from '../mappers/public-outlet.mapper';
+import {
+  assertValidCustomerCoordinates,
+  validateCoordinateRange,
+} from '../../../common/utils/geo-coordinate.validator';
+import { ValidationError } from '../../../common/errors';
 
 @Controller('public/outlets')
 export class PublicOutletController {
+  private readonly logger = new Logger(PublicOutletController.name);
+
   constructor(
     private readonly orchestrator: OutletOrchestratorService,
     private readonly productOrchestrator: ProductOrchestratorService,
@@ -32,27 +41,58 @@ async getPublicOutlets(
   const hasValidCoords =
     lat !== undefined &&
     lng !== undefined &&
-    !Number.isNaN(latitude) &&
-    !Number.isNaN(longitude);
+    validateCoordinateRange(latitude, longitude).valid;
 
   let data;
 
   if (hasValidCoords) {
+    try {
+      assertValidCustomerCoordinates(latitude, longitude);
+    } catch {
+      throw new ValidationError(
+        'INVALID_COORDINATES',
+        'Invalid location coordinates',
+        { latitude, longitude },
+      );
+    }
+
+    this.logger.log(
+      JSON.stringify({
+        event: 'public_outlets_search',
+        latitude,
+        longitude,
+      }),
+    );
+
     const results = await this.orchestrator.getNearbyOutlets(
       latitude,
       longitude,
     );
 
-    data = results
-      .filter((r) => r.outlet.isPubliclyVisible())
-      .map((r) => ({
-        ...r.outlet,
-        distanceKm: r.distanceKm,
-      }));
+    data = PublicOutletMapper.toDtoList(
+      results.filter((r) => r.outlet.isPubliclyVisible()),
+    );
+
+    this.logger.log(
+      JSON.stringify({
+        event: 'public_outlets_search_result',
+        latitude,
+        longitude,
+        matchedCount: data.length,
+        outlets: data.map((outlet) => ({
+          id: outlet.id,
+          name: outlet.name,
+          distanceKm: outlet.distanceKm,
+          deliveryRadiusKm: outlet.deliveryRadiusKm,
+        })),
+      }),
+    );
   } else {
     const outlets = await this.orchestrator.getAllOutlets();
 
-    data = outlets.filter((o) => o.isPubliclyVisible());
+    data = outlets
+      .filter((o) => o.isPubliclyVisible())
+      .map((o) => PublicOutletMapper.toDto(o));
   }
 
   return {
@@ -187,7 +227,7 @@ async getOutletProducts(
       success: true,
       code: 'PUBLIC_OUTLET_FETCHED',
       message: 'Outlet details fetched successfully',
-      data: outlet,
+      data: PublicOutletMapper.toDto(outlet),
     };
   }
 }

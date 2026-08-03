@@ -1,6 +1,6 @@
 // src/modules/outlets/services/outlet.service.ts
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 
@@ -17,6 +17,10 @@ import { ActorType } from '../../auth/domain/enums/actor-type.enum';
 import { AuditAction } from '../../auth/domain/enums/audit-action.enum';
 
 import { ValidationError } from '../../../common/errors';
+import {
+  assertValidCustomerCoordinates,
+  detectCoordinateCorruption,
+} from '../../../common/utils/geo-coordinate.validator';
 import { GeoLocation } from '../domain/value-objects/geo-location.vo';
 import { OutletStatus } from '../domain/enums/outlet-status.enum';
 
@@ -31,6 +35,8 @@ import {
 
 @Injectable()
 export class OutletService {
+  private readonly logger = new Logger(OutletService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly outletRepo: OutletRepository,
@@ -72,18 +78,96 @@ async getNearbyOutlets(
   lat: number,
   lng: number,
 ): Promise<{ outlet: Outlet; distanceKm: number }[]> {
-  if (isNaN(lat) || isNaN(lng)) return [];
+  assertValidCustomerCoordinates(lat, lng);
 
   const outlets = await this.outletRepo.findWithLocation();
 
-return outlets
+  this.logger.log(
+    JSON.stringify({
+      event: 'outlet_serviceability_search',
+      customerLatitude: lat,
+      customerLongitude: lng,
+      candidateCount: outlets.length,
+    }),
+  );
+
+  for (const outlet of outlets) {
+    if (!outlet.location) {
+      this.logger.warn(
+        JSON.stringify({
+          event: 'outlet_data_invalid',
+          outletId: outlet.id,
+          outletName: outlet.name,
+          workingStatus: outlet.workingState.getRaw(),
+          reason: 'MISSING_COORDINATES',
+        }),
+      );
+      continue;
+    }
+
+    const location = outlet.location.getRaw();
+    const corruption = detectCoordinateCorruption(
+      location.latitude,
+      location.longitude,
+    );
+    if (corruption) {
+      this.logger.warn(
+        JSON.stringify({
+          event: 'outlet_coordinate_corruption_detected',
+          outletId: outlet.id,
+          outletName: outlet.name,
+          outletLatitude: location.latitude,
+          outletLongitude: location.longitude,
+          corruption,
+        }),
+      );
+    }
+
+    const distanceKm = this.calculateDistanceKm(
+      lat,
+      lng,
+      location.latitude,
+      location.longitude,
+    );
+    const deliveryRadiusKm = outlet.deliveryRadiusKm ?? 5;
+    const acceptsOrders = outlet.workingState?.canAcceptOrders() ?? false;
+    const isActive = outlet.isActive();
+    const withinRadius = distanceKm <= deliveryRadiusKm;
+    const serviceable = isActive && acceptsOrders && withinRadius;
+
+    let rejectReason: string | null = null;
+    if (!isActive) rejectReason = 'OUTLET_INACTIVE';
+    else if (!acceptsOrders) rejectReason = 'OUTLET_NOT_ACCEPTING_ORDERS';
+    else if (deliveryRadiusKm == null || deliveryRadiusKm <= 0) {
+      rejectReason = 'MISSING_DELIVERY_RADIUS';
+    } else if (!withinRadius) rejectReason = 'OUTSIDE_DELIVERY_RADIUS';
+
+    this.logger.log(
+      JSON.stringify({
+        event: 'outlet_serviceability_check',
+        customerLatitude: lat,
+        customerLongitude: lng,
+        outletId: outlet.id,
+        outletName: outlet.name,
+        outletLatitude: location.latitude,
+        outletLongitude: location.longitude,
+        distanceKm: Number(distanceKm.toFixed(2)),
+        deliveryRadiusKm,
+        workingStatus: outlet.workingState.getRaw(),
+        serviceable,
+        rejectReason,
+      }),
+    );
+  }
+
+  return outlets
   .filter(o =>
     o.isActive() &&
     o.workingState?.canAcceptOrders() &&
     o.location
   )
   .map(o => {
-    const location = o.location.getRaw();
+    const location = o.location!.getRaw();
     const distanceKm = this.calculateDistanceKm(lat, lng, location.latitude, location.longitude);
 
     if (distanceKm > (o.deliveryRadiusKm ?? 5)) return null;
@@ -94,7 +178,7 @@ return outlets
     };
   })
   .filter(Boolean)
-  .sort((a, b) => a!.distanceKm - b!.distanceKm);
+  .sort((a, b) => a!.distanceKm - b!.distanceKm) as { outlet: Outlet; distanceKm: number }[];
 }
 
   /* ================================================= */

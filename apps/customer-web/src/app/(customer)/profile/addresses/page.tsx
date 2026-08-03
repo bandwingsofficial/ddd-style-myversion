@@ -7,6 +7,7 @@ import {
   Pencil, AlertCircle, CheckCircle, Loader2, Crosshair, X 
 } from "lucide-react";
 import { AddressService, Address } from "@/features/addresses/address.service";
+import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
 import { useLiveLocation } from "@/features/location/hooks/useLiveLocation";
 import { forwardGeocode, reverseGeocode } from "@/features/location/utils/reverseGeocode";
 import Header from "@/components/customer/Header";
@@ -20,6 +21,7 @@ interface PopupState {
 
 export default function AddressListPage() {
   const router = useRouter();
+  const { isAuthenticated, sessionChecked } = useCustomerAuthStore();
   const { lat, lng } = useLiveLocation();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,8 +44,15 @@ export default function AddressListPage() {
   });
 
   useEffect(() => {
-    loadAddresses();
-  }, []);
+    if (!sessionChecked) return;
+
+    if (!isAuthenticated) {
+      router.replace("/login");
+      return;
+    }
+
+    void loadAddresses();
+  }, [sessionChecked, isAuthenticated, router]);
 
   const loadAddresses = async () => {
     try {

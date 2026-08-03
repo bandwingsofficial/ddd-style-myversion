@@ -22,6 +22,7 @@ import { CartStatus } from '@/modules/cart/domain/enums/cart-status.enum';
 import { OrderStatus } from '@/modules/orders/domain/enums/order-status.enum';
 import { Order } from '@/modules/orders/domain/models/order.model';
 import { CheckoutStartResult } from '../types/checkout-start-response.types';
+import { OutletService } from '../../outlets/services/outlet.service';
 
 /* ============================================= */
 /* ACTIVE ORDER GUARD                             */
@@ -48,6 +49,7 @@ export class CheckoutService {
     /* 🔥 NEW */
     private readonly checkoutEvents: CheckoutEventsService,
     private readonly cartResponseMapper: CartResponseMapper,
+    private readonly outletService: OutletService,
   ) {}
 
   /* ================================================= */
@@ -81,6 +83,26 @@ export class CheckoutService {
     }
   }
 
+  private async assertOutletServesLocation(params: {
+    outletId: string;
+    latitude: number;
+    longitude: number;
+  }): Promise<void> {
+    const nearby = await this.outletService.getNearbyOutlets(
+      params.latitude,
+      params.longitude,
+    );
+
+    const serves = nearby.some((entry) => entry.outlet.id === params.outletId);
+
+    if (!serves) {
+      throw new ValidationError(
+        'LOCATION_NOT_SERVICEABLE',
+        'The selected outlet does not deliver to this address. Please choose a nearer outlet or update your delivery location.',
+      );
+    }
+  }
+
   /* ================================================= */
   /* GET CHECKOUT SUMMARY                              */
   /* ================================================= */
@@ -106,6 +128,14 @@ async getCheckoutSummary(params: {
     customerId: params.customerId,
     savedAddressId: params.savedAddressId,
   });
+
+  if (address.latitude != null && address.longitude != null) {
+    await this.assertOutletServesLocation({
+      outletId: params.outletId,
+      latitude: address.latitude,
+      longitude: address.longitude,
+    });
+  }
 
   const cartResponse = await this.cartResponseMapper.toResponse(cart);
 
@@ -201,6 +231,22 @@ async startCheckout(params: {
   savedAddressId: string;
 }): Promise<CheckoutStartResult> {
   this.validateParams(params);
+
+  const checkoutAddress = await this.savedAddressService.getById({
+    customerId: params.customerId,
+    savedAddressId: params.savedAddressId,
+  });
+
+  if (
+    checkoutAddress.latitude != null &&
+    checkoutAddress.longitude != null
+  ) {
+    await this.assertOutletServesLocation({
+      outletId: params.outletId,
+      latitude: checkoutAddress.latitude,
+      longitude: checkoutAddress.longitude,
+    });
+  }
 
   const customerContact = await this.loadCustomerCheckoutContact(
     params.customerId,

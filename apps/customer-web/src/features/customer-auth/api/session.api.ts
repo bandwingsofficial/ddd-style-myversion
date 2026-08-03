@@ -1,10 +1,11 @@
 import axios from "../../../http/axios/customerAxios";
 
-export const fetchSession = () =>
-  axios.get("/auth/session/me");
+export const fetchSession = () => axios.get("/auth/session/me");
 
-export const refreshSession = (refreshToken: string) =>
-  axios.post("/auth/session/refresh", { refreshToken });
+/** Web clients rely on HttpOnly refresh cookie; body is intentionally empty. */
+export const refreshSession = () =>
+  axios.post("/auth/session/refresh", {}, {
+    headers: { "x-client-type": "web" },
+  });
 
-export const logoutSession = () =>
-  axios.post("/auth/session/logout");
+export const logoutSession = () => axios.post("/auth/session/logout");

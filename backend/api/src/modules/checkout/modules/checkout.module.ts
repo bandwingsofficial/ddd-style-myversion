@@ -24,6 +24,7 @@ import { CartModule } from '../../cart/modules/cart.module';
 import { SavedAddressModule } from '../../saved-address/modules/saved-address.module';
 import { OrdersModule } from '../../orders/modules/orders.module';
 import { PaymentsModule } from '../../payments/modules/payments.module';
+import { OutletsModule } from '../../outlets/modules/outlets.module';
 
 /* ---------------------------------------------- */
 /* MODULE                                         */
@@ -35,6 +36,7 @@ import { PaymentsModule } from '../../payments/modules/payments.module';
     SavedAddressModule,
     OrdersModule,
     PaymentsModule,
+    OutletsModule,
   ],
   controllers: [CheckoutController],
   providers: [
