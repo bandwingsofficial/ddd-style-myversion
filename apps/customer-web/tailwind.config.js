@@ -10,25 +10,34 @@ module.exports = {
     extend: {
       colors: {
         brand: {
-          dark: "#15803d",  // green-700
-          DEFAULT: "#16a34a", // green-600 (Primary Action)
-          light: "#22c55e",   // green-500
-          surface: "#f0fdf4", // green-50
-        }
-      },
-      fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'], // Ensure you have Inter or a nice sans font
-      },
-      keyframes: {
-        shimmer: {
-          "0%": { backgroundPosition: "200% 0" },
-          "100%": { backgroundPosition: "-200% 0" },
+          DEFAULT: "#00A300",
+          dark: "#004700",
+          price: "#004700",
+          discount: "#FF0000",
+          trending: "#FFC800",
+          outlet: "#004700",
+        },
+        ink: {
+          primary: "#111827",
+          muted: "#6B7280",
+        },
+        surface: {
+          DEFAULT: "#FFFFFF",
+          border: "#E5E7EB",
+          unit: "#F3F4F6",
         },
       },
-      animation: {
-        shimmer: "shimmer 1.6s ease-in-out infinite",
+      borderRadius: {
+        card: "0.75rem",
+        button: "0.5rem",
+      },
+      boxShadow: {
+        card: "0 1px 3px 0 rgb(17 24 39 / 0.06)",
+      },
+      fontFamily: {
+        sans: ["Inter", "system-ui", "sans-serif"],
       },
     },
   },
   plugins: [],
-}
+};

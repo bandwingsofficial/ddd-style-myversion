@@ -29,6 +29,8 @@ import { CheckoutPaymentBar } from "@/components/checkout/CheckoutPaymentBar";
 import { AddressService } from "@/features/addresses/address.service";
 import { useLocationOrchestratorStore } from "@/features/location/location-orchestrator.store";
 import { CheckoutOutOfServiceState } from "@/components/location/NoDeliveryState";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { typography } from "@/lib/design-tokens";
 
 declare global {
   interface Window {
@@ -434,14 +436,21 @@ export default function CheckoutPage() {
         )}
 
       <main className="customer-page-shell customer-page-shell--checkout-bar mobile-container max-w-5xl pb-32">
+        <Breadcrumbs
+          items={[
+            { label: "Cart", href: "/cart" },
+            { label: "Checkout" },
+          ]}
+        />
+
         <button
           onClick={() => router.back()}
-          className="flex items-center text-slate-500 hover:text-emerald-600 mb-6 font-medium"
+          className="mb-4 flex items-center font-medium text-slate-500 hover:text-emerald-600 md:hidden"
         >
           <ArrowLeft size={18} className="mr-2" /> Back
         </button>
 
-        <h1 className="text-2xl font-bold text-slate-900 mb-6">Review & Pay</h1>
+        <h1 className={`${typography.pageTitle} mb-6`}>Review & Pay</h1>
 
         {statusMessage ? (
           <div className="mb-6 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">

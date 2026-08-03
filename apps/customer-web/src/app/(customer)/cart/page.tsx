@@ -11,10 +11,8 @@ import {
   Minus, 
   Plus, 
   Trash2, 
-  ShoppingBag, 
-  ArrowRight, 
+  ShoppingBag,
   ArrowLeft, 
-  Loader2, 
   PackageX 
 } from "lucide-react";
 import AddressSelectionModal from "@/components/address/AddressSelectionModal";
@@ -27,6 +25,11 @@ import { computeLineTotal, resolveEffectivePrice } from "@/lib/cart-pricing";
 import { useDeliveryAppState } from "@/features/location/hooks/useDeliveryAppState";
 import { useLocationOrchestratorStore } from "@/features/location/location-orchestrator.store";
 import { CheckoutPaymentBar } from "@/components/checkout/CheckoutPaymentBar";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Spinner } from "@/components/ui/Spinner";
+import { Button } from "@/components/ui/Button";
+import { typography } from "@/lib/design-tokens";
 
 export default function CartPage() {
   const router = useRouter();
@@ -83,53 +86,46 @@ export default function CartPage() {
   };
 
   if (!hydrated) return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
-        <Loader2 className="animate-spin text-emerald-600" size={40} />
+    <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <Spinner size="lg" label="Loading your cart..." />
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] font-sans flex flex-col">
+    <div className="flex min-h-screen flex-col bg-slate-50 font-sans">
       <Header />
       
       <main className="customer-page-shell customer-page-shell--checkout-bar flex-grow">
         <section className="mobile-container max-w-6xl">
-          
-          {/* ✅ 1. Professional Page Header */}
-          <div className="flex flex-col md:flex-row justify-between items-end mb-8 border-b border-slate-200 pb-6">
+          <Breadcrumbs items={[{ label: "Cart" }]} />
+
+          <div className="mb-8 flex flex-col items-start justify-between gap-4 border-b border-slate-200 pb-6 md:flex-row md:items-end">
             <div>
-                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight animate-shine">My Cart</h1>
-                <p className="text-slate-500 mt-2 font-medium">
+                <h1 className={typography.pageTitle}>My Cart</h1>
+                <p className="mt-2 font-medium text-slate-500">
                     {items.length === 0 ? "Your cart is empty" : `You have ${items.length} ${items.length === 1 ? 'item' : 'items'} in your cart`}
                 </p>
             </div>
             {items.length > 0 && (
-                <Link href="/menu" className="hidden md:flex items-center text-emerald-600 font-bold hover:text-emerald-700 transition-colors bg-emerald-50 px-4 py-2 rounded-full">
-                    <ArrowLeft size={18} className="mr-2" /> Continue Shopping
-                </Link>
+                <Button asChild variant="secondary" size="sm">
+                  <Link href="/menu">
+                    <ArrowLeft size={18} /> Continue Shopping
+                  </Link>
+                </Button>
             )}
           </div>
 
-          {/* Cart Content Logic */}
           {items.length === 0 ? (
-            
-            /* ✅ 2. Empty State Component (Fixes "nothing is shown") */
-            <div className="flex flex-col items-center justify-center py-24 bg-white rounded-3xl border border-dashed border-slate-300 shadow-sm text-center">
-                <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-6">
-                    <PackageX size={48} className="text-slate-400" />
-                </div>
-                <h2 className="text-2xl font-bold text-slate-900 mb-3">Your cart feels a bit light</h2>
-                <p className="text-slate-500 max-w-md mb-8 px-4">
-                    There is nothing in your bag. Let's add some fresh juices and tender coconut to make you happy!
-                </p>
-                <Link href="/menu" className="bg-emerald-600 text-white px-8 py-3.5 rounded-full font-bold hover:bg-emerald-700 hover:shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-2">
-                    Start Shopping
-                </Link>
-            </div>
-
+            <EmptyState
+              icon={<PackageX size={40} className="text-slate-400" />}
+              title="Your cart feels a bit light"
+              description="There is nothing in your bag. Let's add some fresh juices and tender coconut to make you happy!"
+              primaryAction={{
+                label: "Start Shopping",
+                onClick: () => router.push("/menu"),
+              }}
+            />
           ) : (
-
-            /* ✅ 3. Existing Grid (Enhanced Container) */
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-fade-in-up">
               
               {/* Items List */}

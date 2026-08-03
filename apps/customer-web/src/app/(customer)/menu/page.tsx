@@ -11,9 +11,9 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { resolveProductPricing } from "@/lib/product-pricing";
 import { Search, Filter, X, SlidersHorizontal } from "lucide-react";
 import { useDeliveryAppState } from "@/features/location/hooks/useDeliveryAppState";
-import NoDeliveryState, {
-  ConnectionErrorState,
-} from "@/components/location/NoDeliveryState";
+import NoDeliveryState from "@/components/location/NoDeliveryState";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { typography, productGrid } from "@/lib/design-tokens";
 
 function MenuPageContent() {
   const searchParams = useSearchParams();
@@ -134,8 +134,10 @@ function MenuPageContent() {
 
       <main className="customer-page-shell customer-page-shell--with-cart">
         <section className="mobile-container">
+          <Breadcrumbs items={[{ label: "Menu" }]} />
+
           <header className="mb-6 border-b border-slate-100 pb-4 sm:mb-8 sm:pb-6">
-            <h1 className="animate-shine mb-4 text-left text-xl font-extrabold text-[#052e16] sm:mb-6 sm:text-[1.75rem] md:text-[2rem]">
+            <h1 className={`${typography.pageTitle} mb-4 sm:mb-6`}>
               Our Products
             </h1>
 
@@ -218,7 +220,7 @@ function MenuPageContent() {
           </header>
 
           {showShimmer || isResolving ? (
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <div className={productGrid.cols}>
               {Array.from({ length: 10 }).map((_, i) => (
                 <ProductSkeleton key={i} />
               ))}
@@ -248,7 +250,7 @@ function MenuPageContent() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <div className={productGrid.cols}>
               {loading
                 ? Array.from({ length: 10 }).map((_, i) => (
                     <ProductSkeleton key={i} />

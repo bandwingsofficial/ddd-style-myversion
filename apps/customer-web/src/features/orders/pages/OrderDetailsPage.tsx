@@ -12,6 +12,7 @@ import {
 
 import Footer from "@/components/customer/Footer";
 import Header from "@/components/customer/Header";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 
 import OrderItems from "../components/OrderItems";
 import OrderSummary from "../components/OrderSummary";
@@ -85,6 +86,12 @@ export default function OrderDetailsPage() {
       <Header />
 
       <main className="customer-page-shell mobile-container max-w-7xl">
+        <Breadcrumbs
+          items={[
+            { label: "Orders", href: "/orders" },
+            { label: order.orderNumber ? `#${order.orderNumber}` : "Order Details" },
+          ]}
+        />
 
         <div className="mb-8 flex items-center justify-between">
 

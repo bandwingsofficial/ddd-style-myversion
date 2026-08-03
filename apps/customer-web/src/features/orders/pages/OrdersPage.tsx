@@ -7,6 +7,12 @@ import Header from "@/components/customer/Header";
 import OrderCard from "../components/OrderCard";
 import SupportCard from "../components/SupportCard";
 import { useOrders } from "../hooks/useOrders";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Spinner } from "@/components/ui/Spinner";
+import { Input } from "@/components/ui/Input";
+import { Button } from "@/components/ui/Button";
+import { typography } from "@/lib/design-tokens";
 
 type FilterStatus = "ALL" | "DELIVERED" | "PENDING" | "CANCELLED";
 
@@ -29,16 +35,8 @@ export default function OrdersPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50/60 backdrop-blur-sm">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative flex h-16 w-16 items-center justify-center">
-            <div className="absolute h-full w-full animate-ping rounded-full bg-emerald-100 opacity-75" />
-            <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-200 border-t-emerald-600" />
-          </div>
-          <p className="text-sm font-semibold tracking-wide text-slate-600 animate-pulse">
-            Loading your fresh orders...
-          </p>
-        </div>
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <Spinner size="lg" label="Loading your orders..." />
       </div>
     );
   }
@@ -47,8 +45,8 @@ export default function OrdersPage() {
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/80 antialiased">
       <Header />
 
-      {/* Increased padding-top (pt-32) to perfectly clear fixed headers */}
       <main className="customer-page-shell mobile-container max-w-6xl">
+        <Breadcrumbs items={[{ label: "Orders" }]} />
         
         {/* Modern Top Level Header Section - Only shows if user has orders */}
         {orders && orders.length > 0 && (
@@ -124,41 +122,31 @@ export default function OrdersPage() {
 
         {/* Orders Display States */}
         {orders && orders.length === 0 ? (
-          /* Premium Empty State */
-          <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white p-12 text-center shadow-md sm:p-20">
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-slate-50/50" />
-            <div className="relative z-10">
-              <div className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 shadow-inner">
-                <Package size={42} className="text-slate-400" />
-              </div>
-              <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-                No Orders Placed Yet
-              </h2>
-              <p className="mx-auto mt-3 max-w-md text-base leading-relaxed text-slate-500">
-                Looks like you haven't enjoyed our 100% natural cold-pressed cane juices yet. Treat yourself today!
-              </p>
-              <div className="mt-8">
-                <Link
-                  href="/menu"
-                  className="inline-flex items-center justify-center rounded-xl bg-emerald-600 px-8 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition-all duration-200 hover:scale-[1.02] hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-600/50"
-                >
-                  Explore Delicious Menu
-                </Link>
-              </div>
-            </div>
-          </div>
+          <EmptyState
+            icon={<Package size={40} className="text-slate-400" />}
+            title="No Orders Placed Yet"
+            description="Looks like you haven't enjoyed our 100% natural cold-pressed cane juices yet. Treat yourself today!"
+            primaryAction={{
+              label: "Explore Menu",
+              onClick: () => {
+                window.location.href = "/menu";
+              },
+            }}
+          />
         ) : filteredOrders.length === 0 ? (
-          /* No Search Results Fallback State */
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/50 p-12 text-center">
-            <SlidersHorizontal className="mx-auto h-8 w-8 text-slate-400" />
-            <p className="mt-4 text-sm font-medium text-slate-600">No orders match your current filters or search query.</p>
-            <button 
-              onClick={() => { setSearchQuery(""); setActiveFilter("ALL"); }}
-              className="mt-3 text-xs font-bold text-emerald-600 hover:underline inline-flex items-center gap-1"
-            >
-              <RefreshCw size={12} /> Reset filters
-            </button>
-          </div>
+          <EmptyState
+            icon={<SlidersHorizontal size={32} className="text-slate-400" />}
+            title="No matching orders"
+            description="No orders match your current filters or search query."
+            primaryAction={{
+              label: "Reset filters",
+              onClick: () => {
+                setSearchQuery("");
+                setActiveFilter("ALL");
+              },
+              variant: "outline",
+            }}
+          />
         ) : (
           /* Interactive Orders Container */
           <div className="space-y-6">

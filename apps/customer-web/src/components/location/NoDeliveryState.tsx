@@ -18,7 +18,7 @@ export default function NoDeliveryState({
     (state) => state.openLocationSheet,
   );
   const retry = useLocationOrchestratorStore((state) => state.retry);
-  const useCurrentLocation = useLocationOrchestratorStore(
+  const requestCurrentLocation = useLocationOrchestratorStore(
     (state) => state.useCurrentLocation,
   );
   const { selectedDeliveryLocation } = useDeliveryAppState();
@@ -68,7 +68,7 @@ export default function NoDeliveryState({
 
           <button
             type="button"
-            onClick={() => void useCurrentLocation()}
+            onClick={() => void requestCurrentLocation()}
             className="inline-flex h-12 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-6 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
           >
             <Navigation size={18} />

@@ -1,53 +1,22 @@
 "use client";
 
+import { productGrid } from "@/lib/design-tokens";
+
 export default function ProductSkeleton() {
   return (
-    <div className="skeleton-card">
-      <div className="skeleton-image" />
-      <div className="skeleton-content">
-        <div className="skeleton-line title" />
-        <div className="skeleton-line price" />
+    <div className="overflow-hidden rounded-card border border-surface-border bg-white shadow-card">
+      <div
+        className={`animate-pulse bg-surface-unit ${productGrid.imageHeight}`}
+      />
+      <div className="space-y-2 px-2 py-2">
+        <div className="h-4 w-[70%] animate-pulse rounded bg-surface-unit" />
+        <div className="h-3 w-full animate-pulse rounded bg-surface-unit" />
+        <div className="h-2.5 w-[45%] animate-pulse rounded bg-surface-unit" />
+        <div className="flex items-center justify-between pt-1">
+          <div className="h-4 w-16 animate-pulse rounded bg-surface-unit" />
+          <div className="h-8 w-12 animate-pulse rounded-button bg-surface-unit" />
+        </div>
       </div>
-
-      <style jsx>{`
-        .skeleton-card {
-          background: #ffffff;
-          border-radius: 16px;
-          border: 1px solid #f1f5f9;
-          padding: 6px;
-          height: 260px; /* Reduced overall height */
-        }
-
-        .skeleton-image {
-          height: 170px; /* Matches new card image height */
-          background: #f1f5f9;
-          border-radius: 12px;
-          position: relative;
-          overflow: hidden;
-        }
-
-        .skeleton-content {
-          padding: 12px 8px;
-        }
-
-        .skeleton-line {
-          background: #f1f5f9;
-          border-radius: 4px;
-        }
-
-        .title { width: 70%; height: 14px; margin-bottom: 6px; }
-        .price { width: 40%; height: 12px; }
-
-        .skeleton-card * {
-          animation: pulse 1.5s infinite ease-in-out;
-        }
-
-        @keyframes pulse {
-          0% { opacity: 1; }
-          50% { opacity: 0.5; }
-          100% { opacity: 1; }
-        }
-      `}</style>
     </div>
   );
 }

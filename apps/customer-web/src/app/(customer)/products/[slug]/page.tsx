@@ -1,22 +1,29 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import { useMemo, useCallback } from "react";
 import { useProductBySlug } from "@/features/products/hooks/useProductBySlug";
 import Header from "@/components/customer/Header";
 import Footer from "@/components/customer/Footer";
-import ProductCard from "@/components/product/ProductCard";
+import { ProductGallery } from "@/components/product/ProductGallery";
+import { ProductPriceBlock } from "@/components/product/ProductPriceBlock";
+import { CompactAddToCart } from "@/components/product/CompactAddToCart";
+import {
+  ProductFeatureGrid,
+  ProductLongDescription,
+} from "@/components/product/ProductDetailSections";
+import { ProductDetailAccordion } from "@/components/product/ProductDetailAccordion";
+import { RelatedProductsCarousel } from "@/components/product/RelatedProductsCarousel";
+import { ProductDetailSkeleton } from "@/components/product/ProductDetailSkeleton";
 import { normalizeProductList } from "@/lib/product-normalizer";
-import { 
-  ShoppingBag, ShieldCheck, Truck, Star, Heart, 
-  Minus, Plus, Leaf, ChevronRight, Loader2, MapPin
-} from "lucide-react";
-import { useState, useMemo } from "react";
 import { useCartStore } from "@/features/cart/cart.store";
 import { useOutletStore } from "@/features/outlet/outlet.store";
-import { useFavorites } from "@/providers/CustomerAuthProvider";
 import { resolveProductPricing } from "@/lib/product-pricing";
 import { toast } from "sonner";
 import { useDeliveryAppState } from "@/features/location/hooks/useDeliveryAppState";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { badgeStyles, layout, typography } from "@/lib/design-tokens";
 
 export default function ProductDetailsPage() {
   const { slug: routeSlug } = useParams<{ slug: string }>();
@@ -28,42 +35,49 @@ export default function ProductDetailsPage() {
     loading: productLoading,
     error: productError,
   } = useProductBySlug(routeSlug);
-  
+
   const { items, addItem, updateItem, removeItem } = useCartStore();
   const currentOutlet = useOutletStore((state) => state.selectedOutlet);
   const { isNoOutlet } = useDeliveryAppState();
-  const { isFavorite, addToFavorites, removeFromFavorites } = useFavorites();
-
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const product = useMemo(() => {
     if (!productData) return null;
 
-    const p = productData as any;
-    const name = p.name?.value || p.name || "Unknown Product";
+    const p = productData as unknown as Record<string, unknown>;
+    const nameField = p.name as { value?: string } | string | undefined;
+    const name =
+      typeof nameField === "object" && nameField !== null
+        ? nameField.value || "Unknown Product"
+        : String(nameField || "Unknown Product");
     const pricing = resolveProductPricing(p);
-    
-    const mainImgPath = p.images?.mainImageUrl || "";
-    const gallery: string[] = p.images?.galleryImageUrls || [];
 
-    let unitLabel = "";
-    if (typeof p.unit === "object" && p.unit !== null) unitLabel = `${p.unit.value} ${p.unit.type}`;
-    else if (p.unit) unitLabel = String(p.unit);
+    const images = p.images as
+      | { mainImageUrl?: string; galleryImageUrls?: string[] }
+      | undefined;
+    const mainImgPath = images?.mainImageUrl || "";
+    const gallery: string[] = images?.galleryImageUrls || [];
+
+    const category = p.category as { id?: string; name?: string } | undefined;
 
     return {
-      ...p,
+      id: String(p.id),
       displayName: name,
       currentPrice: pricing.sellingPrice,
       originalPrice: pricing.mrp,
-      savings: pricing.savings,
       percent: pricing.discountPercent,
       hasDiscount: pricing.hasDiscount,
       mainImage: mainImgPath || "/placeholder.jpg",
-      gallery: gallery.length > 0 ? gallery : (mainImgPath ? [mainImgPath] : []),
-      unitLabel,
-      outletId: currentOutlet?.id || p.outletId
+      gallery: gallery.length > 0 ? gallery : mainImgPath ? [mainImgPath] : [],
+      shortDescription: String(p.shortDescription || ""),
+      longDescription: String(p.longDescription || ""),
+      benefits: (p.benefits as string | null) ?? null,
+      ingredients: (p.ingredients as string | null) ?? null,
+      nutrition: (p.nutrition as string | null) ?? null,
+      tags: (p.tags as string[]) || [],
+      categoryId: category?.id,
+      categoryName: category?.name,
     };
-  }, [productData, currentOutlet]);
+  }, [productData]);
 
   const isUnavailable = availability === "UNAVAILABLE";
   const normalizedRelatedProducts = useMemo(
@@ -74,13 +88,15 @@ export default function ProductDetailsPage() {
       ),
     [relatedProducts],
   );
+
   const cartItem = useMemo(
     () => items.find((i) => i.productId === product?.id),
     [items, product?.id],
   );
-  const isFav = product ? isFavorite(product.id) : false;
+  const quantityInCart = cartItem?.quantity || 0;
+  const cartDisabled = !currentOutlet?.id || isNoOutlet || isUnavailable;
 
-  const handleAddToCart = async () => {
+  const handleAddToCart = useCallback(async () => {
     if (!currentOutlet?.id) {
       toast.error("Please select a delivery location first.");
       return;
@@ -100,38 +116,70 @@ export default function ProductDetailsPage() {
       unitPrice: product.originalPrice,
       discountPrice: product.currentPrice,
     });
-  };
+  }, [currentOutlet, isNoOutlet, product, addItem]);
 
-  const handleUpdateQty = async (delta: number) => {
-    if (!product || !cartItem) return;
-    const newQty = cartItem.quantity + delta;
-    if (newQty <= 0) await removeItem(String(product.id));
-    else await updateItem(String(product.id), newQty);
-  };
+  const handleUpdateQty = useCallback(
+    async (delta: number) => {
+      if (!product || !cartItem) return;
+      const newQty = cartItem.quantity + delta;
+      if (newQty <= 0) await removeItem(String(product.id));
+      else await updateItem(String(product.id), newQty);
+    },
+    [product, cartItem, removeItem, updateItem],
+  );
 
-  const activeImageUrl = selectedImage || product?.mainImage || "/placeholder.jpg";
+  const breadcrumbItems = useMemo(() => {
+    const crumbs = [];
+    if (product?.categoryName) {
+      crumbs.push({
+        label: product.categoryName,
+        href: product.categoryId
+          ? `/category/${product.categoryId}`
+          : "/category",
+      });
+    }
+    if (product?.displayName) {
+      crumbs.push({ label: product.displayName });
+    }
+    return crumbs;
+  }, [product]);
 
   if (productLoading) {
     return (
-      <div className="min-h-screen bg-white flex flex-col">
+      <div className="flex min-h-screen flex-col bg-white">
         <Header />
-        <main className="customer-page-shell flex flex-grow flex-col items-center justify-center text-emerald-600">
-          <Loader2 className="w-10 h-10 animate-spin mb-4" />
-          <p className="font-semibold">Squeezing the details...</p>
+        <main className="customer-page-shell flex-grow">
+          <div className="mobile-container max-w-6xl">
+            <ProductDetailSkeleton />
+          </div>
         </main>
         <Footer />
       </div>
     );
   }
-
-  const quantityInCart = cartItem?.quantity || 0;
 
   if (productError || (!productLoading && !productData)) {
     return (
-      <div className="min-h-screen bg-white flex flex-col">
+      <div className="flex min-h-screen flex-col bg-white">
         <Header />
-        <main className="customer-page-shell flex flex-grow flex-col items-center justify-center px-4 text-center">
-          <p className="font-semibold text-slate-800">{productError ?? "Product not found."}</p>
+        <main className="customer-page-shell flex-grow">
+          <div className="mobile-container max-w-6xl ">
+            <Breadcrumbs items={[{ label: "Product" }]} />
+            <EmptyState
+              emoji="🔍"
+              title="Product not found"
+              description={
+                productError ??
+                "This product may have been removed or is unavailable."
+              }
+              primaryAction={{
+                label: "Browse Menu",
+                onClick: () => {
+                  window.location.href = "/menu";
+                },
+              }}
+            />
+          </div>
         </main>
         <Footer />
       </div>
@@ -139,250 +187,99 @@ export default function ProductDetailsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white font-sans flex flex-col">
+    <div className="flex min-h-screen flex-col bg-white">
       <Header />
 
-      <main className="customer-page-shell customer-page-shell--with-cart flex-grow pb-28 lg:pb-12">
-        <div className="mobile-container max-w-6xl">
-          {/* Breadcrumbs */}
-          <nav className="flex items-center gap-2 text-xs text-slate-500 font-medium mb-5 overflow-x-auto whitespace-nowrap">
-            <span className="hover:text-emerald-700 cursor-pointer transition-colors">Home</span> 
-            <ChevronRight size={12} />
-            <span className="text-emerald-700 font-semibold">{product?.displayName}</span>
-          </nav>
+      <main className="customer-page-shell flex-grow overflow-x-hidden">
+        <div className="mobile-container max-w-6xl pt-6 animate-fade-in-up">
+          <div
+            className={`grid grid-cols-1 items-start gap-6 lg:gap-10 ${layout.productDetailSplit}`}
+          >
+            {product ? (
+              <ProductGallery
+                name={product.displayName}
+                mainImage={product.mainImage}
+                gallery={product.gallery}
+              />
+            ) : null}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 items-start">
-            {currentOutlet?.name && (
-              <div className="md:col-span-2 inline-flex w-fit items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">
-                <MapPin size={14} />
-                {currentOutlet.name}
-              </div>
-            )}
-            {isUnavailable && (
-              <div className="md:col-span-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
-                {unavailableMessage ?? "This product is no longer available."}
-              </div>
-            )}
-            
-            {/* LEFT COLUMN: GALLERY */}
-            <div className="space-y-3">
-              <div className="relative w-full aspect-[4/3] sm:aspect-square max-h-[400px] bg-slate-50 rounded-2xl overflow-hidden border border-slate-100 flex items-center justify-center group mx-auto">
-                <img 
-                  src={activeImageUrl} 
-                  alt={product?.displayName} 
-                  className="w-full h-full object-contain p-4 transition-transform duration-700 group-hover:scale-105" 
-                />
-                
-                <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-                  {product?.trendState?.trending && (
-                    <span className="bg-emerald-600 text-white px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-sm">
-                      Trending
-                    </span>
-                  )}
-                  {product && product.percent > 0 && (
-                    <span className="bg-rose-500 text-white px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-sm">
-                      -{product.percent}% OFF
-                    </span>
-                  )}
-                </div>
-                
-                <button 
-                  className={`absolute top-3 right-3 w-9 h-9 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-200 transition-all hover:scale-110 ${isFav ? 'bg-rose-50 border-rose-200' : ''}`}
-                  onClick={() => isFav ? removeFromFavorites(product!.id) : addToFavorites(product!)}
+            <div className="flex min-w-0 flex-col gap-4">
+              <Breadcrumbs items={breadcrumbItems} className="mb-0" />
+
+              {isUnavailable ? (
+                <div
+                  className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900"
+                  role="status"
                 >
-                  <Heart size={18} className={`transition-colors ${isFav ? 'fill-rose-500 text-rose-500' : 'text-slate-500'}`} />
-                </button>
-              </div>
+                  {unavailableMessage ?? "This product is no longer available."}
+                </div>
+              ) : null}
 
-              {product && product.gallery.length > 0 && (
-                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                  {[product.mainImage, ...product.gallery].map((img, idx) => (
-                    <button 
-                      key={idx} 
-                      className={`relative w-14 h-14 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all ${activeImageUrl === img ? 'border-emerald-600' : 'border-transparent hover:border-slate-300'}`}
-                      onClick={() => setSelectedImage(img)}
-                    >
-                      <img src={img} alt={`thumb-${idx}`} className="w-full h-full object-cover" />
-                    </button>
+              <h1 className={typography.pageTitle}>{product?.displayName}</h1>
+
+              {product?.shortDescription ? (
+                <p className={typography.body}>{product.shortDescription}</p>
+              ) : null}
+
+              {product && product.tags.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {product.tags.map((tag) => (
+                    <span key={tag} className={badgeStyles.tag}>
+                      {tag.replace(/_/g, " ")}
+                    </span>
                   ))}
                 </div>
-              )}
-            </div>
+              ) : null}
 
-            {/* RIGHT COLUMN: DETAILS */}
-            <div className="flex flex-col">
-               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 leading-tight mb-2">
-                 {product?.displayName}
-               </h1>
+              {product ? (
+                <ProductPriceBlock
+                  currentPrice={product.currentPrice}
+                  originalPrice={product.originalPrice}
+                  hasDiscount={product.hasDiscount}
+                  discountPercent={product.percent}
+                  outletName={currentOutlet?.name}
+                />
+              ) : null}
 
-               <div className="flex flex-wrap items-center gap-2 mb-4">
-                  {product?.rating && (
-                      <div className="flex items-center gap-1 bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full text-xs font-bold border border-amber-100">
-                        <Star size={12} className="fill-amber-500 text-amber-500" /> 
-                        <span>{product.rating.average || "New"}</span>
-                        <span className="text-amber-600/70 font-medium ml-1">({product.rating.count || 0})</span>
-                      </div>
-                  )}
-                  {product?.unitLabel && (
-                      <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md text-xs font-semibold">
-                        {product.unitLabel}
-                      </span>
-                  )}
-               </div>
+              {!isUnavailable && product ? (
+                <CompactAddToCart
+                  variant="detail"
+                  quantityInCart={quantityInCart}
+                  disabled={cartDisabled}
+                  disabledLabel="Location Not Serviceable"
+                  onAdd={() => void handleAddToCart()}
+                  onUpdateQty={(delta) => void handleUpdateQty(delta)}
+                />
+              ) : null}
 
-               <div className="mb-5 pb-5 border-b border-slate-100">
-                  <div className="flex items-baseline gap-2">
-                      <span className="text-3xl font-extrabold text-emerald-600">₹{product?.currentPrice}</span>
-                      {product && product.savings > 0 && (
-                        <>
-                          <span className="text-base text-slate-400 line-through font-medium">₹{product.originalPrice}</span>
-                          <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.5 rounded">
-                            Save ₹{product.savings}
-                          </span>
-                        </>
-                      )}
-                  </div>
-                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">MRP Inclusive of all taxes</span>
-               </div>
+              <ProductFeatureGrid />
 
-               <p className="text-sm text-slate-600 leading-relaxed mb-6 line-clamp-3">
-                 {product?.shortDescription}
-               </p>
+              {product ? (
+                <ProductLongDescription description={product.longDescription} />
+              ) : null}
 
-               {/* Add to Cart Actions - desktop inline */}
-               {!isUnavailable && (
-               <div className="mb-8 hidden w-full justify-center md:flex">
-                  {quantityInCart > 0 ? (
-                    <div className="flex items-center justify-between bg-emerald-600 rounded-xl p-1 w-full max-w-[160px] h-[48px] shadow-md">
-                      <button 
-                        onClick={() => handleUpdateQty(-1)}
-                        className="w-10 h-full bg-white/10 rounded-lg text-white hover:bg-white/20 flex items-center justify-center transition-colors"
-                      >
-                        <Minus size={16} strokeWidth={2.5}/>
-                      </button>
-                      <div className="flex flex-col items-center px-2">
-                        <span className="text-base font-bold text-white leading-none">{quantityInCart}</span>
-                        <span className="text-[9px] text-emerald-100 font-medium">in cart</span>
-                      </div>
-                      <button 
-                        onClick={() => handleUpdateQty(1)}
-                        disabled={!currentOutlet || isNoOutlet}
-                        className="w-10 h-full bg-white/10 rounded-lg text-white hover:bg-white/20 flex items-center justify-center transition-colors disabled:opacity-50"
-                      >
-                        <Plus size={16} strokeWidth={2.5}/>
-                      </button>
-                    </div>
-                  ) : (
-                    <button 
-                      onClick={handleAddToCart}
-                      disabled={!currentOutlet || isNoOutlet}
-                      className="w-full max-w-[320px] bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white h-[48px] rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.98]"
-                    >
-                      <ShoppingBag size={18} />
-                      {!currentOutlet || isNoOutlet
-                        ? "Location Not Serviceable"
-                        : `Add to Order • ₹${product?.currentPrice}`}
-                    </button>
-                  )}
-               </div>
-               )}
-
-               {/* Features Grid */}
-               <div className="grid grid-cols-3 gap-2 mb-8">
-                  <FeatureBox icon={<Leaf size={16} className="text-emerald-700"/>} bg="bg-emerald-50" title="100% Natural" subtitle="Farm fresh" />
-                  <FeatureBox icon={<Truck size={16} className="text-blue-700"/>} bg="bg-blue-50" title="Fast Delivery" subtitle="30-45 mins" />
-                  <FeatureBox icon={<ShieldCheck size={16} className="text-purple-700"/>} bg="bg-purple-50" title="Hygienic" subtitle="Safe" />
-               </div>
-
-               {/* About Item */}
-               {product?.longDescription && (
-                   <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                      <h3 className="text-xs font-bold text-slate-900 mb-2 uppercase tracking-wider">About this item</h3>
-                      <p className="text-slate-600 leading-snug text-xs">
-                        {product.longDescription}
-                      </p>
-                   </div>
-               )}
+              {product ? (
+                <ProductDetailAccordion
+                  ingredients={product.ingredients}
+                  benefits={product.benefits}
+                  nutrition={product.nutrition}
+                />
+              ) : null}
             </div>
           </div>
 
-          {isUnavailable && normalizedRelatedProducts.length > 0 && (
-            <section className="mt-12 border-t border-slate-100 pt-10">
-              <h2 className="mb-6 text-xl font-bold text-slate-900">
-                Related Products
-              </h2>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
-                {normalizedRelatedProducts.map((relatedProduct) => (
-                  <ProductCard
-                    key={relatedProduct.id}
-                    product={relatedProduct}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
+          {normalizedRelatedProducts.length > 0 ? (
+            <RelatedProductsCarousel
+              title={
+                isUnavailable ? "You might also like" : "Related Products"
+              }
+              products={normalizedRelatedProducts}
+            />
+          ) : null}
         </div>
       </main>
 
-      {/* Mobile sticky add-to-cart bar */}
-      {!isUnavailable && (
-      <div
-        className="fixed inset-x-0 z-[800] border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-lg md:hidden"
-        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
-      >
-        <div className="mx-auto flex max-w-lg items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold text-slate-500">Total</p>
-            <p className="text-lg font-extrabold text-emerald-600">₹{product?.currentPrice}</p>
-          </div>
-          {quantityInCart > 0 ? (
-            <div className="flex h-12 flex-1 max-w-[180px] items-center justify-between rounded-xl bg-emerald-600 p-1 shadow-md">
-              <button
-                onClick={() => handleUpdateQty(-1)}
-                className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-white touch-target"
-                aria-label="Decrease quantity"
-              >
-                <Minus size={16} strokeWidth={2.5} />
-              </button>
-              <span className="text-base font-bold text-white">{quantityInCart}</span>
-              <button
-                onClick={() => handleUpdateQty(1)}
-                disabled={!currentOutlet || isNoOutlet}
-                className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-white touch-target disabled:opacity-50"
-                aria-label="Increase quantity"
-              >
-                <Plus size={16} strokeWidth={2.5} />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={handleAddToCart}
-              disabled={!currentOutlet || isNoOutlet}
-              className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-sm font-bold text-white shadow-md transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-300 touch-target"
-            >
-              <ShoppingBag size={18} />
-              {!currentOutlet || isNoOutlet ? "Location Not Serviceable" : "Add to Cart"}
-            </button>
-          )}
-        </div>
-      </div>
-      )}
-
       <Footer />
-    </div>
-  );
-}
-
-function FeatureBox({ icon, bg, title, subtitle }: { icon: any, bg: string, title: string, subtitle: string }) {
-  return (
-    <div className="flex items-center gap-2 p-2 rounded-lg border border-slate-100 bg-white">
-      <div className={`w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 ${bg}`}>
-        {icon}
-      </div>
-      <div className="flex flex-col min-w-0">
-        <strong className="text-[10px] font-bold text-slate-900 truncate">{title}</strong>
-        <span className="text-[9px] text-slate-500 font-medium truncate">{subtitle}</span>
-      </div>
     </div>
   );
 }
