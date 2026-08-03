@@ -114,8 +114,11 @@ function ProductCardComponent({ product }: { product: ProductListItem }) {
   const isAddDisabled = mrp <= 0 || !currentOutlet?.id;
 
   return (
+    // h-full + flex-col: card stretches to grid row height uniformly
     <article className="flex h-full flex-col overflow-hidden rounded-card border border-surface-border bg-white shadow-card">
-      <Link href={`/products/${slug}`} className="flex flex-col no-underline">
+      {/* flex-1: link area grows; price row stays pinned below via sibling mt-auto */}
+      <Link href={`/products/${slug}`} className="flex min-h-0 flex-1 flex-col no-underline">
+        {/* shrink-0 + token height: every image slot is identical */}
         <div
           className={cn(
             "relative shrink-0 overflow-hidden bg-surface-unit",
@@ -162,68 +165,69 @@ function ProductCardComponent({ product }: { product: ProductListItem }) {
 
           {isTrending ? (
             <span
-  className="absolute bottom-1.5 left-1.5 z-10 inline-flex items-center gap-1 rounded-md bg-yellow-400 px-1.5 py-0.5 text-[10px] font-bold text-yellow-950"
->
-  <TrendingUp size={10} aria-hidden />
-  Trending
-</span>
+              className="absolute bottom-1.5 left-1.5 z-10 inline-flex items-center gap-1 rounded-md bg-yellow-400 px-1.5 py-0.5 text-[10px] font-bold text-yellow-950"
+            >
+              <TrendingUp size={10} aria-hidden />
+              Trending
+            </span>
           ) : null}
         </div>
 
-        <div className="flex flex-1 flex-col gap-1 px-2 pt-2">
+        {/* flex-1 flex-col: distributes vertical space; fixed min-heights prevent content-driven jumps */}
+        <div className="flex min-h-0 flex-1 flex-col gap-1 px-2 pt-2">
+          {/* min-h-[2.75rem]: reserves exactly 2 lines (text-base + leading-snug) */}
           <h3
-            className="line-clamp-2 text-base font-bold leading-snug text-ink-primary"
+            className="line-clamp-2 min-h-[2.75rem] text-base font-bold leading-snug text-ink-primary"
             title={name}
           >
             {name}
           </h3>
 
-          {description ? (
-            <p className="line-clamp-1 text-[11px] text-ink-muted" title={description}>
-              {description}
-            </p>
-          ) : (
-            <div className="h-[1rem]" aria-hidden />
-          )}
+          {/* min-h-4: always one description line slot; line-clamp preserved */}
+          <p
+            className="line-clamp-1 min-h-4 text-[11px] text-ink-muted"
+            title={description || undefined}
+          >
+            {description || "\u00A0"}
+          </p>
 
-          {tags.length > 0 ? (
-            <div className="flex flex-wrap gap-1">
-              {tags.slice(0, 2).map((tag) => (
-                <span
-  key={tag}
-  className="inline-flex h-4 items-center rounded-full bg-emerald-50 px-1.5 text-[8px] font-semibold text-emerald-900"
->
-  {tag.replace(/_/g, " ")}
-</span>
-              ))}
-            </div>
-          ) : null}
+          {/* min-h-4: tag row height fixed whether 0, 1, or 2 tags */}
+          <div className="flex min-h-4 flex-wrap items-start gap-1">
+            {tags.slice(0, 2).map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex h-4 items-center rounded-full bg-emerald-50 px-1.5 text-[8px] font-semibold text-emerald-900"
+              >
+                {tag.replace(/_/g, " ")}
+              </span>
+            ))}
+          </div>
 
-          {(unitLabel || currentOutlet?.name) && (
-            <div className="flex items-center gap-1 text-[10px] font-medium text-ink-muted">
-              {unitLabel ? <span>{unitLabel}</span> : null}
-              {unitLabel && currentOutlet?.name ? (
-                <span className="text-surface-border">|</span>
-              ) : null}
-              {currentOutlet?.name ? (
-                <span className="inline-flex min-w-0 items-center gap-0.5 font-semibold text-brand-outlet">
-                  <MapPin size={10} className="shrink-0" aria-hidden />
-                  <span className="truncate">{currentOutlet.name}</span>
-                </span>
-              ) : null}
-            </div>
-          )}
+          {/* min-h-4: unit | outlet row always same height */}
+          <div className="flex min-h-4 items-center gap-1 text-[10px] font-medium text-ink-muted">
+            {unitLabel ? <span className="truncate">{unitLabel}</span> : null}
+            {unitLabel && currentOutlet?.name ? (
+              <span className="shrink-0 text-surface-border">|</span>
+            ) : null}
+            {currentOutlet?.name ? (
+              <span className="inline-flex min-w-0 items-center gap-0.5 font-semibold text-brand-outlet">
+                <MapPin size={10} className="shrink-0" aria-hidden />
+                <span className="truncate">{currentOutlet.name}</span>
+              </span>
+            ) : null}
+          </div>
         </div>
       </Link>
 
-      <div className="mt-auto flex items-center justify-between gap-1.5 px-2 pb-2 pt-1.5">
+      {/* shrink-0 + mt-auto: price/ADD row aligned to card bottom across the grid */}
+      <div className="mt-auto flex shrink-0 items-center justify-between gap-1.5 px-2 pb-2 pt-1.5">
         <ProductPriceRow
           sellingPrice={sellingPrice}
           mrp={mrp}
           hasDiscount={hasDiscount}
           discountPercent={discountPercent}
           size="card"
-          className="flex-1"
+          className="min-w-0 flex-1"
         />
 
         {quantity === 0 ? (
