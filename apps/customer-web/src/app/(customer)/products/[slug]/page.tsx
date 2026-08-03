@@ -65,7 +65,11 @@ export default function ProductDetailsPage() {
 
   const isUnavailable = availability === "UNAVAILABLE";
   const normalizedRelatedProducts = useMemo(
-    () => normalizeProductList(relatedProducts, []),
+    () =>
+      normalizeProductList(
+        relatedProducts as unknown as Record<string, unknown>[],
+        [],
+      ),
     [relatedProducts],
   );
   const cartItem = useMemo(

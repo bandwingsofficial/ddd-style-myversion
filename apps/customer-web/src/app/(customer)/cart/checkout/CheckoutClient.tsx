@@ -14,6 +14,7 @@ import { ArrowLeft, ShieldCheck, Loader2, MapPin, ShoppingCart } from "lucide-re
 import Header from "@/components/customer/Header";
 import { OrderSummaryBreakdown } from "@/features/orders/components/OrderSummaryBreakdown";
 import { getProductImageUrl } from "@/lib/image-url";
+import { savePaymentSession } from "@/features/checkout/payment-session.util";
 
 declare global {
   interface Window {
@@ -28,6 +29,7 @@ export default function CheckoutPage() {
 
   const [summary, setSummary] = useState<CheckoutSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [initializing, setInitializing] = useState(true);
@@ -79,6 +81,7 @@ export default function CheckoutPage() {
     }
 
     void loadSummary(addressId, currentOutletId);
+    void checkActiveCheckout(currentOutletId);
   }, [
     initializing,
     addressId,
@@ -88,13 +91,31 @@ export default function CheckoutPage() {
     router,
   ]);
 
+  const checkActiveCheckout = async (outletId: string) => {
+    try {
+      const active = await CheckoutApi.getActiveCheckout(outletId);
+      if (active && active.status === "PAYMENT_PENDING") {
+        setPendingOrderModal({
+          isOpen: true,
+          orderId: active.orderId,
+          orderNumber: active.orderNumber,
+        });
+      }
+    } catch {
+      // non-blocking
+    }
+  };
+
   const loadSummary = async (addrId: string, outId: string) => {
     try {
       setLoading(true);
+      setLoadError(null);
       const data = await CheckoutApi.getSummary(addrId, outId);
       setSummary(data);
     } catch (error) {
       console.error("Summary Error:", error);
+      setLoadError("Could not load checkout summary. Please try again.");
+      setSummary(null);
     } finally {
       setLoading(false);
     }
@@ -151,6 +172,16 @@ export default function CheckoutPage() {
     }
 
     const data = checkoutData;
+
+    savePaymentSession({
+      orderId: data.orderId,
+      orderNumber: data.orderNumber,
+      paymentId: data.paymentId,
+      addressId: addressId ?? undefined,
+      amount: String(data.grandTotal),
+      startedAt: Date.now(),
+    });
+
     const razorpayKey = data.key ?? process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
 
     console.log("[Razorpay Checkout]", {
@@ -218,10 +249,15 @@ export default function CheckoutPage() {
     rzp.on("payment.failed", function (response: any) {
       console.error("[Razorpay] Payment failed:", response);
       closeCheckout();
-      toast.error(
-        response?.error?.description ||
-          "Payment failed. Please try again.",
-      );
+      const params = new URLSearchParams({
+        orderId: data.orderId,
+        orderNumber: data.orderNumber,
+        paymentId: data.paymentId,
+        addressId: addressId ?? "",
+        amount: String(data.grandTotal),
+        failed: "true",
+      });
+      router.replace(`/payment/process?${params.toString()}`);
     });
 
     setCheckoutOpen(true);
@@ -234,13 +270,33 @@ export default function CheckoutPage() {
     }
   };
 
-  if (initializing || loading || !summary) {
+  if (initializing || loading) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center gap-4 bg-slate-50">
-        <Loader2 className="animate-spin text-emerald-600 w-10 h-10" />
-        <p className="text-slate-500 font-medium">
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-slate-50">
+        <Loader2 className="h-10 w-10 animate-spin text-emerald-600" />
+        <p className="font-medium text-slate-500">
           {initializing ? "Syncing data..." : "Preparing your checkout..."}
         </p>
+      </div>
+    );
+  }
+
+  if (loadError || !summary) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC]">
+        <Header />
+        <main className="customer-page-shell customer-page-shell--no-nav mobile-container flex max-w-lg flex-col items-center justify-center py-16 text-center">
+          <p className="mb-4 font-medium text-slate-600">
+            {loadError ?? "Unable to load checkout."}
+          </p>
+          <button
+            type="button"
+            onClick={() => router.replace("/cart")}
+            className="touch-target rounded-xl bg-emerald-600 px-6 py-3 font-bold text-white"
+          >
+            Back to Cart
+          </button>
+        </main>
       </div>
     );
   }

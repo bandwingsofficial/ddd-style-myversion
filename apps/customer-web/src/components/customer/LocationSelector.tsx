@@ -19,13 +19,20 @@ import { useDeliveryAppState } from "@/features/location/hooks/useDeliveryAppSta
 import { HeaderLocationShimmer } from "@/components/ui/Shimmer";
 import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
 
-export default function LocationSelector() {
+interface LocationSelectorProps {
+  variant?: "mobile" | "desktop";
+}
+
+export default function LocationSelector({
+  variant = "desktop",
+}: LocationSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { showShimmer } = useDeliveryAppState();
   const addressLabel = useLocationStore((state) => state.addressLabel);
+  const formattedAddress = useLocationStore((state) => state.formattedAddress);
   const openLocationSheet = useLocationOrchestratorStore(
     (state) => state.openLocationSheet,
   );
@@ -33,6 +40,12 @@ export default function LocationSelector() {
     (state) => state.onLocationChanged,
   );
   const { isAuthenticated, sessionChecked } = useCustomerAuthStore();
+
+  const locality = addressLabel || "Select Location";
+  const secondaryLine =
+    formattedAddress && formattedAddress !== addressLabel
+      ? formattedAddress
+      : null;
 
   useEffect(() => {
     if (!isOpen || !sessionChecked || !isAuthenticated) {
@@ -74,31 +87,47 @@ export default function LocationSelector() {
     return <HeaderLocationShimmer />;
   }
 
+  const isMobile = variant === "mobile";
+
   return (
-    <div className="relative z-50" ref={dropdownRef}>
-      <div
-        className="group flex cursor-pointer items-center gap-2 rounded-lg p-1 transition-colors hover:bg-slate-50"
+    <div className={`relative z-50 ${isMobile ? "w-full min-w-0" : ""}`} ref={dropdownRef}>
+      <button
+        type="button"
+        className={`group flex w-full cursor-pointer items-center gap-2 rounded-lg transition-colors hover:bg-slate-50 ${
+          isMobile ? "min-w-0 px-1 py-0.5 text-left" : "p-1"
+        }`}
         onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-label={`Deliver to ${locality}`}
       >
-        <MapPin size={20} className="flex-shrink-0 text-emerald-600" />
-        <div className="flex flex-col">
-          <span className="mb-0.5 text-[10px] font-bold uppercase leading-none text-slate-400 group-hover:text-emerald-600">
+        <MapPin size={isMobile ? 18 : 20} className="shrink-0 text-emerald-600" />
+        <div className="min-w-0 flex-1">
+          <span className="mb-0.5 block text-[10px] font-bold uppercase leading-none text-slate-400 group-hover:text-emerald-600">
             Deliver to
           </span>
-          <div className="flex items-center gap-1">
-            <span className="max-w-[260px] truncate text-sm font-bold leading-none text-slate-700">
-              {addressLabel}
+          <div className="flex min-w-0 items-center gap-1">
+            <span
+              className={`min-w-0 flex-1 truncate font-bold leading-tight text-slate-700 ${
+                isMobile ? "text-sm" : "max-w-[min(18rem,42vw)] text-sm"
+              }`}
+            >
+              {locality}
             </span>
             <ChevronDown
               size={14}
-              className={`text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
+              className={`shrink-0 text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
             />
           </div>
+          {secondaryLine && !isMobile && (
+            <span className="mt-0.5 block max-w-[min(20rem,46vw)] truncate text-[11px] leading-tight text-slate-500">
+              {secondaryLine}
+            </span>
+          )}
         </div>
-      </div>
+      </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-12 w-80 origin-top-left animate-in fade-in slide-in-from-top-2 rounded-xl border border-slate-100 bg-white p-2 shadow-xl">
+        <div className={`absolute top-[calc(100%+0.35rem)] z-[1100] w-80 max-w-[calc(100vw-1.5rem)] origin-top-left animate-in fade-in slide-in-from-top-2 rounded-xl border border-slate-100 bg-white p-2 shadow-xl ${isMobile ? "left-0" : "left-0"}`}>
           <button
             type="button"
             onClick={() => {
@@ -165,7 +194,7 @@ export default function LocationSelector() {
                           <MapPin size={16} />
                         )}
                       </div>
-                      <div className="flex-1 overflow-hidden">
+                      <div className="min-w-0 flex-1 overflow-hidden">
                         <div className="truncate text-sm font-bold text-slate-700">
                           {address.label}
                         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -19,25 +19,40 @@ import { useCustomerSession } from "@/features/customer-auth/hooks/useCustomerSe
 import { useLogout } from "@/features/customer-auth/hooks/useLogout";
 import { useCartStore } from "@/features/cart/cart.store"; 
 import LocationSelector from "./LocationSelector";
+import { useHeaderOffset } from "@/hooks/useHeaderOffset";
 
 export default function Header() {
   const router = useRouter();
+  const headerRef = useRef<HTMLElement>(null);
   const { isLoggedIn } = useCustomerSession();
   const logout = useLogout();
-  const [scrolled, setScrolled] = useState(false);
+  const [announcementHidden, setAnnouncementHidden] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState(""); 
 
   const { items } = useCartStore();
   const cartItemCount = items?.reduce((acc, item) => acc + item.quantity, 0) || 0;
 
+  useHeaderOffset(headerRef);
+
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 10);
-    window.addEventListener("scroll", handleScroll);
+    let ticking = false;
+
+    const handleScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const scrollY = window.scrollY;
+        setAnnouncementHidden(scrollY > 10);
+        ticking = false;
+      });
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Prevent body scroll when mobile menu is open
   useEffect(() => {
     if (mobileMenuOpen) {
       document.body.style.overflow = "hidden";
@@ -57,7 +72,7 @@ export default function Header() {
     ? [...baseLinks, { name: "Orders", href: "/orders" }] 
     : baseLinks;
 
-  const submitSearch = (value: string) => {
+  const submitSearch = useCallback((value: string) => {
     const trimmed = value.trim();
     if (!trimmed) {
       router.push("/search");
@@ -65,67 +80,66 @@ export default function Header() {
     }
     router.push(`/menu?search=${encodeURIComponent(trimmed)}`);
     setMobileMenuOpen(false);
-  };
+  }, [router]);
 
   return (
     <>
       <header 
-        className={`fixed top-0 left-0 right-0 z-[1000] backdrop-blur-md transition-all duration-400 ease-[cubic-bezier(0.4,0,0.2,1)] border-b border-white/30 flex flex-col
-        ${scrolled ? "shadow-[0_10px_30px_-10px_rgba(0,0,0,0.08)] bg-white/95" : "bg-white/90"}`}
+        ref={headerRef}
+        className="fixed top-0 left-0 right-0 z-[1000] flex flex-col border-b border-slate-200/80 bg-white/95 shadow-[0_4px_20px_-8px_rgba(0,0,0,0.08)] backdrop-blur-md"
+        style={{ paddingTop: "var(--safe-top, env(safe-area-inset-top, 0px))" }}
       >
-        {/* TOP BAR */}
+        {/* Announcement — hides on scroll down, returns at top */}
         <div 
-          className={`bg-[linear-gradient(90deg,#166534,#22c55e,#166534)] bg-[length:200%_auto] animate-[shimmer_12s_linear_infinite] w-full flex justify-center transition-all duration-400 group/topbar
-          ${scrolled ? "h-0 opacity-0 overflow-hidden" : "h-[36px] opacity-100"}`}
+          className={`w-full overflow-hidden transition-[height,opacity] duration-300 ease-out ${
+            announcementHidden ? "h-0 opacity-0" : "h-9 opacity-100"
+          }`}
+          aria-hidden={announcementHidden}
         >
-          <div className="max-w-[1440px] w-full px-4 md:px-6 flex items-center text-white text-[0.8rem] font-semibold tracking-wide">
-            <div className="overflow-hidden whitespace-nowrap relative flex-1 [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
-              <div className="inline-block animate-[marquee_20s_linear_infinite] pl-full font-medium tracking-[0.5px] group-hover/topbar:[animation-play-state:paused]">
-  🌱 Fresh, Hygienic & Natural Experience.{" "}
-  <span className="opacity-80">Order Fresh Now!</span>
-  &nbsp;&nbsp;&nbsp; 🥥 Fresh Green Coconut Available
-  &nbsp;&nbsp;&nbsp; ⚡ Freshly Prepared & Delivered in 35 mins
-</div>
+          <div className="flex h-9 w-full items-center justify-center bg-[linear-gradient(90deg,#166534,#22c55e,#166534)] bg-[length:200%_auto] animate-[shimmer_12s_linear_infinite]">
+            <div className="max-w-[1440px] w-full px-4 md:px-6 flex items-center text-white text-[0.75rem] font-semibold tracking-wide">
+              <div className="overflow-hidden whitespace-nowrap relative flex-1 [mask-image:linear-gradient(to_right,transparent,black_10%,black_90%,transparent)]">
+                <div className="inline-block animate-[marquee_20s_linear_infinite] pl-full font-medium tracking-[0.5px]">
+                  🌱 Fresh, Hygienic & Natural Experience.{" "}
+                  <span className="opacity-80">Order Fresh Now!</span>
+                  &nbsp;&nbsp;&nbsp; 🥥 Fresh Green Coconut Available
+                  &nbsp;&nbsp;&nbsp; ⚡ Freshly Prepared & Delivered in 35 mins
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* MOBILE LOCATION BAR (redundant "Deliver to:" label removed — LocationSelector already renders the label + address) */}
-        <div className={`sm:hidden w-full bg-gradient-to-r from-slate-50 to-slate-100/60 border-b border-slate-200/70 px-4 flex items-center transition-all duration-400 ${scrolled ? "h-0 opacity-0 overflow-hidden py-0 my-0 border-none" : "h-[48px] opacity-100 py-2.5 my-0.5"}`}>
-          <div className="w-full flex items-center gap-2 px-0.5">
-            <LocationSelector />
-          </div>
+        {/* Mobile location bar — ALWAYS visible, never collapses */}
+        <div className="sm:hidden w-full border-b border-slate-200/70 bg-gradient-to-r from-slate-50 to-slate-100/60 px-3 py-2">
+          <LocationSelector variant="mobile" />
         </div>
 
-        {/* MAIN NAV */}
-        <div className={`w-full transition-all duration-400 flex items-center ${scrolled ? "h-[65px]" : "h-[75px] md:h-[85px]"}`}>
-          <div className="max-w-[1440px] mx-auto w-full h-full px-4 md:px-6 flex items-center justify-between gap-4">
+        {/* Main navigation — fixed height, no collapse */}
+        <div className="flex h-[4.5rem] w-full items-center md:h-[5rem]">
+          <div className="mx-auto flex h-full w-full max-w-[1440px] items-center justify-between gap-3 px-4 md:px-6">
             
-            {/* LEFT: Logo & Navigation triggers */}
-            <div className="flex items-center gap-4 xl:gap-8">
-              {/* Hamburger Button (Triggers Mobile Menu Drawer) */}
+            <div className="flex min-w-0 items-center gap-3 xl:gap-8">
               <button 
                 onClick={() => setMobileMenuOpen(true)}
-                className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-700 transition-colors hover:bg-green-50 hover:text-green-600 lg:hidden touch-target"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-700 transition-colors hover:bg-green-50 hover:text-green-600 lg:hidden touch-target"
                 aria-label="Open Menu"
               >
                 <Menu size={24} strokeWidth={2.5} />
               </button>
 
-              <Link href="/home" className="shrink-0 flex items-center transition-all duration-300 hover:scale-105 group">
+              <Link href="/home" className="group flex shrink-0 items-center transition-transform duration-200 hover:scale-[1.02]">
                 <Image 
                   src="/images/Canten1.png" 
                   alt="Cane & Tender" 
                   width={140} 
                   height={50} 
-                  className={`object-contain transition-all duration-400 w-[108px] sm:w-[120px] md:w-[170px]
-                  ${scrolled ? "max-h-[40px] md:max-h-[45px]" : "max-h-[46px] md:max-h-[60px]"}`}
+                  className="h-10 w-auto max-h-10 object-contain sm:h-11 md:h-12 md:max-h-12"
                   priority 
                   unoptimized={true} 
                 />
               </Link>
 
-              {/* Nav Links (Desktop Only) */}
               <nav className="hidden lg:flex items-center gap-1 xl:gap-2">
                 {navLinks.map((link) => (
                   <Link 
@@ -134,16 +148,15 @@ export default function Header() {
                     className="relative px-3 py-2 text-[0.95rem] font-semibold text-slate-600 transition-colors duration-300 hover:text-green-900 group/link"
                   >
                     <ShinyText text={link.name} />
-                    <span className="absolute bottom-0 left-1/2 w-0 h-[2px] bg-green-500 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] -translate-x-1/2 rounded-full group-hover/link:w-[80%]" />
+                    <span className="absolute bottom-0 left-1/2 h-[2px] w-0 -translate-x-1/2 rounded-full bg-green-500 transition-all duration-300 ease-out group-hover/link:w-[80%]" />
                   </Link>
                 ))}
               </nav>
             </div>
 
-            {/* MIDDLE: Search Section */}
             <div className="hidden md:flex flex-1 justify-center max-w-[360px] lg:max-w-[400px]">
               <form
-                className="w-full bg-slate-100 rounded-2xl py-[8px] md:py-[10px] px-2 flex items-center border border-transparent transition-all duration-300 hover:bg-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] focus-within:bg-white focus-within:border-green-500 focus-within:shadow-[0_0_0_3px_rgba(34,197,94,0.15)] group/search"
+                className="group/search flex w-full items-center rounded-2xl border border-transparent bg-slate-100 px-2 py-2 transition-all duration-300 hover:bg-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] focus-within:border-green-500 focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(34,197,94,0.15)]"
                 onSubmit={(event) => {
                   event.preventDefault();
                   submitSearch(searchQuery);
@@ -158,31 +171,30 @@ export default function Header() {
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="Search Products..." 
-                  className="bg-transparent border-none outline-none text-[0.92rem] w-full text-slate-600 font-medium pl-2.5 placeholder:text-slate-400" 
+                  className="w-full border-none bg-transparent pl-2.5 text-[0.92rem] font-medium text-slate-600 outline-none placeholder:text-slate-400" 
                 />
               </form>
             </div>
 
-            {/* RIGHT ACTIONS */}
-            <div className="flex items-center gap-1 sm:gap-3 lg:gap-4">
-              <div className="hidden sm:flex relative items-center pr-2 border-r border-slate-200">
-                <LocationSelector />
+            <div className="flex shrink-0 items-center gap-1 sm:gap-2 lg:gap-3">
+              <div className="relative hidden items-center border-r border-slate-200 pr-2 sm:flex">
+                <LocationSelector variant="desktop" />
               </div>
 
-              <div className="flex items-center gap-0.5 sm:gap-1 md:gap-2">
+              <div className="flex items-center gap-1 sm:gap-1.5">
                 <Link href="/search" className="flex h-11 w-11 items-center justify-center rounded-full text-slate-700 transition-all duration-300 hover:bg-green-50 hover:text-green-500 md:hidden touch-target" aria-label="Search">
                   <Search size={20} strokeWidth={2.2} />
                 </Link>
 
                 <Link href="/favorites" className="flex h-11 w-11 items-center justify-center rounded-full text-slate-700 transition-all duration-300 hover:bg-green-50 hover:text-green-500 touch-target" aria-label="Wishlist">
-                  <Heart size={20} strokeWidth={2.2} className="group-hover/fav:animate-[heart-pop_0.4s_ease-in-out]" />
+                  <Heart size={20} strokeWidth={2.2} />
                 </Link>
                 
                 <Link href="/cart" className="flex h-11 w-11 items-center justify-center rounded-full text-slate-700 transition-all duration-300 hover:bg-green-50 hover:text-green-500 touch-target" aria-label="Cart">
                   <div className="relative flex items-center">
-                    <ShoppingCart size={20} strokeWidth={2.2} className="group-hover/cart:animate-bounce" />
+                    <ShoppingCart size={20} strokeWidth={2.2} />
                     {cartItemCount > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 bg-orange-500 text-white text-[10px] font-extrabold w-[17px] h-[17px] rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                      <span className="absolute -top-1.5 -right-1.5 flex h-[17px] w-[17px] items-center justify-center rounded-full border-2 border-white bg-orange-500 text-[10px] font-extrabold text-white shadow-sm">
                         {cartItemCount}
                       </span>
                     )}
@@ -197,30 +209,29 @@ export default function Header() {
                   <User size={20} strokeWidth={2.2} />
                 </Link>
 
-                {/* User Dropdown (Desktop Only) */}
                 <div className="hidden lg:block">
                   {isLoggedIn ? (
-                    <div className="relative group/user">
-                      <div className="w-[40px] h-[40px] flex items-center justify-center rounded-full text-slate-700 transition-all duration-300 hover:bg-green-50 hover:text-green-500 cursor-pointer">
+                    <div className="group/user relative">
+                      <div className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-slate-700 transition-all duration-300 hover:bg-green-50 hover:text-green-500">
                         <User size={20} strokeWidth={2.2} />
                       </div>
                       
-                      <div className="absolute top-[50px] right-0 w-[250px] bg-white rounded-2xl shadow-[0_20px_40px_-10px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.05)] p-2 opacity-0 invisible translate-y-[15px] transition-all duration-250 ease-out group-hover/user:opacity-100 group-hover/user:visible group-hover/user:translate-y-0 z-[1100]">
-                        <div className="px-4 pt-3 pb-2">
+                      <div className="invisible absolute right-0 top-[50px] z-[1100] w-[250px] translate-y-[15px] rounded-2xl border border-slate-100 bg-white p-2 opacity-0 shadow-[0_20px_40px_-10px_rgba(0,0,0,0.12)] transition-all duration-250 ease-out group-hover/user:visible group-hover/user:translate-y-0 group-hover/user:opacity-100">
+                        <div className="px-4 pb-2 pt-3">
                           <p className="m-0 text-sm font-bold text-slate-900">Hello there!</p>
                           <p className="m-0 text-[0.75rem] text-slate-500">Welcome back</p>
                         </div>
                         <hr className="my-1.5 border-slate-100" />
-                        <Link href="/profile" className="flex items-center gap-3 px-4 py-2 rounded-lg text-slate-600 text-[0.85rem] hover:bg-green-50 hover:text-green-500 transition-all">
+                        <Link href="/profile" className="flex items-center gap-3 rounded-lg px-4 py-2 text-[0.85rem] text-slate-600 transition-all hover:bg-green-50 hover:text-green-500">
                           <User size={15} /> Profile
                         </Link>
-                        <Link href="/orders" className="flex items-center gap-3 px-4 py-2 rounded-lg text-slate-600 text-[0.85rem] hover:bg-green-50 hover:text-green-500 transition-all">
+                        <Link href="/orders" className="flex items-center gap-3 rounded-lg px-4 py-2 text-[0.85rem] text-slate-600 transition-all hover:bg-green-50 hover:text-green-500">
                           <Package size={15} /> My Orders
                         </Link>
                         <hr className="my-1.5 border-slate-100" />
                         <button 
                           onClick={() => logout()} 
-                          className="flex items-center gap-3 px-4 py-2 rounded-lg text-red-500 text-[0.85rem] hover:bg-red-50 transition-all w-full text-left"
+                          className="flex w-full items-center gap-3 rounded-lg px-4 py-2 text-left text-[0.85rem] text-red-500 transition-all hover:bg-red-50"
                         >
                           <LogOut size={15} /> Logout
                         </button>
@@ -229,7 +240,7 @@ export default function Header() {
                   ) : (
                     <Link 
                       href="/login" 
-                      className="bg-[linear-gradient(135deg,#22c55e_0%,#15803d_100%)] text-white px-5 py-2.5 rounded-full text-[0.88rem] font-bold transition-all duration-300 shadow-md flex items-center justify-center hover:-translate-y-0.5 active:scale-95"
+                      className="flex items-center justify-center rounded-full bg-[linear-gradient(135deg,#22c55e_0%,#15803d_100%)] px-5 py-2.5 text-[0.88rem] font-bold text-white shadow-md transition-all duration-300 hover:-translate-y-0.5 active:scale-95"
                     >
                       <ShinyText text="Sign In" /> 
                     </Link>
@@ -241,29 +252,25 @@ export default function Header() {
         </div>
       </header>
 
-      {/* --- MOBILE DRAWER SIDEBAR (EXTRACTED OUTSIDE HEADER TAG BOUNDS TO PREVENT UI CLIPPING) --- */}
-      <div className={`fixed inset-0 w-screen h-screen transition-all duration-300 ease-in-out z-[99999]` } style={{ visibility: mobileMenuOpen ? "visible" : "hidden", opacity: mobileMenuOpen ? 1 : 0 }}>
-        {/* Full-screen backdrop blur overlay */}
+      <div className={`fixed inset-0 z-[99999] h-screen w-screen transition-all duration-300 ease-in-out ${mobileMenuOpen ? "visible opacity-100" : "invisible opacity-0"}`}>
         <div 
           onClick={() => setMobileMenuOpen(false)}
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-md w-full h-full" 
+          className="fixed inset-0 h-full w-full bg-slate-900/60 backdrop-blur-md" 
         />
         
-        {/* Full-height Drawer container panel */}
-        <div className={`fixed top-0 left-0 bottom-0 h-full w-[290px] max-w-[85vw] bg-white shadow-2xl p-6 flex flex-col transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
-          <div className="flex items-center justify-between mb-6">
-            <span className="font-bold text-lg text-green-900">Navigation</span>
+        <div className={`fixed bottom-0 left-0 top-0 flex h-full w-[290px] max-w-[85vw] flex-col bg-white p-6 shadow-2xl transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
+          <div className="mb-6 flex items-center justify-between">
+            <span className="text-lg font-bold text-green-900">Navigation</span>
             <button 
               onClick={() => setMobileMenuOpen(false)}
-              className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors"
+              className="rounded-xl p-1.5 text-slate-500 transition-colors hover:bg-slate-100"
             >
               <X size={20} />
             </button>
           </div>
 
-          {/* Mobile Search input */}
           <form
-            className="mb-6 flex items-center rounded-xl border border-slate-200 bg-slate-100 py-2 px-3 transition-all focus-within:border-green-500 focus-within:bg-white lg:hidden"
+            className="mb-6 flex items-center rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 transition-all focus-within:border-green-500 focus-within:bg-white lg:hidden"
             onSubmit={(event) => {
               event.preventDefault();
               submitSearch(searchQuery);
@@ -279,13 +286,13 @@ export default function Header() {
             />
           </form>
 
-          <nav className="flex flex-col gap-1 flex-1">
+          <nav className="flex flex-1 flex-col gap-1">
             {navLinks.map((link) => (
               <Link 
                 key={link.name} 
                 href={link.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-4 py-3 text-[0.95rem] font-semibold text-slate-700 hover:bg-green-50 hover:text-green-700 rounded-xl transition-all"
+                className="rounded-xl px-4 py-3 text-[0.95rem] font-semibold text-slate-700 transition-all hover:bg-green-50 hover:text-green-700"
               >
                 {link.name}
               </Link>
@@ -293,22 +300,22 @@ export default function Header() {
 
             {isLoggedIn && (
               <>
-                <div className="h-px bg-slate-100 my-3" />
-                <Link href="/profile" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-[0.95rem] font-semibold text-slate-700 hover:bg-green-50 hover:text-green-700 rounded-xl flex items-center gap-3">
+                <div className="my-3 h-px bg-slate-100" />
+                <Link href="/profile" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3 text-[0.95rem] font-semibold text-slate-700 transition-all hover:bg-green-50 hover:text-green-700">
                   <User size={18} /> Profile
                 </Link>
-                <Link href="/orders" onClick={() => setMobileMenuOpen(false)} className="px-4 py-3 text-[0.95rem] font-semibold text-slate-700 hover:bg-green-50 hover:text-green-700 rounded-xl flex items-center gap-3">
+                <Link href="/orders" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-3 rounded-xl px-4 py-3 text-[0.95rem] font-semibold text-slate-700 transition-all hover:bg-green-50 hover:text-green-700">
                   <Package size={18} /> My Orders
                 </Link>
               </>
             )}
           </nav>
 
-          <div className="pt-4 border-t border-slate-100">
+          <div className="border-t border-slate-100 pt-4">
             {isLoggedIn ? (
               <button 
                 onClick={() => { setMobileMenuOpen(false); logout(); }}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-500 font-semibold hover:bg-red-50 text-left transition-all"
+                className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left font-semibold text-red-500 transition-all hover:bg-red-50"
               >
                 <LogOut size={18} /> Logout
               </button>
@@ -316,7 +323,7 @@ export default function Header() {
               <Link 
                 href="/login"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full bg-[linear-gradient(135deg,#22c55e_0%,#15803d_100%)] text-white py-3 rounded-xl font-semibold flex items-center justify-center shadow-md"
+                className="flex w-full items-center justify-center rounded-xl bg-[linear-gradient(135deg,#22c55e_0%,#15803d_100%)] py-3 font-semibold text-white shadow-md"
               >
                 Sign In
               </Link>
@@ -333,11 +340,6 @@ export default function Header() {
         @keyframes marquee {
           0% { transform: translateX(0); }
           100% { transform: translateX(-100%); }
-        }
-        @keyframes heart-pop {
-          0% { transform: scale(1); }
-          50% { transform: scale(1.2); }
-          100% { transform: scale(1); }
         }
       `}</style>
     </>
