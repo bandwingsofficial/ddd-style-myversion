@@ -16,6 +16,7 @@ import {
   validateCoordinateRange,
 } from '../../../common/utils/geo-coordinate.validator';
 import { ValidationError } from '../../../common/errors';
+import { resolvePublicOutletEffectivePrice } from '../../../common/utils/product-pricing.util';
 
 @Controller('public/outlets')
 export class PublicOutletController {
@@ -159,11 +160,12 @@ async getOutletProducts(
         name: r.product.productName,
         slug: r.product.slug,
 
-        price:
-          r.discountOverride ??
-          r.priceOverride ??
-          r.product.discountPrice ??
-          r.product.originalPrice,
+        price: resolvePublicOutletEffectivePrice({
+          productOriginalPrice: r.product.originalPrice,
+          productDiscountPrice: r.product.discountPrice,
+          outletPriceOverride: r.priceOverride,
+          outletDiscountOverride: r.discountOverride,
+        }),
 
         images,
 

@@ -1,5 +1,10 @@
 import { ValidationError } from '../../../../common/errors';
 import { Decimal } from '@prisma/client/runtime/library';
+import {
+  computeLineTotal,
+  normalizeDiscountPrice,
+  resolveEffectivePrice,
+} from '../../../../common/utils/product-pricing.util';
 
 /* ---------------------------------------------- */
 /* PROPS                                          */
@@ -16,7 +21,6 @@ export interface CartItemProps {
   unitPrice: Decimal;
   discountPrice?: Decimal;
 
-  // 🔥 cached value (matches DB)
   lineTotal: Decimal;
 
   productName: string;
@@ -41,7 +45,6 @@ export class CartItem {
   readonly unitPrice: Decimal;
   readonly discountPrice?: Decimal;
 
-  // 🔥 stored total
   readonly lineTotal: Decimal;
 
   readonly productName: string;
@@ -74,12 +77,19 @@ export class CartItem {
     now?: Date;
   }): CartItem {
     const now = params.now ?? new Date();
-
-    const price = params.discountPrice ?? params.unitPrice;
-    const lineTotal = price.mul(new Decimal(params.quantity));
+    const discountPrice = normalizeDiscountPrice(
+      params.unitPrice,
+      params.discountPrice,
+    );
+    const lineTotal = computeLineTotal(
+      params.unitPrice,
+      discountPrice,
+      params.quantity,
+    );
 
     return new CartItem({
       ...params,
+      discountPrice,
       lineTotal,
       createdAt: now,
       updatedAt: now,
@@ -87,7 +97,21 @@ export class CartItem {
   }
 
   static rehydrate(props: CartItemProps): CartItem {
-    return new CartItem(props);
+    const discountPrice = normalizeDiscountPrice(
+      props.unitPrice,
+      props.discountPrice,
+    );
+    const lineTotal = computeLineTotal(
+      props.unitPrice,
+      discountPrice,
+      props.quantity,
+    );
+
+    return new CartItem({
+      ...props,
+      discountPrice,
+      lineTotal,
+    });
   }
 
   /* ---------------------------------------------- */
@@ -95,20 +119,43 @@ export class CartItem {
   /* ---------------------------------------------- */
 
   getEffectivePrice(): Decimal {
-    return this.discountPrice ?? this.unitPrice;
+    return resolveEffectivePrice(this.unitPrice, this.discountPrice);
   }
 
-  /**
-   * 🔥 Prefer stored lineTotal
-   * fallback for old rows/migrations
-   */
   getLineTotal(): Decimal {
-  return this.lineTotal;
-}
+    return this.lineTotal;
+  }
 
   /* ---------------------------------------------- */
   /* DOMAIN TRANSITIONS                             */
   /* ---------------------------------------------- */
+
+  withPricingSnapshot(params: {
+    unitPrice: Decimal;
+    discountPrice?: Decimal;
+    productName?: string;
+    productImage?: string;
+    now?: Date;
+  }): CartItem {
+    const discountPrice = normalizeDiscountPrice(
+      params.unitPrice,
+      params.discountPrice,
+    );
+
+    return new CartItem({
+      id: this.id,
+      cartId: this.cartId,
+      productId: this.productId,
+      quantity: this.quantity,
+      unitPrice: params.unitPrice,
+      discountPrice,
+      lineTotal: computeLineTotal(params.unitPrice, discountPrice, this.quantity),
+      productName: params.productName ?? this.productName,
+      productImage: params.productImage ?? this.productImage,
+      createdAt: this.createdAt,
+      updatedAt: params.now ?? new Date(),
+    });
+  }
 
   increaseQuantity(by: number, now = new Date()): CartItem {
     if (!Number.isInteger(by) || by <= 0) {
@@ -119,12 +166,18 @@ export class CartItem {
     }
 
     const newQty = this.quantity + by;
-    const newTotal = this.getEffectivePrice().mul(new Decimal(newQty));
 
     return new CartItem({
-      ...this,
+      id: this.id,
+      cartId: this.cartId,
+      productId: this.productId,
       quantity: newQty,
-      lineTotal: newTotal,
+      unitPrice: this.unitPrice,
+      discountPrice: this.discountPrice,
+      lineTotal: computeLineTotal(this.unitPrice, this.discountPrice, newQty),
+      productName: this.productName,
+      productImage: this.productImage,
+      createdAt: this.createdAt,
       updatedAt: now,
     });
   }
@@ -137,12 +190,17 @@ export class CartItem {
       );
     }
 
-    const newTotal = this.getEffectivePrice().mul(new Decimal(quantity));
-
     return new CartItem({
-      ...this,
+      id: this.id,
+      cartId: this.cartId,
+      productId: this.productId,
       quantity,
-      lineTotal: newTotal,
+      unitPrice: this.unitPrice,
+      discountPrice: this.discountPrice,
+      lineTotal: computeLineTotal(this.unitPrice, this.discountPrice, quantity),
+      productName: this.productName,
+      productImage: this.productImage,
+      createdAt: this.createdAt,
       updatedAt: now,
     });
   }
@@ -152,59 +210,65 @@ export class CartItem {
   /* ---------------------------------------------- */
 
   private assertValidState(): void {
-  if (!this.cartId) {
-    throw new ValidationError('CART_ITEM_INVALID_CART', 'Cart is required');
-  }
+    if (!this.cartId) {
+      throw new ValidationError('CART_ITEM_INVALID_CART', 'Cart is required');
+    }
 
-  if (!this.productId) {
-    throw new ValidationError('CART_ITEM_INVALID_PRODUCT', 'Product is required');
-  }
-
-  if (!Number.isInteger(this.quantity) || this.quantity <= 0) {
-    throw new ValidationError(
-      'CART_ITEM_INVALID_QUANTITY',
-      'Quantity must be a positive integer',
-    );
-  }
-
-  if (this.unitPrice.lessThan(0)) {
-    throw new ValidationError(
-      'CART_ITEM_INVALID_PRICE',
-      'Unit price cannot be negative',
-    );
-  }
-
-  if (this.discountPrice) {
-    if (this.discountPrice.lessThan(0)) {
+    if (!this.productId) {
       throw new ValidationError(
-        'CART_ITEM_INVALID_DISCOUNT',
-        'Discount price cannot be negative',
+        'CART_ITEM_INVALID_PRODUCT',
+        'Product is required',
       );
     }
 
-    if (this.discountPrice.greaterThan(this.unitPrice)) {
+    if (!Number.isInteger(this.quantity) || this.quantity <= 0) {
       throw new ValidationError(
-        'CART_ITEM_INVALID_DISCOUNT',
-        'Discount price cannot exceed unit price',
+        'CART_ITEM_INVALID_QUANTITY',
+        'Quantity must be a positive integer',
+      );
+    }
+
+    if (this.unitPrice.lessThan(0)) {
+      throw new ValidationError(
+        'CART_ITEM_INVALID_PRICE',
+        'Unit price cannot be negative',
+      );
+    }
+
+    if (this.discountPrice) {
+      if (this.discountPrice.lessThan(0)) {
+        throw new ValidationError(
+          'CART_ITEM_INVALID_DISCOUNT',
+          'Discount price cannot be negative',
+        );
+      }
+
+      if (this.discountPrice.greaterThanOrEqualTo(this.unitPrice)) {
+        throw new ValidationError(
+          'CART_ITEM_INVALID_DISCOUNT',
+          'Discount price must be below unit price',
+        );
+      }
+    }
+
+    if (this.lineTotal.lessThan(0)) {
+      throw new ValidationError(
+        'CART_ITEM_INVALID_TOTAL',
+        'Line total cannot be negative',
+      );
+    }
+
+    const expected = computeLineTotal(
+      this.unitPrice,
+      this.discountPrice,
+      this.quantity,
+    );
+
+    if (!this.lineTotal.equals(expected)) {
+      throw new ValidationError(
+        'CART_ITEM_TOTAL_MISMATCH',
+        'Line total mismatch with price × quantity',
       );
     }
   }
-
-  if (this.lineTotal.lessThan(0)) {
-    throw new ValidationError(
-      'CART_ITEM_INVALID_TOTAL',
-      'Line total cannot be negative',
-    );
-  }
-
-  // 🔥 ADD HERE (final consistency check)
-  const expected = this.getEffectivePrice().mul(new Decimal(this.quantity));
-
-  if (!this.lineTotal.equals(expected)) {
-    throw new ValidationError(
-      'CART_ITEM_TOTAL_MISMATCH',
-      'Line total mismatch with price × quantity',
-    );
-  }
-}
 }

@@ -54,6 +54,13 @@ export interface ProductDetails extends ProductBase {
   longDescription: string;
 }
 
+export interface ProductSlugPageResponse {
+  availability: 'AVAILABLE' | 'UNAVAILABLE';
+  product: ProductDetails | null;
+  relatedProducts: ProductListItem[];
+  message?: string;
+}
+
 export interface ProductsUpdatedSocketPayload {
   version: number;
   products: ProductListItem[];

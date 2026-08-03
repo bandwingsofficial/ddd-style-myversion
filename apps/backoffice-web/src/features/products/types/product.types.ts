@@ -1,6 +1,13 @@
-export type ProductStatus = 'ACTIVE' | 'INACTIVE';
+export type ProductStatus =
+  | 'ACTIVE'
+  | 'OUT_OF_STOCK'
+  | 'INACTIVE'
+  | 'ARCHIVED'
+  | 'SOFT_DELETED';
 
-export interface ProductGalleryImage {
+export type ProductDeleteOutcome = 'PERMANENT' | 'ARCHIVED';
+
+export interface Product {
   id: string;
   imageUrl: string;
   sortOrder: number;

@@ -598,6 +598,86 @@ async updateImages(
     });
   }
 
+  async archiveProduct(
+    product: Product,
+    tx?: PrismaTransaction,
+  ): Promise<Product> {
+    const client = tx ?? this.prisma;
+    const archived = product.archive();
+
+    const row = await client.product.update({
+      where: { id: archived.id },
+      data: {
+        status: ProductStatusMapper.toPrisma(archived.status),
+        isAvailable: archived.isAvailable,
+        isTrending: archived.trendState.getRaw(),
+        isFeatured: archived.featuredState.getRaw(),
+        deletedAt: null,
+        updatedAt: archived.updatedAt,
+      },
+      include: { galleryImages: true },
+    });
+
+    return this.toDomain(row);
+  }
+
+  async restoreProduct(
+    product: Product,
+    tx?: PrismaTransaction,
+  ): Promise<Product> {
+    const client = tx ?? this.prisma;
+    const restored = product.restore();
+
+    const row = await client.product.update({
+      where: { id: restored.id },
+      data: {
+        status: ProductStatusMapper.toPrisma(restored.status),
+        isAvailable: restored.isAvailable,
+        deletedAt: null,
+        updatedAt: restored.updatedAt,
+      },
+      include: { galleryImages: true },
+    });
+
+    return this.toDomain(row);
+  }
+
+  async findRelatedActiveProducts(params: {
+    categoryId: string;
+    excludeProductId: string;
+    limit?: number;
+  }): Promise<
+    {
+      product: Product;
+      category: { id: string; name: string };
+    }[]
+  > {
+    const rows = await this.prisma.product.findMany({
+      where: {
+        categoryId: params.categoryId,
+        id: { not: params.excludeProductId },
+        status: ProductStatusMapper.toPrisma(ProductStatus.ACTIVE),
+        isAvailable: true,
+      },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'desc' }],
+      take: params.limit ?? 8,
+      include: {
+        galleryImages: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    return rows.map((row) => ({
+      product: this.toDomain(row),
+      category: row.category,
+    }));
+  }
+
   /* ================================================= */
   /* STATUS / TRENDING                                */
   /* ================================================= */
@@ -880,6 +960,7 @@ async updateSortOrder(
     extraInfo1: string | null;
     extraInfo2: string | null;
     status: any;
+    deletedAt?: Date | null;
 
     createdAt: Date;
     updatedAt: Date;
@@ -941,6 +1022,7 @@ async updateSortOrder(
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       createdBy: row.createdBy,
+      deletedAt: row.deletedAt ?? null,
     });
   }
 }

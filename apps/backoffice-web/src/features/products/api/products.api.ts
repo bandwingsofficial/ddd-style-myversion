@@ -2,6 +2,7 @@ import { axiosInstance } from '@/http/axios';
 import {
   PaginatedProducts,
   Product,
+  ProductDeleteOutcome,
   ProductStatus,
 } from '../types/product.types';
 
@@ -213,10 +214,15 @@ export const ProductsApi = {
   delete: async (
     productId: string,
     options?: { force?: boolean },
-  ): Promise<{ id: string }> => {
+  ): Promise<{ id: string; outcome: ProductDeleteOutcome }> => {
     const res = await axiosInstance.delete(`/products/${productId}`, {
       params: options?.force ? { force: 'true' } : undefined,
     });
+    return res.data.data;
+  },
+
+  restore: async (productId: string): Promise<Product> => {
+    const res = await axiosInstance.post(`/products/${productId}/restore`);
     return res.data.data;
   },
 

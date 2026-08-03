@@ -22,6 +22,7 @@ import { CartOrchestratorService } from '../services/cart-orchestrator.service';
 /* ---------------------------------------------- */
 import { CartRepository } from '../repositories/cart.repository';
 import { CartResponseMapper } from '../mappers/cart-response.mapper';
+import { PricingEngineService } from '../../../common/services/pricing-engine.service';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { CartResponseMapper } from '../mappers/cart-response.mapper';
     CartService,
     CartOrchestratorService,
     CartResponseMapper,
+    PricingEngineService,
 
     // Repositories
     CartRepository,

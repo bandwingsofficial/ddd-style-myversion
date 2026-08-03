@@ -20,6 +20,11 @@ import {
   DeleteAnalysis,
   DELETE_ERROR_CODES,
 } from '../../../common/types/delete-analysis.types';
+import {
+  ProductDeleteOutcome,
+  resolveProductDeleteOutcome,
+  shouldRemoveProductFromCartsAndOutlets,
+} from '../domain/utils/product-lifecycle.util';
 
 @Injectable()
 export class ProductService {
@@ -632,16 +637,7 @@ export class ProductService {
       this.productRepo.countOutletProductsByProductId(productId),
     ]);
 
-    const permanentBlockers = [];
     const removableDependencies = [];
-
-    if (orderCount > 0) {
-      permanentBlockers.push({
-        type: 'ORDER_ITEMS',
-        label: 'Order Items',
-        count: orderCount,
-      });
-    }
 
     if (cartCount > 0) {
       removableDependencies.push({
@@ -659,15 +655,15 @@ export class ProductService {
       });
     }
 
-    const canDelete =
-      permanentBlockers.length === 0 && removableDependencies.length === 0;
+    const willArchive = orderCount > 0;
+    const canDelete = !willArchive && removableDependencies.length === 0;
     const canForceDelete =
-      permanentBlockers.length === 0 && removableDependencies.length > 0;
+      !willArchive && removableDependencies.length > 0;
 
     return {
       canDelete,
       canForceDelete,
-      permanentBlockers,
+      permanentBlockers: [],
       removableDependencies,
       forceDeleteActions: canForceDelete
         ? [
@@ -684,9 +680,42 @@ export class ProductService {
   async deleteProduct(
     productId: string,
     options?: { force?: boolean },
-  ): Promise<{ id: string }> {
+  ): Promise<{ id: string; outcome: ProductDeleteOutcome }> {
     const product = await this.getById(productId);
-    const analysis = await this.analyzeProductDelete(productId);
+    const [analysis, orderCount] = await Promise.all([
+      this.analyzeProductDelete(productId),
+      this.productRepo.countOrderItemsByProductId(productId),
+    ]);
+
+    const outcome = resolveProductDeleteOutcome(orderCount);
+
+    if (outcome === 'ARCHIVED') {
+      let outletAssignmentsRemoved = 0;
+      let cartItemsRemoved = 0;
+
+      await this.prisma.$transaction(async (tx) => {
+        outletAssignmentsRemoved =
+          await this.productRepo.deleteOutletProductsByProductId(productId, tx);
+        cartItemsRemoved =
+          await this.productRepo.deleteCartItemsByProductId(productId, tx);
+        await this.productRepo.archiveProduct(product, tx);
+      });
+
+      this.productEvents.emitProductInactivated({
+        productId: product.id,
+        outletAssignmentsRemoved,
+        cartItemsRemoved,
+      });
+
+      if (outletAssignmentsRemoved > 0) {
+        this.productEvents.emitOutletAssignmentsRemoved({
+          productId: product.id,
+          count: outletAssignmentsRemoved,
+        });
+      }
+
+      return { id: product.id, outcome: 'ARCHIVED' };
+    }
 
     if (!analysis.canDelete && !options?.force) {
       if (analysis.canForceDelete) {
@@ -701,15 +730,7 @@ export class ProductService {
 
       throw new ValidationError(
         DELETE_ERROR_CODES.BLOCKED,
-        this.buildPermanentDeleteMessage(analysis),
-        { deleteAnalysis: analysis },
-      );
-    }
-
-    if (options?.force && analysis.permanentBlockers.length > 0) {
-      throw new ValidationError(
-        DELETE_ERROR_CODES.BLOCKED,
-        this.buildPermanentDeleteMessage(analysis),
+        'Cannot delete this product.',
         { deleteAnalysis: analysis },
       );
     }
@@ -736,7 +757,30 @@ export class ProductService {
       productId: product.id,
     });
 
-    return { id: product.id };
+    return { id: product.id, outcome: 'PERMANENT' };
+  }
+
+  async restoreProduct(productId: string): Promise<Product> {
+    const product = await this.getById(productId);
+
+    if (!product.isRestorable()) {
+      throw new ValidationError(
+        'PRODUCT_NOT_RESTORABLE',
+        'Only archived or soft-deleted products can be restored.',
+      );
+    }
+
+    let restored!: Product;
+
+    await this.prisma.$transaction(async (tx) => {
+      restored = await this.productRepo.restoreProduct(product, tx);
+    });
+
+    this.productEvents.emitProductEnabled({
+      productId: restored.id,
+    });
+
+    return restored;
   }
 
   private buildPermanentDeleteMessage(analysis: DeleteAnalysis): string {
@@ -768,7 +812,7 @@ export class ProductService {
     await this.prisma.$transaction(async (tx) => {
       await this.productRepo.updateStatus(updated, tx);
 
-      if (updated.isInactive()) {
+      if (shouldRemoveProductFromCartsAndOutlets(updated.status)) {
         outletAssignmentsRemoved =
           await this.productRepo.deleteOutletProductsByProductId(
             updated.id,

@@ -6,6 +6,10 @@ import { Cart } from '../domain/models/cart.model';
 import { CartItem } from '../domain/models/cart-item.model';
 import { CartStatus } from '../domain/enums/cart-status.enum';
 import { CartStatusMapper } from '../mappers/cart-status.mapper';
+import {
+  cartItemRowNeedsRepair,
+  repairPersistedCartItemRow,
+} from '../../../common/utils/product-pricing.util';
 
 @Injectable()
 export class CartRepository {
@@ -203,6 +207,10 @@ export class CartRepository {
       },
       update: {
         quantity: { set: item.quantity },
+        unitPrice: item.unitPrice,
+        discountPrice: item.discountPrice ?? null,
+        productName: item.productName,
+        productImage: item.productImage,
         lineTotal: item.getLineTotal(),
         updatedAt: item.updatedAt,
       },
@@ -231,6 +239,10 @@ export class CartRepository {
       where: { id: item.id },
       data: {
         quantity: { set: item.quantity },
+        unitPrice: item.unitPrice,
+        discountPrice: item.discountPrice ?? null,
+        productName: item.productName,
+        productImage: item.productImage,
         lineTotal: item.getLineTotal(),
         updatedAt: item.updatedAt,
       },
@@ -253,6 +265,51 @@ export class CartRepository {
     const client = tx ?? this.prisma;
 
     await client.cartItem.deleteMany({ where: { cartId } });
+  }
+
+  /**
+   * Detect legacy corrupt rows (lineTotal ≠ effective × qty) and persist repairs.
+   */
+  async repairCorruptItems(
+    cartId: string,
+    tx?: PrismaTransaction,
+  ): Promise<number> {
+    const client = tx ?? this.prisma;
+    const rows = await client.cartItem.findMany({ where: { cartId } });
+    let repairedCount = 0;
+
+    for (const row of rows) {
+      if (
+        !cartItemRowNeedsRepair({
+          unitPrice: row.unitPrice,
+          discountPrice: row.discountPrice,
+          quantity: row.quantity,
+          lineTotal: row.lineTotal,
+        })
+      ) {
+        continue;
+      }
+
+      const repaired = repairPersistedCartItemRow({
+        unitPrice: row.unitPrice,
+        discountPrice: row.discountPrice,
+        quantity: row.quantity,
+        lineTotal: row.lineTotal,
+      });
+
+      await client.cartItem.update({
+        where: { id: row.id },
+        data: {
+          discountPrice: repaired.discountPrice ?? null,
+          lineTotal: repaired.lineTotal,
+          updatedAt: new Date(),
+        },
+      });
+
+      repairedCount += 1;
+    }
+
+    return repairedCount;
   }
 
   /* ================================================= */

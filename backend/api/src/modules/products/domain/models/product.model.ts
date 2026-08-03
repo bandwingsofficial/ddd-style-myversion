@@ -5,6 +5,13 @@ import { ValidationError } from '../../../../common/errors';
 import { ProductStatus } from '../enums/product-status.enum';
 import { ProductTag } from '../enums/product-tag.enum'; // ✅ MISSING IMPORT (CRITICAL)
 import { UnitType } from '../enums/unit-type.enum';
+import {
+  isProductArchivedStatus,
+  isProductCatalogHiddenStatus,
+  isProductPubliclyVisibleStatus,
+  isProductPurchasableStatus,
+  isProductRestorableStatus,
+} from '../utils/product-lifecycle.util';
 
 
 import { ProductName } from '../value-objects/product-name.vo';
@@ -55,6 +62,7 @@ export interface ProductProps {
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
+  deletedAt?: Date | null;
 }
 
 /* ---------------------------------------------- */
@@ -98,6 +106,7 @@ export class Product {
   readonly createdAt: Date;
   readonly updatedAt: Date;
   readonly createdBy: string;
+  readonly deletedAt?: Date | null;
 
   private constructor(props: ProductProps) {
     Object.assign(this, props);
@@ -210,6 +219,26 @@ export class Product {
     return this.status === ProductStatus.INACTIVE;
   }
 
+  isOutOfStock(): boolean {
+    return this.status === ProductStatus.OUT_OF_STOCK;
+  }
+
+  isArchived(): boolean {
+    return isProductArchivedStatus(this.status);
+  }
+
+  isSoftDeleted(): boolean {
+    return this.status === ProductStatus.SOFT_DELETED;
+  }
+
+  isRestorable(): boolean {
+    return isProductRestorableStatus(this.status);
+  }
+
+  isCatalogHidden(): boolean {
+    return isProductCatalogHiddenStatus(this.status);
+  }
+
   changeStatus(status: ProductStatus, now = new Date()): Product {
     if (this.status === status) {
       return this;
@@ -222,13 +251,46 @@ export class Product {
     });
   }
 
+  archive(now = new Date()): Product {
+    return new Product({
+      ...this,
+      status: ProductStatus.ARCHIVED,
+      isAvailable: false,
+      trendState: ProductTrendState.from(false),
+      featuredState: ProductFeaturedState.from(false),
+      deletedAt: null,
+      updatedAt: now,
+    });
+  }
+
+  restore(now = new Date()): Product {
+    if (!this.isRestorable()) {
+      throw new ValidationError(
+        'PRODUCT_NOT_RESTORABLE',
+        'Only archived products can be restored.',
+      );
+    }
+
+    return new Product({
+      ...this,
+      status: ProductStatus.ACTIVE,
+      isAvailable: true,
+      deletedAt: null,
+      updatedAt: now,
+    });
+  }
+
   canBeShown(): boolean {
-    return this.isActive();
+    return isProductPubliclyVisibleStatus(this.status);
   }
 
   canBePurchased(): boolean {
-  return this.isActive() && this.isAvailable;
-}
+    return isProductPurchasableStatus(this.status, this.isAvailable);
+  }
+
+  isUnavailableForDirectView(): boolean {
+    return this.isArchived();
+  }
 
   isTrending(): boolean {
     return this.trendState.isTrending();

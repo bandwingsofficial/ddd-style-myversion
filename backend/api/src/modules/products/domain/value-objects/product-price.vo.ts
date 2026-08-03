@@ -1,4 +1,5 @@
 import { ValidationError } from '../../../../common/errors';
+import { normalizeDiscountPriceNumber } from '../../../../common/utils/product-pricing.util';
 
 export class ProductPrice {
   private readonly originalPrice: number;
@@ -54,10 +55,10 @@ export class ProductPrice {
       );
     }
 
-    const normalizedDiscount =
-      discountPrice !== undefined && discountPrice > 0
-        ? discountPrice
-        : undefined;
+    const normalizedDiscount = normalizeDiscountPriceNumber(
+      originalPrice,
+      discountPrice,
+    );
 
     return new ProductPrice(originalPrice, normalizedDiscount);
   }
@@ -72,5 +73,9 @@ export class ProductPrice {
 
   hasDiscount(): boolean {
     return this.discountPrice !== undefined;
+  }
+
+  getEffectivePrice(): number {
+    return this.discountPrice ?? this.originalPrice;
   }
 }

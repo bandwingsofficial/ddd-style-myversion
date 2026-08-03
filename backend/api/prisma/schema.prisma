@@ -583,7 +583,10 @@ model OutletStock {
 
 enum ProductStatus {
   ACTIVE
+  OUT_OF_STOCK
   INACTIVE
+  ARCHIVED
+  SOFT_DELETED
 }
 
 enum UnitType {

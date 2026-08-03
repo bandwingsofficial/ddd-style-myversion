@@ -1,5 +1,10 @@
 import { ValidationError } from '../../../../common/errors';
 import { Money } from '../value-objects/money.vo';
+import {
+  computeOrderLineTotal,
+  normalizeDiscountPriceNumber,
+  resolveEffectivePriceNumber,
+} from '../../../../common/utils/product-pricing.util';
 
 /* ---------------------------------------------- */
 /* PROPS                                          */
@@ -59,55 +64,62 @@ export class OrderItem {
   /* ---------------------------------------------- */
 
   static create(params: {
-  id: string;
-  orderId: string;
+    id: string;
+    orderId: string;
 
-  productId: string;
-  productName: string;
-  productImage: string;
+    productId: string;
+    productName: string;
+    productImage: string;
 
-  quantity: number;
+    quantity: number;
 
-  unitPrice: number;
-  discountPrice?: number;
+    unitPrice: number;
+    discountPrice?: number;
 
-  now?: Date;
-}): OrderItem {
+    now?: Date;
+  }): OrderItem {
+    if (params.quantity <= 0) {
+      throw new ValidationError(
+        'INVALID_QUANTITY',
+        'Quantity must be greater than zero',
+      );
+    }
 
-  if (params.quantity <= 0) {
-    throw new ValidationError(
-      'INVALID_QUANTITY',
-      'Quantity must be greater than zero',
+    const unitMoney = Money.create(params.unitPrice);
+
+    const normalizedDiscount = normalizeDiscountPriceNumber(
+      params.unitPrice,
+      params.discountPrice,
     );
+    const discountMoney =
+      normalizedDiscount !== undefined
+        ? Money.create(normalizedDiscount)
+        : undefined;
+
+    const effectiveAmount = resolveEffectivePriceNumber(
+      params.unitPrice,
+      normalizedDiscount,
+    );
+    const effectiveMoney = Money.create(effectiveAmount);
+
+    return new OrderItem({
+      id: params.id,
+      orderId: params.orderId,
+
+      productId: params.productId,
+      productName: params.productName,
+      productImage: params.productImage,
+
+      quantity: params.quantity,
+
+      unitPrice: unitMoney,
+      discountPrice: discountMoney,
+
+      totalPrice: effectiveMoney.multiply(params.quantity),
+
+      createdAt: params.now ?? new Date(),
+    });
   }
-
-  const unitMoney = Money.create(params.unitPrice);
-
-  const discountMoney =
-    params.discountPrice !== undefined
-      ? Money.create(params.discountPrice)
-      : undefined;
-
-  const effectiveMoney = discountMoney ?? unitMoney;
-
-  return new OrderItem({
-    id: params.id,
-    orderId: params.orderId,
-
-    productId: params.productId,
-    productName: params.productName,
-    productImage: params.productImage,
-
-    quantity: params.quantity,
-
-    unitPrice: unitMoney,
-    discountPrice: discountMoney,
-
-    totalPrice: effectiveMoney.multiply(params.quantity),
-
-    createdAt: params.now ?? new Date(),
-  });
-}
 
   static rehydrate(props: OrderItemProps): OrderItem {
     return new OrderItem(props);
@@ -118,7 +130,22 @@ export class OrderItem {
   /* ---------------------------------------------- */
 
   hasDiscount(): boolean {
-    return this.discountPrice !== undefined;
+    return (
+      this.discountPrice !== undefined &&
+      this.discountPrice.lessThan(this.unitPrice)
+    );
+  }
+
+  getEffectivePrice(): Money {
+    if (this.discountPrice && this.discountPrice.lessThan(this.unitPrice)) {
+      return this.discountPrice;
+    }
+
+    return this.unitPrice;
+  }
+
+  getLineTotal(): Money {
+    return this.getEffectivePrice().multiply(this.quantity);
   }
 
   /* ---------------------------------------------- */
@@ -134,8 +161,11 @@ export class OrderItem {
     }
 
     if (!this.orderId) {
-  throw new ValidationError('ORDER_ITEM_INVALID_ORDER', 'Order is required');
-}
+      throw new ValidationError(
+        'ORDER_ITEM_INVALID_ORDER',
+        'Order is required',
+      );
+    }
 
     if (this.quantity <= 0) {
       throw new ValidationError(
@@ -144,12 +174,15 @@ export class OrderItem {
       );
     }
 
-    // extra safety: total must be correct
-    const expected = (this.discountPrice ?? this.unitPrice).multiply(
-      this.quantity,
+    const expectedCents = Math.round(
+      computeOrderLineTotal({
+        unitPrice: this.unitPrice.toNumber(),
+        discountPrice: this.discountPrice?.toNumber(),
+        quantity: this.quantity,
+      }) * 100,
     );
 
-    if (!this.totalPrice.equals(expected)) {
+    if (this.totalPrice.toCents() !== expectedCents) {
       throw new ValidationError(
         'ORDER_ITEM_TOTAL_MISMATCH',
         'Total price mismatch',

@@ -1,5 +1,7 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+
+import { ProductStatus } from '../domain/enums/product-status.enum';
 
 export class ListProductsQueryDto {
   @IsOptional()
@@ -24,6 +26,6 @@ export class ListProductsQueryDto {
   categoryId?: string;
 
   @IsOptional()
-  @IsString()
-  status?: 'ACTIVE' | 'INACTIVE';
+  @IsEnum(ProductStatus)
+  status?: ProductStatus;
 }

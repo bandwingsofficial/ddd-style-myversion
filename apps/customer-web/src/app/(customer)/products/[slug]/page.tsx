@@ -4,13 +4,14 @@ import { useParams } from "next/navigation";
 import { useProductBySlug } from "@/features/products/hooks/useProductBySlug";
 import Header from "@/components/customer/Header";
 import Footer from "@/components/customer/Footer";
+import ProductCard from "@/components/product/ProductCard";
+import { normalizeProductList } from "@/lib/product-normalizer";
 import { 
   ShoppingBag, ShieldCheck, Truck, Star, Heart, 
   Minus, Plus, Leaf, ChevronRight, Loader2, MapPinOff 
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useCartStore } from "@/features/cart/cart.store";
-import { useCustomerSession } from "@/features/customer-auth/hooks/useCustomerSession";
 import { useOutletStore } from "@/features/outlet/outlet.store";
 import { useFavorites } from "@/providers/CustomerAuthProvider";
 import { resolveProductPricing } from "@/lib/product-pricing";
@@ -18,11 +19,16 @@ import { toast } from "sonner";
 
 export default function ProductDetailsPage() {
   const { slug: routeSlug } = useParams<{ slug: string }>();
-  const { product: productData, loading: productLoading, error: productError } =
-    useProductBySlug(routeSlug);
+  const {
+    product: productData,
+    availability,
+    relatedProducts,
+    unavailableMessage,
+    loading: productLoading,
+    error: productError,
+  } = useProductBySlug(routeSlug);
   
   const { items, addItem, updateItem, removeItem } = useCartStore();
-  const { isReady } = useCustomerSession();
   const currentOutlet = useOutletStore((state) => state.selectedOutlet);
   const { isFavorite, addToFavorites, removeFromFavorites } = useFavorites();
 
@@ -57,8 +63,15 @@ export default function ProductDetailsPage() {
     };
   }, [productData, currentOutlet]);
 
-  const cartItem = useMemo(() => items.find((i) => i.productId === product?.id), [items, product?.id]);
-  const quantityInCart = cartItem?.quantity || 0;
+  const isUnavailable = availability === "UNAVAILABLE";
+  const normalizedRelatedProducts = useMemo(
+    () => normalizeProductList(relatedProducts, []),
+    [relatedProducts],
+  );
+  const cartItem = useMemo(
+    () => items.find((i) => i.productId === product?.id),
+    [items, product?.id],
+  );
   const isFav = product ? isFavorite(product.id) : false;
 
   const handleAddToCart = async () => {
@@ -66,11 +79,11 @@ export default function ProductDetailsPage() {
       toast.error("Please select a nearby outlet first.");
       return;
     }
-    if (!isReady) {
-      toast.error("Please wait, session is loading...");
+    if (!product || product.originalPrice <= 0) return;
+    if (!product.outletId) {
+      toast.error("No outlet selected for this product.");
       return;
     }
-    if (!product || product.originalPrice <= 0) return;
 
     await addItem({
       productId: product.id,
@@ -84,10 +97,10 @@ export default function ProductDetailsPage() {
   };
 
   const handleUpdateQty = async (delta: number) => {
-    if (!product || !cartItem || !isReady) return;
+    if (!product || !cartItem) return;
     const newQty = cartItem.quantity + delta;
-    if (newQty <= 0) await removeItem(product.id);
-    else await updateItem(product.id, newQty);
+    if (newQty <= 0) await removeItem(String(product.id));
+    else await updateItem(String(product.id), newQty);
   };
 
   const activeImageUrl = selectedImage || product?.mainImage || "/placeholder.jpg";
@@ -105,7 +118,9 @@ export default function ProductDetailsPage() {
     );
   }
 
-  if (productError || !productData) {
+  const quantityInCart = cartItem?.quantity || 0;
+
+  if (productError || (!productLoading && !productData)) {
     return (
       <div className="min-h-screen bg-white flex flex-col">
         <Header />
@@ -131,6 +146,11 @@ export default function ProductDetailsPage() {
           </nav>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 items-start">
+            {isUnavailable && (
+              <div className="md:col-span-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
+                {unavailableMessage ?? "This product is no longer available."}
+              </div>
+            )}
             
             {/* LEFT COLUMN: GALLERY */}
             <div className="space-y-3">
@@ -218,6 +238,7 @@ export default function ProductDetailsPage() {
                </p>
 
                {/* Add to Cart Actions - desktop inline */}
+               {!isUnavailable && (
                <div className="mb-8 hidden w-full justify-center md:flex">
                   {quantityInCart > 0 ? (
                     <div className="flex items-center justify-between bg-emerald-600 rounded-xl p-1 w-full max-w-[160px] h-[48px] shadow-md">
@@ -249,6 +270,7 @@ export default function ProductDetailsPage() {
                     </button>
                   )}
                </div>
+               )}
 
                {/* Features Grid */}
                <div className="grid grid-cols-3 gap-2 mb-8">
@@ -268,10 +290,27 @@ export default function ProductDetailsPage() {
                )}
             </div>
           </div>
+
+          {isUnavailable && normalizedRelatedProducts.length > 0 && (
+            <section className="mt-12 border-t border-slate-100 pt-10">
+              <h2 className="mb-6 text-xl font-bold text-slate-900">
+                Related Products
+              </h2>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
+                {normalizedRelatedProducts.map((relatedProduct) => (
+                  <ProductCard
+                    key={relatedProduct.id}
+                    product={relatedProduct}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       </main>
 
       {/* Mobile sticky add-to-cart bar */}
+      {!isUnavailable && (
       <div
         className="fixed inset-x-0 z-[800] border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-lg md:hidden"
         style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
@@ -311,6 +350,7 @@ export default function ProductDetailsPage() {
           )}
         </div>
       </div>
+      )}
 
       <Footer />
     </div>

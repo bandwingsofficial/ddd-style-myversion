@@ -2,6 +2,7 @@
 
 import React from "react";
 import { usePathname } from "next/navigation";
+import { Toaster } from "sonner";
 import FloatingCartBar from "@/components/customer/FloatingCartBar";
 import BottomNav from "@/components/customer/BottomNav";
 
@@ -24,6 +25,7 @@ export default function ClientLayoutWrapper({ children }: ClientLayoutWrapperPro
 
   return (
     <div className="min-h-screen w-full overflow-x-clip">
+      <Toaster richColors closeButton position="top-center" />
       {children}
       {!isAuthPage && <BottomNav />}
       {!isAuthPage && <FloatingCartBar />}

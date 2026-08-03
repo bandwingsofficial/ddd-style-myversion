@@ -9,7 +9,9 @@ import {
   ProductPublicResponse,
   ProductResponse,
   ProductResponseMapper,
+  ProductSlugPageResponse,
 } from '../mappers/product-response.mapper';
+import { ProductDeleteOutcome } from '../domain/utils/product-lifecycle.util';
 import { MulterUploadFile } from '../../uploads/interfaces/upload-file.interface';
 import { ListProductsQueryDto } from '../dtos/list-products-query.dto';
 import { ProductStatus } from '../domain/enums/product-status.enum';
@@ -151,26 +153,60 @@ export class ProductOrchestratorService {
 
   async getPublicProductBySlug(
     slug: string,
-  ): Promise<ProductPublicResponse> {
+  ): Promise<ProductSlugPageResponse> {
     const result =
       await this.productService.getBySlugWithCategory(slug);
-
-    if (!result.product.canBeShown()) {
-      throw new ValidationError(
-        'PRODUCT_NOT_FOUND',
-        'Product not found',
-      );
-    }
 
     const galleryRecords =
       await this.productRepository.findGalleryRecords(
         result.product.id,
       );
 
-    return this.productResponseMapper.toPublicResponse(
-      result.product,
-      result.category,
-      galleryRecords,
+    const productResponse =
+      await this.productResponseMapper.toPublicResponse(
+        result.product,
+        result.category,
+        galleryRecords,
+      );
+
+    if (result.product.canBeShown()) {
+      return {
+        availability: 'AVAILABLE',
+        product: productResponse,
+        relatedProducts: [],
+      };
+    }
+
+    if (result.product.isUnavailableForDirectView()) {
+      const relatedItems =
+        await this.productRepository.findRelatedActiveProducts({
+          categoryId: result.product.categoryId,
+          excludeProductId: result.product.id,
+          limit: 8,
+        });
+
+      const relatedGalleryMap =
+        await this.productRepository.findGalleryRecordsByProductIds(
+          relatedItems.map(({ product }) => product.id),
+        );
+
+      const relatedProducts =
+        await this.productResponseMapper.toPublicResponseList(
+          relatedItems,
+          relatedGalleryMap,
+        );
+
+      return {
+        availability: 'UNAVAILABLE',
+        product: productResponse,
+        relatedProducts,
+        message: 'This product is no longer available.',
+      };
+    }
+
+    throw new ValidationError(
+      'PRODUCT_NOT_FOUND',
+      'Product not found',
     );
   }
 
@@ -321,10 +357,25 @@ export class ProductOrchestratorService {
   async deleteProduct(params: {
     productId: string;
     force?: boolean;
-  }): Promise<{ id: string }> {
+  }): Promise<{ id: string; outcome: ProductDeleteOutcome }> {
     return this.productService.deleteProduct(params.productId, {
       force: params.force,
     });
+  }
+
+  async restoreProduct(params: {
+    productId: string;
+  }): Promise<ProductResponse> {
+    const restored = await this.productService.restoreProduct(
+      params.productId,
+    );
+    const galleryRecords =
+      await this.productRepository.findGalleryRecords(restored.id);
+
+    return this.productResponseMapper.toResponse(
+      restored,
+      galleryRecords,
+    );
   }
 
   /* ================================================= */

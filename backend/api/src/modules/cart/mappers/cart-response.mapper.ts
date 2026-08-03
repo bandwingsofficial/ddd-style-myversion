@@ -3,17 +3,13 @@ import { Prisma } from '@prisma/client';
 
 import { UploadService } from '../../uploads/services/upload.service';
 import { Cart } from '../domain/models/cart.model';
-import { DeliveryChargeService } from '../../delivery-config/services/delivery-charge.service';
-import { mapDeliveryChargeToResponse } from '../../delivery-config/mappers/delivery-charge-response.mapper';
+import { resolveEffectivePrice } from '../../../common/utils/product-pricing.util';
 
 const toNumber = (value: Prisma.Decimal | number): number => Number(value);
 
 @Injectable()
 export class CartResponseMapper {
-  constructor(
-    private readonly uploadService: UploadService,
-    private readonly deliveryChargeService: DeliveryChargeService,
-  ) {}
+  constructor(private readonly uploadService: UploadService) {}
 
   async toResponse(cart: Cart | null) {
     if (!cart) {
@@ -33,6 +29,9 @@ export class CartResponseMapper {
           item.discountPrice != null
             ? toNumber(item.discountPrice)
             : undefined,
+        effectivePrice: toNumber(
+          resolveEffectivePrice(item.unitPrice, item.discountPrice),
+        ),
         lineTotal: toNumber(item.getLineTotal()),
         createdAt: item.createdAt,
         updatedAt: item.updatedAt,
@@ -42,15 +41,8 @@ export class CartResponseMapper {
     const subtotal = toNumber(cart.subtotal);
     const discount = toNumber(cart.discount);
     const netSubtotal = toNumber(cart.afterDiscountTotal);
-
-    const pricing = mapDeliveryChargeToResponse(
-      await this.deliveryChargeService.calculate({
-        subtotal: cart.subtotal,
-        discount: cart.discount,
-        netSubtotal: cart.afterDiscountTotal,
-        itemCount: cart.itemCount,
-      }),
-    );
+    const deliveryFee = toNumber(cart.deliveryFee);
+    const grandTotal = toNumber(cart.grandTotal);
 
     return {
       id: cart.id,
@@ -63,9 +55,28 @@ export class CartResponseMapper {
       discount,
       netSubtotal,
       afterDiscountTotal: netSubtotal,
-      grandTotal: Number((netSubtotal + pricing.deliveryFee).toFixed(2)),
+      deliveryFee,
+      grandTotal,
       itemCount: cart.itemCount,
-      ...pricing,
+      deliveryRuleId: cart.deliveryRuleId ?? null,
+      deliveryRuleName: cart.deliveryRuleName ?? null,
+      matchedDeliveryRuleId: cart.deliveryRuleId ?? null,
+      matchedDeliveryRuleName: cart.deliveryRuleName ?? null,
+      minimumOrderAmount: cart.deliveryRuleMinimumOrderAmount
+        ? toNumber(cart.deliveryRuleMinimumOrderAmount)
+        : null,
+      isFreeDelivery: cart.isFreeDelivery,
+      freeDeliveryThreshold: null,
+      remainingForFreeDelivery: cart.amountToFreeDelivery
+        ? toNumber(cart.amountToFreeDelivery)
+        : null,
+      amountToFreeDelivery: cart.amountToFreeDelivery
+        ? toNumber(cart.amountToFreeDelivery)
+        : null,
+      remainingAmountForFreeDelivery: cart.amountToFreeDelivery
+        ? toNumber(cart.amountToFreeDelivery)
+        : null,
+      remainingAmountForNextRule: null,
       items,
       createdAt: cart.createdAt,
       updatedAt: cart.updatedAt,

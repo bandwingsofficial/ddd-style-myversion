@@ -13,6 +13,8 @@ import { DeliveryChargeService } from '../../delivery-config/services/delivery-c
 
 import { ValidationError } from '../../../common/errors';
 import { Prisma } from '@prisma/client';
+import { computeCartItemTotals } from '../../../common/utils/product-pricing.util';
+import { PricingEngineService } from '../../../common/services/pricing-engine.service';
 
 const Decimal = Prisma.Decimal;
 
@@ -22,6 +24,7 @@ export class CartService {
     private readonly prisma: PrismaService,
     private readonly cartRepo: CartRepository,
     private readonly deliveryChargeService: DeliveryChargeService,
+    private readonly pricingEngine: PricingEngineService,
   ) {}
 
   /* ================================================= */
@@ -37,20 +40,19 @@ export class CartService {
       throw new ValidationError('CART_NOT_FOUND', 'Cart not found');
     }
 
-    let subtotal = new Decimal(0); // MRP total
-    let afterDiscountTotal = new Decimal(0); // payable items total
-    let itemCount = 0;
+    const {
+      subtotal,
+      discount,
+      afterDiscountTotal,
+      itemCount,
+    } = computeCartItemTotals(
+      cart.items.map((item) => ({
+        unitPrice: item.unitPrice,
+        discountPrice: item.discountPrice,
+        quantity: item.quantity,
+      })),
+    );
 
-    for (const item of cart.items) {
-      const unitTotal = item.unitPrice.mul(item.quantity);
-      const lineTotal = item.getLineTotal(); // 🔥 already uses discount price
-
-      subtotal = subtotal.add(unitTotal);
-      afterDiscountTotal = afterDiscountTotal.add(lineTotal);
-      itemCount += item.quantity;
-    }
-
-    const discount = subtotal.sub(afterDiscountTotal);
     const netSubtotal = afterDiscountTotal;
 
     const delivery = await this.deliveryChargeService.calculate({
@@ -167,6 +169,7 @@ export class CartService {
     }
 
     const removedInactiveCount = await this.purgeInactiveItems(cart, client);
+    await this.cartRepo.repairCorruptItems(cart.id, client);
     await this.refreshItemSnapshots(cart.id, client);
     const syncedCart = await this.recalcTotals(cart.id, client);
 
@@ -174,7 +177,8 @@ export class CartService {
   }
 
   /**
-   * Reload product snapshots (prices, names, images) on every cart sync.
+   * Business rule: cart refreshes product + outlet pricing on every sync
+   * (cart open, quantity change, checkout lock, login merge).
    */
   private async refreshItemSnapshots(
     cartId: string,
@@ -189,6 +193,7 @@ export class CartService {
       const product = await tx.product.findUnique({
         where: { id: item.productId },
         select: {
+          id: true,
           productName: true,
           mainImage: true,
           originalPrice: true,
@@ -202,27 +207,21 @@ export class CartService {
         continue;
       }
 
-      const unitPrice = product.originalPrice;
-      const discountPrice = product.discountPrice ?? undefined;
-      const effectivePrice = discountPrice ?? unitPrice;
-      const lineTotal = effectivePrice.mul(item.quantity);
+      const pricing = await this.pricingEngine.resolveCartItemPricingForProduct(
+        product,
+        cart.outletId,
+        tx,
+      );
 
       const productImage =
         product.mainImage?.trim() || item.productImage?.trim() || '';
       const productName = product.productName?.trim() || item.productName;
 
-      const refreshed = CartItem.rehydrate({
-        id: item.id,
-        cartId: item.cartId,
-        productId: item.productId,
-        quantity: item.quantity,
-        unitPrice,
-        discountPrice,
-        lineTotal,
+      const refreshed = item.withPricingSnapshot({
+        unitPrice: pricing.unitPrice,
+        discountPrice: pricing.discountPrice,
         productName,
         productImage,
-        createdAt: item.createdAt,
-        updatedAt: new Date(),
       });
 
       await this.cartRepo.upsertItem(refreshed, tx);
@@ -306,7 +305,10 @@ export class CartService {
           tx,
         );
 
-    if (sameOutlet) return sameOutlet;
+    if (sameOutlet) {
+      await this.cartRepo.repairCorruptItems(sameOutlet.id, tx);
+      return this.cartRepo.findById(sameOutlet.id, tx) ?? sameOutlet;
+    }
 
     /* ===================================== */
     /* 🔥 Step 4 — create new                */
@@ -352,6 +354,12 @@ export class CartService {
         );
       }
 
+      const pricing = await this.pricingEngine.resolveCartItemPricingForProduct(
+        product,
+        params.outletId,
+        client,
+      );
+
       const cart = await this.getOrCreateActiveCart(params, client);
 
       const existing = cart.items.find((i) => i.productId === product.id);
@@ -359,15 +367,21 @@ export class CartService {
       let item: CartItem;
 
       if (existing) {
-        item = existing.increaseQuantity(params.quantity);
+        const refreshed = existing.withPricingSnapshot({
+          unitPrice: pricing.unitPrice,
+          discountPrice: pricing.discountPrice,
+          productName: product.productName,
+          productImage: product.mainImage?.trim() ?? '',
+        });
+        item = refreshed.increaseQuantity(params.quantity);
       } else {
         item = CartItem.createNew({
           id: uuid(),
           cartId: cart.id,
           productId: product.id,
           quantity: params.quantity,
-          unitPrice: product.originalPrice,
-          discountPrice: product.discountPrice ?? undefined,
+          unitPrice: pricing.unitPrice,
+          discountPrice: pricing.discountPrice,
           productName: product.productName,
           productImage: product.mainImage?.trim() ?? '',
         });
@@ -573,46 +587,30 @@ export class CartService {
       }
 
       /* ============================= */
-/* 🔥 PRICE + PRODUCT VALIDATION */
-/* ============================= */
-
-const products = await client.product.findMany({
-  where: {
-    id: { in: cart.items.map(i => i.productId) },
-  },
-});
-
-const productMap = new Map(products.map(p => [p.id, p]));
-
-for (const item of cart.items) {
-  const product = productMap.get(item.productId);
-
-  if (!product || product.status !== 'ACTIVE' || !product.isAvailable) {
-    throw new ValidationError(
-      'PRODUCT_NOT_AVAILABLE',
-      `${item.productName} is unavailable`,
-    );
-  }
-
-  if (
-    !item.unitPrice.equals(product.originalPrice) ||
-    (item.discountPrice &&
-      !item.discountPrice.equals(product.discountPrice))
-  ) {
-    throw new ValidationError(
-      'PRICE_CHANGED',
-      `${item.productName} price changed. Please refresh cart`,
-    );
-  }
-}
-
-      /* ============================= */
-      /* 🔥 SNAPSHOT TOTALS            */
+      /* PRODUCT AVAILABILITY            */
       /* ============================= */
 
-      const fresh = await this.recalcTotals(cart.id, client);
+      const products = await client.product.findMany({
+        where: {
+          id: { in: cart.items.map((i) => i.productId) },
+        },
+      });
 
-      const locked = fresh.lock();
+      const productMap = new Map(products.map((p) => [p.id, p]));
+
+      for (const item of cart.items) {
+        const product = productMap.get(item.productId);
+
+        if (!product || product.status !== 'ACTIVE' || !product.isAvailable) {
+          throw new ValidationError(
+            'PRODUCT_NOT_AVAILABLE',
+            `${item.productName} is unavailable`,
+          );
+        }
+      }
+
+      /* syncActiveCart already refreshed snapshots + recalculated totals */
+      const locked = cart.lock();
 
       return this.cartRepo.update(locked, client);
     };

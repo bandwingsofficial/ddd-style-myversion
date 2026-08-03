@@ -3,6 +3,7 @@ import { normalizeProductList } from "@/lib/product-normalizer";
 import {
   ProductListItem,
   ProductDetails,
+  ProductSlugPageResponse,
 } from "../types/product.types";
 
 let catalogCache: { data: ProductListItem[]; at: number } | null = null;
@@ -60,7 +61,9 @@ export const getProductsByOutlet = async (outletId: string): Promise<ProductList
 /**
  * Fetch product by slug (remains mostly same, but might need outlet context in future)
  */
-export const getProductBySlug = async (slug: string): Promise<ProductDetails> => {
+export const getProductBySlug = async (
+  slug: string,
+): Promise<ProductSlugPageResponse> => {
   const res = await customerAxios.get(`/public/products/slug/${slug}`);
   return res.data.data;
 };

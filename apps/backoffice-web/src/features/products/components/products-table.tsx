@@ -8,6 +8,7 @@ import {
   Plus,
   Power,
   PowerOff,
+  RotateCcw,
   Trash2,
   TrendingUp,
 } from 'lucide-react';
@@ -47,8 +48,25 @@ interface Props {
 const STATUS_FILTER_OPTIONS = [
   { value: '', label: 'All Status' },
   { value: 'ACTIVE', label: 'Active' },
+  { value: 'OUT_OF_STOCK', label: 'Out of Stock' },
   { value: 'INACTIVE', label: 'Inactive' },
+  { value: 'ARCHIVED', label: 'Archived' },
+  { value: 'SOFT_DELETED', label: 'Deleted' },
 ];
+
+function getStatusBadgeClass(status: ProductStatus): string {
+  switch (status) {
+    case 'ACTIVE':
+      return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+    case 'OUT_OF_STOCK':
+      return 'border-amber-200 bg-amber-50 text-amber-700';
+    case 'ARCHIVED':
+    case 'SOFT_DELETED':
+      return 'border-slate-300 bg-slate-100 text-slate-600';
+    default:
+      return 'border-border bg-muted text-muted-foreground';
+  }
+}
 
 function ProductCells({
   product,
@@ -56,6 +74,7 @@ function ProductCells({
   onDeactivate,
   onActivate,
   onDelete,
+  onRestore,
   onTrendingToggle,
   showEdit = false,
   actionLoadingId,
@@ -65,11 +84,14 @@ function ProductCells({
   onDeactivate?: (product: Product) => void;
   onActivate?: (product: Product) => void;
   onDelete: (product: Product) => void;
+  onRestore?: (product: Product) => void;
   onTrendingToggle: (product: Product) => void;
   showEdit?: boolean;
   actionLoadingId?: string | null;
 }) {
   const isActive = product.status === 'ACTIVE';
+  const isArchived =
+    product.status === 'ARCHIVED' || product.status === 'SOFT_DELETED';
   const isTrending = product.trendState?.trending || false;
   const isLoading = actionLoadingId === product.id;
   const imageUrl = product.images?.mainImageUrl;
@@ -106,13 +128,9 @@ function ProductCells({
       </td>
       <td className="px-4 py-3 align-middle">
         <span
-          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold ${
-            isActive
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-              : 'border-border bg-muted text-muted-foreground'
-          }`}
+          className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-bold ${getStatusBadgeClass(product.status)}`}
         >
-          {isActive ? 'ACTIVE' : 'INACTIVE'}
+          {product.status.replace(/_/g, ' ')}
         </span>
       </td>
       <td className="px-4 py-3 align-middle">
@@ -163,7 +181,16 @@ function ProductCells({
             />
           )}
 
-          {isActive ? (
+          {isArchived ? (
+            <IconActionButton
+              icon={<RotateCcw size={14} />}
+              label="Restore product"
+              onClick={() => onRestore?.(product)}
+              disabled={isLoading}
+              loading={isLoading}
+              variant="activate"
+            />
+          ) : isActive ? (
             <IconActionButton
               icon={<PowerOff size={14} />}
               label="Deactivate"
@@ -222,7 +249,7 @@ export default function ProductsTable({
   const deleteConfirm = useSmartDelete<Product>({
     deleteFn: (product, options) =>
       ProductsApi.delete(product.id, { force: options?.force }),
-    successMessage: 'Product deleted successfully.',
+    successMessage: 'Product removed successfully.',
     errorMessage: 'Failed to delete product.',
     getItemLabel: (product) => product.name.value,
     onSuccess: () => {
@@ -245,13 +272,20 @@ export default function ProductsTable({
     [activeCategories],
   );
 
-  const { activeItems, inactiveItems } = useMemo(() => {
-    const active = products.filter((item) => item.status === 'ACTIVE');
+  const { activeItems, inactiveItems, archivedItems } = useMemo(() => {
+    const active = products.filter(
+      (item) => item.status === 'ACTIVE' || item.status === 'OUT_OF_STOCK',
+    );
     const inactive = products.filter((item) => item.status === 'INACTIVE');
+    const archived = products.filter(
+      (item) =>
+        item.status === 'ARCHIVED' || item.status === 'SOFT_DELETED',
+    );
 
     return {
       activeItems: active,
       inactiveItems: inactive,
+      archivedItems: archived,
     };
   }, [products]);
 
@@ -277,6 +311,27 @@ export default function ProductsTable({
       toast.error(
         axiosError?.response?.data?.message ||
           'Failed to update product status.',
+      );
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleRestore = async (product: Product) => {
+    setActionLoadingId(product.id);
+
+    try {
+      await ProductsApi.restore(product.id);
+      toast.success('Product restored successfully.');
+      onRefresh();
+    } catch (err: unknown) {
+      const axiosError = err as {
+        response?: { data?: { message?: string } };
+      };
+
+      toast.error(
+        axiosError?.response?.data?.message ||
+          'Failed to restore product.',
       );
     } finally {
       setActionLoadingId(null);
@@ -462,6 +517,18 @@ export default function ProductsTable({
                     />
                   </tr>
                 ))}
+
+                {archivedItems.map((product) => (
+                  <tr key={product.id} className="group bg-slate-50/80">
+                    <ProductCells
+                      product={product}
+                      onRestore={handleRestore}
+                      onDelete={deleteConfirm.open}
+                      onTrendingToggle={handleTrendingToggle}
+                      actionLoadingId={actionLoadingId}
+                    />
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -501,7 +568,7 @@ export default function ProductsTable({
         entityName="Product"
         itemLabel={deleteConfirm.itemLabel}
         showInitial={showInitialDeleteDialog}
-        initialDescription="This action is permanent. All associated images and uploads will also be deleted."
+        initialDescription="Products with order history will be archived instead of deleted. Products without references are permanently removed along with their images."
         forceAnalysis={deleteConfirm.forceAnalysis}
         blockedAnalysis={deleteConfirm.blockedAnalysis}
         blockedMessage={deleteConfirm.blockedMessage}

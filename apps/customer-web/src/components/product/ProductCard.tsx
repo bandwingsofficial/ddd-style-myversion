@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Plus, Minus, ImageOff, Heart, Star, TrendingUp, MapPinOff } from "lucide-react";
 import { useFavorites } from "@/providers/CustomerAuthProvider";
 import { useCartStore } from "@/features/cart/cart.store";
-import { useCustomerSession } from "@/features/customer-auth/hooks/useCustomerSession";
 import { ProductListItem } from "@/features/products/types/product.types";
 import { useOutletStore } from "@/features/outlet/outlet.store";
 import { resolveProductPricing } from "@/lib/product-pricing";
@@ -18,7 +17,6 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
   const { isFavorite, addToFavorites, removeFromFavorites } = useFavorites();
   const isFav = isFavorite(product.id);
   const { items, addItem, updateItem, removeItem } = useCartStore();
-  const { isReady } = useCustomerSession();
 
   const currentOutlet = useOutletStore((state) => state.selectedOutlet);
   const isOutletSelected = !!currentOutlet;
@@ -48,32 +46,39 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
   const description = p.shortDescription || "";
   const tags = p.tags || [];
 
-  const cartItem = useMemo(() => items.find((i) => i.productId === p.id), [items, p.id]);
+  const productId = String(p.id);
+  const cartItem = useMemo(
+    () => items.find((i) => String(i.productId) === productId),
+    [items, productId],
+  );
   const quantity = cartItem?.quantity || 0;
 
   const handleToggleFavorite = (e: React.MouseEvent) => {
-    e.preventDefault(); e.stopPropagation();
+    e.preventDefault();
+    e.stopPropagation();
     isFav ? removeFromFavorites(p.id) : addToFavorites(p);
   };
 
   const handleAdd = async (e: React.MouseEvent) => {
-    e.preventDefault(); e.stopPropagation();
+    e.preventDefault();
+    e.stopPropagation();
+
     if (!isOutletSelected) {
       toast.error("Please select a nearby outlet first.");
       return;
     }
-    if (mrp <= 0) { toast.error("Invalid price for this product."); return; }
-    if (!outletId) return;
-
-    if (!isReady) {
-      toast.error("Please wait, session is loading...");
+    if (mrp <= 0) {
+      toast.error("Invalid price for this product.");
       return;
     }
-    if (!outletId) return;
+    if (!outletId) {
+      toast.error("No outlet selected for this product.");
+      return;
+    }
 
     await addItem({
-      productId: p.id,
-      outletId: outletId,
+      productId,
+      outletId,
       productName: name,
       productImage: imageUrl || "",
       quantity: 1,
@@ -83,133 +88,142 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
   };
 
   const updateQuantity = async (e: React.MouseEvent, delta: number) => {
-    e.preventDefault(); e.stopPropagation();
-    if (!cartItem || !isReady) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (!cartItem) return;
+
     const newQty = cartItem.quantity + delta;
-    if (newQty <= 0) await removeItem(p.id);
-    else await updateItem(p.id, newQty);
+    if (newQty <= 0) await removeItem(productId);
+    else await updateItem(productId, newQty);
   };
 
   const isAddDisabled = mrp <= 0 || !isOutletSelected;
 
   return (
-    <div className="relative h-full">
+    <div className="relative flex h-full flex-col overflow-hidden rounded-[14px] border border-slate-100 bg-white transition-all duration-300 cubic-bezier(0.4,0,0.2,1) hover:border-green-600/20 hover:shadow-[0_12px_24px_-8px_rgba(0,0,0,0.08)] hover:-translate-y-1">
       <Link
         href={`/products/${slug}`}
-        className="group flex flex-col h-full bg-white rounded-[14px] border border-slate-100 overflow-hidden no-underline transition-all duration-300 cubic-bezier(0.4,0,0.2,1) hover:border-green-600/20 hover:shadow-[0_12px_24px_-8px_rgba(0,0,0,0.08)] hover:-translate-y-1"
+        className="group flex min-h-0 flex-1 flex-col no-underline"
       >
-        <div className="relative h-[140px] shrink-0 overflow-hidden bg-slate-50 flex items-center justify-center">
+        <div className="relative flex h-[140px] shrink-0 items-center justify-center overflow-hidden bg-slate-50">
           <button
+            type="button"
             onClick={handleToggleFavorite}
-            className="absolute top-1.5 right-1.5 z-20 bg-white border-none rounded-full w-7 h-7 flex items-center justify-center cursor-pointer shadow-[0_4px_8px_rgba(0,0,0,0.08)] transition-transform active:scale-90 touch-target"
+            className="absolute right-1.5 top-1.5 z-20 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-none bg-white shadow-[0_4px_8px_rgba(0,0,0,0.08)] transition-transform active:scale-90 touch-target"
             aria-label={isFav ? "Remove from wishlist" : "Add to wishlist"}
           >
             <Heart size={16} fill={isFav ? "#ef4444" : "transparent"} color={isFav ? "#ef4444" : "#94a3b8"} strokeWidth={2.5} />
           </button>
 
           {imageUrl && !imageError ? (
-            <img src={imageUrl} alt={name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" onError={() => setImageError(true)} />
+            <img src={imageUrl} alt={name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" onError={() => setImageError(true)} />
           ) : (
-            <div className="flex flex-col items-center gap-1.5 text-slate-400 text-[0.7rem] font-semibold">
+            <div className="flex flex-col items-center gap-1.5 text-[0.7rem] font-semibold text-slate-400">
               <ImageOff size={24} />
               <span>No Image</span>
             </div>
           )}
 
-          <div className="absolute top-1.5 left-1.5 flex flex-col gap-1 z-10">
+          <div className="absolute left-1.5 top-1.5 z-10 flex flex-col gap-1">
             {isTrending && (
-              <div className="bg-amber-500 text-white text-[0.6rem] font-extrabold px-1.5 py-0.5 rounded flex items-center gap-0.5">
+              <div className="flex items-center gap-0.5 rounded bg-amber-500 px-1.5 py-0.5 text-[0.6rem] font-extrabold text-white">
                 <TrendingUp size={10} /> Trending
               </div>
             )}
           </div>
         </div>
 
-        <div className="p-2.5 flex flex-col justify-between flex-1 gap-1.5 min-w-0">
-          <div className="flex-1 min-w-0">
+        <div className="flex flex-1 flex-col gap-1.5 p-2.5">
+          <div className="min-w-0 flex-1">
             {tags.length > 0 && (
-              <div className="flex gap-1 mb-1 flex-wrap">
+              <div className="mb-1 flex flex-wrap gap-1">
                 {tags.slice(0, 2).map((tag: string) => (
-                  <span key={tag} className="text-[0.55rem] bg-slate-200 text-slate-600 px-1 py-0.5 rounded font-bold uppercase tracking-wider">{tag.replace(/_/g, ' ')}</span>
+                  <span key={tag} className="rounded bg-slate-200 px-1 py-0.5 text-[0.55rem] font-bold uppercase tracking-wider text-slate-600">{tag.replace(/_/g, " ")}</span>
                 ))}
               </div>
             )}
 
-            <h3 className="text-[0.9rem] font-bold text-slate-800 mb-0.5 leading-[1.2] line-clamp-1" title={name}>{name}</h3>
+            <h3 className="mb-0.5 line-clamp-1 text-[0.9rem] font-bold leading-[1.2] text-slate-800" title={name}>{name}</h3>
 
             {description ? (
-              <p className="text-[0.7rem] text-slate-500 mb-1 line-clamp-1" title={description}>{description}</p>
+              <p className="mb-1 line-clamp-1 text-[0.7rem] text-slate-500" title={description}>{description}</p>
             ) : (
-              <div className="h-[1.2em] mb-1"></div>
+              <div className="mb-1 h-[1.2em]" />
             )}
 
-            <div className="flex items-center gap-1.5 mb-1.5">
-              {unitLabel && <span className="text-[0.7rem] text-slate-500 font-semibold bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">{unitLabel}</span>}
+            <div className="mb-1.5 flex items-center gap-1.5">
+              {unitLabel && <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[0.7rem] font-semibold text-slate-500">{unitLabel}</span>}
               {ratingAvg > 0 && (
-                <div className="flex items-center gap-0.5 text-[0.65rem] font-bold text-slate-600 bg-slate-100 px-1 py-0.5 rounded">
+                <div className="flex items-center gap-0.5 rounded bg-slate-100 px-1 py-0.5 text-[0.65rem] font-bold text-slate-600">
                   <Star size={10} fill="#f59e0b" color="#f59e0b" />
                   <span>{ratingAvg}</span>
                 </div>
               )}
             </div>
           </div>
-
-          <div className="flex items-center justify-between gap-2 mt-auto pt-2 border-t border-slate-50 min-w-0">
-            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-0.5 leading-none">
-              {hasDiscount ? (
-                <>
-                  <span className="text-[0.75rem] font-medium text-slate-400 line-through">₹{mrp}</span>
-                  <span className="text-[1.25rem] font-extrabold text-slate-900">₹{sellingPrice}</span>
-                  <span className="inline-flex shrink-0 rounded-full bg-red-500 px-2 py-1 text-[0.58rem] font-extrabold uppercase tracking-wide text-white">
-                    {discountPercent}% OFF
-                  </span>
-                </>
-              ) : (
-                <span className="text-[1.25rem] font-extrabold text-slate-900">₹{sellingPrice}</span>
-              )}
-            </div>
-
-            <div className="flex flex-shrink-0 items-center">
-              {quantity === 0 ? (
-                <button
-                  disabled={isAddDisabled}
-                  onClick={!isAddDisabled ? handleAdd : (e) => e.preventDefault()}
-                  className={`flex h-9 min-w-[2.75rem] items-center justify-center gap-0.5 rounded-md px-2 font-extrabold text-[0.65rem] transition-all border touch-target
-                        ${isAddDisabled
-                      ? 'bg-slate-100 text-slate-400 border-slate-300 cursor-not-allowed opacity-60'
-                      : 'bg-green-50 text-green-600 border-green-600 hover:bg-green-600 hover:text-white pointer-events-auto active:scale-95'
-                    }`}
-                  aria-label="Add to cart"
-                >
-                  {!isOutletSelected ? (
-                    <MapPinOff size={14} strokeWidth={2} />
-                  ) : (
-                    <><Plus size={14} strokeWidth={3} /><span>ADD</span></>
-                  )}
-                </button>
-              ) : (
-                <div className="flex h-9 md:h-10 items-center gap-0.5 rounded-md bg-green-600 p-0.5 text-white shadow-[0_2px_6px_rgba(22,163,74,0.2)]">
-                  <button
-                    className="flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded border-none bg-transparent text-white transition-colors hover:bg-white/10 touch-target"
-                    onClick={(e) => updateQuantity(e, -1)}
-                    aria-label="Decrease quantity"
-                  >
-                    <Minus size={13} strokeWidth={3} />
-                  </button>
-                  <span className="min-w-[14px] text-center text-[0.8rem] font-extrabold tabular-nums">{quantity}</span>
-                  <button
-                    className="flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded border-none bg-transparent text-white transition-colors hover:bg-white/10 touch-target"
-                    onClick={(e) => updateQuantity(e, 1)}
-                    aria-label="Increase quantity"
-                  >
-                    <Plus size={13} strokeWidth={3} />
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       </Link>
+
+      <div className="mt-auto flex items-center justify-between gap-2 border-t border-slate-50 px-2.5 pb-2.5 pt-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-0.5 leading-none">
+          {hasDiscount ? (
+            <>
+              <span className="text-[0.75rem] font-medium text-slate-400 line-through">₹{mrp}</span>
+              <span className="text-[1.25rem] font-extrabold text-slate-900">₹{sellingPrice}</span>
+              <span className="inline-flex shrink-0 rounded-full bg-red-500 px-2 py-1 text-[0.58rem] font-extrabold uppercase tracking-wide text-white">
+                {discountPercent}% OFF
+              </span>
+            </>
+          ) : (
+            <span className="text-[1.25rem] font-extrabold text-slate-900">₹{sellingPrice}</span>
+          )}
+        </div>
+
+        <div className="flex flex-shrink-0 items-center">
+          {quantity === 0 ? (
+            <button
+              type="button"
+              disabled={isAddDisabled}
+              onClick={handleAdd}
+              className={`flex h-9 min-w-[2.75rem] items-center justify-center gap-0.5 rounded-md border px-2 text-[0.65rem] font-extrabold transition-all touch-target
+                ${isAddDisabled
+                  ? "cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400 opacity-60"
+                  : "border-green-600 bg-green-50 text-green-600 hover:bg-green-600 hover:text-white active:scale-95"
+                }`}
+              aria-label="Add to cart"
+            >
+              {!isOutletSelected ? (
+                <MapPinOff size={14} strokeWidth={2} />
+              ) : (
+                <>
+                  <Plus size={14} strokeWidth={3} />
+                  <span>ADD</span>
+                </>
+              )}
+            </button>
+          ) : (
+            <div className="flex h-9 items-center gap-0.5 rounded-md bg-green-600 p-0.5 text-white shadow-[0_2px_6px_rgba(22,163,74,0.2)] md:h-10">
+              <button
+                type="button"
+                className="flex h-8 w-8 items-center justify-center rounded border-none bg-transparent text-white transition-colors hover:bg-white/10 touch-target md:h-9 md:w-9"
+                onClick={(e) => void updateQuantity(e, -1)}
+                aria-label="Decrease quantity"
+              >
+                <Minus size={13} strokeWidth={3} />
+              </button>
+              <span className="min-w-[14px] text-center text-[0.8rem] font-extrabold tabular-nums">{quantity}</span>
+              <button
+                type="button"
+                className="flex h-8 w-8 items-center justify-center rounded border-none bg-transparent text-white transition-colors hover:bg-white/10 touch-target md:h-9 md:w-9"
+                onClick={(e) => void updateQuantity(e, 1)}
+                aria-label="Increase quantity"
+              >
+                <Plus size={13} strokeWidth={3} />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

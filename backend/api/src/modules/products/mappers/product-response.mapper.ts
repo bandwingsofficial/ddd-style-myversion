@@ -83,6 +83,13 @@ export interface ProductPublicResponse {
   extraInfo2: string | null;
 }
 
+export interface ProductSlugPageResponse {
+  availability: 'AVAILABLE' | 'UNAVAILABLE';
+  product: ProductPublicResponse | null;
+  relatedProducts: ProductPublicResponse[];
+  message?: string;
+}
+
 export type ProductGalleryRecord = {
   id: string;
   imageUrl: string;

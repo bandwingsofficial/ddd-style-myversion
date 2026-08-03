@@ -412,9 +412,30 @@ export class ProductManagementController {
       force: force === 'true',
     });
 
+    const message =
+      data.outcome === 'ARCHIVED'
+        ? 'Product archived successfully because historical orders exist.'
+        : 'Product permanently deleted.';
+
     return {
       success: true,
-      message: 'Product deleted permanently',
+      code:
+        data.outcome === 'ARCHIVED'
+          ? 'PRODUCT_ARCHIVED'
+          : 'PRODUCT_DELETED',
+      message,
+      data,
+    };
+  }
+
+  @Post(':productId/restore')
+  async restoreProduct(@Param('productId') productId: string) {
+    const data = await this.orchestrator.restoreProduct({ productId });
+
+    return {
+      success: true,
+      code: 'PRODUCT_RESTORED',
+      message: 'Product restored successfully.',
       data,
     };
   }
