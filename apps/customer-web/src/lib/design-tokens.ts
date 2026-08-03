@@ -57,8 +57,8 @@ export const typography = {
 } as const;
 
 export const productGrid = {
-  cols: "grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
-  imageHeight: "h-[170px] md:h-[220px]",
+  cols: "grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 [&>*]:h-full",
+  imageHeight: "h-[170px] md:h-[200px] lg:h-[220px]",
 } as const;
 
 export const badgeStyles = {

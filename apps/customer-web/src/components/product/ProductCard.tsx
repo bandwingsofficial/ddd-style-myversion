@@ -2,14 +2,16 @@
 
 import React, { memo, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Plus, Minus, ImageOff, Heart, TrendingUp, MapPin } from "lucide-react";
 import { useFavorites } from "@/providers/CustomerAuthProvider";
 import { useCartStore } from "@/features/cart/cart.store";
 import { ProductListItem } from "@/features/products/types/product.types";
 import { useOutletStore } from "@/features/outlet/outlet.store";
 import { resolveProductPricing } from "@/lib/product-pricing";
+import { getProductImageUrl } from "@/lib/image-url";
 import { toast } from "sonner";
-import { badgeStyles, productGrid, buttonStyles } from "@/lib/design-tokens";
+import { productGrid, buttonStyles } from "@/lib/design-tokens";
 import { ProductPriceRow } from "@/components/product/ProductPriceRow";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +39,10 @@ function ProductCardComponent({ product }: { product: ProductListItem }) {
 
   const pricing = useMemo(() => resolveProductPricing(p), [p]);
   const { mrp, sellingPrice, hasDiscount, discountPercent } = pricing;
-  const imageUrl = useMemo(() => p.images?.mainImageUrl || null, [p.images]);
+  const imageUrl = useMemo(
+    () => getProductImageUrl(p.images?.mainImageUrl ?? null),
+    [p.images],
+  );
 
   const unitLabel = useMemo(() => {
     if (typeof p.unit === "object" && p.unit !== null) {
@@ -114,14 +119,11 @@ function ProductCardComponent({ product }: { product: ProductListItem }) {
   const isAddDisabled = mrp <= 0 || !currentOutlet?.id;
 
   return (
-    // h-full + flex-col: card stretches to grid row height uniformly
-    <article className="flex h-full flex-col overflow-hidden rounded-card border border-surface-border bg-white shadow-card">
-      {/* flex-1: link area grows; price row stays pinned below via sibling mt-auto */}
+    <article className="group flex h-full flex-col overflow-hidden rounded-card border border-surface-border bg-white shadow-card">
       <Link href={`/products/${slug}`} className="flex min-h-0 flex-1 flex-col no-underline">
-        {/* shrink-0 + token height: every image slot is identical */}
         <div
           className={cn(
-            "relative shrink-0 overflow-hidden bg-surface-unit",
+            "relative shrink-0 overflow-hidden rounded-t-2xl bg-surface-unit",
             productGrid.imageHeight,
           )}
         >
@@ -144,38 +146,35 @@ function ProductCardComponent({ product }: { product: ProductListItem }) {
           ) : null}
 
           {imageUrl && !imageError ? (
-            <img
+            <Image
               src={imageUrl}
               alt={name}
-              loading="lazy"
-              decoding="async"
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+              unoptimized
               className={cn(
-                "h-full w-full object-cover transition-opacity duration-200",
+                "object-cover transition-transform duration-300 group-hover:scale-105",
                 !imageLoaded && "opacity-0",
               )}
               onLoad={() => setImageLoaded(true)}
               onError={() => setImageError(true)}
             />
           ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-1 text-[10px] font-medium text-ink-muted">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-[10px] font-medium text-ink-muted">
               <ImageOff size={18} />
               <span>No Image</span>
             </div>
           )}
 
           {isTrending ? (
-            <span
-              className="absolute bottom-1.5 left-1.5 z-10 inline-flex items-center gap-1 rounded-md bg-yellow-400 px-1.5 py-0.5 text-[10px] font-bold text-yellow-950"
-            >
+            <span className="absolute bottom-1.5 left-1.5 z-10 inline-flex items-center gap-1 rounded-md bg-yellow-400 px-1.5 py-0.5 text-[10px] font-bold text-yellow-950">
               <TrendingUp size={10} aria-hidden />
               Trending
             </span>
           ) : null}
         </div>
 
-        {/* flex-1 flex-col: distributes vertical space; fixed min-heights prevent content-driven jumps */}
         <div className="flex min-h-0 flex-1 flex-col gap-1 px-2 pt-2">
-          {/* min-h-[2.75rem]: reserves exactly 2 lines (text-base + leading-snug) */}
           <h3
             className="line-clamp-2 min-h-[2.75rem] text-base font-bold leading-snug text-ink-primary"
             title={name}
@@ -183,7 +182,6 @@ function ProductCardComponent({ product }: { product: ProductListItem }) {
             {name}
           </h3>
 
-          {/* min-h-4: always one description line slot; line-clamp preserved */}
           <p
             className="line-clamp-1 min-h-4 text-[11px] text-ink-muted"
             title={description || undefined}
@@ -191,7 +189,6 @@ function ProductCardComponent({ product }: { product: ProductListItem }) {
             {description || "\u00A0"}
           </p>
 
-          {/* min-h-4: tag row height fixed whether 0, 1, or 2 tags */}
           <div className="flex min-h-4 flex-wrap items-start gap-1">
             {tags.slice(0, 2).map((tag) => (
               <span
@@ -203,7 +200,6 @@ function ProductCardComponent({ product }: { product: ProductListItem }) {
             ))}
           </div>
 
-          {/* min-h-4: unit | outlet row always same height */}
           <div className="flex min-h-4 items-center gap-1 text-[10px] font-medium text-ink-muted">
             {unitLabel ? <span className="truncate">{unitLabel}</span> : null}
             {unitLabel && currentOutlet?.name ? (
@@ -219,7 +215,6 @@ function ProductCardComponent({ product }: { product: ProductListItem }) {
         </div>
       </Link>
 
-      {/* shrink-0 + mt-auto: price/ADD row aligned to card bottom across the grid */}
       <div className="mt-auto flex shrink-0 items-center justify-between gap-1.5 px-2 pb-2 pt-1.5">
         <ProductPriceRow
           sellingPrice={sellingPrice}

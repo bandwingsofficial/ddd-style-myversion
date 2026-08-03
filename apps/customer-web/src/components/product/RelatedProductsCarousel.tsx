@@ -23,7 +23,7 @@ function RelatedProductsCarouselComponent({
         {products.map((product) => (
           <div
             key={product.id}
-            className="w-[148px] shrink-0 snap-start sm:w-[160px]"
+            className="h-full w-[148px] shrink-0 snap-start sm:w-[160px]"
           >
             <ProductCard product={product} />
           </div>
