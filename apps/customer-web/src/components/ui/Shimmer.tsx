@@ -1,5 +1,4 @@
 import { cn } from "@/lib/utils";
-import { productGrid } from "@/lib/design-tokens";
 
 interface ShimmerProps {
   className?: string;
@@ -51,7 +50,7 @@ export function ProductGridShimmer({ count = 5 }: { count?: number }) {
           key={index}
           className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm"
         >
-          <Shimmer className={`w-full rounded-none ${productGrid.imageHeight}`} />
+          <Shimmer className="h-[170px] w-full rounded-none md:h-[200px] lg:h-[220px]" />
           <div className="space-y-3 p-4">
             <ShimmerText className="h-5 w-3/4" />
             <ShimmerText className="h-4 w-1/2" />

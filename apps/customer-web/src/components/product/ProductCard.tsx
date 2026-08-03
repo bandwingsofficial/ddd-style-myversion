@@ -11,7 +11,7 @@ import { useOutletStore } from "@/features/outlet/outlet.store";
 import { resolveProductPricing } from "@/lib/product-pricing";
 import { getProductImageUrl } from "@/lib/image-url";
 import { toast } from "sonner";
-import { productGrid, buttonStyles } from "@/lib/design-tokens";
+import { buttonStyles } from "@/lib/design-tokens";
 import { ProductPriceRow } from "@/components/product/ProductPriceRow";
 import { cn } from "@/lib/utils";
 
@@ -39,10 +39,13 @@ function ProductCardComponent({ product }: { product: ProductListItem }) {
 
   const pricing = useMemo(() => resolveProductPricing(p), [p]);
   const { mrp, sellingPrice, hasDiscount, discountPercent } = pricing;
-  const imageUrl = useMemo(
-    () => getProductImageUrl(p.images?.mainImageUrl ?? null),
-    [p.images],
-  );
+  const imageUrl = useMemo(() => {
+    const images = p.images as
+      | { mainImageUrl?: string; mainImage?: string }
+      | undefined;
+    const rawPath = images?.mainImageUrl ?? images?.mainImage ?? null;
+    return getProductImageUrl(rawPath);
+  }, [p.images]);
 
   const unitLabel = useMemo(() => {
     if (typeof p.unit === "object" && p.unit !== null) {
@@ -121,12 +124,7 @@ function ProductCardComponent({ product }: { product: ProductListItem }) {
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-card border border-surface-border bg-white shadow-card">
       <Link href={`/products/${slug}`} className="flex min-h-0 flex-1 flex-col no-underline">
-        <div
-          className={cn(
-            "relative shrink-0 overflow-hidden rounded-t-2xl bg-surface-unit",
-            productGrid.imageHeight,
-          )}
-        >
+        <div className="relative h-[170px] w-full shrink-0 overflow-hidden rounded-t-2xl bg-surface-unit md:h-[200px] lg:h-[220px]">
           <button
             type="button"
             onClick={handleToggleFavorite}
@@ -150,7 +148,7 @@ function ProductCardComponent({ product }: { product: ProductListItem }) {
               src={imageUrl}
               alt={name}
               fill
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+              sizes="(max-width: 768px) 100vw, 25vw"
               unoptimized
               className={cn(
                 "object-cover transition-transform duration-300 group-hover:scale-105",

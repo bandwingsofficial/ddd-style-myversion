@@ -1,5 +1,30 @@
-import { ProductListItem } from "@/features/products/types/product.types";
+import { ProductListItem, ProductImages } from "@/features/products/types/product.types";
 import { parsePriceValue, resolveProductPricing } from "@/lib/product-pricing";
+
+function normalizeProductImages(raw: unknown): ProductImages | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+
+  const img = raw as Record<string, unknown>;
+  const mainImageUrl =
+    (typeof img.mainImageUrl === "string" && img.mainImageUrl.trim()) ||
+    (typeof img.mainImage === "string" && img.mainImage.trim()) ||
+    null;
+
+  if (!mainImageUrl) return undefined;
+
+  const gallerySource = Array.isArray(img.galleryImageUrls)
+    ? img.galleryImageUrls
+    : Array.isArray(img.galleryImages)
+      ? img.galleryImages
+      : [];
+
+  return {
+    mainImageUrl,
+    galleryImageUrls: gallerySource.filter(
+      (entry): entry is string => typeof entry === "string" && entry.trim() !== "",
+    ),
+  };
+}
 
 /** Normalize outlet / list API payloads to the same shape as Product Details. */
 export function normalizeProductListItem(
@@ -53,7 +78,9 @@ export function normalizeProductListItem(
     name: item.name?.value ?? item.name,
     slug: item.slug?.value ?? item.slug,
     price,
-    images: item.images,
+    images:
+      normalizeProductImages(item.images) ??
+      catalogItem?.images,
     unit:
       item.unit ??
       (item.unitValue != null
