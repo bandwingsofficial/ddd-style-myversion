@@ -2,7 +2,6 @@
 
 import { useLocationOrchestrator } from "@/features/location/hooks/useLocationOrchestrator";
 import LocationSearchSheet from "@/components/customer/LocationSearchSheet";
-import OutletPickerSheet from "@/components/location/OutletPickerSheet";
 import { useLocationOrchestratorStore } from "@/features/location/location-orchestrator.store";
 
 export default function LocationProvider({
@@ -28,7 +27,6 @@ export default function LocationProvider({
         onClose={closeLocationSheet}
         onCancel={cancel}
       />
-      <OutletPickerSheet />
     </>
   );
 }

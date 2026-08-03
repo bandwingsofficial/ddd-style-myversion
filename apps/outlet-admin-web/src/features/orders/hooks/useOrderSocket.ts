@@ -25,6 +25,7 @@ const ORDER_SOCKET_EVENTS = [
 
 export function useOrderSocket(
   onUpdate: (payload?: OrderSocketPayload) => void,
+  outletId?: string | null,
 ) {
   const onUpdateRef = useRef(onUpdate);
 
@@ -42,9 +43,13 @@ export function useOrderSocket(
     const socket: Socket = io(`${baseUrl}/public/orders`, {
       withCredentials: true,
       transports: ['websocket', 'polling'],
+      query: outletId ? { outletId } : undefined,
     });
 
     const handleUpdate = (payload: OrderSocketPayload) => {
+      if (outletId && payload.outletId && payload.outletId !== outletId) {
+        return;
+      }
       onUpdateRef.current(payload);
     };
 
@@ -55,5 +60,5 @@ export function useOrderSocket(
     return () => {
       socket.disconnect();
     };
-  }, []);
+  }, [outletId]);
 }

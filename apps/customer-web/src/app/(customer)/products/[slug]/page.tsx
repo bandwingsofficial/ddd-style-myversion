@@ -8,7 +8,7 @@ import ProductCard from "@/components/product/ProductCard";
 import { normalizeProductList } from "@/lib/product-normalizer";
 import { 
   ShoppingBag, ShieldCheck, Truck, Star, Heart, 
-  Minus, Plus, Leaf, ChevronRight, Loader2, MapPinOff 
+  Minus, Plus, Leaf, ChevronRight, Loader2, MapPin
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useCartStore } from "@/features/cart/cart.store";
@@ -16,6 +16,7 @@ import { useOutletStore } from "@/features/outlet/outlet.store";
 import { useFavorites } from "@/providers/CustomerAuthProvider";
 import { resolveProductPricing } from "@/lib/product-pricing";
 import { toast } from "sonner";
+import { useDeliveryAppState } from "@/features/location/hooks/useDeliveryAppState";
 
 export default function ProductDetailsPage() {
   const { slug: routeSlug } = useParams<{ slug: string }>();
@@ -30,6 +31,7 @@ export default function ProductDetailsPage() {
   
   const { items, addItem, updateItem, removeItem } = useCartStore();
   const currentOutlet = useOutletStore((state) => state.selectedOutlet);
+  const { isNoOutlet } = useDeliveryAppState();
   const { isFavorite, addToFavorites, removeFromFavorites } = useFavorites();
 
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -79,19 +81,19 @@ export default function ProductDetailsPage() {
   const isFav = product ? isFavorite(product.id) : false;
 
   const handleAddToCart = async () => {
-    if (!currentOutlet) {
-      toast.error("Please select a nearby outlet first.");
+    if (!currentOutlet?.id) {
+      toast.error("Please select a delivery location first.");
+      return;
+    }
+    if (isNoOutlet) {
+      toast.error("We don't deliver to your current location yet.");
       return;
     }
     if (!product || product.originalPrice <= 0) return;
-    if (!product.outletId) {
-      toast.error("No outlet selected for this product.");
-      return;
-    }
 
     await addItem({
       productId: product.id,
-      outletId: product.outletId,
+      outletId: currentOutlet.id,
       productName: product.displayName,
       productImage: product.mainImage,
       quantity: 1,
@@ -150,6 +152,12 @@ export default function ProductDetailsPage() {
           </nav>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12 items-start">
+            {currentOutlet?.name && (
+              <div className="md:col-span-2 inline-flex w-fit items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">
+                <MapPin size={14} />
+                {currentOutlet.name}
+              </div>
+            )}
             {isUnavailable && (
               <div className="md:col-span-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
                 {unavailableMessage ?? "This product is no longer available."}
@@ -258,7 +266,8 @@ export default function ProductDetailsPage() {
                       </div>
                       <button 
                         onClick={() => handleUpdateQty(1)}
-                        className="w-10 h-full bg-white/10 rounded-lg text-white hover:bg-white/20 flex items-center justify-center transition-colors"
+                        disabled={!currentOutlet || isNoOutlet}
+                        className="w-10 h-full bg-white/10 rounded-lg text-white hover:bg-white/20 flex items-center justify-center transition-colors disabled:opacity-50"
                       >
                         <Plus size={16} strokeWidth={2.5}/>
                       </button>
@@ -266,11 +275,13 @@ export default function ProductDetailsPage() {
                   ) : (
                     <button 
                       onClick={handleAddToCart}
-                      disabled={!currentOutlet}
-                      className="w-full max-w-[320px] bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white h-[48px] rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.98]"
+                      disabled={!currentOutlet || isNoOutlet}
+                      className="w-full max-w-[320px] bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white h-[48px] rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.98]"
                     >
-                      {!currentOutlet ? <MapPinOff size={18} /> : <ShoppingBag size={18} />}
-                      {!currentOutlet ? "Select Outlet to Order" : `Add to Order • ₹${product?.currentPrice}`}
+                      <ShoppingBag size={18} />
+                      {!currentOutlet || isNoOutlet
+                        ? "Location Not Serviceable"
+                        : `Add to Order • ₹${product?.currentPrice}`}
                     </button>
                   )}
                </div>
@@ -336,7 +347,8 @@ export default function ProductDetailsPage() {
               <span className="text-base font-bold text-white">{quantityInCart}</span>
               <button
                 onClick={() => handleUpdateQty(1)}
-                className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-white touch-target"
+                disabled={!currentOutlet || isNoOutlet}
+                className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-white touch-target disabled:opacity-50"
                 aria-label="Increase quantity"
               >
                 <Plus size={16} strokeWidth={2.5} />
@@ -345,11 +357,11 @@ export default function ProductDetailsPage() {
           ) : (
             <button
               onClick={handleAddToCart}
-              disabled={!currentOutlet}
-              className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-sm font-bold text-white shadow-md transition-all active:scale-[0.98] disabled:bg-slate-300 touch-target"
+              disabled={!currentOutlet || isNoOutlet}
+              className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 text-sm font-bold text-white shadow-md transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-slate-300 touch-target"
             >
-              {!currentOutlet ? <MapPinOff size={18} /> : <ShoppingBag size={18} />}
-              {!currentOutlet ? "Select Outlet" : "Add to Cart"}
+              <ShoppingBag size={18} />
+              {!currentOutlet || isNoOutlet ? "Location Not Serviceable" : "Add to Cart"}
             </button>
           )}
         </div>

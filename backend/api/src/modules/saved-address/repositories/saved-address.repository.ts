@@ -50,6 +50,7 @@ export class SavedAddressRepository {
         addressText: address.addressText,
         latitude: address.latitude,
         longitude: address.longitude,
+        resolvedOutletId: address.resolvedOutletId,
         isDeleted: address.isDeleted,
         createdAt: address.createdAt,
         updatedAt: address.updatedAt,
@@ -175,6 +176,7 @@ export class SavedAddressRepository {
         addressText: address.addressText,
         latitude: address.latitude,
         longitude: address.longitude,
+        resolvedOutletId: address.resolvedOutletId,
         isDeleted: address.isDeleted,
         updatedAt: address.updatedAt,
       },
@@ -216,6 +218,7 @@ export class SavedAddressRepository {
     addressText: string;
     latitude: number | null;
     longitude: number | null;
+    resolvedOutletId: string | null;
     isDeleted: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -228,6 +231,7 @@ export class SavedAddressRepository {
       addressText: row.addressText,
       latitude: row.latitude,
       longitude: row.longitude,
+      resolvedOutletId: row.resolvedOutletId,
       isDeleted: row.isDeleted,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,

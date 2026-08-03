@@ -13,6 +13,7 @@ import { ValidationError } from '../../../common/errors';
 /* 🔥 EVENTS */
 import { SavedAddressEventsService } from '../events/saved-address-events.service';
 import { SavedAddressType } from '../domain/enums/saved-address-type.enum';
+import { OutletOrchestratorService } from '../../outlets/services/outlet-orchestrator.service';
 
 @Injectable()
 export class SavedAddressService {
@@ -20,6 +21,7 @@ export class SavedAddressService {
     private readonly prisma: PrismaService,
     private readonly savedAddressRepo: SavedAddressRepository,
     private readonly savedAddressEvents: SavedAddressEventsService,
+    private readonly outletOrchestrator: OutletOrchestratorService,
   ) {}
 
   /* ================================================= */
@@ -53,6 +55,26 @@ export class SavedAddressService {
     return this.savedAddressRepo.findAllByCustomer(customerId);
   }
 
+  private async resolveOutletIdForCoordinates(
+    latitude?: number | null,
+    longitude?: number | null,
+  ): Promise<string | null> {
+    if (latitude == null || longitude == null) {
+      return null;
+    }
+
+    const nearby = await this.outletOrchestrator.getNearbyOutlets(
+      latitude,
+      longitude,
+    );
+
+    if (nearby.length === 0) {
+      return null;
+    }
+
+    return nearby[0].outlet.id;
+  }
+
   /* ================================================= */
   /* PRIMARY                                           */
   /* ================================================= */
@@ -73,39 +95,55 @@ export class SavedAddressService {
   async createSavedAddress(
     address: SavedAddress,
   ): Promise<SavedAddress> {
+    const resolvedOutletId = await this.resolveOutletIdForCoordinates(
+      address.latitude,
+      address.longitude,
+    );
+
+    const addressWithOutlet = SavedAddress.createNew({
+      id: address.id,
+      customerId: address.customerId,
+      type: address.type,
+      label: address.label,
+      addressText: address.addressText,
+      latitude: address.latitude ?? undefined,
+      longitude: address.longitude ?? undefined,
+      resolvedOutletId,
+      now: address.createdAt,
+    });
+
     let result!: SavedAddress;
 
     await this.prisma.$transaction(async (tx) => {
 
-      /* ✅ Only HOME/WORK uniqueness check */
       if (
-        address.type === SavedAddressType.HOME ||
-        address.type === SavedAddressType.WORK
+        addressWithOutlet.type === SavedAddressType.HOME ||
+        addressWithOutlet.type === SavedAddressType.WORK
       ) {
         const active =
           await this.savedAddressRepo.findActiveByCustomerAndType(
-            address.customerId,
-            address.type,
+            addressWithOutlet.customerId,
+            addressWithOutlet.type,
             tx,
           );
 
         if (active) {
           throw new ValidationError(
             'SAVED_ADDRESS_TYPE_ALREADY_EXISTS',
-            `Active ${address.type} address already exists`,
+            `Active ${addressWithOutlet.type} address already exists`,
           );
         }
       }
 
       /* 2️⃣ Restore deleted (HOME/WORK only) */
       if (
-        address.type === SavedAddressType.HOME ||
-        address.type === SavedAddressType.WORK
+        addressWithOutlet.type === SavedAddressType.HOME ||
+        addressWithOutlet.type === SavedAddressType.WORK
       ) {
         const deleted =
           await this.savedAddressRepo.findDeletedByCustomerAndType(
-            address.customerId,
-            address.type,
+            addressWithOutlet.customerId,
+            addressWithOutlet.type,
             tx,
           );
 
@@ -113,10 +151,11 @@ export class SavedAddressService {
           const restored = deleted
             .restore()
             .updateDetails({
-              label: address.label,
-              addressText: address.addressText,
-              latitude: address.latitude,
-              longitude: address.longitude,
+              label: addressWithOutlet.label,
+              addressText: addressWithOutlet.addressText,
+              latitude: addressWithOutlet.latitude,
+              longitude: addressWithOutlet.longitude,
+              resolvedOutletId,
             });
 
           result = await this.savedAddressRepo.save(restored, tx);
@@ -125,7 +164,7 @@ export class SavedAddressService {
       }
 
       /* 3️⃣ Create new (OTHER unlimited) */
-      result = await this.savedAddressRepo.create(address, tx);
+      result = await this.savedAddressRepo.create(addressWithOutlet, tx);
     });
 
     /* 🔥 EVENTS */
@@ -161,6 +200,11 @@ export class SavedAddressService {
       );
     }
 
+    const resolvedOutletId = await this.resolveOutletIdForCoordinates(
+      params.latitude !== undefined ? params.latitude : address.latitude,
+      params.longitude !== undefined ? params.longitude : address.longitude,
+    );
+
     const updated = address.updateDetails({
       ...(params.label !== undefined && { label: params.label }),
       ...(params.addressText !== undefined && {
@@ -172,6 +216,7 @@ export class SavedAddressService {
       ...(params.longitude !== undefined && {
         longitude: params.longitude,
       }),
+      resolvedOutletId,
     });
 
     await this.prisma.$transaction(async (tx) => {

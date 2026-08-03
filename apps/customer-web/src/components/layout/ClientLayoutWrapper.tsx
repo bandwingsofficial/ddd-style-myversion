@@ -22,13 +22,15 @@ export default function ClientLayoutWrapper({ children }: ClientLayoutWrapperPro
     "/reset-password",
   ];
   const isAuthPage = authRoutes.some((route) => pathname?.startsWith(route));
+  const hideBottomChrome =
+    pathname?.startsWith("/cart/checkout") || pathname === "/cart";
 
   return (
     <div className="min-h-screen w-full overflow-x-clip">
       <Toaster richColors closeButton position="top-center" />
       {children}
-      {!isAuthPage && <BottomNav />}
-      {!isAuthPage && <FloatingCartBar />}
+      {!isAuthPage && !hideBottomChrome && <BottomNav />}
+      {!isAuthPage && !hideBottomChrome && <FloatingCartBar />}
     </div>
   );
 }

@@ -19,6 +19,7 @@ import { OrderAddress } from '../domain/value-objects/order-address.vo';
 import { Money } from '../domain/value-objects/money.vo';
 
 import { ValidationError } from '../../../common/errors';
+import { traceOutletLifecycle } from '../../../common/utils/outlet-trace.util';
 import { CartStatus } from '@/modules/cart/domain/enums/cart-status.enum';
 import { OrderStatus } from '../domain/enums/order-status.enum';
 import { OrderMapper } from '../mappers/order.mapper';
@@ -117,6 +118,12 @@ export class OrderService {
     );
   }
 
+  traceOutletLifecycle('order.createFromCart', {
+    cartOutletId: cart.outletId,
+    cartId: cart.id,
+    customerId: cart.customerId ?? null,
+  });
+
   const orderId = uuid();
 
   const orderAddress = OrderAddress.create({
@@ -209,6 +216,18 @@ export class OrderService {
 
       if (!params.cart.hasItems()) {
         throw new ValidationError('EMPTY_CART', 'Cart is empty');
+      }
+
+      if (params.cart.outletId !== existing.outletId) {
+        traceOutletLifecycle('order.resyncPendingOrderFromCart', {
+          orderOutletId: existing.outletId,
+          cartOutletId: params.cart.outletId,
+          orderId: existing.id,
+        });
+        throw new ValidationError(
+          'OUTLET_ORDER_MISMATCH',
+          'Cart outlet does not match pending order outlet',
+        );
       }
 
       const { cart, address } = params;

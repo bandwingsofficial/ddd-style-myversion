@@ -29,7 +29,7 @@ export class OrderPaymentListener {
     );
 
     this.logger.log(
-      `[Order Updated] orderId=${order.id} orderStatus=${order.status}`,
+      `[Order Updated] orderId=${order.id} orderStatus=${order.status} outletId=${order.outletId}`,
     );
 
     const cleared = await this.cartOrchestrator.clearCartAfterPayment({

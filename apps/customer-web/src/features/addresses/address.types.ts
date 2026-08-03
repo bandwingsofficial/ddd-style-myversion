@@ -6,6 +6,7 @@ export interface Address {
   addressText: string;
   latitude: number;
   longitude: number;
+  resolvedOutletId?: string | null;
   isDeleted: boolean;
 }
 

@@ -14,6 +14,7 @@ import { CheckoutPricingService } from './checkout-pricing.service';
 import { CartResponseMapper } from '../../cart/mappers/cart-response.mapper';
 
 import { ValidationError } from '../../../common/errors';
+import { traceOutletLifecycle } from '../../../common/utils/outlet-trace.util';
 
 /* 🔥 NEW */
 import { CheckoutEventsService } from '../events/checkout-events.service';
@@ -103,6 +104,49 @@ export class CheckoutService {
     }
   }
 
+  private assertAddressResolvedOutlet(
+    address: { resolvedOutletId?: string | null },
+    requestedOutletId: string,
+  ): void {
+    if (!address.resolvedOutletId) {
+      throw new ValidationError(
+        'ADDRESS_OUT_OF_SERVICE',
+        'Your selected delivery address is outside our delivery area. Please choose another address.',
+      );
+    }
+
+    if (address.resolvedOutletId !== requestedOutletId) {
+      throw new ValidationError(
+        'ADDRESS_OUTLET_MISMATCH',
+        'The selected address does not match the delivery outlet for this order.',
+      );
+    }
+  }
+
+  private assertCartOutletMatch(
+    cartOutletId: string | undefined,
+    requestedOutletId: string,
+    stage: string,
+  ): void {
+    if (!cartOutletId) {
+      throw new ValidationError(
+        'OUTLET_CART_MISMATCH',
+        'Cart does not belong to any outlet',
+      );
+    }
+
+    if (cartOutletId !== requestedOutletId) {
+      traceOutletLifecycle(stage, {
+        requestedOutletId,
+        cartOutletId,
+      });
+      throw new ValidationError(
+        'OUTLET_CART_MISMATCH',
+        'Cart does not belong to the requested outlet',
+      );
+    }
+  }
+
   /* ================================================= */
   /* GET CHECKOUT SUMMARY                              */
   /* ================================================= */
@@ -124,10 +168,14 @@ async getCheckoutSummary(params: {
     throw new ValidationError('EMPTY_CART', 'Cart is empty');
   }
 
+  this.assertCartOutletMatch(cart.outletId, params.outletId, 'checkout.summary');
+
   const address = await this.savedAddressService.getById({
     customerId: params.customerId,
     savedAddressId: params.savedAddressId,
   });
+
+  this.assertAddressResolvedOutlet(address, params.outletId);
 
   if (address.latitude != null && address.longitude != null) {
     await this.assertOutletServesLocation({
@@ -237,6 +285,8 @@ async startCheckout(params: {
     savedAddressId: params.savedAddressId,
   });
 
+  this.assertAddressResolvedOutlet(checkoutAddress, params.outletId);
+
   if (
     checkoutAddress.latitude != null &&
     checkoutAddress.longitude != null
@@ -270,6 +320,12 @@ async startCheckout(params: {
     if (!cart || !cart.hasItems()) {
       throw new ValidationError('EMPTY_CART', 'Cart is empty');
     }
+
+    this.assertCartOutletMatch(
+      cart.outletId,
+      params.outletId,
+      'checkout.startCheckout.pending',
+    );
 
     const address = await this.savedAddressService.getById({
       customerId: params.customerId,
@@ -311,6 +367,12 @@ async startCheckout(params: {
         throw new ValidationError('EMPTY_CART', 'Cart is empty');
       }
 
+      this.assertCartOutletMatch(
+        cart.outletId,
+        params.outletId,
+        'checkout.startCheckout.create',
+      );
+
       await this.ensureNoActiveOrder(
         params.customerId,
         params.outletId,
@@ -349,6 +411,13 @@ async startCheckout(params: {
       );
     },
   );
+
+  traceOutletLifecycle('checkout.startCheckout.orderCreated', {
+    requestedOutletId: params.outletId,
+    orderOutletId: order.outletId,
+    orderId: order.id,
+    customerId: params.customerId,
+  });
 
   /* ================================================= */
   /* 2️⃣ CREATE PAYMENT SESSION                         */

@@ -70,6 +70,10 @@ body {
     padding-bottom: calc(var(--safe-bottom) + 1.5rem);
   }
 
+  .customer-page-shell--checkout-bar {
+    padding-bottom: calc(var(--safe-bottom) + 6.5rem);
+  }
+
   .customer-page-shell--with-cart {
     padding-bottom: calc(
       var(--customer-bottom-nav-offset) + var(--safe-bottom) +
@@ -80,6 +84,10 @@ body {
   @media (min-width: 1024px) {
     .customer-page-shell {
       padding-bottom: 2rem;
+    }
+
+    .customer-page-shell--checkout-bar {
+      padding-bottom: calc(var(--safe-bottom) + 6.5rem);
     }
 
     .customer-page-shell--with-cart {

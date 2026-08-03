@@ -213,11 +213,14 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
           source: "saved",
         });
 
-        const nearestOutlet = useOutletStore.getState().selectedOutlet;
-        if (!nearestOutlet) {
-             setPopup({ type: "error", message: "Sorry, no outlet found near this address." });
-             setCheckingOutlet(false);
-             return;
+        if (!address.resolvedOutletId) {
+          setPopup({
+            type: "error",
+            message:
+              "Sorry, we don't currently deliver to this address. Please choose another location.",
+          });
+          setCheckingOutlet(false);
+          return;
         }
 
         onSelect(address);

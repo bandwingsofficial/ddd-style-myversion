@@ -1,20 +1,34 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import Script from "next/script";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { CheckoutApi } from "@/features/checkout/checkout.api";
-import { CheckoutSummary, CheckoutErrorResponse, CheckoutStartResponse } from "@/features/checkout/checkout.types";
+import {
+  CheckoutSummary,
+  CheckoutErrorResponse,
+  CheckoutStartResponse,
+} from "@/features/checkout/checkout.types";
 import { useCartStore } from "@/features/cart/cart.store";
 import { useOutletStore } from "@/features/outlet/outlet.store";
 import { useCustomerSession } from "@/features/customer-auth/hooks/useCustomerSession";
-import { ArrowLeft, ShieldCheck, Loader2, MapPin, ShoppingCart } from "lucide-react";
+import { ArrowLeft, Loader2, MapPin, ShoppingCart } from "lucide-react";
 import Header from "@/components/customer/Header";
 import { OrderSummaryBreakdown } from "@/features/orders/components/OrderSummaryBreakdown";
 import { getProductImageUrl } from "@/lib/image-url";
 import { savePaymentSession } from "@/features/checkout/payment-session.util";
+import { computeLineTotal } from "@/lib/cart-pricing";
+import {
+  resolveCheckoutOutletId,
+  traceOutletBinding,
+} from "@/features/checkout/resolve-checkout-outlet.util";
+import { mapCheckoutSummaryError } from "@/features/checkout/checkout-error.util";
+import { CheckoutPaymentBar } from "@/components/checkout/CheckoutPaymentBar";
+import { AddressService } from "@/features/addresses/address.service";
+import { useLocationOrchestratorStore } from "@/features/location/location-orchestrator.store";
+import { CheckoutOutOfServiceState } from "@/components/location/NoDeliveryState";
 
 declare global {
   interface Window {
@@ -30,9 +44,15 @@ export default function CheckoutPage() {
   const [summary, setSummary] = useState<CheckoutSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadErrorTitle, setLoadErrorTitle] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [initializing, setInitializing] = useState(true);
+  const [outletResolutionError, setOutletResolutionError] = useState<
+    string | null
+  >(null);
+  const [addressOutOfService, setAddressOutOfService] = useState(false);
+  const [syncingAddress, setSyncingAddress] = useState(true);
 
   const [pendingOrderModal, setPendingOrderModal] = useState<{
     isOpen: boolean;
@@ -45,7 +65,12 @@ export default function CheckoutPage() {
   });
 
   const { isLoggedIn, isHydrated: authHydrated } = useCustomerSession();
-  const { items: cartItems, loadCart, hydrated: cartHydrated } = useCartStore();
+  const {
+    items: cartItems,
+    loadCart,
+    hydrated: cartHydrated,
+    cartOutletId,
+  } = useCartStore();
   const { selectedOutlet, outletRevision } = useOutletStore();
 
   useEffect(() => {
@@ -66,27 +91,88 @@ export default function CheckoutPage() {
       setInitializing(false);
     };
     void initCart();
-  }, [authHydrated, cartHydrated, isLoggedIn, addressId, loadCart, router, cartItems.length]);
+  }, [
+    authHydrated,
+    cartHydrated,
+    isLoggedIn,
+    addressId,
+    loadCart,
+    router,
+    cartItems.length,
+  ]);
 
   useEffect(() => {
     if (initializing || !addressId) return;
 
-    const currentOutletId = cartItems[0]?.outletId || selectedOutlet?.id;
+    let cancelled = false;
 
-    if (!currentOutletId) {
-      if (!loading && cartItems.length === 0) {
-        router.replace("/home");
+    const syncAddressAndLoadCheckout = async () => {
+      setSyncingAddress(true);
+      setAddressOutOfService(false);
+      setOutletResolutionError(null);
+
+      try {
+        const address = await AddressService.getOne(addressId);
+
+        if (!address.resolvedOutletId) {
+          if (!cancelled) {
+            setAddressOutOfService(true);
+            setSummary(null);
+            setLoading(false);
+          }
+          return;
+        }
+
+        await useLocationOrchestratorStore.getState().onLocationChanged({
+          lat: address.latitude,
+          lng: address.longitude,
+          label: address.label || address.addressText,
+          formattedAddress: address.addressText,
+          source: "saved",
+        });
+
+        if (cancelled) return;
+
+        const { outletId: currentOutletId, error } = resolveCheckoutOutletId();
+        setOutletResolutionError(error ?? null);
+
+        if (!currentOutletId) {
+          if (!loading && cartItems.length === 0) {
+            router.replace("/home");
+          }
+          return;
+        }
+
+        if (address.resolvedOutletId !== currentOutletId) {
+          setAddressOutOfService(true);
+          setSummary(null);
+          return;
+        }
+
+        await loadSummary(addressId, currentOutletId);
+        await checkActiveCheckout(currentOutletId);
+      } catch (error) {
+        console.error("Checkout address sync failed:", error);
+        if (!cancelled) {
+          setLoadErrorTitle("Checkout unavailable");
+          setLoadError("Could not verify your delivery address.");
+        }
+      } finally {
+        if (!cancelled) setSyncingAddress(false);
       }
-      return;
-    }
+    };
 
-    void loadSummary(addressId, currentOutletId);
-    void checkActiveCheckout(currentOutletId);
+    void syncAddressAndLoadCheckout();
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     initializing,
     addressId,
     selectedOutlet?.id,
     outletRevision,
+    cartOutletId,
     cartItems,
     router,
   ]);
@@ -110,11 +196,14 @@ export default function CheckoutPage() {
     try {
       setLoading(true);
       setLoadError(null);
+      setLoadErrorTitle(null);
       const data = await CheckoutApi.getSummary(addrId, outId);
       setSummary(data);
     } catch (error) {
       console.error("Summary Error:", error);
-      setLoadError("Could not load checkout summary. Please try again.");
+      const mapped = mapCheckoutSummaryError(error);
+      setLoadErrorTitle(mapped.title);
+      setLoadError(mapped.message);
       setSummary(null);
     } finally {
       setLoading(false);
@@ -122,13 +211,20 @@ export default function CheckoutPage() {
   };
 
   const handlePay = async () => {
-    const currentOutletId =
-      useCartStore.getState().items[0]?.outletId ||
-      useOutletStore.getState().selectedOutlet?.id;
+    const { outletId: currentOutletId, error } = resolveCheckoutOutletId();
 
     if (!addressId || !summary || !currentOutletId || processing || checkoutOpen) {
+      if (error) toast.error(error);
+      else if (loadError) toast.error(loadError);
       return;
     }
+
+    traceOutletBinding({
+      stage: "checkout.startPayment",
+      selectedOutletId: useOutletStore.getState().selectedOutlet?.id,
+      cartOutletId: useCartStore.getState().cartOutletId,
+      checkoutOutletId: currentOutletId,
+    });
 
     setProcessing(true);
     let checkoutData: CheckoutStartResponse | null = null;
@@ -183,20 +279,6 @@ export default function CheckoutPage() {
     });
 
     const razorpayKey = data.key ?? process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-
-    console.log("[Razorpay Checkout]", {
-      customerId: data.customerId,
-      customerName: data.customerName,
-      customerEmail: data.customerEmail,
-      customerPhone: data.customerPhone,
-      checkoutId: data.checkoutId,
-      subtotal: data.subtotal,
-      discount: data.discount,
-      deliveryFee: data.deliveryFee,
-      grandTotal: data.grandTotal,
-      razorpayAmount: data.razorpayAmount,
-      isRetry: data.isRetry,
-    });
 
     const closeCheckout = () => {
       setCheckoutOpen(false);
@@ -270,36 +352,36 @@ export default function CheckoutPage() {
     }
   };
 
-  if (initializing || loading) {
-    return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-slate-50">
-        <Loader2 className="h-10 w-10 animate-spin text-emerald-600" />
-        <p className="font-medium text-slate-500">
-          {initializing ? "Syncing data..." : "Preparing your checkout..."}
-        </p>
-      </div>
-    );
-  }
+  const paymentBlockReason = useMemo(() => {
+    if (addressOutOfService) {
+      return "Your selected delivery address is outside our delivery area.";
+    }
+    if (outletResolutionError) return outletResolutionError;
+    if (loadError) return loadError;
+    return null;
+  }, [addressOutOfService, outletResolutionError, loadError]);
 
-  if (loadError || !summary) {
-    return (
-      <div className="min-h-screen bg-[#F8FAFC]">
-        <Header />
-        <main className="customer-page-shell customer-page-shell--no-nav mobile-container flex max-w-lg flex-col items-center justify-center py-16 text-center">
-          <p className="mb-4 font-medium text-slate-600">
-            {loadError ?? "Unable to load checkout."}
-          </p>
-          <button
-            type="button"
-            onClick={() => router.replace("/cart")}
-            className="touch-target rounded-xl bg-emerald-600 px-6 py-3 font-bold text-white"
-          >
-            Back to Cart
-          </button>
-        </main>
-      </div>
-    );
-  }
+  const isPreparing =
+    initializing || loading || syncingAddress || !authHydrated || !cartHydrated;
+  const isPaymentDisabled =
+    isPreparing ||
+    processing ||
+    checkoutOpen ||
+    !summary ||
+    Boolean(paymentBlockReason);
+
+  const handleRetrySummary = () => {
+    const { outletId } = resolveCheckoutOutletId();
+    if (addressId && outletId) {
+      void loadSummary(addressId, outletId);
+    }
+  };
+
+  const statusMessage = isPreparing
+    ? initializing
+      ? "Syncing your cart..."
+      : "Preparing your checkout..."
+    : undefined;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -311,7 +393,9 @@ export default function CheckoutPage() {
         createPortal(
           <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
             <div className="bg-white rounded-[2rem] p-6 max-w-[340px] w-full shadow-2xl text-center animate-in fade-in zoom-in duration-200">
-              <h2 className="text-2xl font-bold text-[#0F172A] mb-3">Order in Progress</h2>
+              <h2 className="text-2xl font-bold text-[#0F172A] mb-3">
+                Order in Progress
+              </h2>
               <p className="text-slate-500 text-sm leading-relaxed mb-4 px-1">
                 You already have an order being fulfilled.
                 {pendingOrderModal.orderNumber && (
@@ -323,7 +407,9 @@ export default function CheckoutPage() {
 
               <div className="space-y-3">
                 <button
-                  onClick={() => router.push(`/orders/${pendingOrderModal.orderId}`)}
+                  onClick={() =>
+                    router.push(`/orders/${pendingOrderModal.orderId}`)
+                  }
                   className="w-full bg-[#059669] hover:bg-emerald-700 text-white font-semibold py-3.5 rounded-xl"
                 >
                   View Order
@@ -331,7 +417,11 @@ export default function CheckoutPage() {
 
                 <button
                   onClick={() =>
-                    setPendingOrderModal({ isOpen: false, orderId: null, orderNumber: null })
+                    setPendingOrderModal({
+                      isOpen: false,
+                      orderId: null,
+                      orderNumber: null,
+                    })
                   }
                   className="w-full bg-[#F1F5F9] hover:bg-slate-200 text-[#0F172A] font-semibold py-3.5 rounded-xl"
                 >
@@ -343,7 +433,7 @@ export default function CheckoutPage() {
           document.body,
         )}
 
-      <main className="customer-page-shell customer-page-shell--no-nav mobile-container max-w-5xl pb-28 lg:pb-12">
+      <main className="customer-page-shell customer-page-shell--checkout-bar mobile-container max-w-5xl pb-32">
         <button
           onClick={() => router.back()}
           className="flex items-center text-slate-500 hover:text-emerald-600 mb-6 font-medium"
@@ -353,122 +443,135 @@ export default function CheckoutPage() {
 
         <h1 className="text-2xl font-bold text-slate-900 mb-6">Review & Pay</h1>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-              <div className="flex items-start gap-4">
-                <div className="bg-emerald-50 p-3 rounded-full text-emerald-600">
-                  <MapPin size={24} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-900 uppercase tracking-wide text-xs mb-1">
-                    Delivery Address
-                  </h3>
-                  <p className="font-bold text-lg text-slate-800">{summary.address.label}</p>
-                  <p className="text-slate-500 leading-relaxed">{summary.address.addressText}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              <div className="p-4 bg-slate-50 border-b border-slate-100 font-bold text-slate-700">
-                Items ({summary.itemCount})
-              </div>
-              <div className="divide-y divide-slate-100">
-                {summary.items.map((item) => {
-                  const imageUrl = getProductImageUrl(item.productImage);
-                  return (
-                    <div key={item.productId} className="p-4 flex gap-4">
-                      {imageUrl ? (
-                        <img
-                          src={imageUrl}
-                          alt={item.productName}
-                          className="w-16 h-16 rounded-lg object-cover bg-slate-100"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center">
-                          <ShoppingCart size={20} className="text-slate-400" />
-                        </div>
-                      )}
-                      <div className="flex-1">
-                        <div className="flex justify-between">
-                          <h4 className="font-bold text-slate-800">{item.productName}</h4>
-                          <span className="font-bold text-slate-900">₹{item.lineTotal}</span>
-                        </div>
-                        <p className="text-sm text-slate-500 mt-1">
-                          {item.quantity} x ₹{item.discountPrice || item.unitPrice}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+        {statusMessage ? (
+          <div className="mb-6 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+            <Loader2 className="h-5 w-5 shrink-0 animate-spin text-emerald-600" />
+            <span>{statusMessage}</span>
           </div>
+        ) : null}
 
-          <div className="space-y-6">
-            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm sticky top-32">
-              <h3 className="font-bold text-slate-900 mb-4">Bill Details</h3>
-
-              <OrderSummaryBreakdown
-                subtotal={summary.subtotal}
-                discount={summary.discount}
-                netSubtotal={summary.netSubtotal ?? summary.afterDiscountTotal}
-                deliveryFee={summary.deliveryFee}
-                grandTotal={summary.grandTotal}
-                remainingForFreeDelivery={summary.remainingForFreeDelivery ?? summary.remainingAmountForFreeDelivery}
-                totalLabel="Total Payable"
-                className="space-y-3 text-sm text-slate-600 pb-4 border-b border-slate-100"
-                totalClassName="flex justify-between items-center py-4 font-extrabold text-xl text-slate-900"
-              />
-
+        {(loadError || loadErrorTitle) && (
+          <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+            {loadErrorTitle ? (
+              <h2 className="text-sm font-bold text-amber-950">{loadErrorTitle}</h2>
+            ) : null}
+            {loadError ? (
+              <p className="mt-1 text-sm text-amber-900">{loadError}</p>
+            ) : null}
+            {addressId && selectedOutlet?.id ? (
               <button
-                onClick={handlePay}
-                disabled={processing || checkoutOpen}
-                className="hidden w-full items-center justify-center gap-2 rounded-xl bg-[#059669] py-4 font-bold text-white shadow-lg shadow-emerald-600/20 transition-all hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-70 lg:flex touch-target"
+                type="button"
+                onClick={handleRetrySummary}
+                className="mt-3 text-sm font-semibold text-emerald-700 underline"
               >
-                {processing ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <ShieldCheck />
-                )}
-                {processing
-                  ? "Processing..."
-                  : checkoutOpen
-                    ? "Payment Window Open"
-                    : `Pay ₹${summary.grandTotal}`}
+                Try again
               </button>
+            ) : null}
+          </div>
+        )}
+
+        {addressOutOfService ? (
+          <CheckoutOutOfServiceState message="Your selected delivery address is outside our delivery area. Please choose another address." />
+        ) : summary ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="flex items-start gap-4">
+                  <div className="bg-emerald-50 p-3 rounded-full text-emerald-600">
+                    <MapPin size={24} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 uppercase tracking-wide text-xs mb-1">
+                      Delivery Address
+                    </h3>
+                    <p className="font-bold text-lg text-slate-800">
+                      {summary.address.label}
+                    </p>
+                    <p className="text-slate-500 leading-relaxed">
+                      {summary.address.addressText}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                <div className="p-4 bg-slate-50 border-b border-slate-100 font-bold text-slate-700">
+                  Items ({summary.itemCount})
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {summary.items.map((item) => {
+                    const imageUrl = getProductImageUrl(item.productImage);
+                    return (
+                      <div key={item.productId} className="p-4 flex gap-4">
+                        {imageUrl ? (
+                          <img
+                            src={imageUrl}
+                            alt={item.productName}
+                            className="w-16 h-16 rounded-lg object-cover bg-slate-100"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center">
+                            <ShoppingCart size={20} className="text-slate-400" />
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <div className="flex justify-between">
+                            <h4 className="font-bold text-slate-800">
+                              {item.productName}
+                            </h4>
+                            <span className="font-bold text-slate-900">
+                              ₹{item.lineTotal}
+                            </span>
+                          </div>
+                          <p className="text-sm text-slate-500 mt-1">
+                            {item.quantity} x ₹
+                            {computeLineTotal(
+                              item.unitPrice,
+                              item.discountPrice,
+                              1,
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm lg:sticky lg:top-32">
+                <h3 className="font-bold text-slate-900 mb-4">Bill Details</h3>
+
+                <OrderSummaryBreakdown
+                  subtotal={summary.subtotal}
+                  discount={summary.discount}
+                  netSubtotal={summary.netSubtotal ?? summary.afterDiscountTotal}
+                  deliveryFee={summary.deliveryFee}
+                  grandTotal={summary.grandTotal}
+                  remainingForFreeDelivery={
+                    summary.remainingForFreeDelivery ??
+                    summary.remainingAmountForFreeDelivery
+                  }
+                  totalLabel="Total Payable"
+                  className="space-y-3 text-sm text-slate-600 pb-4 border-b border-slate-100"
+                  totalClassName="flex justify-between items-center py-4 font-extrabold text-xl text-slate-900"
+                />
+              </div>
             </div>
           </div>
-        </div>
+        ) : null}
       </main>
 
-      <div
-        className="fixed inset-x-0 z-[800] border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-lg lg:hidden"
-        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
-      >
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Total Payable
-            </p>
-            <p className="text-xl font-extrabold text-slate-900">₹{summary.grandTotal}</p>
-          </div>
-          <button
-            type="button"
-            onClick={handlePay}
-            disabled={processing || checkoutOpen}
-            className="flex min-h-[2.75rem] flex-1 max-w-[220px] items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-lg disabled:opacity-70 touch-target"
-          >
-            {processing ? (
-              <Loader2 className="animate-spin" size={18} />
-            ) : (
-              <ShieldCheck size={18} />
-            )}
-            {processing ? "Processing..." : `Pay ₹${summary.grandTotal}`}
-          </button>
-        </div>
-      </div>
+      <CheckoutPaymentBar
+        grandTotal={summary?.grandTotal ?? null}
+        onPay={handlePay}
+        disabled={isPaymentDisabled}
+        showSpinner={isPreparing || processing}
+        checkoutOpen={checkoutOpen}
+        blockReason={paymentBlockReason}
+        preparingLabel={statusMessage ?? "Preparing checkout..."}
+      />
     </div>
   );
 }

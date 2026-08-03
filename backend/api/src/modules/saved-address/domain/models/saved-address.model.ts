@@ -13,6 +13,7 @@ export interface SavedAddressProps {
   addressText: string;
   latitude?: number | null;
   longitude?: number | null;
+  resolvedOutletId?: string | null;
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -30,6 +31,7 @@ export class SavedAddress {
   readonly addressText: string;
   readonly latitude?: number | null;
   readonly longitude?: number | null;
+  readonly resolvedOutletId?: string | null;
   readonly isDeleted: boolean;
   readonly createdAt: Date;
   readonly updatedAt: Date;
@@ -52,6 +54,7 @@ export class SavedAddress {
     addressText: string;
     latitude?: number;
     longitude?: number;
+    resolvedOutletId?: string | null;
     now?: Date;
   }): SavedAddress {
     const now = params.now ?? new Date();
@@ -64,6 +67,7 @@ export class SavedAddress {
       addressText: params.addressText,
       latitude: params.latitude ?? null,
       longitude: params.longitude ?? null,
+      resolvedOutletId: params.resolvedOutletId ?? null,
       isDeleted: false,
       createdAt: now,
       updatedAt: now,
@@ -104,6 +108,7 @@ export class SavedAddress {
       addressText?: string;
       latitude?: number | null;
       longitude?: number | null;
+      resolvedOutletId?: string | null;
     },
     now = new Date(),
   ): SavedAddress {
@@ -119,6 +124,10 @@ export class SavedAddress {
         params.longitude !== undefined
           ? params.longitude
           : this.longitude,
+      resolvedOutletId:
+        params.resolvedOutletId !== undefined
+          ? params.resolvedOutletId
+          : this.resolvedOutletId,
       updatedAt: now,
     });
   }

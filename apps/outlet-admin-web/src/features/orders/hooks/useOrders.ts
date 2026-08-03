@@ -3,10 +3,12 @@ import { toast } from 'sonner';
 import { Order } from '../types';
 import * as orderApi from '../api/orders';
 import { useOrderSocket } from './useOrderSocket';
+import { outletService } from '@/features/outlet/services/outletService';
 
 export const useOrders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [outletId, setOutletId] = useState<string | null>(null);
 
   const loadOrders = useCallback(async (silent = false) => {
     try {
@@ -33,9 +35,16 @@ export const useOrders = () => {
     void loadOrders(false);
   }, [loadOrders]);
 
+  useEffect(() => {
+    outletService
+      .getOutlet()
+      .then((outlet) => setOutletId(outlet.id))
+      .catch(() => setOutletId(null));
+  }, []);
+
   useOrderSocket(() => {
     void loadOrders(true);
-  });
+  }, outletId);
 
   useEffect(() => {
     const interval = setInterval(() => {

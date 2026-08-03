@@ -1,6 +1,7 @@
 import customerAxios from "@/http/axios/customerAxios";
 import { Cart } from "./cart.types";
 import { mapApiCartToSummary } from "./cart-summary.utils";
+import { normalizeCartItemPricing } from "@/lib/cart-pricing";
 
 const transformCartResponse = (data: any): Cart => {
   if (!data) return { items: [] };
@@ -19,13 +20,16 @@ const transformCartResponse = (data: any): Cart => {
       data.amountToFreeDelivery != null
         ? Number(data.amountToFreeDelivery)
         : null,
-    items: (data.items || []).map((item: any) => ({
-      ...item,
-      unitPrice: Number(item.unitPrice),
-      discountPrice: Number(item.discountPrice),
-      quantity: Number(item.quantity),
-      lineTotal: item.lineTotal != null ? Number(item.lineTotal) : undefined,
-    })),
+    items: (data.items || []).map((item: any) => {
+      const pricing = normalizeCartItemPricing(item);
+      return {
+        ...item,
+        unitPrice: pricing.unitPrice,
+        discountPrice: pricing.discountPrice,
+        quantity: pricing.quantity,
+        lineTotal: pricing.lineTotal,
+      };
+    }),
   };
 };
 

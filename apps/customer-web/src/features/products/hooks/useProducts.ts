@@ -5,8 +5,6 @@ import { usePathname } from "next/navigation";
 import { getProductsByOutlet } from "../api/product.api";
 import { ProductListItem } from "../types/product.types";
 import { useOutletStore } from "@/features/outlet/outlet.store";
-import { useLocationStore } from "@/features/location/location.store";
-import { useDeliveryAppState } from "@/features/location/hooks/useDeliveryAppState";
 import { useProductSocket } from "./useProductSocket";
 
 export function useProducts() {
@@ -19,8 +17,6 @@ export function useProducts() {
   const selectedOutlet = useOutletStore((state) => state.selectedOutlet);
   const outletRevision = useOutletStore((state) => state.outletRevision);
   const outletHydrated = useOutletStore((state) => state.hasHydrated);
-  const locationRevision = useLocationStore((state) => state.locationRevision);
-  const { isReady, isNoOutlet, isError } = useDeliveryAppState();
 
   const fetchProducts = useCallback(async () => {
     const requestId = ++requestIdRef.current;
@@ -29,7 +25,7 @@ export function useProducts() {
       return;
     }
 
-    if (!isReady || !selectedOutlet?.id || isNoOutlet || isError) {
+    if (!selectedOutlet?.id) {
       setProducts([]);
       setError(null);
       setLoading(false);
@@ -55,15 +51,7 @@ export function useProducts() {
         setLoading(false);
       }
     }
-  }, [
-    outletHydrated,
-    selectedOutlet?.id,
-    outletRevision,
-    locationRevision,
-    isReady,
-    isNoOutlet,
-    isError,
-  ]);
+  }, [outletHydrated, selectedOutlet?.id, outletRevision]);
 
   useEffect(() => {
     void fetchProducts();
@@ -75,7 +63,7 @@ export function useProducts() {
     products,
     loading: !outletHydrated || loading,
     error,
-    isOutletSelected: isReady && !!selectedOutlet,
+    isOutletSelected: !!selectedOutlet?.id,
     outletHydrated,
     refresh: fetchProducts,
   };

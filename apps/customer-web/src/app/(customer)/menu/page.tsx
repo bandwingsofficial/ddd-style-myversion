@@ -10,10 +10,21 @@ import ProductSkeleton from "@/components/product/ProductSkeleton";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { resolveProductPricing } from "@/lib/product-pricing";
 import { Search, Filter, X, SlidersHorizontal } from "lucide-react";
+import { useDeliveryAppState } from "@/features/location/hooks/useDeliveryAppState";
+import NoDeliveryState, {
+  ConnectionErrorState,
+} from "@/components/location/NoDeliveryState";
 
 function MenuPageContent() {
   const searchParams = useSearchParams();
-  const { products, loading, isOutletSelected, error, refresh } = useProducts();
+  const { products, loading, error, refresh } = useProducts();
+  const {
+    isNoOutlet,
+    needsLocation,
+    isResolving,
+    showShimmer,
+    selectedOutlet,
+  } = useDeliveryAppState();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [maxPrice, setMaxPrice] = useState<number>(500);
@@ -206,16 +217,25 @@ function MenuPageContent() {
             </div>
           </header>
 
-          {!isOutletSelected && !loading ? (
-            <div className="py-16 text-center text-slate-500 sm:py-20">
-              <p className="font-semibold text-slate-700">
-                Select an outlet to view products
-              </p>
-              <p className="mt-2 text-sm">
-                Choose your branch from the home page or update your location in
-                the header.
-              </p>
+          {showShimmer || isResolving ? (
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <ProductSkeleton key={i} />
+              ))}
             </div>
+          ) : isNoOutlet || needsLocation ? (
+            <NoDeliveryState
+              title={
+                needsLocation
+                  ? "Choose your delivery location"
+                  : undefined
+              }
+              description={
+                needsLocation
+                  ? "Select where you want your order delivered to browse products and checkout."
+                  : undefined
+              }
+            />
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-16 text-center sm:py-20">
               <p className="text-sm font-medium text-red-600">{error}</p>
@@ -239,7 +259,7 @@ function MenuPageContent() {
             </div>
           )}
 
-          {!loading && !error && isOutletSelected && filteredProducts.length === 0 && (
+          {!loading && !error && selectedOutlet && filteredProducts.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 text-center sm:py-20">
               <div className="mb-4 rounded-full bg-slate-50 p-6">
                 <Filter size={40} className="text-slate-300" />

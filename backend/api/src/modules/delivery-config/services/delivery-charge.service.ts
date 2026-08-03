@@ -15,7 +15,7 @@ export class DeliveryChargeService {
 
   /**
    * Single source of truth for delivery fee and free-delivery progress.
-   * Rule matching and free-delivery progress use merchandise subtotal BEFORE discounts.
+   * Rule matching and free-delivery progress use net subtotal (after discounts).
    */
   async calculate(
     params: DeliveryChargeInput | {
@@ -34,7 +34,7 @@ export class DeliveryChargeService {
       return this.emptyCartResult(subtotal, discount, netSubtotal);
     }
 
-    const merchandiseSubtotal = subtotal;
+    const merchandiseSubtotal = netSubtotal;
     const activeRules = await this.deliveryRuleRepo.findActiveOrderedByMinDesc();
     const hasActiveRules = activeRules.length > 0;
     const candidates = this.buildCandidates(activeRules);

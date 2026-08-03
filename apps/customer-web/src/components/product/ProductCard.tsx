@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import Link from "next/link";
-import { Plus, Minus, ImageOff, Heart, Star, TrendingUp, MapPinOff } from "lucide-react";
+import { Plus, Minus, ImageOff, Heart, Star, TrendingUp, MapPin } from "lucide-react";
 import { useFavorites } from "@/providers/CustomerAuthProvider";
 import { useCartStore } from "@/features/cart/cart.store";
 import { ProductListItem } from "@/features/products/types/product.types";
@@ -19,16 +19,11 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
   const { items, addItem, updateItem, removeItem } = useCartStore();
 
   const currentOutlet = useOutletStore((state) => state.selectedOutlet);
-  const isOutletSelected = !!currentOutlet;
 
   const name = useMemo(() => p.name?.value || p.name || "Unknown", [p]);
   const slug = useMemo(() => p.slug?.value || p.slug || "#", [p]);
 
-  const outletId = useMemo(() => {
-    if (currentOutlet?.id) return currentOutlet.id;
-    if (p.outletId) return p.outletId;
-    return null;
-  }, [p, currentOutlet]);
+  const outletId = currentOutlet?.id ?? null;
 
   const pricing = useMemo(() => resolveProductPricing(p), [p]);
   const { mrp, sellingPrice, hasDiscount, discountPercent } = pricing;
@@ -63,22 +58,18 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
     e.preventDefault();
     e.stopPropagation();
 
-    if (!isOutletSelected) {
-      toast.error("Please select a nearby outlet first.");
+    if (!currentOutlet?.id) {
+      toast.error("Please select a delivery location first.");
       return;
     }
     if (mrp <= 0) {
       toast.error("Invalid price for this product.");
       return;
     }
-    if (!outletId) {
-      toast.error("No outlet selected for this product.");
-      return;
-    }
 
     await addItem({
       productId,
-      outletId,
+      outletId: currentOutlet.id,
       productName: name,
       productImage: imageUrl || "",
       quantity: 1,
@@ -97,7 +88,7 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
     else await updateItem(productId, newQty);
   };
 
-  const isAddDisabled = mrp <= 0 || !isOutletSelected;
+  const isAddDisabled = mrp <= 0 || !currentOutlet?.id;
 
   return (
     <div className="relative flex h-full flex-col overflow-hidden rounded-[14px] border border-slate-100 bg-white transition-all duration-300 cubic-bezier(0.4,0,0.2,1) hover:border-green-600/20 hover:shadow-[0_12px_24px_-8px_rgba(0,0,0,0.08)] hover:-translate-y-1">
@@ -106,6 +97,13 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
         className="group flex min-h-0 flex-1 flex-col no-underline"
       >
         <div className="relative flex h-[140px] shrink-0 items-center justify-center overflow-hidden bg-slate-50">
+          {currentOutlet?.name && (
+            <div className="absolute left-1.5 top-1.5 z-20 inline-flex max-w-[calc(100%-3rem)] items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-[0.58rem] font-bold text-emerald-700 shadow-sm">
+              <MapPin size={10} className="shrink-0" />
+              <span className="truncate">{currentOutlet.name}</span>
+            </div>
+          )}
+
           <button
             type="button"
             onClick={handleToggleFavorite}
@@ -124,7 +122,7 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
             </div>
           )}
 
-          <div className="absolute left-1.5 top-1.5 z-10 flex flex-col gap-1">
+          <div className="absolute left-1.5 bottom-1.5 z-10 flex flex-col gap-1">
             {isTrending && (
               <div className="flex items-center gap-0.5 rounded bg-amber-500 px-1.5 py-0.5 text-[0.6rem] font-extrabold text-white">
                 <TrendingUp size={10} /> Trending
@@ -164,7 +162,7 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
         </div>
       </Link>
 
-      <div className="mt-auto flex items-center justify-between gap-2 border-t border-slate-50 px-2.5 pb-2.5 pt-2">
+      <div className="relative z-40 mt-auto flex items-center justify-between gap-2 border-t border-slate-50 px-2.5 pb-2.5 pt-2">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-0.5 leading-none">
           {hasDiscount ? (
             <>
@@ -192,14 +190,8 @@ export default function ProductCard({ product }: { product: ProductListItem }) {
                 }`}
               aria-label="Add to cart"
             >
-              {!isOutletSelected ? (
-                <MapPinOff size={14} strokeWidth={2} />
-              ) : (
-                <>
-                  <Plus size={14} strokeWidth={3} />
-                  <span>ADD</span>
-                </>
-              )}
+              <Plus size={14} strokeWidth={3} />
+              <span>ADD</span>
             </button>
           ) : (
             <div className="flex h-9 items-center gap-0.5 rounded-md bg-green-600 p-0.5 text-white shadow-[0_2px_6px_rgba(22,163,74,0.2)] md:h-10">

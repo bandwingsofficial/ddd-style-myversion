@@ -20,13 +20,22 @@ import {
 import AddressSelectionModal from "@/components/address/AddressSelectionModal";
 import { Address } from "@/features/addresses/address.service";
 import { OrderSummaryBreakdown } from "@/features/orders/components/OrderSummaryBreakdown";
+import { toast } from "sonner";
 
 import { getProductImageUrl } from "@/lib/image-url";
+import { computeLineTotal, resolveEffectivePrice } from "@/lib/cart-pricing";
+import { useDeliveryAppState } from "@/features/location/hooks/useDeliveryAppState";
+import { useLocationOrchestratorStore } from "@/features/location/location-orchestrator.store";
+import { CheckoutPaymentBar } from "@/components/checkout/CheckoutPaymentBar";
 
 export default function CartPage() {
   const router = useRouter();
   const { items, summary, updateItem, removeItem, hydrated, loadCart } = useCartStore();
   const { isLoggedIn } = useCustomerSession();
+  const { isNoOutlet, selectedOutlet } = useDeliveryAppState();
+  const openLocationSheet = useLocationOrchestratorStore(
+    (state) => state.openLocationSheet,
+  );
   
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
@@ -60,6 +69,11 @@ export default function CartPage() {
       router.push("/login?redirect=/cart");
       return;
     }
+    if (!selectedOutlet || isNoOutlet) {
+      toast.error("Choose a delivery location we serve before checkout.");
+      openLocationSheet();
+      return;
+    }
     setIsAddressModalOpen(true);
   };
 
@@ -78,7 +92,7 @@ export default function CartPage() {
     <div className="min-h-screen bg-[#F8FAFC] font-sans flex flex-col">
       <Header />
       
-      <main className="customer-page-shell customer-page-shell--no-nav flex-grow">
+      <main className="customer-page-shell customer-page-shell--checkout-bar flex-grow">
         <section className="mobile-container max-w-6xl">
           
           {/* ✅ 1. Professional Page Header */}
@@ -123,6 +137,17 @@ export default function CartPage() {
                 {items.map((item) => {
                    const imageUrl = getProductImageUrl(item.productImage);
                    const isLoading = isUpdating === item.productId;
+                   const effectivePrice = resolveEffectivePrice(
+                     item.unitPrice,
+                     item.discountPrice,
+                   );
+                   const lineTotal = computeLineTotal(
+                     item.unitPrice,
+                     item.discountPrice,
+                     item.quantity,
+                   );
+                   const lineMrp = item.unitPrice * item.quantity;
+                   const hasLineDiscount = effectivePrice < item.unitPrice;
                    return (
                      <div key={item.productId} className={`group relative flex flex-col sm:flex-row gap-5 p-5 bg-white rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 ${isLoading ? 'opacity-60 pointer-events-none' : ''}`}>
                        
@@ -170,10 +195,10 @@ export default function CartPage() {
                              </div>
                              
                              <div className="text-right">
-                                {item.discountPrice < item.unitPrice && (
-                                    <span className="block text-xs text-slate-400 line-through">₹{item.unitPrice * item.quantity}</span>
+                                {hasLineDiscount && (
+                                    <span className="block text-xs text-slate-400 line-through">₹{lineMrp}</span>
                                 )}
-                                <span className="block text-lg font-extrabold text-slate-900">₹{item.discountPrice * item.quantity}</span>
+                                <span className="block text-lg font-extrabold text-slate-900">₹{lineTotal}</span>
                              </div>
                           </div>
                        </div>
@@ -201,15 +226,13 @@ export default function CartPage() {
                      />
                    </div>
                    
-                   <button 
-                    onClick={handleCheckoutClick}
-                    className="hidden w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-4 font-bold text-white shadow-lg transition-all duration-200 hover:-translate-y-0.5 hover:bg-emerald-700 hover:shadow-xl lg:flex touch-target"
-                   >
-                     <span>Proceed to Checkout</span>
-                     <ArrowRight size={18} className="transition-transform group-hover:translate-x-1" />
-                   </button>
-                   
-                   <p className="text-xs text-center text-slate-400 mt-4">
+                   {(isNoOutlet || !selectedOutlet) && items.length > 0 && (
+                     <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-900">
+                       Choose a delivery location we serve to continue checkout.
+                     </p>
+                   )}
+
+                   <p className="hidden text-xs text-center text-slate-400 lg:block">
                        Safe & Secure Payment
                    </p>
                 </div>
@@ -220,29 +243,20 @@ export default function CartPage() {
         </section>
       </main>
 
-      {items.length > 0 && (
-        <div
-          className="fixed inset-x-0 z-[800] border-t border-slate-200 bg-white/95 px-4 py-3 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur-lg lg:hidden"
-          style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
-        >
-          <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Total Payable
-              </p>
-              <p className="text-xl font-extrabold text-slate-900">₹{grandTotal}</p>
-            </div>
-            <button
-              type="button"
-              onClick={handleCheckoutClick}
-              className="flex min-h-[2.75rem] flex-1 max-w-[220px] items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-bold text-white shadow-lg touch-target"
-            >
-              Checkout
-              <ArrowRight size={18} />
-            </button>
-          </div>
-        </div>
-      )}
+      <CheckoutPaymentBar
+        grandTotal={items.length > 0 ? grandTotal : null}
+        onPay={handleCheckoutClick}
+        disabled={items.length === 0 || isNoOutlet || !selectedOutlet}
+        showSpinner={!hydrated}
+        checkoutOpen={false}
+        blockReason={
+          (isNoOutlet || !selectedOutlet) && items.length > 0
+            ? "Choose a delivery location we serve to continue checkout."
+            : undefined
+        }
+        actionLabel="Proceed to Checkout"
+        preparingLabel="Loading cart..."
+      />
       
       <AddressSelectionModal 
         isOpen={isAddressModalOpen} 

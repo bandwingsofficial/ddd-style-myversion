@@ -1,6 +1,7 @@
 export type LocationSource = "gps" | "manual" | "saved";
 
-export interface CustomerLocation {
+/** Customer delivery address — drives serviceability and checkout. */
+export interface DeliveryAddress {
   latitude: number;
   longitude: number;
   addressLabel: string;
@@ -8,6 +9,17 @@ export interface CustomerLocation {
   source: LocationSource;
   updatedAt: number;
 }
+
+/** Device GPS fix — independent from delivery address. */
+export interface GpsLocation {
+  latitude: number;
+  longitude: number;
+  label: string;
+  updatedAt: number;
+}
+
+/** @deprecated Use DeliveryAddress — persisted fields are the delivery address. */
+export type CustomerLocation = DeliveryAddress;
 
 export interface RecentLocation {
   latitude: number;
