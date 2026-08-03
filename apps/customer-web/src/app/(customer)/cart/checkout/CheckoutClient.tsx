@@ -24,10 +24,11 @@ import {
   resolveCheckoutOutletId,
   traceOutletBinding,
 } from "@/features/checkout/resolve-checkout-outlet.util";
+import { validateAddressForCheckout } from "@/features/checkout/validate-address-outlet.util";
 import { mapCheckoutSummaryError } from "@/features/checkout/checkout-error.util";
 import { CheckoutPaymentBar } from "@/components/checkout/CheckoutPaymentBar";
 import { AddressService } from "@/features/addresses/address.service";
-import { useLocationOrchestratorStore } from "@/features/location/location-orchestrator.store";
+import { useLocationStore } from "@/features/location/location.store";
 import { CheckoutOutOfServiceState } from "@/components/location/NoDeliveryState";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { typography } from "@/lib/design-tokens";
@@ -54,6 +55,9 @@ export default function CheckoutPage() {
     string | null
   >(null);
   const [addressOutOfService, setAddressOutOfService] = useState(false);
+  const [addressValidationMessage, setAddressValidationMessage] = useState<
+    string | null
+  >(null);
   const [syncingAddress, setSyncingAddress] = useState(true);
 
   const [pendingOrderModal, setPendingOrderModal] = useState<{
@@ -111,21 +115,38 @@ export default function CheckoutPage() {
     const syncAddressAndLoadCheckout = async () => {
       setSyncingAddress(true);
       setAddressOutOfService(false);
+      setAddressValidationMessage(null);
       setOutletResolutionError(null);
 
       try {
         const address = await AddressService.getOne(addressId);
+        const { outletId: checkoutOutletId, outletName, error } =
+          resolveCheckoutOutletId();
 
-        if (!address.resolvedOutletId) {
-          if (!cancelled) {
-            setAddressOutOfService(true);
-            setSummary(null);
-            setLoading(false);
+        setOutletResolutionError(error ?? null);
+
+        if (!checkoutOutletId) {
+          if (!loading && cartItems.length === 0) {
+            router.replace("/home");
           }
           return;
         }
 
-        await useLocationOrchestratorStore.getState().onLocationChanged({
+        const validation = validateAddressForCheckout({
+          address,
+          cartOutletId: checkoutOutletId,
+          cartOutletName: outletName,
+        });
+
+        if (validation.status !== "ok") {
+          setAddressOutOfService(true);
+          setAddressValidationMessage(validation.message);
+          setSummary(null);
+          setLoading(false);
+          return;
+        }
+
+        useLocationStore.getState().setDeliveryAddress({
           lat: address.latitude,
           lng: address.longitude,
           label: address.label || address.addressText,
@@ -133,26 +154,16 @@ export default function CheckoutPage() {
           source: "saved",
         });
 
-        if (cancelled) return;
+        traceOutletBinding({
+          stage: "checkout.syncAddress",
+          selectedOutletId: selectedOutlet?.id ?? null,
+          cartOutletId: checkoutOutletId,
+          checkoutOutletId: validation.checkoutOutletId,
+          resolvedOutletId: address.resolvedOutletId ?? null,
+        });
 
-        const { outletId: currentOutletId, error } = resolveCheckoutOutletId();
-        setOutletResolutionError(error ?? null);
-
-        if (!currentOutletId) {
-          if (!loading && cartItems.length === 0) {
-            router.replace("/home");
-          }
-          return;
-        }
-
-        if (address.resolvedOutletId !== currentOutletId) {
-          setAddressOutOfService(true);
-          setSummary(null);
-          return;
-        }
-
-        await loadSummary(addressId, currentOutletId);
-        await checkActiveCheckout(currentOutletId);
+        await loadSummary(addressId, validation.checkoutOutletId);
+        await checkActiveCheckout(validation.checkoutOutletId);
       } catch (error) {
         console.error("Checkout address sync failed:", error);
         if (!cancelled) {
@@ -355,13 +366,18 @@ export default function CheckoutPage() {
   };
 
   const paymentBlockReason = useMemo(() => {
-    if (addressOutOfService) {
-      return "Your selected delivery address is outside our delivery area.";
+    if (addressOutOfService && addressValidationMessage) {
+      return addressValidationMessage;
     }
     if (outletResolutionError) return outletResolutionError;
     if (loadError) return loadError;
     return null;
-  }, [addressOutOfService, outletResolutionError, loadError]);
+  }, [
+    addressOutOfService,
+    addressValidationMessage,
+    outletResolutionError,
+    loadError,
+  ]);
 
   const isPreparing =
     initializing || loading || syncingAddress || !authHydrated || !cartHydrated;
@@ -480,7 +496,12 @@ export default function CheckoutPage() {
         )}
 
         {addressOutOfService ? (
-          <CheckoutOutOfServiceState message="Your selected delivery address is outside our delivery area. Please choose another address." />
+          <CheckoutOutOfServiceState
+            message={
+              addressValidationMessage ??
+              "Your selected delivery address is outside our delivery area. Please choose another address."
+            }
+          />
         ) : summary ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">

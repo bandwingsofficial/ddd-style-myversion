@@ -51,6 +51,8 @@ export class SavedAddressRepository {
         latitude: address.latitude,
         longitude: address.longitude,
         resolvedOutletId: address.resolvedOutletId,
+        resolvedOutletName: address.resolvedOutletName,
+        serviceable: address.serviceable,
         isDeleted: address.isDeleted,
         createdAt: address.createdAt,
         updatedAt: address.updatedAt,
@@ -177,6 +179,8 @@ export class SavedAddressRepository {
         latitude: address.latitude,
         longitude: address.longitude,
         resolvedOutletId: address.resolvedOutletId,
+        resolvedOutletName: address.resolvedOutletName,
+        serviceable: address.serviceable,
         isDeleted: address.isDeleted,
         updatedAt: address.updatedAt,
       },
@@ -219,6 +223,8 @@ export class SavedAddressRepository {
     latitude: number | null;
     longitude: number | null;
     resolvedOutletId: string | null;
+    resolvedOutletName: string | null;
+    serviceable: boolean;
     isDeleted: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -232,6 +238,8 @@ export class SavedAddressRepository {
       latitude: row.latitude,
       longitude: row.longitude,
       resolvedOutletId: row.resolvedOutletId,
+      resolvedOutletName: row.resolvedOutletName,
+      serviceable: row.serviceable,
       isDeleted: row.isDeleted,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,

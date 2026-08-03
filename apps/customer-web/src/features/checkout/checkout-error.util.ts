@@ -42,6 +42,19 @@ export function mapCheckoutSummaryError(error: unknown): CheckoutErrorView {
   }
 
   switch (code) {
+    case "ADDRESS_OUT_OF_SERVICE":
+      return {
+        title: "Delivery not available",
+        message:
+          "Sorry, we don't currently deliver to this address. Please choose another location.",
+      };
+    case "ADDRESS_OUTLET_MISMATCH":
+      return {
+        title: "Address outside delivery area",
+        message:
+          message ??
+          "This address is outside the delivery area of your selected outlet.",
+      };
     case "LOCATION_NOT_SERVICEABLE":
       return {
         title: "Delivery not available",

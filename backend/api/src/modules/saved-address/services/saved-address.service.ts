@@ -9,11 +9,18 @@ import { SavedAddress } from '../domain/models/saved-address.model';
 import { SavedAddressRepository } from '../repositories/saved-address.repository';
 
 import { ValidationError } from '../../../common/errors';
+import { pickPreferredOutlet } from '../../../common/utils/outlet-pick.util';
 
 /* 🔥 EVENTS */
 import { SavedAddressEventsService } from '../events/saved-address-events.service';
 import { SavedAddressType } from '../domain/enums/saved-address-type.enum';
 import { OutletOrchestratorService } from '../../outlets/services/outlet-orchestrator.service';
+
+export interface AddressOutletResolution {
+  resolvedOutletId: string | null;
+  resolvedOutletName: string | null;
+  serviceable: boolean;
+}
 
 @Injectable()
 export class SavedAddressService {
@@ -48,19 +55,28 @@ export class SavedAddressService {
       );
     }
 
-    return address;
+    return this.ensureAddressOutletResolved(address);
   }
 
   async getAllByCustomer(customerId: string): Promise<SavedAddress[]> {
-    return this.savedAddressRepo.findAllByCustomer(customerId);
+    const addresses =
+      await this.savedAddressRepo.findAllByCustomer(customerId);
+
+    return Promise.all(
+      addresses.map((address) => this.ensureAddressOutletResolved(address)),
+    );
   }
 
-  private async resolveOutletIdForCoordinates(
+  private async resolveOutletForCoordinates(
     latitude?: number | null,
     longitude?: number | null,
-  ): Promise<string | null> {
+  ): Promise<AddressOutletResolution> {
     if (latitude == null || longitude == null) {
-      return null;
+      return {
+        resolvedOutletId: null,
+        resolvedOutletName: null,
+        serviceable: false,
+      };
     }
 
     const nearby = await this.outletOrchestrator.getNearbyOutlets(
@@ -68,11 +84,59 @@ export class SavedAddressService {
       longitude,
     );
 
-    if (nearby.length === 0) {
-      return null;
+    const picked = pickPreferredOutlet(nearby);
+
+    if (!picked) {
+      return {
+        resolvedOutletId: null,
+        resolvedOutletName: null,
+        serviceable: false,
+      };
     }
 
-    return nearby[0].outlet.id;
+    return {
+      resolvedOutletId: picked.outletId,
+      resolvedOutletName: picked.outletName,
+      serviceable: true,
+    };
+  }
+
+  private async ensureAddressOutletResolved(
+    address: SavedAddress,
+  ): Promise<SavedAddress> {
+    const needsResolution =
+      address.latitude != null &&
+      address.longitude != null &&
+      (!address.resolvedOutletId || !address.serviceable);
+
+    if (!needsResolution) {
+      return address;
+    }
+
+    const resolution = await this.resolveOutletForCoordinates(
+      address.latitude,
+      address.longitude,
+    );
+
+    if (
+      resolution.resolvedOutletId === address.resolvedOutletId &&
+      resolution.serviceable === address.serviceable &&
+      resolution.resolvedOutletName === address.resolvedOutletName
+    ) {
+      return address;
+    }
+
+    const updated = address.updateDetails({
+      resolvedOutletId: resolution.resolvedOutletId,
+      resolvedOutletName: resolution.resolvedOutletName,
+      serviceable: resolution.serviceable,
+    });
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.savedAddressRepo.save(updated, tx);
+    });
+
+    return updated;
   }
 
   /* ================================================= */
@@ -85,7 +149,8 @@ export class SavedAddressService {
     const addresses =
       await this.savedAddressRepo.findAllByCustomer(customerId);
 
-    return addresses.find((a) => a.isActive()) ?? null;
+    const primary = addresses.find((a) => a.isActive()) ?? null;
+    return primary ? this.ensureAddressOutletResolved(primary) : null;
   }
 
   /* ================================================= */
@@ -95,7 +160,7 @@ export class SavedAddressService {
   async createSavedAddress(
     address: SavedAddress,
   ): Promise<SavedAddress> {
-    const resolvedOutletId = await this.resolveOutletIdForCoordinates(
+    const resolution = await this.resolveOutletForCoordinates(
       address.latitude,
       address.longitude,
     );
@@ -108,14 +173,15 @@ export class SavedAddressService {
       addressText: address.addressText,
       latitude: address.latitude ?? undefined,
       longitude: address.longitude ?? undefined,
-      resolvedOutletId,
+      resolvedOutletId: resolution.resolvedOutletId,
+      resolvedOutletName: resolution.resolvedOutletName,
+      serviceable: resolution.serviceable,
       now: address.createdAt,
     });
 
     let result!: SavedAddress;
 
     await this.prisma.$transaction(async (tx) => {
-
       if (
         addressWithOutlet.type === SavedAddressType.HOME ||
         addressWithOutlet.type === SavedAddressType.WORK
@@ -135,7 +201,6 @@ export class SavedAddressService {
         }
       }
 
-      /* 2️⃣ Restore deleted (HOME/WORK only) */
       if (
         addressWithOutlet.type === SavedAddressType.HOME ||
         addressWithOutlet.type === SavedAddressType.WORK
@@ -155,7 +220,9 @@ export class SavedAddressService {
               addressText: addressWithOutlet.addressText,
               latitude: addressWithOutlet.latitude,
               longitude: addressWithOutlet.longitude,
-              resolvedOutletId,
+              resolvedOutletId: resolution.resolvedOutletId,
+              resolvedOutletName: resolution.resolvedOutletName,
+              serviceable: resolution.serviceable,
             });
 
           result = await this.savedAddressRepo.save(restored, tx);
@@ -163,11 +230,9 @@ export class SavedAddressService {
         }
       }
 
-      /* 3️⃣ Create new (OTHER unlimited) */
       result = await this.savedAddressRepo.create(addressWithOutlet, tx);
     });
 
-    /* 🔥 EVENTS */
     this.savedAddressEvents.emitSavedAddressCreated({
       savedAddressId: result.id,
       customerId: result.customerId,
@@ -200,9 +265,14 @@ export class SavedAddressService {
       );
     }
 
-    const resolvedOutletId = await this.resolveOutletIdForCoordinates(
-      params.latitude !== undefined ? params.latitude : address.latitude,
-      params.longitude !== undefined ? params.longitude : address.longitude,
+    const nextLatitude =
+      params.latitude !== undefined ? params.latitude : address.latitude;
+    const nextLongitude =
+      params.longitude !== undefined ? params.longitude : address.longitude;
+
+    const resolution = await this.resolveOutletForCoordinates(
+      nextLatitude,
+      nextLongitude,
     );
 
     const updated = address.updateDetails({
@@ -216,14 +286,15 @@ export class SavedAddressService {
       ...(params.longitude !== undefined && {
         longitude: params.longitude,
       }),
-      resolvedOutletId,
+      resolvedOutletId: resolution.resolvedOutletId,
+      resolvedOutletName: resolution.resolvedOutletName,
+      serviceable: resolution.serviceable,
     });
 
     await this.prisma.$transaction(async (tx) => {
       await this.savedAddressRepo.save(updated, tx);
     });
 
-    /* 🔥 EVENTS */
     this.savedAddressEvents.emitSavedAddressUpdated({
       savedAddressId: updated.id,
       customerId: updated.customerId,
@@ -264,7 +335,6 @@ export class SavedAddressService {
       await this.savedAddressRepo.softDelete(deleted, tx);
     });
 
-    /* 🔥 EVENTS */
     this.savedAddressEvents.emitSavedAddressDeleted({
       savedAddressId: deleted.id,
       customerId: deleted.customerId,

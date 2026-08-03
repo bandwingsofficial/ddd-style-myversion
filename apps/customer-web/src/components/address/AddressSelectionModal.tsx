@@ -1,16 +1,17 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { X, MapPin, Plus, Loader2, Home, Briefcase, Pencil, Trash2, AlertCircle, CheckCircle, Crosshair, Map as MapIcon, Check } from "lucide-react";
+import { X, MapPin, Plus, Loader2, Home, Briefcase, Pencil, Trash2, AlertCircle, CheckCircle, Crosshair } from "lucide-react";
 import { AddressService, Address } from "@/features/addresses/address.service";
 import { useLiveLocation } from "@/features/location/hooks/useLiveLocation";
-import { reverseGeocode, forwardGeocode } from "@/features/location/utils/reverseGeocode"; 
+import { reverseGeocode, forwardGeocode } from "@/features/location/utils/reverseGeocode";
 import { useOutletStore } from "@/features/outlet/outlet.store";
 import { useCartStore } from "@/features/cart/cart.store";
-import { useLocationOrchestratorStore } from "@/features/location/location-orchestrator.store";
-import { useLocationStore } from "@/features/location/location.store"; 
-import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store"; // ✅ Import Auth Store
+import { useLocationStore } from "@/features/location/location.store";
+import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store";
+import { validateAddressForCheckout } from "@/features/checkout/validate-address-outlet.util";
+import { applySavedAddressOutlet } from "@/features/location/services/apply-saved-address-outlet.service";
+import { mapAddressApiError } from "@/features/addresses/address-error.util";
 
 interface AddressModalProps {
   isOpen: boolean;
@@ -19,9 +20,12 @@ interface AddressModalProps {
 }
 
 interface PopupState {
-  type: "error" | "success" | "confirm";
+  type: "error" | "success" | "confirm" | "outlet_mismatch";
   message: string;
   onConfirm?: () => void;
+  onCancel?: () => void;
+  confirmLabel?: string;
+  cancelLabel?: string;
 }
 
 interface DetailedAddress {
@@ -40,13 +44,10 @@ const INITIAL_FORM_STATE = {
 };
 
 export default function AddressSelectionModal({ isOpen, onClose, onSelect }: AddressModalProps) {
-  const router = useRouter();
-  
-  // Stores
-  const { selectedOutlet, setOutlet } = useOutletStore();
-  const { items: cartItems, clear } = useCartStore(); // ✅ Get clear function
-  const { setLocation } = useLocationStore(); 
-  const { isAuthenticated, sessionChecked } = useCustomerAuthStore(); // ✅ Get Auth status
+  const cartOutletId = useCartStore((state) => state.cartOutletId);
+  const clearCart = useCartStore((state) => state.clear);
+  const cartOutletName = useOutletStore((state) => state.selectedOutlet?.name ?? null);
+  const { isAuthenticated, sessionChecked } = useCustomerAuthStore();
 
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
@@ -201,36 +202,71 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
     }
   };
 
-  // ✅ UPDATED: Clear Cart on Mismatch
+  const completeAddressSelection = (address: Address) => {
+    useLocationStore.getState().setDeliveryAddress({
+      lat: address.latitude,
+      lng: address.longitude,
+      label: address.label || address.addressText,
+      formattedAddress: address.addressText,
+      source: "saved",
+    });
+    onSelect(address);
+    onClose();
+  };
+
   const handleSelectAddress = async (address: Address) => {
     setCheckingOutlet(true);
     try {
-        await useLocationOrchestratorStore.getState().onLocationChanged({
-          lat: address.latitude,
-          lng: address.longitude,
-          label: address.label || address.addressText,
-          formattedAddress: address.addressText,
-          source: "saved",
+      const freshAddress = await AddressService.getOne(address.id);
+
+      const validation = validateAddressForCheckout({
+        address: freshAddress,
+        cartOutletId,
+        cartOutletName,
+      });
+
+      if (validation.status === "not_serviceable") {
+        setPopup({ type: "error", message: validation.message });
+        return;
+      }
+
+      if (validation.status === "outlet_mismatch") {
+        setPopup({
+          type: "outlet_mismatch",
+          message: `You selected an address served by the ${validation.addressOutletName} outlet.\n\nYour cart currently contains products from the ${validation.cartOutletName} outlet.\n\nChoose one:`,
+          cancelLabel: "Keep current cart",
+          confirmLabel: "Switch outlet & clear cart",
+          onCancel: () => setPopup(null),
+          onConfirm: async () => {
+            setPopup(null);
+            setCheckingOutlet(true);
+            try {
+              await clearCart();
+              await applySavedAddressOutlet(freshAddress);
+              completeAddressSelection(freshAddress);
+            } catch (error) {
+              console.error("Failed to switch outlet for address:", error);
+              setPopup({
+                type: "error",
+                message: "Could not switch to the outlet for this address.",
+              });
+            } finally {
+              setCheckingOutlet(false);
+            }
+          },
         });
+        return;
+      }
 
-        if (!address.resolvedOutletId) {
-          setPopup({
-            type: "error",
-            message:
-              "Sorry, we don't currently deliver to this address. Please choose another location.",
-          });
-          setCheckingOutlet(false);
-          return;
-        }
-
-        onSelect(address);
-        onClose();
-
+      completeAddressSelection(freshAddress);
     } catch (error) {
-        console.error("Error checking outlet:", error);
-        setPopup({ type: "error", message: "Failed to verify delivery location." });
+      console.error("Error validating address:", error);
+      setPopup({
+        type: "error",
+        message: mapAddressApiError(error, "Failed to verify delivery address."),
+      });
     } finally {
-        setCheckingOutlet(false);
+      setCheckingOutlet(false);
     }
   };
 
@@ -284,7 +320,10 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
       setView("LIST");
     } catch (error) {
       console.error(error);
-      setPopup({ type: "error", message: "Failed to save address. Please try again." });
+      setPopup({
+        type: "error",
+        message: mapAddressApiError(error, "Failed to save address. Please try again."),
+      });
     } finally {
       setSubmitting(false);
     }
@@ -304,13 +343,38 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
             <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4 ${popup.type === 'error' ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-600'}`}>
               {popup.type === 'error' ? <AlertCircle size={24} /> : <CheckCircle size={24} />}
             </div>
-            <h3 className="font-bold text-slate-800 mb-2">{popup.type === 'confirm' ? 'Confirm' : popup.type === 'error' ? 'Location Change' : 'Success'}</h3>
-            <p className="text-slate-500 text-sm mb-6">{popup.message}</p>
+            <h3 className="font-bold text-slate-800 mb-2">
+              {popup.type === "confirm"
+                ? "Confirm"
+                : popup.type === "outlet_mismatch"
+                  ? "Different delivery outlet"
+                  : popup.type === "error"
+                    ? "Delivery unavailable"
+                    : "Success"}
+            </h3>
+            <p className="text-slate-500 text-sm mb-6 whitespace-pre-line">{popup.message}</p>
             <div className="flex gap-3 justify-center">
-              {popup.type === 'confirm' ? (
+              {popup.type === "confirm" || popup.type === "outlet_mismatch" ? (
                 <>
-                  <button onClick={() => setPopup(null)} className="px-4 py-2 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition">Cancel</button>
-                  <button onClick={popup.onConfirm} className="px-4 py-2 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition shadow-lg shadow-red-500/30">Delete</button>
+                  <button
+                    onClick={() => {
+                      if (popup.onCancel) popup.onCancel();
+                      else setPopup(null);
+                    }}
+                    className="px-4 py-2 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition"
+                  >
+                    {popup.cancelLabel ?? "Cancel"}
+                  </button>
+                  <button
+                    onClick={popup.onConfirm}
+                    className={`px-4 py-2 font-bold rounded-xl transition shadow-lg ${
+                      popup.type === "outlet_mismatch"
+                        ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-600/30"
+                        : "bg-red-500 text-white hover:bg-red-600 shadow-red-500/30"
+                    }`}
+                  >
+                    {popup.confirmLabel ?? "Confirm"}
+                  </button>
                 </>
               ) : (
                 <button 

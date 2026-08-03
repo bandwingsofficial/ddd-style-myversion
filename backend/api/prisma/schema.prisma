@@ -825,6 +825,8 @@ model CustomerSavedAddress {
   latitude  Float?
   longitude Float?
   resolvedOutletId String?
+  resolvedOutletName String?
+  serviceable Boolean @default(false)
 
   // 🗑️ SOFT DELETE
   isDeleted Boolean @default(false)

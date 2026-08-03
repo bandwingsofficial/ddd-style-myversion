@@ -7,6 +7,8 @@ export interface Address {
   latitude: number;
   longitude: number;
   resolvedOutletId?: string | null;
+  resolvedOutletName?: string | null;
+  serviceable?: boolean;
   isDeleted: boolean;
 }
 

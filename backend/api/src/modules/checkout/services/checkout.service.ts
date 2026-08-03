@@ -105,10 +105,15 @@ export class CheckoutService {
   }
 
   private assertAddressResolvedOutlet(
-    address: { resolvedOutletId?: string | null },
+    address: {
+      resolvedOutletId?: string | null;
+      resolvedOutletName?: string | null;
+      serviceable?: boolean;
+    },
     requestedOutletId: string,
+    requestedOutletName?: string | null,
   ): void {
-    if (!address.resolvedOutletId) {
+    if (!address.serviceable || !address.resolvedOutletId) {
       throw new ValidationError(
         'ADDRESS_OUT_OF_SERVICE',
         'Your selected delivery address is outside our delivery area. Please choose another address.',
@@ -116,9 +121,18 @@ export class CheckoutService {
     }
 
     if (address.resolvedOutletId !== requestedOutletId) {
+      const addressOutlet = address.resolvedOutletName ?? 'another outlet';
+      const cartOutlet = requestedOutletName ?? 'your current outlet';
+
       throw new ValidationError(
         'ADDRESS_OUTLET_MISMATCH',
-        'The selected address does not match the delivery outlet for this order.',
+        `This address is outside the delivery area of your selected outlet. Available delivery outlet: ${addressOutlet}. Your cart is from: ${cartOutlet}.`,
+        {
+          addressOutletId: address.resolvedOutletId,
+          addressOutletName: address.resolvedOutletName,
+          cartOutletId: requestedOutletId,
+          cartOutletName: requestedOutletName,
+        },
       );
     }
   }
@@ -145,6 +159,11 @@ export class CheckoutService {
         'Cart does not belong to the requested outlet',
       );
     }
+  }
+
+  private async resolveOutletName(outletId: string): Promise<string | null> {
+    const outlet = await this.outletService.getById(outletId);
+    return outlet?.name ?? null;
   }
 
   /* ================================================= */
@@ -175,7 +194,12 @@ async getCheckoutSummary(params: {
     savedAddressId: params.savedAddressId,
   });
 
-  this.assertAddressResolvedOutlet(address, params.outletId);
+  const requestedOutletName = await this.resolveOutletName(params.outletId);
+  this.assertAddressResolvedOutlet(
+    address,
+    params.outletId,
+    requestedOutletName,
+  );
 
   if (address.latitude != null && address.longitude != null) {
     await this.assertOutletServesLocation({
@@ -285,7 +309,12 @@ async startCheckout(params: {
     savedAddressId: params.savedAddressId,
   });
 
-  this.assertAddressResolvedOutlet(checkoutAddress, params.outletId);
+  const requestedOutletName = await this.resolveOutletName(params.outletId);
+  this.assertAddressResolvedOutlet(
+    checkoutAddress,
+    params.outletId,
+    requestedOutletName,
+  );
 
   if (
     checkoutAddress.latitude != null &&

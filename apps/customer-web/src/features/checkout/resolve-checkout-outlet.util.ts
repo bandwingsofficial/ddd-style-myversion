@@ -3,15 +3,20 @@ import { useOutletStore } from "@/features/outlet/outlet.store";
 
 export interface CheckoutOutletResolution {
   outletId: string | null;
+  outletName: string | null;
   error?: string;
 }
 
-/** Checkout outlet is always the auto-resolved selectedOutlet. */
+/**
+ * At checkout, cart.outletId is the single source of truth for which outlet
+ * the customer is ordering from. selectedOutlet should match but cart wins.
+ */
 export function resolveCheckoutOutletId(): CheckoutOutletResolution {
   const { selectedOutlet } = useOutletStore.getState();
   const { items, cartOutletId } = useCartStore.getState();
 
-  const outletId = selectedOutlet?.id ?? cartOutletId ?? null;
+  const outletId = cartOutletId ?? selectedOutlet?.id ?? null;
+  const outletName = selectedOutlet?.name ?? null;
 
   traceOutletBinding({
     stage: "checkout.resolveOutlet",
@@ -24,13 +29,24 @@ export function resolveCheckoutOutletId(): CheckoutOutletResolution {
   if (!outletId) {
     return {
       outletId: null,
-      error: "No delivery outlet available for your location.",
+      outletName: null,
+      error: "No delivery outlet available for your cart.",
+    };
+  }
+
+  if (cartOutletId && selectedOutlet?.id && cartOutletId !== selectedOutlet.id) {
+    return {
+      outletId: null,
+      outletName: null,
+      error:
+        "Your cart belongs to a different outlet than your selected location. Please review your cart.",
     };
   }
 
   if (cartOutletId && cartOutletId !== outletId) {
     return {
       outletId: null,
+      outletName: null,
       error:
         "Your cart belongs to another outlet. Please review your cart before continuing.",
     };
@@ -42,12 +58,13 @@ export function resolveCheckoutOutletId(): CheckoutOutletResolution {
   if (mismatchedItem) {
     return {
       outletId: null,
+      outletName: null,
       error:
         "Your cart belongs to another outlet. Please review your cart before continuing.",
     };
   }
 
-  return { outletId };
+  return { outletId, outletName };
 }
 
 export function traceOutletBinding(values: {

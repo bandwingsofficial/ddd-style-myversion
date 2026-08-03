@@ -14,6 +14,8 @@ export interface SavedAddressProps {
   latitude?: number | null;
   longitude?: number | null;
   resolvedOutletId?: string | null;
+  resolvedOutletName?: string | null;
+  serviceable?: boolean;
   isDeleted: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -32,12 +34,15 @@ export class SavedAddress {
   readonly latitude?: number | null;
   readonly longitude?: number | null;
   readonly resolvedOutletId?: string | null;
+  readonly resolvedOutletName?: string | null;
+  readonly serviceable: boolean;
   readonly isDeleted: boolean;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 
   private constructor(props: SavedAddressProps) {
     Object.assign(this, props);
+    this.serviceable = props.serviceable ?? false;
     this.assertValidState();
     Object.freeze(this);
   }
@@ -55,6 +60,8 @@ export class SavedAddress {
     latitude?: number;
     longitude?: number;
     resolvedOutletId?: string | null;
+    resolvedOutletName?: string | null;
+    serviceable?: boolean;
     now?: Date;
   }): SavedAddress {
     const now = params.now ?? new Date();
@@ -68,6 +75,8 @@ export class SavedAddress {
       latitude: params.latitude ?? null,
       longitude: params.longitude ?? null,
       resolvedOutletId: params.resolvedOutletId ?? null,
+      resolvedOutletName: params.resolvedOutletName ?? null,
+      serviceable: params.serviceable ?? !!params.resolvedOutletId,
       isDeleted: false,
       createdAt: now,
       updatedAt: now,
@@ -98,6 +107,10 @@ export class SavedAddress {
     return !this.isDeleted;
   }
 
+  isServiceable(): boolean {
+    return this.serviceable && !!this.resolvedOutletId;
+  }
+
   /* ---------------------------------------------- */
   /* DOMAIN TRANSITIONS                             */
   /* ---------------------------------------------- */
@@ -109,9 +122,22 @@ export class SavedAddress {
       latitude?: number | null;
       longitude?: number | null;
       resolvedOutletId?: string | null;
+      resolvedOutletName?: string | null;
+      serviceable?: boolean;
     },
     now = new Date(),
   ): SavedAddress {
+    const resolvedOutletId =
+      params.resolvedOutletId !== undefined
+        ? params.resolvedOutletId
+        : this.resolvedOutletId;
+    const serviceable =
+      params.serviceable !== undefined
+        ? params.serviceable
+        : params.resolvedOutletId !== undefined
+          ? !!params.resolvedOutletId
+          : this.serviceable;
+
     return new SavedAddress({
       ...this,
       label: params.label ?? this.label,
@@ -124,17 +150,19 @@ export class SavedAddress {
         params.longitude !== undefined
           ? params.longitude
           : this.longitude,
-      resolvedOutletId:
-        params.resolvedOutletId !== undefined
-          ? params.resolvedOutletId
-          : this.resolvedOutletId,
+      resolvedOutletId,
+      resolvedOutletName:
+        params.resolvedOutletName !== undefined
+          ? params.resolvedOutletName
+          : this.resolvedOutletName,
+      serviceable,
       updatedAt: now,
     });
   }
 
   softDelete(now = new Date()): SavedAddress {
     if (this.isDeleted) {
-      return this; // idempotent
+      return this;
     }
 
     return new SavedAddress({
@@ -146,7 +174,7 @@ export class SavedAddress {
 
   restore(now = new Date()): SavedAddress {
     if (!this.isDeleted) {
-      return this; // idempotent
+      return this;
     }
 
     return new SavedAddress({
@@ -168,7 +196,6 @@ export class SavedAddress {
       );
     }
 
-    // ✅ label required only for OTHER
     if (this.isOther()) {
       if (!this.label || this.label.trim().length < 2) {
         throw new ValidationError(
