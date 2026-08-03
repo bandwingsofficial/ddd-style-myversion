@@ -24,7 +24,6 @@ import { getProductImageUrl } from "@/lib/image-url";
 import { computeLineTotal, resolveEffectivePrice } from "@/lib/cart-pricing";
 import { useDeliveryAppState } from "@/features/location/hooks/useDeliveryAppState";
 import { useLocationOrchestratorStore } from "@/features/location/location-orchestrator.store";
-import { CheckoutPaymentBar } from "@/components/checkout/CheckoutPaymentBar";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Spinner } from "@/components/ui/Spinner";
@@ -95,7 +94,7 @@ export default function CartPage() {
     <div className="flex min-h-screen flex-col bg-slate-50 font-sans">
       <Header />
       
-      <main className="customer-page-shell customer-page-shell--checkout-bar flex-grow">
+      <main className="customer-page-shell flex-grow">
         <section className="mobile-container max-w-6xl">
           <Breadcrumbs items={[{ label: "Cart" }]} />
 
@@ -228,9 +227,23 @@ export default function CartPage() {
                      </p>
                    )}
 
-                   <p className="hidden text-xs text-center text-slate-400 lg:block">
-                       Safe & Secure Payment
+                   <p className="text-xs text-center text-slate-400">
+                     Safe & Secure Payment
                    </p>
+
+                   <button
+                     type="button"
+                     onClick={handleCheckoutClick}
+                     disabled={
+                       items.length === 0 ||
+                       isNoOutlet ||
+                       !selectedOutlet ||
+                       !hydrated
+                     }
+                     className="mt-6 flex h-14 w-full items-center justify-center rounded-2xl bg-brand text-base font-bold text-white shadow-lg transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+                   >
+                     {!hydrated ? "Loading cart..." : "Proceed to Checkout"}
+                   </button>
                 </div>
               </div>
 
@@ -239,21 +252,6 @@ export default function CartPage() {
         </section>
       </main>
 
-      <CheckoutPaymentBar
-        grandTotal={items.length > 0 ? grandTotal : null}
-        onPay={handleCheckoutClick}
-        disabled={items.length === 0 || isNoOutlet || !selectedOutlet}
-        showSpinner={!hydrated}
-        checkoutOpen={false}
-        blockReason={
-          (isNoOutlet || !selectedOutlet) && items.length > 0
-            ? "Choose a delivery location we serve to continue checkout."
-            : undefined
-        }
-        actionLabel="Proceed to Checkout"
-        preparingLabel="Loading cart..."
-      />
-      
       <AddressSelectionModal 
         isOpen={isAddressModalOpen} 
         onClose={() => setIsAddressModalOpen(false)} 

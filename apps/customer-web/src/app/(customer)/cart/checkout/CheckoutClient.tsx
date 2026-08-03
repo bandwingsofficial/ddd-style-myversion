@@ -26,7 +26,6 @@ import {
 } from "@/features/checkout/resolve-checkout-outlet.util";
 import { validateAddressForCheckout } from "@/features/checkout/validate-address-outlet.util";
 import { mapCheckoutSummaryError } from "@/features/checkout/checkout-error.util";
-import { CheckoutPaymentBar } from "@/components/checkout/CheckoutPaymentBar";
 import { AddressService } from "@/features/addresses/address.service";
 import { useLocationStore } from "@/features/location/location.store";
 import { CheckoutOutOfServiceState } from "@/components/location/NoDeliveryState";
@@ -451,7 +450,7 @@ export default function CheckoutPage() {
           document.body,
         )}
 
-      <main className="customer-page-shell customer-page-shell--checkout-bar mobile-container max-w-5xl pb-32">
+      <main className="customer-page-shell mobile-container max-w-5xl">
         <Breadcrumbs
           items={[
             { label: "Cart", href: "/cart" },
@@ -587,21 +586,41 @@ export default function CheckoutPage() {
                   className="space-y-3 text-sm text-slate-600 pb-4 border-b border-slate-100"
                   totalClassName="flex justify-between items-center py-4 font-extrabold text-xl text-slate-900"
                 />
+
+                {paymentBlockReason ? (
+                  <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-900">
+                    {paymentBlockReason}
+                  </p>
+                ) : null}
+
+                <p className="mt-4 text-xs text-center text-slate-400">
+                  Safe & Secure Payment
+                </p>
+
+                <button
+                  type="button"
+                  onClick={handlePay}
+                  disabled={isPaymentDisabled}
+                  className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-brand text-base font-bold text-white shadow-lg transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {(isPreparing || processing) ? (
+                    <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                  ) : null}
+                  <span>
+                    {checkoutOpen
+                      ? "Payment Window Open"
+                      : isPreparing
+                        ? statusMessage ?? "Preparing checkout..."
+                        : summary
+                          ? `Pay ₹${summary.grandTotal}`
+                          : "Proceed to Payment"}
+                  </span>
+                </button>
               </div>
             </div>
           </div>
         ) : null}
       </main>
-
-      <CheckoutPaymentBar
-        grandTotal={summary?.grandTotal ?? null}
-        onPay={handlePay}
-        disabled={isPaymentDisabled}
-        showSpinner={isPreparing || processing}
-        checkoutOpen={checkoutOpen}
-        blockReason={paymentBlockReason}
-        preparingLabel={statusMessage ?? "Preparing checkout..."}
-      />
     </div>
   );
 }
