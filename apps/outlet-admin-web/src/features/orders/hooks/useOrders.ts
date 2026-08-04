@@ -100,12 +100,14 @@ export const useOrders = () => {
   };
 
   const columns = bucketOrdersIntoColumns(orders);
+  const pendingNewOrderCount = columns[ORDER_STATUS.PAID].length;
 
-  return { 
-    orders, 
-    columns, 
-    loading, 
-    handleStatusChange, 
+  return {
+    orders,
+    columns,
+    loading,
+    pendingNewOrderCount,
+    handleStatusChange,
     refresh: () => loadOrders(false),
   };
 };

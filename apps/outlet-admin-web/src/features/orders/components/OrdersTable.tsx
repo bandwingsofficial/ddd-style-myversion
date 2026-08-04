@@ -15,7 +15,7 @@ import {
 } from '../utils/order-status.util';
 
 export const OrdersTable = () => {
-  const { columns, loading, handleStatusChange, refresh } = useOrders();
+  const { columns, loading, pendingNewOrderCount, handleStatusChange, refresh } = useOrders();
   const [activeTab, setActiveTab] = useState<OrderBoardTab>(ORDER_STATUS.PAID);
 
   if (loading) {
@@ -53,7 +53,12 @@ export const OrdersTable = () => {
 
       {/* Tabs Navigation */}
       <div className="flex gap-2 mb-6 border-b border-gray-200 pb-1">
-        {tabs.map((tab) => (
+        {tabs.map((tab) => {
+          const isNewOrdersTab = tab.id === ORDER_STATUS.PAID;
+          const hasPendingNewOrders =
+            isNewOrdersTab && pendingNewOrderCount > 0;
+
+          return (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
@@ -63,14 +68,16 @@ export const OrdersTable = () => {
                 ? 'border-emerald-600 text-emerald-700 bg-emerald-50/50' 
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }
+              ${hasPendingNewOrders ? 'ring-2 ring-emerald-400/60 ring-offset-1 animate-pulse' : ''}
             `}
           >
             {tab.label}
-            <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === tab.id ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100'}`}>
+            <span className={`px-2 py-0.5 rounded-full text-xs ${activeTab === tab.id ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100'} ${hasPendingNewOrders ? 'bg-emerald-200 text-emerald-900' : ''}`}>
               {tab.count}
             </span>
           </button>
-        ))}
+          );
+        })}
       </div>
 
       {/* Table Section */}

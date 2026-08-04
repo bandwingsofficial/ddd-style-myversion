@@ -1,9 +1,11 @@
 import { Payment } from '../../payments/domain/models/payment.model';
-import { PaymentStatus } from '../../payments/domain/enums/payment-status.enum';
-import { OrderStatus } from '../../orders/domain/enums/order-status.enum';
+import {
+  OutletPaymentDisplayStatus,
+  resolveOutletPaymentDisplayStatus,
+} from '../../payments/domain/enums/payment-status.enum';
 import { mapOrderCustomerDto } from '../../../common/utils/customer-display.util';
 
-export type OutletPaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED';
+export type OutletPaymentStatus = OutletPaymentDisplayStatus;
 
 export interface OutletOrderCustomerDto {
   id: string;
@@ -55,24 +57,9 @@ export class OutletOrderResponseDto {
     orderStatus: string,
     latestPayment?: Payment | null,
   ): OutletPaymentStatus {
-    if (latestPayment?.status === PaymentStatus.SUCCESS) {
-      return 'PAID';
-    }
-
-    if (latestPayment?.status === PaymentStatus.FAILED) {
-      return 'FAILED';
-    }
-
-    switch (orderStatus) {
-      case OrderStatus.PAYMENT_PENDING:
-      case OrderStatus.CREATED:
-        return 'PENDING';
-      case OrderStatus.CANCELLED:
-        return 'CANCELLED';
-      case OrderStatus.FAILED:
-        return 'FAILED';
-      default:
-        return 'PAID';
-    }
+    return resolveOutletPaymentDisplayStatus({
+      orderStatus,
+      paymentStatus: latestPayment?.status ?? null,
+    });
   }
 }

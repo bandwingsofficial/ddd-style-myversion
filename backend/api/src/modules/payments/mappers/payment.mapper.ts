@@ -2,14 +2,16 @@
 
 import {
   Payment as PrismaPayment,
-  PaymentStatus as PrismaPaymentStatus,
   PaymentMethod as PrismaPaymentMethod,
   Prisma,
 } from '@prisma/client';
 
 import { Payment } from '../domain/models/payment.model';
 
-import { PaymentStatus } from '../domain/enums/payment-status.enum';
+import {
+  mapDomainPaymentStatusToPrisma,
+  mapPrismaPaymentStatusToDomain,
+} from '../domain/enums/payment-status.enum';
 import { PaymentMethod } from '../domain/enums/payment-method.enum';
 
 import { Money } from '../../orders/domain/value-objects/money.vo';
@@ -30,7 +32,7 @@ export class PaymentMapper {
       orderId: row.orderId,
 
       method: this.toDomainMethod(row.method),
-      status: this.toDomainStatus(row.status),
+      status: mapPrismaPaymentStatusToDomain(row.status),
 
       provider: row.provider ?? undefined,
       providerRefId: row.providerRefId ?? undefined,
@@ -59,7 +61,7 @@ export class PaymentMapper {
       },
 
       method: this.toPrismaMethod(payment.method),
-      status: this.toPrismaStatus(payment.status),
+      status: mapDomainPaymentStatusToPrisma(payment.status),
 
       provider: payment.provider,
       providerRefId: payment.providerRefId,
@@ -81,7 +83,7 @@ export class PaymentMapper {
   static toPrismaUpdate(payment: Payment): Prisma.PaymentUpdateInput {
     return {
       method: this.toPrismaMethod(payment.method),
-      status: this.toPrismaStatus(payment.status),
+      status: mapDomainPaymentStatusToPrisma(payment.status),
 
       provider: payment.provider,
       providerRefId: payment.providerRefId,
@@ -99,46 +101,6 @@ export class PaymentMapper {
   /* ENUM MAPPING                                   */
   /* ---------------------------------------------- */
 
-  /* -------- STATUS -------- */
-
-  private static toDomainStatus(status: PrismaPaymentStatus): PaymentStatus {
-    switch (status) {
-      case PrismaPaymentStatus.INITIATED:
-        return PaymentStatus.INITIATED;
-
-      case PrismaPaymentStatus.SUCCESS:
-        return PaymentStatus.SUCCESS;
-
-      case PrismaPaymentStatus.FAILED:
-        return PaymentStatus.FAILED;
-
-      case PrismaPaymentStatus.REFUNDED:
-        return PaymentStatus.REFUNDED;
-
-      default:
-        throw new Error(`Unknown Prisma PaymentStatus: ${status}`);
-    }
-  }
-
-  private static toPrismaStatus(status: PaymentStatus): PrismaPaymentStatus {
-    switch (status) {
-      case PaymentStatus.INITIATED:
-        return PrismaPaymentStatus.INITIATED;
-
-      case PaymentStatus.SUCCESS:
-        return PrismaPaymentStatus.SUCCESS;
-
-      case PaymentStatus.FAILED:
-        return PrismaPaymentStatus.FAILED;
-
-      case PaymentStatus.REFUNDED:
-        return PrismaPaymentStatus.REFUNDED;
-
-      default:
-        throw new Error(`Unknown Domain PaymentStatus: ${status}`);
-    }
-  }
-
   /* -------- METHOD -------- */
 
   private static toDomainMethod(method: PrismaPaymentMethod): PaymentMethod {
@@ -150,7 +112,7 @@ export class PaymentMapper {
         return PaymentMethod.COD;
 
       default:
-        throw new Error(`Unknown Prisma PaymentMethod: ${method}`);
+        return method as PaymentMethod;
     }
   }
 
@@ -163,7 +125,7 @@ export class PaymentMapper {
         return PrismaPaymentMethod.COD;
 
       default:
-        throw new Error(`Unknown Domain PaymentMethod: ${method}`);
+        return PrismaPaymentMethod.ONLINE;
     }
   }
 }

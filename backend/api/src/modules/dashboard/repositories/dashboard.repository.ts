@@ -174,7 +174,8 @@ export class DashboardRepository {
   ) {
     const baseWhere = this.buildPaymentWhere(filter, range);
 
-    const [success, failed, pending, refunded, total] = await Promise.all([
+    const [success, failed, pending, expired, refunded, total] =
+      await Promise.all([
       this.prisma.payment.aggregate({
         where: { ...baseWhere, status: PaymentStatus.SUCCESS },
         _sum: { amount: true, paidAmount: true },
@@ -185,6 +186,9 @@ export class DashboardRepository {
       }),
       this.prisma.payment.count({
         where: { ...baseWhere, status: PaymentStatus.INITIATED },
+      }),
+      this.prisma.payment.count({
+        where: { ...baseWhere, status: PaymentStatus.EXPIRED },
       }),
       this.prisma.payment.count({
         where: { ...baseWhere, status: PaymentStatus.REFUNDED },
@@ -200,6 +204,7 @@ export class DashboardRepository {
       successfulPayments: successful,
       failedPayments: failed,
       pendingPayments: pending,
+      expiredPayments: expired,
       refundedPayments: refunded,
       totalPayments: total,
       paymentSuccessRate: successRate,

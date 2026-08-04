@@ -120,6 +120,10 @@ export class Payment {
     return this.status === PaymentStatus.FAILED;
   }
 
+  isExpired(): boolean {
+    return this.status === PaymentStatus.EXPIRED;
+  }
+
   isRefunded(): boolean {
     return this.status === PaymentStatus.REFUNDED;
   }
@@ -128,18 +132,21 @@ export class Payment {
    * Final but NOT success
    */
   isFinal(): boolean {
-    return [PaymentStatus.FAILED, PaymentStatus.REFUNDED].includes(this.status);
+    return [
+      PaymentStatus.FAILED,
+      PaymentStatus.EXPIRED,
+      PaymentStatus.REFUNDED,
+    ].includes(this.status);
   }
 
   /**
-   * 🔥 NEW
-   * Used for idempotency
-   * SUCCESS or FAILED or REFUNDED
+   * Used for idempotency — terminal payment rows (no further state changes).
    */
   isCompleted(): boolean {
     return [
       PaymentStatus.SUCCESS,
       PaymentStatus.FAILED,
+      PaymentStatus.EXPIRED,
       PaymentStatus.REFUNDED,
     ].includes(this.status);
   }
