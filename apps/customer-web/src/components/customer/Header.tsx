@@ -17,7 +17,8 @@ import {
 } from "lucide-react";
 import { useCustomerSession } from "@/features/customer-auth/hooks/useCustomerSession";
 import { useLogout } from "@/features/customer-auth/hooks/useLogout";
-import { useCartStore } from "@/features/cart/cart.store"; 
+import { useCartStore } from "@/features/cart/cart.store";
+import { useFavorites } from "@/providers/CustomerAuthProvider";
 import LocationSelector from "./LocationSelector";
 import { useHeaderOffset } from "@/hooks/useHeaderOffset";
 
@@ -31,7 +32,9 @@ export default function Header() {
   const [searchQuery, setSearchQuery] = useState(""); 
 
   const { items } = useCartStore();
+  const { favorites } = useFavorites();
   const cartItemCount = items?.reduce((acc, item) => acc + item.quantity, 0) || 0;
+  const wishlistCount = favorites.length;
 
   useHeaderOffset(headerRef);
 
@@ -186,8 +189,23 @@ export default function Header() {
                   <Search size={20} strokeWidth={2.2} />
                 </Link>
 
-                <Link href="/favorites" className="flex h-11 w-11 items-center justify-center rounded-full text-slate-700 transition-all duration-300 hover:bg-green-50 hover:text-green-500 touch-target" aria-label="Wishlist">
-                  <Heart size={20} strokeWidth={2.2} />
+                <Link
+                  href="/favorites"
+                  className="flex h-11 w-11 items-center justify-center rounded-full text-slate-700 transition-all duration-300 hover:bg-green-50 hover:text-green-500 touch-target"
+                  aria-label={
+                    wishlistCount > 0
+                      ? `Wishlist, ${wishlistCount} items`
+                      : "Wishlist"
+                  }
+                >
+                  <div className="relative flex items-center">
+                    <Heart size={20} strokeWidth={2.2} />
+                    {wishlistCount > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 flex h-[17px] min-w-[17px] items-center justify-center rounded-full border-2 border-white bg-red-500 px-0.5 text-[10px] font-extrabold text-white shadow-sm">
+                        {wishlistCount > 99 ? "99+" : wishlistCount}
+                      </span>
+                    )}
+                  </div>
                 </Link>
                 
                 <Link href="/cart" className="flex h-11 w-11 items-center justify-center rounded-full text-slate-700 transition-all duration-300 hover:bg-green-50 hover:text-green-500 touch-target" aria-label="Cart">
