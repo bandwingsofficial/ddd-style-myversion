@@ -5,6 +5,11 @@ import * as orderApi from '../api/orders';
 import { useOrderSocket } from './useOrderSocket';
 import { outletService } from '@/features/outlet/services/outletService';
 import { resolveOrderCustomer } from '@/lib/customer-display';
+import {
+  bucketOrdersIntoColumns,
+  normalizeOrderStatus,
+  ORDER_STATUS,
+} from '../utils/order-status.util';
 
 export const useOrders = () => {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -26,7 +31,7 @@ export const useOrders = () => {
         const newPaidOrders = nextOrders.filter(
           (order) =>
             !knownOrderIdsRef.current.has(order.id) &&
-            order.status?.toUpperCase() === 'PAID',
+            normalizeOrderStatus(order.status) === ORDER_STATUS.PAID,
         );
 
         newPaidOrders.forEach((order) => {
@@ -94,23 +99,7 @@ export const useOrders = () => {
     }
   };
 
-  const columns = {
-    NEW: orders.filter((order) =>
-      order.status?.toUpperCase() === 'PAID',
-    ),
-
-    PREPARING: orders.filter((order) =>
-      ['CONFIRMED', 'PREPARING'].includes(order.status?.toUpperCase() ?? ''),
-    ),
-
-    DISPATCH: orders.filter((order) =>
-      order.status?.toUpperCase() === 'OUT_FOR_DELIVERY',
-    ),
-
-    COMPLETED: orders.filter((order) =>
-      ['DELIVERED', 'CANCELLED', 'FAILED'].includes(order.status?.toUpperCase() ?? ''),
-    ),
-  };
+  const columns = bucketOrdersIntoColumns(orders);
 
   return { 
     orders, 

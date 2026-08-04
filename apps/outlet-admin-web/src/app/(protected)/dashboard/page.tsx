@@ -7,21 +7,28 @@ import { TrendingUp, ShoppingBag, AlertCircle, Clock, Filter, Calendar, X, ListC
 import { useMemo, useState } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { CustomerContactDisplay } from '@/features/orders/components/CustomerContactDisplay';
+import {
+  ACTIVE_PIPELINE_STATUSES,
+  BackendOrderStatus,
+  normalizeOrderStatus,
+  ORDER_STATUS,
+  OUTLET_ORDER_STATUS_FILTER_OPTIONS,
+} from '@/features/orders/utils/order-status.util';
 
 type DateFilter = 'TODAY' | 'YESTERDAY' | 'WEEK' | '15_DAYS' | 'MONTH' | 'ALL';
-type StatusFilter = 'ALL' | 'DELIVERED' | 'CANCELLED' | 'NEW' | 'PREPARING';
+type StatusFilter = 'ALL' | BackendOrderStatus;
 
 export default function DashboardPage() {
   const { loading: sessionLoading } = useSessionGuard();
-  const { columns, loading: ordersLoading } = useOrders();
+  const { orders, loading: ordersLoading } = useOrders();
 
   const [dateFilter, setDateFilter] = useState<DateFilter>('WEEK');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
 
   const { stats, chartPoints, recentActivity } = useMemo(() => {
-    if (!columns) return { stats: { revenue: 0, orders: 0, pending: 0 }, chartPoints: [], recentActivity: [] };
+    if (!orders) return { stats: { revenue: 0, orders: 0, pending: 0 }, chartPoints: [], recentActivity: [] };
 
-    const allOrders = Object.values(columns).flat();
+    const allOrders = orders;
     const now = new Date();
     
     const applyDateFilter = (o: any) => {
@@ -40,14 +47,23 @@ export default function DashboardPage() {
       return true; 
     };
 
-    const applyStatusFilter = (o: any) => statusFilter === 'ALL' || String(o.status) === statusFilter;
+    const applyStatusFilter = (o: { status?: string }) =>
+      statusFilter === 'ALL' ||
+      normalizeOrderStatus(o.status) === statusFilter;
 
     const filtered = allOrders.filter(o => applyDateFilter(o) && applyStatusFilter(o));
 
-    // Stats Calculation - Updated to include PAYMENT_PENDING in pending count
-    const revenue = filtered.reduce((sum, o) => String(o.status) === 'DELIVERED' ? sum + o.grandTotal : sum, 0);
-    const pendingCount = filtered.filter(o => 
-      ['PAID', 'CONFIRMED', 'PREPARING', 'OUT_FOR_DELIVERY'].includes(String(o.status))
+    const revenue = filtered.reduce(
+      (sum, o) =>
+        normalizeOrderStatus(o.status) === ORDER_STATUS.DELIVERED
+          ? sum + o.grandTotal
+          : sum,
+      0,
+    );
+    const pendingCount = filtered.filter((o) =>
+      ACTIVE_PIPELINE_STATUSES.includes(
+        normalizeOrderStatus(o.status) as BackendOrderStatus,
+      ),
     ).length;
 
     // Chart Points Calculation
@@ -57,7 +73,11 @@ export default function DashboardPage() {
       d.setDate(now.getDate() - i);
       
       const dayRevenue = allOrders
-        .filter(o => new Date(o.createdAt).toDateString() === d.toDateString() && String(o.status) === 'DELIVERED')
+        .filter(
+          (o) =>
+            new Date(o.createdAt).toDateString() === d.toDateString() &&
+            normalizeOrderStatus(o.status) === ORDER_STATUS.DELIVERED,
+        )
         .reduce((sum, o) => sum + o.grandTotal, 0);
 
       return {
@@ -76,7 +96,7 @@ export default function DashboardPage() {
       chartPoints: points,
       recentActivity: sortedActivity
     };
-  }, [columns, dateFilter, statusFilter]);
+  }, [orders, dateFilter, statusFilter]);
 
   if (sessionLoading || ordersLoading) {
     return (
@@ -122,10 +142,13 @@ export default function DashboardPage() {
               className="bg-transparent border-none outline-none text-[13px] font-semibold text-slate-700 cursor-pointer"
             >
               <option value="ALL">All Statuses</option>
-              <option value="DELIVERED">Delivered</option>
-              <option value="CANCELLED">Cancelled</option>
-              <option value="NEW">New</option>
-              <option value="PREPARING">Preparing</option>
+              {OUTLET_ORDER_STATUS_FILTER_OPTIONS.filter(
+                (option) => option.value !== 'ALL',
+              ).map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </div>
           
@@ -190,8 +213,8 @@ export default function DashboardPage() {
               <div key={order.id} className="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl border border-slate-100 transition-all hover:border-blue-100">
                 <div className="flex items-center gap-3">
                   <div className={`w-2 h-2 rounded-full ${
-                    order.status === 'DELIVERED' ? 'bg-emerald-500' :
-                    order.status === 'CANCELLED' ? 'bg-red-500' : 'bg-blue-500'
+                    normalizeOrderStatus(order.status) === ORDER_STATUS.DELIVERED ? 'bg-emerald-500' :
+                    normalizeOrderStatus(order.status) === ORDER_STATUS.CANCELLED ? 'bg-red-500' : 'bg-blue-500'
                   }`} />
                   <div>
                     <p className="text-[12px] font-black text-slate-800 uppercase tracking-tight">{order.orderNumber}</p>

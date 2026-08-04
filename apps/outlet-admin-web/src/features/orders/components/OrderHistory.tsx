@@ -8,22 +8,26 @@ import { formatDateIST, formatTimeIST } from '@/lib/format-datetime';
 import { CustomerContactDisplay } from '@/features/orders/components/CustomerContactDisplay';
 import { OrderReceiptPreview } from '@/features/orders/components/OrderReceiptPreview';
 import { customerMatchesSearch } from '@/lib/customer-display';
+import {
+  normalizeOrderStatus,
+  ORDER_STATUS,
+  OUTLET_ORDER_STATUS_FILTER_OPTIONS,
+  STATUS_BADGE_COLORS,
+} from '../utils/order-status.util';
 
 export const OrderHistory = () => {
-  const { columns, loading, refresh } = useOrders();
+  const { orders, loading, refresh } = useOrders();
   
   // State for Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [dateRange, setDateRange] = useState<string>('ALL');
 
-  // 1. Flatten all orders from columns safely
   const allOrders = useMemo(() => {
-    if (!columns) return [];
-    return Object.values(columns)
-      .flat()
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [columns]);
+    return [...orders].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+  }, [orders]);
 
   // 2. Multi-Intent Filter Logic
   const filteredOrders = useMemo(() => {
@@ -55,7 +59,9 @@ export const OrderHistory = () => {
                             matchesAmount || 
                             matchesProducts;
       
-      const matchesStatus = statusFilter === 'ALL' || order.status === statusFilter;
+      const matchesStatus =
+        statusFilter === 'ALL' ||
+        normalizeOrderStatus(order.status) === statusFilter;
       
       let matchesDate = true;
       const orderDate = new Date(order.createdAt);
@@ -82,9 +88,13 @@ export const OrderHistory = () => {
     return {
       total: filteredOrders.length,
       revenue: filteredOrders.reduce((sum, o) => {
-        return String(o.status) === 'DELIVERED' ? sum + (o.grandTotal || 0) : sum;
+        return normalizeOrderStatus(o.status) === ORDER_STATUS.DELIVERED
+          ? sum + (o.grandTotal || 0)
+          : sum;
       }, 0),
-      deliveredCount: filteredOrders.filter(o => String(o.status) === 'DELIVERED').length
+      deliveredCount: filteredOrders.filter(
+        (o) => normalizeOrderStatus(o.status) === ORDER_STATUS.DELIVERED,
+      ).length,
     };
   }, [filteredOrders]);
 
@@ -162,12 +172,13 @@ export const OrderHistory = () => {
             onChange={(e) => setStatusFilter(e.target.value)}
           >
             <option value="ALL">All Statuses</option>
-            <option value="DELIVERED">Delivered</option>
-            <option value="CANCELLED">Cancelled</option>
-            <option value="DISPATCH">In Transit</option>
-            <option value="PREPARING">Preparing</option>
-            <option value="NEW">New</option>
-            <option value="PAYMENT_PENDING">Payment Pending</option>
+            {OUTLET_ORDER_STATUS_FILTER_OPTIONS.filter(
+              (option) => option.value !== 'ALL',
+            ).map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -235,11 +246,7 @@ const HistoryRow = ({ initialOrder }: { initialOrder: Order }) => {
     loadFullDetails();
   }, [initialOrder]);
 
-  const statusColors: Record<string, string> = {
-    DELIVERED: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-    CANCELLED: 'bg-red-50 text-red-600 border-red-100',
-    PAYMENT_PENDING: 'bg-gray-100 text-gray-500 border-gray-200',
-  };
+  const statusColors = STATUS_BADGE_COLORS;
 
   return (
     <>
@@ -290,7 +297,7 @@ const HistoryRow = ({ initialOrder }: { initialOrder: Order }) => {
       </td>
       <td className="p-4 text-center">
         <div className="flex flex-col items-center gap-2">
-          <span className={`px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-tight shadow-sm ${statusColors[order.status] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+          <span className={`px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-tight shadow-sm ${statusColors[normalizeOrderStatus(order.status)] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
             {order.status}
           </span>
           <button

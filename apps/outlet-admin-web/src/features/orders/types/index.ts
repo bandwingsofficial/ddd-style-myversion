@@ -1,17 +1,14 @@
-export type OrderStatus = 
-  | 'PAYMENT_PENDING' 
+/** Matches backend OrderStatus enum. */
+export type OrderStatus =
+  | 'CREATED'
+  | 'PAYMENT_PENDING'
   | 'PAID'
-  | 'PENDING' 
-  | 'CONFIRMED' 
-  | 'ACCEPTED'
-  | 'PREPARING' 
-  | 'READY'
-  | 'DISPATCH'
-  | 'OUT_FOR_DELIVERY' 
-  | 'DELIVERED' 
+  | 'CONFIRMED'
+  | 'PREPARING'
+  | 'OUT_FOR_DELIVERY'
+  | 'DELIVERED'
   | 'CANCELLED'
-  | 'FAILED'
-  | 'REJECTED';
+  | 'FAILED';
 
 export type OutletPaymentStatus =
   | 'PENDING'
@@ -54,7 +51,7 @@ export interface Order {
   customerFullName: string;
   customerPhone?: string | null;
   customerEmail?: string | null;
-  address?: CustomerAddress; 
+  address?: CustomerAddress;
   subtotal?: number;
   discount?: number;
   afterDiscountTotal?: number;

@@ -7,10 +7,16 @@ import { RotateCw, MapPin, ShoppingBag, Receipt } from 'lucide-react';
 import { formatDateIST, formatTimeIST } from '@/lib/format-datetime';
 import { CustomerContactDisplay } from '@/features/orders/components/CustomerContactDisplay';
 import { OrderReceiptPreview } from '@/features/orders/components/OrderReceiptPreview';
+import {
+  normalizeOrderStatus,
+  ORDER_STATUS,
+  OrderBoardTab,
+  STATUS_BADGE_COLORS,
+} from '../utils/order-status.util';
 
 export const OrdersTable = () => {
   const { columns, loading, handleStatusChange, refresh } = useOrders();
-  const [activeTab, setActiveTab] = useState<'NEW' | 'PREPARING' | 'DISPATCH' | 'COMPLETED'>('NEW');
+  const [activeTab, setActiveTab] = useState<OrderBoardTab>(ORDER_STATUS.PAID);
 
   if (loading) {
     return (
@@ -24,11 +30,11 @@ export const OrdersTable = () => {
   // Map the active tab to the correct data source from your hook
   const currentOrders = columns[activeTab] || [];
 
-  const tabs = [
-    { id: 'NEW', label: 'New Orders', count: columns.NEW.length },
-    { id: 'PREPARING', label: 'In Progress', count: columns.PREPARING.length },
-    { id: 'DISPATCH', label: 'Out for Delivery', count: columns.DISPATCH.length },
-    { id: 'COMPLETED', label: 'History', count: columns.COMPLETED.length },
+  const tabs: Array<{ id: OrderBoardTab; label: string; count: number }> = [
+    { id: ORDER_STATUS.PAID, label: 'New Orders', count: columns[ORDER_STATUS.PAID].length },
+    { id: ORDER_STATUS.PREPARING, label: 'In Progress', count: columns[ORDER_STATUS.PREPARING].length },
+    { id: ORDER_STATUS.OUT_FOR_DELIVERY, label: 'Out for Delivery', count: columns[ORDER_STATUS.OUT_FOR_DELIVERY].length },
+    { id: 'COMPLETED', label: 'Completed', count: columns.COMPLETED.length },
   ];
 
   return (
@@ -50,7 +56,7 @@ export const OrdersTable = () => {
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
+            onClick={() => setActiveTab(tab.id)}
             className={`
               flex items-center gap-2 px-4 py-3 text-sm font-bold transition-all border-b-2 
               ${activeTab === tab.id 
@@ -106,7 +112,15 @@ export const OrdersTable = () => {
 };
 
 // --- Sub-component for individual rows with Lazy Loading ---
-const TableRow = ({ initialOrder, activeTab, onAction }: { initialOrder: Order; activeTab: string; onAction: any }) => {
+const TableRow = ({
+  initialOrder,
+  activeTab,
+  onAction,
+}: {
+  initialOrder: Order;
+  activeTab: OrderBoardTab;
+  onAction: (orderId: string, action: 'accept' | 'reject' | 'prepare' | 'deliver' | 'complete') => void;
+}) => {
   const [order, setOrder] = useState<Order>(initialOrder);
   const [isFetching, setIsFetching] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -200,14 +214,13 @@ const TableRow = ({ initialOrder, activeTab, onAction }: { initialOrder: Order; 
         <div className="text-sm font-black text-gray-800">₹{order.grandTotal}</div>
         <div className="mt-2 flex flex-wrap gap-1">
           <div className={`text-[10px] inline-block px-2 py-0.5 rounded font-black uppercase tracking-widest ${
-              order.status === 'CONFIRMED' ? 'bg-blue-100 text-blue-700' :
-              order.status === 'PREPARING' ? 'bg-amber-100 text-amber-700' :
-              order.status === 'PAID' ? 'bg-emerald-100 text-emerald-700' :
+              STATUS_BADGE_COLORS[normalizeOrderStatus(order.status)] ||
               'bg-gray-100 text-gray-600'
           }`}>
-              {order.status}
+              {normalizeOrderStatus(order.status)}
           </div>
-          {(order.paymentStatus === 'PAID' || order.status === 'PAID') && (
+          {(order.paymentStatus === 'PAID' ||
+            normalizeOrderStatus(order.status) === ORDER_STATUS.PAID) && (
             <div className="text-[10px] inline-block rounded bg-green-100 px-2 py-0.5 font-black uppercase tracking-widest text-green-700">
               PAID
             </div>
@@ -217,7 +230,8 @@ const TableRow = ({ initialOrder, activeTab, onAction }: { initialOrder: Order; 
 
       {/* Actions */}
       <td className="p-4 align-top">
-        {activeTab === 'NEW' && order.status?.toUpperCase() === 'PAID' && (
+        {activeTab === ORDER_STATUS.PAID &&
+          normalizeOrderStatus(order.status) === ORDER_STATUS.PAID && (
           <div className="flex gap-2">
             <button 
               onClick={() => onAction(order.id, 'accept')}
@@ -232,9 +246,9 @@ const TableRow = ({ initialOrder, activeTab, onAction }: { initialOrder: Order; 
           </div>
         )}
 
-        {activeTab === 'PREPARING' && (
+        {activeTab === ORDER_STATUS.PREPARING && (
           <div className="space-y-2">
-            {order.status === 'CONFIRMED' ? (
+            {normalizeOrderStatus(order.status) === ORDER_STATUS.CONFIRMED ? (
                 <button 
                     onClick={() => onAction(order.id, 'prepare')}
                     className="w-full px-3 py-2.5 bg-blue-600 text-white text-[10px] font-black rounded hover:bg-blue-700 shadow-sm flex items-center justify-center gap-2 transition-all">
@@ -250,7 +264,7 @@ const TableRow = ({ initialOrder, activeTab, onAction }: { initialOrder: Order; 
           </div>
         )}
 
-        {activeTab === 'DISPATCH' && (
+        {activeTab === ORDER_STATUS.OUT_FOR_DELIVERY && (
           <button 
             onClick={() => onAction(order.id, 'complete')}
             className="w-full px-4 py-2.5 bg-emerald-600 text-white text-[10px] font-black rounded hover:bg-emerald-700 shadow-md transition-all">
@@ -261,7 +275,7 @@ const TableRow = ({ initialOrder, activeTab, onAction }: { initialOrder: Order; 
         {activeTab === 'COMPLETED' && (
           <div className="space-y-2">
             <span className="w-full block text-center px-2 py-1.5 bg-gray-100 text-gray-500 text-[10px] font-black rounded uppercase">
-              {order.status}
+              {normalizeOrderStatus(order.status)}
             </span>
             <button
               type="button"

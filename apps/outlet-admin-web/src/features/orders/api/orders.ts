@@ -34,7 +34,7 @@ export const setPreparing = async (id: string) =>
   api.post(`/outlet-orders/${id}/preparing`);
 
 /**
- * Transitions order status to OUT_FOR_DELIVERY / DISPATCH.
+ * Transitions order status to OUT_FOR_DELIVERY.
  */
 export const setOutForDelivery = async (id: string) => 
   api.post(`/outlet-orders/${id}/out-for-delivery`);

@@ -3,6 +3,10 @@ import { Order } from '../types';
 import { Clock, MapPin } from 'lucide-react';
 import { formatTimeIST } from '@/lib/format-datetime';
 import { CustomerContactDisplay } from '@/features/orders/components/CustomerContactDisplay';
+import {
+  normalizeOrderStatus,
+  ORDER_STATUS,
+} from '../utils/order-status.util';
 
 interface OrderCardProps {
   order: Order;
@@ -13,7 +17,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onAction }) => {
   const isHighValue = order.grandTotal > 500;
 
   // Helper to handle casing issues from backend
-  const status = order.status?.toUpperCase();
+  const status = normalizeOrderStatus(order.status);
 
   return (
     <div className={`bg-white rounded-xl shadow-sm border border-gray-100 p-4 mb-4 transition-all hover:shadow-md ${isHighValue ? 'border-l-4 border-l-emerald-500' : ''}`}>
@@ -63,7 +67,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onAction }) => {
 
       {/* Actions */}
       <div className="grid gap-2">
-        {status === 'PAID' && (
+        {status === ORDER_STATUS.PAID && (
           <div className="grid grid-cols-2 gap-2">
              <button 
                onClick={() => onAction(order.id, 'reject')}
@@ -79,7 +83,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onAction }) => {
         )}
 
         {/* Confirmed -> Preparing */}
-        {status === 'CONFIRMED' && (
+        {status === ORDER_STATUS.CONFIRMED && (
           <button 
             onClick={() => onAction(order.id, 'prepare')}
             className="w-full px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
@@ -88,7 +92,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onAction }) => {
         )}
 
         {/* Preparing -> Out for Delivery */}
-        {status === 'PREPARING' && (
+        {status === ORDER_STATUS.PREPARING && (
           <button 
             onClick={() => onAction(order.id, 'deliver')}
             className="w-full px-3 py-2 text-sm font-medium text-white bg-amber-500 rounded-lg hover:bg-amber-600 transition-colors flex items-center justify-center gap-2">
@@ -97,7 +101,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onAction }) => {
         )}
 
         {/* Out for Delivery -> Delivered */}
-        {(status === 'OUT_FOR_DELIVERY' || status === 'DISPATCH') && (
+        {status === ORDER_STATUS.OUT_FOR_DELIVERY && (
           <button 
             onClick={() => onAction(order.id, 'complete')}
             className="w-full px-3 py-2 text-sm font-medium text-emerald-700 bg-emerald-100 rounded-lg hover:bg-emerald-200 transition-colors border border-emerald-200">

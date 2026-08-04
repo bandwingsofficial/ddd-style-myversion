@@ -3,21 +3,27 @@ import React, { useState } from 'react';
 import { useOrders } from '../hooks/useOrders';
 import { Order } from '../types';
 import { CustomerContactDisplay } from '@/features/orders/components/CustomerContactDisplay';
+import {
+  normalizeOrderStatus,
+  ORDER_STATUS,
+  OrderBoardTab,
+  STATUS_BADGE_COLORS,
+} from '../utils/order-status.util';
 
 export const OrdersTable = () => {
   const { columns, loading, handleStatusChange, refresh } = useOrders();
-  const [activeTab, setActiveTab] = useState<'NEW' | 'PREPARING' | 'DISPATCH' | 'COMPLETED'>('NEW');
+  const [activeTab, setActiveTab] = useState<OrderBoardTab>(ORDER_STATUS.PAID);
 
   if (loading) return <div className="p-8 text-center text-gray-500">Loading live orders...</div>;
 
   // Map the active tab to the correct data source from your hook
   const currentOrders = columns[activeTab] || [];
 
-  const tabs = [
-    { id: 'NEW', label: 'New Orders', count: columns.NEW.length, color: 'text-blue-600 bg-blue-50' },
-    { id: 'PREPARING', label: 'In Kitchen', count: columns.PREPARING.length, color: 'text-amber-600 bg-amber-50' },
-    { id: 'DISPATCH', label: 'Out for Delivery', count: columns.DISPATCH.length, color: 'text-purple-600 bg-purple-50' },
-    { id: 'COMPLETED', label: 'History', count: columns.COMPLETED.length, color: 'text-gray-600 bg-gray-50' },
+  const tabs: Array<{ id: OrderBoardTab; label: string; count: number; color: string }> = [
+    { id: ORDER_STATUS.PAID, label: 'New Orders', count: columns[ORDER_STATUS.PAID].length, color: 'text-blue-600 bg-blue-50' },
+    { id: ORDER_STATUS.PREPARING, label: 'In Kitchen', count: columns[ORDER_STATUS.PREPARING].length, color: 'text-amber-600 bg-amber-50' },
+    { id: ORDER_STATUS.OUT_FOR_DELIVERY, label: 'Out for Delivery', count: columns[ORDER_STATUS.OUT_FOR_DELIVERY].length, color: 'text-purple-600 bg-purple-50' },
+    { id: 'COMPLETED', label: 'Completed', count: columns.COMPLETED.length, color: 'text-gray-600 bg-gray-50' },
   ];
 
   return (
@@ -37,7 +43,7 @@ export const OrdersTable = () => {
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
+            onClick={() => setActiveTab(tab.id)}
             className={`
               flex items-center gap-2 px-4 py-3 text-sm font-medium transition-all border-b-2 
               ${activeTab === tab.id 
@@ -94,7 +100,15 @@ export const OrdersTable = () => {
 };
 
 // --- Sub-component for individual rows ---
-const TableRow = ({ order, activeTab, onAction }: { order: Order; activeTab: string; onAction: any }) => {
+const TableRow = ({
+  order,
+  activeTab,
+  onAction,
+}: {
+  order: Order;
+  activeTab: OrderBoardTab;
+  onAction: (orderId: string, action: 'accept' | 'reject' | 'prepare' | 'deliver' | 'complete') => void;
+}) => {
   return (
     <tr className="hover:bg-blue-50/30 transition-colors group">
       {/* Order Info (Number + Customer Name) */}
@@ -132,17 +146,16 @@ const TableRow = ({ order, activeTab, onAction }: { order: Order; activeTab: str
       <td className="p-4 align-top">
         <div className="text-sm font-bold text-gray-800">₹{order.grandTotal}</div>
         <div className={`text-xs inline-block px-1.5 rounded mt-1 font-bold ${
-            order.status === 'CONFIRMED' ? 'bg-blue-100 text-blue-700' :
-            order.status === 'PREPARING' ? 'bg-amber-100 text-amber-700' :
+            STATUS_BADGE_COLORS[normalizeOrderStatus(order.status)] ||
             'bg-emerald-50 text-emerald-600'
         }`}>
-            {order.status}
+            {normalizeOrderStatus(order.status)}
         </div>
       </td>
 
       {/* Actions (Dynamic based on Tab) */}
       <td className="p-4 align-top">
-        {activeTab === 'NEW' && (
+        {activeTab === ORDER_STATUS.PAID && (
           <div className="flex gap-2">
             <button 
               onClick={() => onAction(order.id, 'accept')}
@@ -158,9 +171,9 @@ const TableRow = ({ order, activeTab, onAction }: { order: Order; activeTab: str
         )}
 
         {/* FIXED LOGIC: Handles the 2-step Kitchen Process */}
-        {activeTab === 'PREPARING' && (
+        {activeTab === ORDER_STATUS.PREPARING && (
           <div>
-            {order.status === 'CONFIRMED' ? (
+            {normalizeOrderStatus(order.status) === ORDER_STATUS.CONFIRMED ? (
                 <button 
                     onClick={() => onAction(order.id, 'prepare')}
                     className="w-full px-3 py-2 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700 shadow-sm flex items-center justify-center gap-2">
@@ -176,7 +189,7 @@ const TableRow = ({ order, activeTab, onAction }: { order: Order; activeTab: str
           </div>
         )}
 
-        {activeTab === 'DISPATCH' && (
+        {activeTab === ORDER_STATUS.OUT_FOR_DELIVERY && (
           <button 
             onClick={() => onAction(order.id, 'complete')}
             className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700">
@@ -186,7 +199,7 @@ const TableRow = ({ order, activeTab, onAction }: { order: Order; activeTab: str
 
         {activeTab === 'COMPLETED' && (
           <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs font-bold rounded">
-            {order.status}
+            {normalizeOrderStatus(order.status)}
           </span>
         )}
       </td>

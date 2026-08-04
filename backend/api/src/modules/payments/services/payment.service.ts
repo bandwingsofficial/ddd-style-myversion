@@ -38,16 +38,21 @@ export class PaymentService {
   private async ensureOrderFinalizedAfterSuccessfulPayment(
     orderId: string,
   ): Promise<void> {
+    this.logger.log(`[Payment Repair] Started orderId=${orderId}`);
+
     let order = await this.orderRepo.findById(orderId);
 
     if (!order) {
       this.logger.warn(
-        `[Payment Finalize] Order not found orderId=${orderId}`,
+        `[Payment Repair] Failed orderId=${orderId} reason=ORDER_NOT_FOUND`,
       );
       return;
     }
 
     if (PaymentService.isOrderPaidOrBeyond(order)) {
+      this.logger.log(
+        `[Payment Repair] Already PAID - skipped orderId=${orderId} status=${order.status}`,
+      );
       return;
     }
 
@@ -58,19 +63,28 @@ export class PaymentService {
     }
 
     if (order.status !== OrderStatus.PAYMENT_PENDING) {
+      this.logger.log(
+        `[Payment Repair] Failed orderId=${orderId} reason=INVALID_ORDER_STATE status=${order.status}`,
+      );
       return;
     }
 
     try {
       await this.orderStatusService.finalizeAfterSuccessfulPayment(orderId);
+      this.logger.log(
+        `[Payment Repair] Finalized order successfully orderId=${orderId}`,
+      );
     } catch (err) {
       const refreshed = await this.orderRepo.findById(orderId);
       if (refreshed && PaymentService.isOrderPaidOrBeyond(refreshed)) {
+        this.logger.log(
+          `[Payment Repair] Already PAID - skipped orderId=${orderId} status=${refreshed.status}`,
+        );
         return;
       }
 
       this.logger.error(
-        `[Payment Finalize] Failed orderId=${orderId}`,
+        `[Payment Repair] Failed orderId=${orderId}`,
         err instanceof Error ? err.stack : err,
       );
       throw err;
@@ -340,6 +354,9 @@ export class PaymentService {
         transactionId: updatedPayment.transactionId,
         occurredAt: new Date(),
       });
+      await this.ensureOrderFinalizedAfterSuccessfulPayment(
+        updatedPayment.orderId,
+      );
     } else if (confirmResult.stateChanged) {
       this.logger.warn(
         `[Payment Updated] paymentId=${updatedPayment.id} orderId=${updatedPayment.orderId} status=FAILED`,
@@ -435,8 +452,8 @@ export class PaymentService {
           );
         } catch (finalizeErr) {
           this.logger.error(
-            `[Webhook Finalize] Failed paymentId=${payment.id} orderId=${payment.orderId}`,
-            finalizeErr,
+            `[Payment Repair] Failed paymentId=${payment.id} orderId=${payment.orderId}`,
+            finalizeErr instanceof Error ? finalizeErr.stack : finalizeErr,
           );
         }
         return;
