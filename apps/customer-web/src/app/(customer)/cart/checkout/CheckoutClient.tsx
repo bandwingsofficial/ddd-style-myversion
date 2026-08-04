@@ -1,24 +1,31 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Script from "next/script";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { toast } from "sonner";
-import { CheckoutApi } from "@/features/checkout/checkout.api";
 import {
-  CheckoutSummary,
-  CheckoutErrorResponse,
-  CheckoutStartResponse,
-} from "@/features/checkout/checkout.types";
+  ArrowLeft,
+  Loader2,
+  MapPin,
+  Minus,
+  Plus,
+  ShoppingBag,
+  Trash2,
+} from "lucide-react";
+
+import Header from "@/components/customer/Header";
+import AddressSelectionModal from "@/components/address/AddressSelectionModal";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { OrderSummaryBreakdown } from "@/features/orders/components/OrderSummaryBreakdown";
+
+import { CheckoutApi } from "@/features/checkout/checkout.api";
+import { CheckoutSummary } from "@/features/checkout/checkout.types";
 import { useCartStore } from "@/features/cart/cart.store";
 import { useOutletStore } from "@/features/outlet/outlet.store";
 import { useCustomerSession } from "@/features/customer-auth/hooks/useCustomerSession";
-import { ArrowLeft, Loader2, MapPin, ShoppingCart } from "lucide-react";
-import Header from "@/components/customer/Header";
-import { OrderSummaryBreakdown } from "@/features/orders/components/OrderSummaryBreakdown";
 import { getProductImageUrl } from "@/lib/image-url";
-import { savePaymentSession } from "@/features/checkout/payment-session.util";
 import { computeLineTotal } from "@/lib/cart-pricing";
 import {
   resolveCheckoutOutletId,
@@ -26,92 +33,96 @@ import {
 } from "@/features/checkout/resolve-checkout-outlet.util";
 import { validateAddressForCheckout } from "@/features/checkout/validate-address-outlet.util";
 import { mapCheckoutSummaryError } from "@/features/checkout/checkout-error.util";
-import { AddressService } from "@/features/addresses/address.service";
+import { Address, AddressService } from "@/features/addresses/address.service";
 import { useLocationStore } from "@/features/location/location.store";
 import { CheckoutOutOfServiceState } from "@/components/location/NoDeliveryState";
-import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { typography } from "@/lib/design-tokens";
-
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
-}
+import { openRazorpayCheckout } from "@/features/checkout/razorpay.util";
 
 export default function CheckoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const addressId = searchParams.get("addressId");
+  const initialAddressId = searchParams.get("addressId");
 
+  const [addressId, setAddressId] = useState<string | null>(initialAddressId);
   const [summary, setSummary] = useState<CheckoutSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadErrorTitle, setLoadErrorTitle] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [itemUpdating, setItemUpdating] = useState<string | null>(null);
   const [initializing, setInitializing] = useState(true);
-  const [outletResolutionError, setOutletResolutionError] = useState<
-    string | null
-  >(null);
+  const [outletResolutionError, setOutletResolutionError] = useState<string | null>(null);
   const [addressOutOfService, setAddressOutOfService] = useState(false);
-  const [addressValidationMessage, setAddressValidationMessage] = useState<
-    string | null
-  >(null);
+  const [addressValidationMessage, setAddressValidationMessage] = useState<string | null>(null);
   const [syncingAddress, setSyncingAddress] = useState(true);
-
-  const [pendingOrderModal, setPendingOrderModal] = useState<{
-    isOpen: boolean;
-    orderId: string | null;
-    orderNumber: string | null;
-  }>({
-    isOpen: false,
-    orderId: null,
-    orderNumber: null,
-  });
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [orderNotes, setOrderNotes] = useState("");
+  const [deliveryInstructions, setDeliveryInstructions] = useState("");
 
   const { isLoggedIn, isHydrated: authHydrated } = useCustomerSession();
   const {
     items: cartItems,
     loadCart,
+    updateItem,
+    removeItem,
     hydrated: cartHydrated,
     cartOutletId,
   } = useCartStore();
-  const { selectedOutlet, outletRevision } = useOutletStore();
+
+  const loadSummary = useCallback(
+    async (addrId: string, outId: string) => {
+      try {
+        setLoading(true);
+        setLoadError(null);
+        setLoadErrorTitle(null);
+        const data = await CheckoutApi.getSummary(addrId, outId);
+        setSummary(data);
+      } catch (error) {
+        const mapped = mapCheckoutSummaryError(error);
+        setLoadErrorTitle(mapped.title);
+        setLoadError(mapped.message);
+        setSummary(null);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
+  const refreshCheckout = useCallback(
+    async (addrId: string) => {
+      const { outletId: checkoutOutletId, error } = resolveCheckoutOutletId();
+      setOutletResolutionError(error ?? null);
+      if (!checkoutOutletId) return;
+      await loadCart(isLoggedIn);
+      await loadSummary(addrId, checkoutOutletId);
+    },
+    [isLoggedIn, loadCart, loadSummary],
+  );
 
   useEffect(() => {
-    const initCart = async () => {
-      if (!authHydrated || !cartHydrated) return;
-
-      if (!isLoggedIn) {
-        router.replace("/login?redirect=/cart/checkout");
-        return;
-      }
-      if (!addressId) {
-        router.replace("/cart");
-        return;
-      }
-      if (cartItems.length === 0) {
-        await loadCart(isLoggedIn);
-      }
-      setInitializing(false);
-    };
-    void initCart();
-  }, [
-    authHydrated,
-    cartHydrated,
-    isLoggedIn,
-    addressId,
-    loadCart,
-    router,
-    cartItems.length,
-  ]);
+    if (!authHydrated || !cartHydrated) return;
+    if (!isLoggedIn) {
+      router.replace("/login?redirect=/cart/checkout");
+      return;
+    }
+    if (!addressId) {
+      router.replace("/cart");
+      return;
+    }
+    if (cartItems.length === 0) {
+      void loadCart(isLoggedIn);
+    }
+    setInitializing(false);
+  }, [authHydrated, cartHydrated, isLoggedIn, addressId, loadCart, router, cartItems.length]);
 
   useEffect(() => {
     if (initializing || !addressId) return;
 
     let cancelled = false;
 
-    const syncAddressAndLoadCheckout = async () => {
+    const sync = async () => {
       setSyncingAddress(true);
       setAddressOutOfService(false);
       setAddressValidationMessage(null);
@@ -121,15 +132,8 @@ export default function CheckoutPage() {
         const address = await AddressService.getOne(addressId);
         const { outletId: checkoutOutletId, outletName, error } =
           resolveCheckoutOutletId();
-
         setOutletResolutionError(error ?? null);
-
-        if (!checkoutOutletId) {
-          if (!loading && cartItems.length === 0) {
-            router.replace("/home");
-          }
-          return;
-        }
+        if (!checkoutOutletId) return;
 
         const validation = validateAddressForCheckout({
           address,
@@ -155,16 +159,14 @@ export default function CheckoutPage() {
 
         traceOutletBinding({
           stage: "checkout.syncAddress",
-          selectedOutletId: selectedOutlet?.id ?? null,
+          selectedOutletId: useOutletStore.getState().selectedOutlet?.id ?? null,
           cartOutletId: checkoutOutletId,
           checkoutOutletId: validation.checkoutOutletId,
           resolvedOutletId: address.resolvedOutletId ?? null,
         });
 
         await loadSummary(addressId, validation.checkoutOutletId);
-        await checkActiveCheckout(validation.checkoutOutletId);
-      } catch (error) {
-        console.error("Checkout address sync failed:", error);
+      } catch {
         if (!cancelled) {
           setLoadErrorTitle("Checkout unavailable");
           setLoadError("Could not verify your delivery address.");
@@ -174,283 +176,90 @@ export default function CheckoutPage() {
       }
     };
 
-    void syncAddressAndLoadCheckout();
-
+    void sync();
     return () => {
       cancelled = true;
     };
-  }, [
-    initializing,
-    addressId,
-    selectedOutlet?.id,
-    outletRevision,
-    cartOutletId,
-    cartItems,
-    router,
-  ]);
+  }, [initializing, addressId, cartOutletId, cartItems, loadSummary]);
 
-  const checkActiveCheckout = async (outletId: string) => {
+  const handleQuantityChange = async (
+    productId: string,
+    currentQty: number,
+    delta: number,
+  ) => {
+    if (itemUpdating || !addressId) return;
+    const newQty = currentQty + delta;
+    setItemUpdating(productId);
     try {
-      const active = await CheckoutApi.getActiveCheckout(outletId);
-      if (active && active.status === "PAYMENT_PENDING") {
-        setPendingOrderModal({
-          isOpen: true,
-          orderId: active.orderId,
-          orderNumber: active.orderNumber,
-        });
-      }
-    } catch {
-      // non-blocking
+      if (newQty <= 0) await removeItem(productId);
+      else await updateItem(productId, newQty);
+      await refreshCheckout(addressId);
+    } finally {
+      setItemUpdating(null);
     }
   };
 
-  const loadSummary = async (addrId: string, outId: string) => {
+  const handleRemoveItem = async (productId: string) => {
+    if (itemUpdating || !addressId) return;
+    setItemUpdating(productId);
     try {
-      setLoading(true);
-      setLoadError(null);
-      setLoadErrorTitle(null);
-      const data = await CheckoutApi.getSummary(addrId, outId);
-      setSummary(data);
-    } catch (error) {
-      console.error("Summary Error:", error);
-      const mapped = mapCheckoutSummaryError(error);
-      setLoadErrorTitle(mapped.title);
-      setLoadError(mapped.message);
-      setSummary(null);
+      await removeItem(productId);
+      await refreshCheckout(addressId);
     } finally {
-      setLoading(false);
+      setItemUpdating(null);
     }
+  };
+
+  const handleAddressSelect = (address: Address) => {
+    setIsAddressModalOpen(false);
+    setAddressId(address.id);
+    router.replace(`/cart/checkout?addressId=${address.id}`);
   };
 
   const handlePay = async () => {
     const { outletId: currentOutletId, error } = resolveCheckoutOutletId();
-
-    if (!addressId || !summary || !currentOutletId || processing || checkoutOpen) {
+    if (!addressId || !summary || !currentOutletId || processing) {
       if (error) toast.error(error);
-      else if (loadError) toast.error(loadError);
       return;
     }
-
-    traceOutletBinding({
-      stage: "checkout.startPayment",
-      selectedOutletId: useOutletStore.getState().selectedOutlet?.id,
-      cartOutletId: useCartStore.getState().cartOutletId,
-      checkoutOutletId: currentOutletId,
-    });
 
     setProcessing(true);
-    let checkoutData: CheckoutStartResponse | null = null;
-
     try {
-      if (typeof window.Razorpay === "undefined") {
-        toast.error(
-          "Payment gateway is still loading. Please wait a moment and try again.",
-        );
-        return;
-      }
-
-      checkoutData = await CheckoutApi.startCheckout({
+      const checkoutData = await CheckoutApi.startCheckout({
         savedAddressId: addressId,
         outletId: currentOutletId,
+        orderNotes: orderNotes.trim() || undefined,
+        deliveryInstructions: deliveryInstructions.trim() || undefined,
       });
+
+      router.push(`/orders/${checkoutData.orderId}/pay?autoPay=1`);
     } catch (error: any) {
-      const errData = error.response?.data as CheckoutErrorResponse;
-
-      if (
-        errData?.code === "ORDER_ALREADY_IN_PROGRESS" &&
-        errData?.metadata?.orderId
-      ) {
-        setPendingOrderModal({
-          isOpen: true,
-          orderId: errData.metadata.orderId,
-          orderNumber: errData.metadata.orderNumber || null,
-        });
-        return;
-      }
-
-      console.error("Checkout Error:", error);
-      toast.error(errData?.message || "Could not initiate payment.");
-      return;
+      toast.error(error.response?.data?.message || "Could not start checkout.");
     } finally {
       setProcessing(false);
-    }
-
-    if (!checkoutData) {
-      return;
-    }
-
-    const data = checkoutData;
-
-    savePaymentSession({
-      orderId: data.orderId,
-      orderNumber: data.orderNumber,
-      paymentId: data.paymentId,
-      addressId: addressId ?? undefined,
-      amount: String(data.grandTotal),
-      startedAt: Date.now(),
-    });
-
-    const razorpayKey = data.key ?? process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
-
-    const closeCheckout = () => {
-      setCheckoutOpen(false);
-    };
-
-    const razorpayLogo =
-      typeof window !== "undefined"
-        ? `${window.location.origin}/images/Canten1.png`
-        : undefined;
-
-    const options = {
-      key: razorpayKey,
-      amount: data.razorpayAmount,
-      currency: data.currency,
-      name: "CANTEN",
-      description: "Fresh Sugarcane Juice",
-      image: razorpayLogo,
-      order_id: data.razorpayOrderId,
-      handler: function (response: any) {
-        closeCheckout();
-        const params = new URLSearchParams({
-          orderId: data.orderId,
-          orderNumber: data.orderNumber,
-          paymentId: data.paymentId,
-          rzp_payment_id: response.razorpay_payment_id,
-          rzp_order_id: response.razorpay_order_id,
-          rzp_signature: response.razorpay_signature,
-          amount: data.grandTotal.toString(),
-          addressId: addressId,
-        });
-
-        router.replace(`/payment/process?${params.toString()}`);
-      },
-      prefill: {
-        name: data.customerName,
-        email: data.customerEmail || undefined,
-        contact: data.customerPhone,
-      },
-      theme: { color: "#10B981" },
-      modal: {
-        ondismiss: function () {
-          closeCheckout();
-          toast.message("Payment cancelled. You can retry when ready.");
-        },
-      },
-    };
-
-    const rzp = new window.Razorpay(options);
-
-    rzp.on("payment.failed", function (response: any) {
-      console.error("[Razorpay] Payment failed:", response);
-      closeCheckout();
-      const params = new URLSearchParams({
-        orderId: data.orderId,
-        orderNumber: data.orderNumber,
-        paymentId: data.paymentId,
-        addressId: addressId ?? "",
-        amount: String(data.grandTotal),
-        failed: "true",
-      });
-      router.replace(`/payment/process?${params.toString()}`);
-    });
-
-    setCheckoutOpen(true);
-    try {
-      rzp.open();
-    } catch (openError) {
-      console.error("[Razorpay] Failed to open checkout:", openError);
-      closeCheckout();
-      toast.error("Could not open payment window. Please try again.");
     }
   };
 
   const paymentBlockReason = useMemo(() => {
-    if (addressOutOfService && addressValidationMessage) {
-      return addressValidationMessage;
-    }
+    if (addressOutOfService && addressValidationMessage) return addressValidationMessage;
     if (outletResolutionError) return outletResolutionError;
     if (loadError) return loadError;
+    if (!summary?.items?.length) return "Your cart is empty.";
     return null;
-  }, [
-    addressOutOfService,
-    addressValidationMessage,
-    outletResolutionError,
-    loadError,
-  ]);
+  }, [addressOutOfService, addressValidationMessage, outletResolutionError, loadError, summary]);
 
   const isPreparing =
     initializing || loading || syncingAddress || !authHydrated || !cartHydrated;
-  const isPaymentDisabled =
-    isPreparing ||
-    processing ||
-    checkoutOpen ||
-    !summary ||
-    Boolean(paymentBlockReason);
+  const isPaymentDisabled = isPreparing || processing || !summary || Boolean(paymentBlockReason);
 
-  const handleRetrySummary = () => {
-    const { outletId } = resolveCheckoutOutletId();
-    if (addressId && outletId) {
-      void loadSummary(addressId, outletId);
-    }
-  };
-
-  const statusMessage = isPreparing
-    ? initializing
-      ? "Syncing your cart..."
-      : "Preparing your checkout..."
-    : undefined;
+  if (!addressId) return null;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#fafafa]">
       <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       <Header />
 
-      {pendingOrderModal.isOpen &&
-        typeof document !== "undefined" &&
-        createPortal(
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-            <div className="bg-white rounded-[2rem] p-6 max-w-[340px] w-full shadow-2xl text-center animate-in fade-in zoom-in duration-200">
-              <h2 className="text-2xl font-bold text-[#0F172A] mb-3">
-                Order in Progress
-              </h2>
-              <p className="text-slate-500 text-sm leading-relaxed mb-4 px-1">
-                You already have an order being fulfilled.
-                {pendingOrderModal.orderNumber && (
-                  <span className="block mt-2 font-bold text-emerald-600 uppercase">
-                    Order: #{pendingOrderModal.orderNumber}
-                  </span>
-                )}
-              </p>
-
-              <div className="space-y-3">
-                <button
-                  onClick={() =>
-                    router.push(`/orders/${pendingOrderModal.orderId}`)
-                  }
-                  className="w-full bg-[#059669] hover:bg-emerald-700 text-white font-semibold py-3.5 rounded-xl"
-                >
-                  View Order
-                </button>
-
-                <button
-                  onClick={() =>
-                    setPendingOrderModal({
-                      isOpen: false,
-                      orderId: null,
-                      orderNumber: null,
-                    })
-                  }
-                  className="w-full bg-[#F1F5F9] hover:bg-slate-200 text-[#0F172A] font-semibold py-3.5 rounded-xl"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body,
-        )}
-
-      <main className="customer-page-shell mobile-container max-w-5xl">
+      <main className="customer-page-shell mobile-container max-w-5xl pb-16">
         <Breadcrumbs
           items={[
             { label: "Cart", href: "/cart" },
@@ -458,119 +267,187 @@ export default function CheckoutPage() {
           ]}
         />
 
-        <button
-          onClick={() => router.back()}
-          className="mb-4 flex items-center font-medium text-slate-500 hover:text-emerald-600 md:hidden"
-        >
-          <ArrowLeft size={18} className="mr-2" /> Back
-        </button>
-
-        <h1 className={`${typography.pageTitle} mb-6`}>Review & Pay</h1>
-
-        {statusMessage ? (
-          <div className="mb-6 flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-            <Loader2 className="h-5 w-5 shrink-0 animate-spin text-emerald-600" />
-            <span>{statusMessage}</span>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className={`${typography.pageTitle} text-slate-900`}>Checkout</h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Review your order before payment
+            </p>
           </div>
-        ) : null}
+          <Link
+            href="/cart"
+            className="hidden items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 sm:flex"
+          >
+            <ArrowLeft size={16} /> Back to cart
+          </Link>
+        </div>
 
-        {(loadError || loadErrorTitle) && (
-          <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-            {loadErrorTitle ? (
-              <h2 className="text-sm font-bold text-amber-950">{loadErrorTitle}</h2>
-            ) : null}
-            {loadError ? (
-              <p className="mt-1 text-sm text-amber-900">{loadError}</p>
-            ) : null}
-            {addressId && selectedOutlet?.id ? (
-              <button
-                type="button"
-                onClick={handleRetrySummary}
-                className="mt-3 text-sm font-semibold text-emerald-700 underline"
-              >
-                Try again
-              </button>
-            ) : null}
+        {isPreparing && (
+          <div className="mb-6 flex items-center gap-3 rounded-xl bg-white px-4 py-3 text-sm text-slate-600 ring-1 ring-slate-200/80">
+            <Loader2 className="h-4 w-4 animate-spin text-emerald-600" />
+            Preparing checkout...
           </div>
         )}
 
         {addressOutOfService ? (
-          <CheckoutOutOfServiceState
-            message={
-              addressValidationMessage ??
-              "Your selected delivery address is outside our delivery area. Please choose another address."
-            }
-          />
+          <CheckoutOutOfServiceState message={addressValidationMessage ?? ""} />
         ) : summary ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                <div className="flex items-start gap-4">
-                  <div className="bg-emerald-50 p-3 rounded-full text-emerald-600">
-                    <MapPin size={24} />
-                  </div>
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-5">
+            <div className="space-y-5 lg:col-span-3">
+              {/* Address */}
+              <section className="rounded-xl bg-white p-5 ring-1 ring-slate-200/80">
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="text-sm font-semibold text-slate-900">Delivery address</h2>
+                  <button
+                    type="button"
+                    onClick={() => setIsAddressModalOpen(true)}
+                    className="text-sm font-medium text-[#00a300] hover:text-[#166534]"
+                  >
+                    Change
+                  </button>
+                </div>
+                <div className="flex gap-3">
+                  <MapPin size={18} className="mt-0.5 shrink-0 text-slate-400" />
                   <div>
-                    <h3 className="font-bold text-slate-900 uppercase tracking-wide text-xs mb-1">
-                      Delivery Address
-                    </h3>
-                    <p className="font-bold text-lg text-slate-800">
-                      {summary.address.label}
-                    </p>
-                    <p className="text-slate-500 leading-relaxed">
+                    <p className="font-medium text-slate-900">{summary.address.label}</p>
+                    <p className="mt-0.5 text-sm leading-relaxed text-slate-600">
                       {summary.address.addressText}
                     </p>
                   </div>
                 </div>
-              </div>
+              </section>
 
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                <div className="p-4 bg-slate-50 border-b border-slate-100 font-bold text-slate-700">
-                  Items ({summary.itemCount})
+              {/* Items */}
+              <section className="rounded-xl bg-white ring-1 ring-slate-200/80">
+                <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+                  <h2 className="text-sm font-semibold text-slate-900">
+                    Order items ({summary.itemCount})
+                  </h2>
+                  <Link
+                    href="/menu"
+                    className="text-sm font-medium text-[#00a300] hover:text-[#166534]"
+                  >
+                    Add more
+                  </Link>
                 </div>
-                <div className="divide-y divide-slate-100">
+                <ul className="divide-y divide-slate-100">
                   {summary.items.map((item) => {
                     const imageUrl = getProductImageUrl(item.productImage);
+                    const busy = itemUpdating === item.productId;
                     return (
-                      <div key={item.productId} className="p-4 flex gap-4">
+                      <li key={item.productId} className="flex gap-4 px-5 py-4">
                         {imageUrl ? (
                           <img
                             src={imageUrl}
                             alt={item.productName}
-                            className="w-16 h-16 rounded-lg object-cover bg-slate-100"
+                            className="h-16 w-16 shrink-0 rounded-lg object-cover bg-slate-100"
                           />
                         ) : (
-                          <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center">
-                            <ShoppingCart size={20} className="text-slate-400" />
+                          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-slate-100">
+                            <ShoppingBag size={18} className="text-slate-400" />
                           </div>
                         )}
-                        <div className="flex-1">
-                          <div className="flex justify-between">
-                            <h4 className="font-bold text-slate-800">
-                              {item.productName}
-                            </h4>
-                            <span className="font-bold text-slate-900">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="font-medium text-slate-900">{item.productName}</p>
+                            <p className="shrink-0 font-semibold text-slate-900">
                               ₹{item.lineTotal}
-                            </span>
+                            </p>
                           </div>
-                          <p className="text-sm text-slate-500 mt-1">
-                            {item.quantity} x ₹
-                            {computeLineTotal(
-                              item.unitPrice,
-                              item.discountPrice,
-                              1,
-                            )}
+                          <p className="mt-0.5 text-xs text-slate-500">
+                            ₹{computeLineTotal(item.unitPrice, item.discountPrice, 1)} each
                           </p>
+                          <div className="mt-3 flex items-center gap-3">
+                            <div className="flex items-center rounded-lg ring-1 ring-slate-200">
+                              <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() =>
+                                  void handleQuantityChange(
+                                    item.productId,
+                                    item.quantity,
+                                    -1,
+                                  )
+                                }
+                                className="px-2.5 py-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                              >
+                                <Minus size={14} />
+                              </button>
+                              <span className="min-w-[1.5rem] text-center text-sm font-medium">
+                                {busy ? "…" : item.quantity}
+                              </span>
+                              <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() =>
+                                  void handleQuantityChange(
+                                    item.productId,
+                                    item.quantity,
+                                    1,
+                                  )
+                                }
+                                className="px-2.5 py-1.5 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                              >
+                                <Plus size={14} />
+                              </button>
+                            </div>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => void handleRemoveItem(item.productId)}
+                              className="text-slate-400 hover:text-red-600 disabled:opacity-50"
+                              aria-label="Remove item"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      </li>
                     );
                   })}
+                </ul>
+                <div className="border-t border-slate-100 px-5 py-3">
+                  <Link
+                    href="/menu"
+                    className="text-sm font-medium text-[#00a300] hover:text-[#166534]"
+                  >
+                    Still craving something? 😋
+                  </Link>
                 </div>
-              </div>
+              </section>
+
+              {/* Notes */}
+              <section className="rounded-xl bg-white p-5 ring-1 ring-slate-200/80">
+                <label className="block text-sm font-semibold text-slate-900">
+                  Order notes <span className="font-normal text-slate-400">(optional)</span>
+                </label>
+                <textarea
+                  value={orderNotes}
+                  onChange={(e) => setOrderNotes(e.target.value)}
+                  rows={2}
+                  maxLength={500}
+                  placeholder="Any special requests?"
+                  className="mt-2 w-full resize-none rounded-lg border-0 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 ring-1 ring-slate-200 focus:ring-2 focus:ring-emerald-600/30"
+                />
+                <label className="mt-4 block text-sm font-semibold text-slate-900">
+                  Delivery instructions{" "}
+                  <span className="font-normal text-slate-400">(optional)</span>
+                </label>
+                <textarea
+                  value={deliveryInstructions}
+                  onChange={(e) => setDeliveryInstructions(e.target.value)}
+                  rows={2}
+                  maxLength={500}
+                  placeholder="Gate code, landmark, etc."
+                  className="mt-2 w-full resize-none rounded-lg border-0 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 ring-1 ring-slate-200 focus:ring-2 focus:ring-emerald-600/30"
+                />
+              </section>
             </div>
 
-            <div className="space-y-6">
-              <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm lg:sticky lg:top-32">
-                <h3 className="font-bold text-slate-900 mb-4">Bill Details</h3>
+            {/* Summary */}
+            <div className="lg:col-span-2">
+              <div className="sticky top-24 space-y-4 rounded-xl bg-white p-5 ring-1 ring-slate-200/80">
+                <h2 className="text-sm font-semibold text-slate-900">Payment summary</h2>
 
                 <OrderSummaryBreakdown
                   subtotal={summary.subtotal}
@@ -582,45 +459,56 @@ export default function CheckoutPage() {
                     summary.remainingForFreeDelivery ??
                     summary.remainingAmountForFreeDelivery
                   }
-                  totalLabel="Total Payable"
-                  className="space-y-3 text-sm text-slate-600 pb-4 border-b border-slate-100"
-                  totalClassName="flex justify-between items-center py-4 font-extrabold text-xl text-slate-900"
+                  totalLabel="Total payable"
+                  className="space-y-2.5 text-sm text-slate-600"
+                  totalClassName="flex justify-between border-t border-slate-100 pt-3 text-base font-semibold text-slate-900"
                 />
 
+                {summary.estimatedDeliveryMinutes ? (
+                  <p className="text-xs text-slate-500">
+                    Estimated delivery: ~{summary.estimatedDeliveryMinutes} min
+                  </p>
+                ) : null}
+
+                <p className="text-xs text-slate-400">
+                  Secure payment via Razorpay. Your cart stays editable until payment succeeds.
+                </p>
+
                 {paymentBlockReason ? (
-                  <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-900">
+                  <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-100">
                     {paymentBlockReason}
                   </p>
                 ) : null}
 
-                <p className="mt-4 text-xs text-center text-slate-400">
-                  Safe & Secure Payment
-                </p>
-
                 <button
                   type="button"
-                  onClick={handlePay}
+                  onClick={() => void handlePay()}
                   disabled={isPaymentDisabled}
-                  className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-brand text-base font-bold text-white shadow-lg transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#00a300] text-sm font-semibold text-white transition hover:bg-[#166534] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {(isPreparing || processing) ? (
-                    <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                  {processing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : null}
-                  <span>
-                    {checkoutOpen
-                      ? "Payment Window Open"
-                      : isPreparing
-                        ? statusMessage ?? "Preparing checkout..."
-                        : summary
-                          ? `Pay ₹${summary.grandTotal}`
-                          : "Proceed to Payment"}
-                  </span>
+                  Pay ₹{summary.grandTotal}
                 </button>
+
+                <Link
+                  href="/cart"
+                  className="flex h-11 w-full items-center justify-center rounded-xl text-sm font-medium text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50"
+                >
+                  Back to cart
+                </Link>
               </div>
             </div>
           </div>
         ) : null}
       </main>
+
+      <AddressSelectionModal
+        isOpen={isAddressModalOpen}
+        onClose={() => setIsAddressModalOpen(false)}
+        onSelect={handleAddressSelect}
+      />
     </div>
   );
 }

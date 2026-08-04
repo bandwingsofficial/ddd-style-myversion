@@ -46,7 +46,8 @@ export class PaymentService {
     /* PHASE 1 — DB                                      */
     /* ================================================= */
 
-    const { payment, amount } = await this.prisma.$transaction(async (tx) => {
+    const { payment, amount, reused } = await this.prisma.$transaction(
+      async (tx) => {
       const order = await this.orderRepo.findById(params.orderId, tx);
 
       if (!order) {
@@ -61,6 +62,23 @@ export class PaymentService {
       }
 
       const amount = order.grandTotal.toNumber();
+
+      const reusable = await this.paymentRepo.findReusableInitiatedByOrderId(
+        order.id,
+        120_000,
+        tx,
+      );
+
+      if (
+        reusable?.providerRefId &&
+        reusable.amount.toNumber() === amount
+      ) {
+        this.logger.log(
+          `[Payment Reused] orderId=${order.id} paymentId=${reusable.id} razorpayOrderId=${reusable.providerRefId}`,
+        );
+        return { payment: reusable, amount, reused: true };
+      }
+
       const existingAttempts = await this.paymentRepo.findAllByOrderId(
         order.id,
         tx,
@@ -82,11 +100,22 @@ export class PaymentService {
         await this.orderRepo.update(pendingOrder, tx);
       }
 
-      return { payment: saved, amount };
-    });
+      return { payment: saved, amount, reused: false };
+    },
+    );
+
+    if (reused && payment.providerRefId) {
+      const amountInPaise = Math.round(amount * 100);
+      return {
+        payment,
+        razorpayOrderId: payment.providerRefId,
+        amountInPaise,
+        checkoutUrl: null,
+      };
+    }
 
     /* ================================================= */
-    /* EVENTS                                            */
+    /* EVENTS (new session only)                         */
     /* ================================================= */
 
     this.paymentEvents.emitPaymentInitiated({
@@ -199,11 +228,19 @@ export class PaymentService {
     /* DB UPDATE (atomic)                                */
     /* ================================================= */
 
-    const updatedPayment = await this.prisma.$transaction(async (tx) => {
+    const confirmResult = await this.prisma.$transaction(async (tx) => {
       const freshPayment = await this.paymentRepo.findById(payment.id, tx);
 
       if (!freshPayment) {
         throw new ValidationError('PAYMENT_INVALID', 'Invalid payment');
+      }
+
+      if (freshPayment.isSuccess()) {
+        return { payment: freshPayment, stateChanged: false };
+      }
+
+      if (freshPayment.isCompleted()) {
+        return { payment: freshPayment, stateChanged: false };
       }
 
       let newPayment: Payment;
@@ -218,14 +255,16 @@ export class PaymentService {
 
       await this.paymentRepo.update(newPayment, tx);
 
-      return newPayment;
+      return { payment: newPayment, stateChanged: true };
     });
+
+    const updatedPayment = confirmResult.payment;
 
     /* ================================================= */
     /* EMIT EVENTS ONLY WHEN STATE CHANGED                */
     /* ================================================= */
 
-    if (updatedPayment.isSuccess()) {
+    if (confirmResult.stateChanged && updatedPayment.isSuccess()) {
       this.logger.log(
         `[Payment Updated] paymentId=${updatedPayment.id} orderId=${updatedPayment.orderId} status=SUCCESS`,
       );
@@ -236,7 +275,7 @@ export class PaymentService {
         transactionId: updatedPayment.transactionId,
         occurredAt: new Date(),
       });
-    } else {
+    } else if (confirmResult.stateChanged) {
       this.logger.warn(
         `[Payment Updated] paymentId=${updatedPayment.id} orderId=${updatedPayment.orderId} status=FAILED`,
       );
@@ -250,6 +289,10 @@ export class PaymentService {
       throw new ValidationError(
         'PAYMENT_VERIFICATION_FAILED',
         'Payment verification failed',
+      );
+    } else if (updatedPayment.isSuccess()) {
+      this.logger.log(
+        `[Payment Callback] Idempotent confirm paymentId=${updatedPayment.id} orderId=${updatedPayment.orderId}`,
       );
     }
 

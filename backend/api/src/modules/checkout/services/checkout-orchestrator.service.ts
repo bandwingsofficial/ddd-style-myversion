@@ -8,10 +8,6 @@ import { CheckoutStartResult } from '../types/checkout-start-response.types';
 export class CheckoutOrchestratorService {
   constructor(private readonly checkoutService: CheckoutService) {}
 
-  /* ================================================= */
-  /* CHECKOUT – SUMMARY (PREVIEW PAGE)                 */
-  /* ================================================= */
-
   async getCheckoutSummary(params: {
     customerId: string;
     outletId: string;
@@ -24,11 +20,24 @@ export class CheckoutOrchestratorService {
     return this.checkoutService.getActiveCheckout(params);
   }
 
+  async listPendingOrders(customerId: string) {
+    return this.checkoutService.listPendingOrders(customerId);
+  }
+
   async startCheckout(params: {
     customerId: string;
     outletId: string;
     savedAddressId: string;
+    orderNotes?: string;
+    deliveryInstructions?: string;
   }): Promise<CheckoutStartResult> {
     return this.checkoutService.startCheckout(params);
+  }
+
+  async retryPayment(params: {
+    customerId: string;
+    orderId: string;
+  }): Promise<CheckoutStartResult> {
+    return this.checkoutService.retryPayment(params);
   }
 }

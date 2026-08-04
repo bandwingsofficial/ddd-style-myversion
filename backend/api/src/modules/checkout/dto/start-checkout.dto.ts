@@ -1,4 +1,4 @@
-import { IsUUID, IsOptional, IsNumber, Min } from 'class-validator';
+import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class StartCheckoutDto {
   @IsUUID()
@@ -8,7 +8,12 @@ export class StartCheckoutDto {
   outletId: string;
 
   @IsOptional()
-  @IsNumber()
-  @Min(0)
-  deliveryFee?: number;
+  @IsString()
+  @MaxLength(500)
+  orderNotes?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  deliveryInstructions?: string;
 }

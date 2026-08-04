@@ -76,6 +76,10 @@ export class OrderMapper {
       status: this.toDomainStatus(order.status),
       version: order.version,
 
+      paymentExpiresAt: order.paymentExpiresAt ?? null,
+      orderNotes: order.orderNotes ?? null,
+      deliveryInstructions: order.deliveryInstructions ?? null,
+
       items: order.items.map((item) =>
         OrderItem.rehydrate({
           id: item.id,
@@ -151,6 +155,10 @@ export class OrderMapper {
 
       status: this.toPrismaStatus(order.status),
       version: order.version,
+
+      paymentExpiresAt: order.paymentExpiresAt ?? null,
+      orderNotes: order.orderNotes ?? null,
+      deliveryInstructions: order.deliveryInstructions ?? null,
 
       /* -------- items snapshot -------- */
 

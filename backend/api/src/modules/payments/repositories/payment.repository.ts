@@ -100,6 +100,31 @@ export class PaymentRepository {
     return row ? PaymentMapper.toDomain(row) : null;
   }
 
+  /**
+   * Reuse a recent INITIATED payment session to prevent duplicate Razorpay orders
+   * on double-click / network retry for the same checkout attempt.
+   */
+  async findReusableInitiatedByOrderId(
+    orderId: string,
+    maxAgeMs: number,
+    tx?: PrismaTransaction,
+  ): Promise<Payment | null> {
+    const client = tx ?? this.prisma;
+    const cutoff = new Date(Date.now() - maxAgeMs);
+
+    const row = await client.payment.findFirst({
+      where: {
+        orderId,
+        status: 'INITIATED',
+        providerRefId: { not: null },
+        createdAt: { gte: cutoff },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return row ? PaymentMapper.toDomain(row) : null;
+  }
+
   async findLatestByOrderIds(
     orderIds: string[],
     tx?: PrismaTransaction,

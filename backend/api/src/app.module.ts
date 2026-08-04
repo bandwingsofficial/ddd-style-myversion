@@ -3,6 +3,7 @@
 import { Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 
 import { AppConfigModule } from './config/config.module';
 import { PrismaModule } from './infrastructure/prisma/prisma.module';
@@ -43,6 +44,8 @@ import { OtpWorker } from './workers/otp.worker';
       wildcard: true,
       delimiter: '.',
     }),
+
+    ScheduleModule.forRoot(),
 
     AuthModule,
     UploadsModule,

@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
-
 /* ---------------------------------------------- */
 /* CONTROLLERS                                    */
 /* ---------------------------------------------- */
@@ -15,6 +14,7 @@ import { OrderAdminController } from '../controllers/order-admin.controller';
 import { OrderService } from '../services/order.service';
 import { OrderStatusService } from '../services/order-status.service';
 import { OrderOrchestratorService } from '../services/order-orchestrator.service';
+import { OrderPendingService } from '../services/order-pending.service';
 
 /* ---------------------------------------------- */
 /* REPOSITORIES                                   */
@@ -50,6 +50,7 @@ import { UploadsModule } from '../../uploads/uploads.module';
     OrderService,
     OrderStatusService,
     OrderOrchestratorService,
+    OrderPendingService,
     OrderResponseMapper,
 
     /* Events */
@@ -68,6 +69,7 @@ import { UploadsModule } from '../../uploads/uploads.module';
     OrderStatusService,
     OrderOrchestratorService,
     OrderRepository,
+    OrderPendingService,
   ],
 })
 export class OrdersModule {}

@@ -43,6 +43,10 @@ export interface OrderProps {
   status: OrderStatus;
   version: number;
 
+  paymentExpiresAt?: Date | null;
+  orderNotes?: string | null;
+  deliveryInstructions?: string | null;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -83,6 +87,10 @@ export class Order {
 
   readonly status: OrderStatus;
   readonly version: number;
+
+  readonly paymentExpiresAt?: Date | null;
+  readonly orderNotes?: string | null;
+  readonly deliveryInstructions?: string | null;
 
   readonly createdAt: Date;
   readonly updatedAt: Date;
@@ -129,6 +137,9 @@ export class Order {
     items: OrderItem[];
 
     now?: Date;
+    paymentExpiresAt?: Date | null;
+    orderNotes?: string | null;
+    deliveryInstructions?: string | null;
   }): Order {
     const now = params.now ?? new Date();
 
@@ -165,6 +176,10 @@ export class Order {
 
       status: OrderStatus.CREATED,
       version: 0,
+
+      paymentExpiresAt: params.paymentExpiresAt ?? null,
+      orderNotes: params.orderNotes ?? null,
+      deliveryInstructions: params.deliveryInstructions ?? null,
 
       createdAt: now,
       updatedAt: now,

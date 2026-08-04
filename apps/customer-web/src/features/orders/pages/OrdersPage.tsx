@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { typography } from "@/lib/design-tokens";
 
-type FilterStatus = "ALL" | "DELIVERED" | "PENDING" | "CANCELLED";
+type FilterStatus = "ALL" | "DELIVERED" | "PENDING" | "ACTIVE" | "CANCELLED";
 
 export default function OrdersPage() {
   const { orders, loading } = useOrders();
@@ -29,6 +29,20 @@ export default function OrdersPage() {
                             order.items?.some((item: any) => item.name?.toLowerCase().includes(searchQuery.toLowerCase()));
       
       if (activeFilter === "ALL") return matchesSearch;
+      if (activeFilter === "PENDING") {
+        return (
+          ["PAYMENT_PENDING", "CREATED"].includes(
+            order.status?.toUpperCase() ?? "",
+          ) && matchesSearch
+        );
+      }
+      if (activeFilter === "ACTIVE") {
+        return (
+          ["PAID", "CONFIRMED", "PREPARING", "OUT_FOR_DELIVERY"].includes(
+            order.status?.toUpperCase() ?? "",
+          ) && matchesSearch
+        );
+      }
       return order.status?.toUpperCase() === activeFilter && matchesSearch;
     });
   }, [orders, searchQuery, activeFilter]);
@@ -103,7 +117,7 @@ export default function OrdersPage() {
 
             {/* Segmented Filter Controls */}
             <div className="flex flex-wrap items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-              {(["ALL", "PENDING", "DELIVERED", "CANCELLED"] as FilterStatus[]).map((status) => (
+              {(["ALL", "PENDING", "ACTIVE", "DELIVERED", "CANCELLED"] as FilterStatus[]).map((status) => (
                 <button
                   key={status}
                   onClick={() => setActiveFilter(status)}

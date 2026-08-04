@@ -20,9 +20,9 @@ import { Money } from '../domain/value-objects/money.vo';
 
 import { ValidationError } from '../../../common/errors';
 import { traceOutletLifecycle } from '../../../common/utils/outlet-trace.util';
-import { CartStatus } from '@/modules/cart/domain/enums/cart-status.enum';
 import { OrderStatus } from '../domain/enums/order-status.enum';
 import { OrderMapper } from '../mappers/order.mapper';
+import { computePaymentExpiresAt } from '../constants/order-pending.constants';
 
 /* ================================================= */
 /* HELPERS                                           */
@@ -84,10 +84,12 @@ export class OrderService {
     params: {
       cart: Cart;
       address: SavedAddress;
+      orderNotes?: string | null;
+      deliveryInstructions?: string | null;
     },
     tx?: PrismaTransaction,
   ): Promise<Order> {
-    const { cart, address } = params ?? {};
+    const { cart, address, orderNotes, deliveryInstructions } = params ?? {};
 
     if (!cart) {
       throw new ValidationError('CART_REQUIRED', 'Cart is required');
@@ -108,13 +110,6 @@ export class OrderService {
       throw new ValidationError(
         'EMPTY_CART',
         'Cannot create order from empty cart',
-      );
-    }
-
-    if (cart.status !== CartStatus.LOCKED) {
-      throw new ValidationError(
-        'CART_NOT_LOCKED',
-        'Cart must be locked before creating order',
       );
     }
 
@@ -170,6 +165,9 @@ export class OrderService {
           : null,
       isFreeDelivery: cart.isFreeDelivery,
       items,
+      paymentExpiresAt: computePaymentExpiresAt(),
+      orderNotes: orderNotes ?? null,
+      deliveryInstructions: deliveryInstructions ?? null,
     });
 
     const saved = await this.orderRepo.create(order, tx);
@@ -187,108 +185,20 @@ export class OrderService {
   }
 
   /**
-   * Refresh a PAYMENT_PENDING order snapshot from the current locked cart.
-   * Ensures Razorpay amount matches the latest checkout totals on retry.
+   * @deprecated Orders are immutable snapshots — never resync from cart.
    */
   async resyncPendingOrderFromCart(
-    params: {
+    _params: {
       orderId: string;
       cart: Cart;
       address: SavedAddress;
     },
-    tx?: PrismaTransaction,
+    _tx?: PrismaTransaction,
   ): Promise<Order> {
-    const run = async (client: PrismaTransaction): Promise<Order> => {
-      const existing = await this.orderRepo.findById(params.orderId, client);
-
-      if (!existing) {
-        throw new ValidationError('ORDER_NOT_FOUND', 'Order not found');
-      }
-
-      if (existing.status !== OrderStatus.PAYMENT_PENDING) {
-        throw new ValidationError(
-          'ORDER_NOT_RESYNCABLE',
-          'Only payment-pending orders can be resynced from cart',
-        );
-      }
-
-      if (!params.cart.hasItems()) {
-        throw new ValidationError('EMPTY_CART', 'Cart is empty');
-      }
-
-      if (params.cart.outletId !== existing.outletId) {
-        traceOutletLifecycle('order.resyncPendingOrderFromCart', {
-          orderOutletId: existing.outletId,
-          cartOutletId: params.cart.outletId,
-          orderId: existing.id,
-        });
-        throw new ValidationError(
-          'OUTLET_ORDER_MISMATCH',
-          'Cart outlet does not match pending order outlet',
-        );
-      }
-
-      const { cart, address } = params;
-
-      await client.orderItem.deleteMany({
-        where: { orderId: existing.id },
-      });
-
-      const itemRows = cart.items.map((item) => ({
-        id: uuid(),
-        productId: item.productId,
-        productName: item.productName,
-        productImage: item.productImage,
-        quantity: item.quantity,
-        unitPrice: toNumber(item.unitPrice),
-        discountPrice:
-          item.discountPrice != null ? toNumber(item.discountPrice) : null,
-        totalPrice: toNumber(item.getLineTotal()),
-      }));
-
-      const deliveryFee = toNumber(cart.deliveryFee);
-
-      const row = await client.order.update({
-        where: { id: existing.id },
-        data: {
-          cartId: cart.id,
-          addressLabel: address.label,
-          addressText: address.addressText,
-          latitude: address.latitude ?? null,
-          longitude: address.longitude ?? null,
-          subtotal: toNumber(cart.subtotal),
-          discount: toNumber(cart.discount),
-          afterDiscountTotal: toNumber(cart.afterDiscountTotal),
-          deliveryFee,
-          grandTotal: toNumber(cart.grandTotal),
-          itemCount: cart.itemCount,
-          deliveryRuleId: cart.deliveryRuleId ?? null,
-          deliveryRuleName: cart.deliveryRuleName ?? null,
-          deliveryRuleMinimumOrderAmount:
-            cart.deliveryRuleMinimumOrderAmount != null
-              ? toNumber(cart.deliveryRuleMinimumOrderAmount)
-              : null,
-          isFreeDelivery: deliveryFee === 0,
-          version: existing.version + 1,
-          updatedAt: new Date(),
-          items: {
-            create: itemRows,
-          },
-        },
-        include: {
-          items: true,
-          customer: {
-            include: {
-              profile: true,
-            },
-          },
-        },
-      });
-
-      return OrderMapper.toDomain(row);
-    };
-
-    return tx ? run(tx) : this.prisma.$transaction(run);
+    throw new ValidationError(
+      'ORDER_SNAPSHOT_IMMUTABLE',
+      'Pending orders cannot be modified. Create a new order instead.',
+    );
   }
 
   /* ================================================= */

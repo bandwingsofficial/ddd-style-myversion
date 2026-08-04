@@ -8,35 +8,21 @@ import { SavedAddressService } from '../../saved-address/services/saved-address.
 
 import { OrderOrchestratorService } from '../../orders/services/order-orchestrator.service';
 import { PaymentOrchestratorService } from '../../payments/services/payment-orchestrator.service';
-
-import { CheckoutPricingService } from './checkout-pricing.service';
+import { OrderPendingService } from '../../orders/services/order-pending.service';
 
 import { CartResponseMapper } from '../../cart/mappers/cart-response.mapper';
 
 import { ValidationError } from '../../../common/errors';
 import { traceOutletLifecycle } from '../../../common/utils/outlet-trace.util';
 
-/* 🔥 NEW */
 import { CheckoutEventsService } from '../events/checkout-events.service';
-import { CartStatus } from '@/modules/cart/domain/enums/cart-status.enum';
 
 import { OrderStatus } from '@/modules/orders/domain/enums/order-status.enum';
 import { Order } from '@/modules/orders/domain/models/order.model';
 import { CheckoutStartResult } from '../types/checkout-start-response.types';
 import { OutletService } from '../../outlets/services/outlet.service';
 import { mapOrderCustomerDto } from '../../../common/utils/customer-display.util';
-
-/* ============================================= */
-/* ACTIVE ORDER GUARD                             */
-/* Only 1 active order per outlet allowed          */
-/* ============================================= */
-
-const ACTIVE_ORDER_STATUSES: OrderStatus[] = [
-  OrderStatus.PAID,
-  OrderStatus.CONFIRMED,
-  OrderStatus.PREPARING,
-  OrderStatus.OUT_FOR_DELIVERY,
-];
+import { computeRemainingSeconds } from '../../orders/constants/order-pending.constants';
 
 @Injectable()
 export class CheckoutService {
@@ -44,24 +30,17 @@ export class CheckoutService {
     private readonly prisma: PrismaService,
     private readonly cartService: CartService,
     private readonly savedAddressService: SavedAddressService,
-    private readonly pricingService: CheckoutPricingService,
     private readonly orderOrchestrator: OrderOrchestratorService,
     private readonly paymentOrchestrator: PaymentOrchestratorService,
-
-    /* 🔥 NEW */
+    private readonly orderPendingService: OrderPendingService,
     private readonly checkoutEvents: CheckoutEventsService,
     private readonly cartResponseMapper: CartResponseMapper,
     private readonly outletService: OutletService,
   ) {}
 
-  /* ================================================= */
-  /* 🔒 COMMON VALIDATION                              */
-  /* ================================================= */
-
   private validateParams(params: {
     customerId: string;
     savedAddressId: string;
-    deliveryFee?: number;
   }) {
     if (!params?.customerId) {
       throw new ValidationError(
@@ -74,13 +53,6 @@ export class CheckoutService {
       throw new ValidationError(
         'ADDRESS_ID_REQUIRED',
         'Saved address id is required',
-      );
-    }
-
-    if ((params.deliveryFee ?? 0) < 0) {
-      throw new ValidationError(
-        'INVALID_DELIVERY_FEE',
-        'Delivery fee cannot be negative',
       );
     }
   }
@@ -147,18 +119,13 @@ export class CheckoutService {
     return outlet?.name ?? null;
   }
 
-  /* ================================================= */
-  /* GET CHECKOUT SUMMARY                              */
-  /* ================================================= */
-
   async getCheckoutSummary(params: {
     customerId: string;
-    outletId: string; // 🔥 REQUIRED
+    outletId: string;
     savedAddressId: string;
   }) {
     this.validateParams(params);
 
-    /* 🔥 outlet-aware cart fetch */
     const cart = await this.cartService.getActiveCart({
       customerId: params.customerId,
       outletId: params.outletId,
@@ -229,24 +196,25 @@ export class CheckoutService {
         cartResponse.remainingAmountForFreeDelivery,
       remainingAmountForNextRule: cartResponse.remainingAmountForNextRule,
       currency: cartResponse.currency,
+      estimatedDeliveryMinutes: 25,
     };
   }
 
+  /** @deprecated Use listPendingOrders — kept for backward compatibility */
   async getActiveCheckout(params: {
     customerId: string;
     outletId: string;
-  }): Promise<{
-    orderId: string;
-    orderNumber: string;
-    status: string;
-    grandTotal: number;
-    currency: string;
-  } | null> {
+  }) {
+    await this.orderPendingService.expirePendingOrdersForCustomer(
+      params.customerId,
+    );
+
     const order = await this.prisma.order.findFirst({
       where: {
         customerId: params.customerId,
         outletId: params.outletId,
         status: OrderStatus.PAYMENT_PENDING,
+        paymentExpiresAt: { gt: new Date() },
       },
       orderBy: { createdAt: 'desc' },
       select: {
@@ -255,6 +223,7 @@ export class CheckoutService {
         status: true,
         grandTotal: true,
         currency: true,
+        paymentExpiresAt: true,
       },
     });
 
@@ -268,19 +237,62 @@ export class CheckoutService {
       status: order.status,
       grandTotal: Number(order.grandTotal),
       currency: order.currency ?? 'INR',
+      ...this.orderPendingService.buildTimerMeta(order.paymentExpiresAt),
     };
   }
 
-  /* ================================================= */
-  /* START CHECKOUT (GATEWAY STYLE)                    */
-  /* ================================================= */
+  async listPendingOrders(customerId: string) {
+    await this.orderPendingService.expirePendingOrdersForCustomer(customerId);
 
+    const rows = await this.prisma.order.findMany({
+      where: {
+        customerId,
+        status: OrderStatus.PAYMENT_PENDING,
+        paymentExpiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        items: true,
+      },
+    });
+
+    return rows.map((row) => ({
+      orderId: row.id,
+      orderNumber: row.orderNumber ?? '',
+      status: row.status,
+      grandTotal: Number(row.grandTotal),
+      currency: row.currency ?? 'INR',
+      outletId: row.outletId,
+      itemCount: row.itemCount,
+      addressLabel: row.addressLabel,
+      addressText: row.addressText,
+      createdAt: row.createdAt.toISOString(),
+      items: row.items.map((item) => ({
+        productId: item.productId,
+        productName: item.productName,
+        quantity: item.quantity,
+        totalPrice: Number(item.totalPrice),
+      })),
+      ...this.orderPendingService.buildTimerMeta(row.paymentExpiresAt),
+    }));
+  }
+
+  /**
+   * Pay from checkout — always creates a NEW PAYMENT_PENDING order snapshot.
+   * Cart remains editable until payment succeeds.
+   */
   async startCheckout(params: {
     customerId: string;
     outletId: string;
     savedAddressId: string;
+    orderNotes?: string;
+    deliveryInstructions?: string;
   }): Promise<CheckoutStartResult> {
     this.validateParams(params);
+
+    await this.orderPendingService.expirePendingOrdersForCustomer(
+      params.customerId,
+    );
 
     const checkoutAddress = await this.savedAddressService.getById({
       customerId: params.customerId,
@@ -297,57 +309,6 @@ export class CheckoutService {
     const customerContact = await this.loadCustomerCheckoutContact(
       params.customerId,
     );
-
-    const pendingOrder = await this.prisma.order.findFirst({
-      where: {
-        customerId: params.customerId,
-        outletId: params.outletId,
-        status: OrderStatus.PAYMENT_PENDING,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    if (pendingOrder) {
-      const cart = await this.cartService.getActiveCart({
-        customerId: params.customerId,
-        outletId: params.outletId,
-      });
-
-      if (!cart || !cart.hasItems()) {
-        throw new ValidationError('EMPTY_CART', 'Cart is empty');
-      }
-
-      this.assertCartOutletMatch(
-        cart.outletId,
-        params.outletId,
-        'checkout.startCheckout.pending',
-      );
-
-      const address = await this.savedAddressService.getById({
-        customerId: params.customerId,
-        savedAddressId: params.savedAddressId,
-      });
-
-      const syncedOrder =
-        await this.orderOrchestrator.resyncPendingOrderFromCart({
-          orderId: pendingOrder.id,
-          cart,
-          address,
-        });
-
-      const paymentResult = await this.paymentOrchestrator.createPayment({
-        orderId: syncedOrder.id,
-      });
-
-      return this.buildCheckoutStartResult({
-        order: syncedOrder,
-        paymentId: paymentResult.payment.id,
-        razorpayOrderId: paymentResult.razorpayOrderId,
-        amountInPaise: paymentResult.amountInPaise,
-        isRetry: true,
-        customerContact,
-      });
-    }
 
     const order = await this.prisma.$transaction(
       async (tx: PrismaTransaction) => {
@@ -369,23 +330,6 @@ export class CheckoutService {
           'checkout.startCheckout.create',
         );
 
-        await this.ensureNoActiveOrder(params.customerId, params.outletId, tx);
-
-        if (cart.status === CartStatus.LOCKED) {
-          throw new ValidationError(
-            'CHECKOUT_ALREADY_IN_PROGRESS',
-            'Checkout already started for this cart',
-          );
-        }
-
-        const lockedCart = await this.cartService.lockCart(
-          {
-            customerId: params.customerId,
-            outletId: params.outletId,
-          },
-          tx,
-        );
-
         const address = await this.savedAddressService.getById(
           {
             customerId: params.customerId,
@@ -396,8 +340,10 @@ export class CheckoutService {
 
         return this.orderOrchestrator.createOrderFromCart(
           {
-            cart: lockedCart,
+            cart,
             address,
+            orderNotes: params.orderNotes,
+            deliveryInstructions: params.deliveryInstructions,
           },
           tx,
         );
@@ -411,77 +357,87 @@ export class CheckoutService {
       customerId: params.customerId,
     });
 
-    /* ================================================= */
-    /* 2️⃣ CREATE PAYMENT SESSION                         */
-    /* ================================================= */
+    return this.initiatePaymentForOrder(order, customerContact, false);
+  }
 
+  /** Retry payment on an existing PAYMENT_PENDING order (Pay Now). */
+  async retryPayment(params: {
+    customerId: string;
+    orderId: string;
+  }): Promise<CheckoutStartResult> {
+    await this.orderPendingService.expirePendingOrdersForCustomer(
+      params.customerId,
+    );
+
+    const order = await this.orderOrchestrator.getOrderById(params.orderId);
+
+    if (order.customerId !== params.customerId) {
+      throw new ValidationError('ORDER_NOT_FOUND', 'Order not found');
+    }
+
+    if (order.status !== OrderStatus.PAYMENT_PENDING) {
+      throw new ValidationError(
+        'ORDER_NOT_PAYABLE',
+        'This order is no longer awaiting payment',
+      );
+    }
+
+    const remaining = computeRemainingSeconds(order.paymentExpiresAt);
+    if (remaining <= 0) {
+      await this.orderPendingService.expirePendingOrder(order.id);
+      throw new ValidationError(
+        'PAYMENT_WINDOW_EXPIRED',
+        'Payment window has expired. Please place a new order.',
+      );
+    }
+
+    const customerContact = await this.loadCustomerCheckoutContact(
+      params.customerId,
+    );
+
+    return this.initiatePaymentForOrder(order, customerContact, true);
+  }
+
+  private async initiatePaymentForOrder(
+    order: Order,
+    customerContact: {
+      customerId: string;
+      customerName: string;
+      customerEmail: string;
+      customerPhone: string;
+    },
+    isRetry: boolean,
+  ): Promise<CheckoutStartResult> {
     try {
       const paymentResult = await this.paymentOrchestrator.createPayment({
         orderId: order.id,
       });
 
-      this.checkoutEvents.emitCheckoutStarted({
-        checkoutId: order.id,
-        orderId: order.id,
-        paymentId: paymentResult.payment.id,
-        customerId: params.customerId,
-        grandTotal: order.grandTotal.toNumber(),
-      });
-
-      /* ================================================= */
-      /* 🔥 RETURN RAZORPAY DATA TO FRONTEND               */
-      /* ================================================= */
+      if (!isRetry) {
+        this.checkoutEvents.emitCheckoutStarted({
+          checkoutId: order.id,
+          orderId: order.id,
+          paymentId: paymentResult.payment.id,
+          customerId: customerContact.customerId,
+          grandTotal: order.grandTotal.toNumber(),
+        });
+      }
 
       return this.buildCheckoutStartResult({
         order,
         paymentId: paymentResult.payment.id,
         razorpayOrderId: paymentResult.razorpayOrderId,
         amountInPaise: paymentResult.amountInPaise,
-        isRetry: false,
+        isRetry,
         customerContact,
       });
     } catch (err) {
       this.checkoutEvents.emitCheckoutFailed({
-        customerId: params.customerId,
+        customerId: customerContact.customerId,
         reason: err?.message ?? 'Payment failed',
       });
 
       throw err;
-    }
-  }
-
-  private async ensureNoActiveOrder(
-    customerId: string,
-    outletId: string,
-    tx?: PrismaTransaction,
-  ) {
-    const prisma = tx ?? this.prisma;
-
-    const activeOrder = await prisma.order.findFirst({
-      where: {
-        customerId,
-        outletId,
-        status: { in: ACTIVE_ORDER_STATUSES },
-      },
-      select: {
-        id: true,
-      },
-    });
-
-    if (activeOrder) {
-      const fullOrder = await this.prisma.order.findUnique({
-        where: { id: activeOrder.id },
-        select: { id: true, orderNumber: true },
-      });
-
-      throw new ValidationError(
-        'ORDER_ALREADY_IN_PROGRESS',
-        'You already have an order in progress.',
-        {
-          orderId: activeOrder.id,
-          orderNumber: fullOrder?.orderNumber ?? null,
-        },
-      );
     }
   }
 
@@ -524,25 +480,9 @@ export class CheckoutService {
     };
   }): CheckoutStartResult {
     const { order, customerContact } = params;
-    const subtotal = order.subtotal.toNumber();
-    const discount = order.discount.toNumber();
-    const deliveryFee = order.deliveryFee.toNumber();
-    const grandTotal = order.grandTotal.toNumber();
-    const amountInPaise = params.amountInPaise;
-
-    console.log('[Checkout Razorpay Session]', {
-      customerId: customerContact.customerId,
-      customerName: customerContact.customerName,
-      customerEmail: customerContact.customerEmail,
-      customerPhone: customerContact.customerPhone,
-      checkoutId: order.id,
-      subtotal,
-      discount,
-      deliveryFee,
-      grandTotal,
-      razorpayAmount: amountInPaise,
-      isRetry: params.isRetry,
-    });
+    const timer = this.orderPendingService.buildTimerMeta(
+      order.paymentExpiresAt,
+    );
 
     return {
       checkoutId: order.id,
@@ -550,15 +490,17 @@ export class CheckoutService {
       orderNumber: order.orderNumber,
       paymentId: params.paymentId,
       razorpayOrderId: params.razorpayOrderId,
-      amount: amountInPaise,
-      razorpayAmount: amountInPaise,
+      amount: params.amountInPaise,
+      razorpayAmount: params.amountInPaise,
       currency: 'INR',
       key: process.env.RAZORPAY_KEY_ID,
       isRetry: params.isRetry,
-      subtotal,
-      discount,
-      deliveryFee,
-      grandTotal,
+      subtotal: order.subtotal.toNumber(),
+      discount: order.discount.toNumber(),
+      deliveryFee: order.deliveryFee.toNumber(),
+      grandTotal: order.grandTotal.toNumber(),
+      paymentExpiresAt: timer.paymentExpiresAt,
+      remainingSeconds: timer.remainingSeconds,
       ...customerContact,
     };
   }

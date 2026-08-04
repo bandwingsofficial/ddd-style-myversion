@@ -168,10 +168,16 @@ export class CartService {
       return { cart: null, removedInactiveCount: 0 };
     }
 
-    const removedInactiveCount = await this.purgeInactiveItems(cart, client);
-    await this.cartRepo.repairCorruptItems(cart.id, client);
-    await this.refreshItemSnapshots(cart.id, client);
-    const syncedCart = await this.recalcTotals(cart.id, client);
+    let activeCart = cart;
+    if (cart.status === CartStatus.LOCKED) {
+      activeCart = cart.unlock();
+      await this.cartRepo.update(activeCart, client);
+    }
+
+    const removedInactiveCount = await this.purgeInactiveItems(activeCart, client);
+    await this.cartRepo.repairCorruptItems(activeCart.id, client);
+    await this.refreshItemSnapshots(activeCart.id, client);
+    const syncedCart = await this.recalcTotals(activeCart.id, client);
 
     return { cart: syncedCart, removedInactiveCount };
   }

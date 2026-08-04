@@ -111,6 +111,9 @@ export function useOrder(orderId: string) {
   useEffect(() => {
     if (!orderId) return;
 
+    const pollMs =
+      order?.status === "PAYMENT_PENDING" ? 5000 : 15000;
+
     const interval = setInterval(() => {
       setOrder((currentOrder) => {
         if (
@@ -123,10 +126,10 @@ export function useOrder(orderId: string) {
 
         return currentOrder;
       });
-    }, 15000);
+    }, pollMs);
 
     return () => clearInterval(interval);
-  }, [orderId, fetchOrder]);
+  }, [orderId, fetchOrder, order?.status]);
 
   const cancelOrder =
     useCallback(async () => {
@@ -143,6 +146,7 @@ export function useOrder(orderId: string) {
           "Failed to cancel order",
           error,
         );
+        throw error;
       } finally {
         setProcessing(false);
       }

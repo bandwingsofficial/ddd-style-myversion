@@ -27,10 +27,6 @@ import { CheckoutSummaryParamsDto } from '../dto/checkout-summary.dto';
 export class CheckoutController {
   constructor(private readonly orchestrator: CheckoutOrchestratorService) {}
 
-  /* ================================================= */
-  /* SUMMARY                                          */
-  /* ================================================= */
-
   @Get('summary/:savedAddressId')
   async getCheckoutSummary(
     @Param() params: CheckoutSummaryParamsDto,
@@ -54,6 +50,7 @@ export class CheckoutController {
       data,
     };
   }
+
   @Get('active')
   async getActiveCheckout(
     @Query('outletId') outletId: string,
@@ -78,9 +75,17 @@ export class CheckoutController {
     };
   }
 
-  /* ================================================= */
-  /* START CHECKOUT                                   */
-  /* ================================================= */
+  @Get('pending')
+  async listPendingOrders(@CurrentUser() user: { actorId: string }) {
+    const data = await this.orchestrator.listPendingOrders(user.actorId);
+
+    return {
+      success: true,
+      code: 'PENDING_ORDERS_FETCHED',
+      message: 'Pending payment orders fetched successfully',
+      data,
+    };
+  }
 
   @Post('start')
   async startCheckout(
@@ -89,14 +94,34 @@ export class CheckoutController {
   ) {
     const data = await this.orchestrator.startCheckout({
       customerId: user.actorId,
-      outletId: body.outletId, // 🔥 REQUIRED
+      outletId: body.outletId,
       savedAddressId: body.savedAddressId,
+      orderNotes: body.orderNotes,
+      deliveryInstructions: body.deliveryInstructions,
     });
 
     return {
       success: true,
       code: 'CHECKOUT_STARTED',
       message: 'Checkout started successfully',
+      data,
+    };
+  }
+
+  @Post('orders/:orderId/retry-payment')
+  async retryPayment(
+    @Param('orderId') orderId: string,
+    @CurrentUser() user: { actorId: string },
+  ) {
+    const data = await this.orchestrator.retryPayment({
+      customerId: user.actorId,
+      orderId,
+    });
+
+    return {
+      success: true,
+      code: 'PAYMENT_RETRY_STARTED',
+      message: 'Payment retry started successfully',
       data,
     };
   }

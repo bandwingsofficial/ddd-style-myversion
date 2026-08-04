@@ -34,11 +34,14 @@ export interface CheckoutSummary {
   remainingAmountForFreeDelivery?: number | null;
   remainingAmountForNextRule?: number | null;
   currency: string;
+  estimatedDeliveryMinutes?: number;
 }
 
 export interface CheckoutStartRequest {
   outletId: string;
   savedAddressId: string;
+  orderNotes?: string;
+  deliveryInstructions?: string;
 }
 
 // Includes Razorpay order details, checkout totals, and authenticated customer contact
@@ -62,6 +65,8 @@ export interface CheckoutStartResponse {
   discount: number;
   deliveryFee: number;
   grandTotal: number;
+  paymentExpiresAt?: string | null;
+  remainingSeconds?: number;
 }
 
 // ✅ NEW: Payload to verify the signature on backend
@@ -92,8 +97,13 @@ export interface OrderDetails {
   outletId: string;
   outletName?: string;
   cartId: string;
-  status: "PAYMENT_PENDING" | "PAID" | "CONFIRMED" | "PREPARING" | "OUT_FOR_DELIVERY" | "FAILED" | "CANCELLED" | "DELIVERED";
-  paymentStatus?: "PENDING" | "PAID" | "FAILED" | "CANCELLED";
+  status: "PAYMENT_PENDING" | "PAID" | "CONFIRMED" | "PREPARING" | "OUT_FOR_DELIVERY" | "FAILED" | "CANCELLED" | "DELIVERED" | "CREATED";
+  displayStatus?: string;
+  paymentStatus?: "PENDING" | "PAID" | "FAILED" | "CANCELLED" | "EXPIRED";
+  paymentExpiresAt?: string | null;
+  remainingSeconds?: number | null;
+  orderNotes?: string | null;
+  deliveryInstructions?: string | null;
   address: {
     id?: string;
     label: string;
@@ -121,4 +131,26 @@ export interface OrderDetails {
   }[];
   createdAt: string;
   updatedAt?: string;
+}
+
+export interface PendingOrderSummary {
+  orderId: string;
+  orderNumber: string;
+  status: string;
+  grandTotal: number;
+  currency: string;
+  outletId: string;
+  itemCount: number;
+  addressLabel: string;
+  addressText: string;
+  createdAt: string;
+  paymentExpiresAt: string | null;
+  remainingSeconds: number;
+  isExpired: boolean;
+  items: {
+    productId: string;
+    productName: string;
+    quantity: number;
+    totalPrice: number;
+  }[];
 }

@@ -28,4 +28,6 @@ export interface CheckoutStartResult extends CheckoutStartCustomerContact {
   discount: number;
   deliveryFee: number;
   grandTotal: number;
+  paymentExpiresAt?: string | null;
+  remainingSeconds?: number;
 }

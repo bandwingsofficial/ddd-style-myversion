@@ -6,6 +6,7 @@ import { PaymentMapper } from '../../payments/mappers/payment.mapper';
 import { Order } from '../domain/models/order.model';
 import { OrderStatus } from '../domain/enums/order-status.enum';
 import { mapOrderCustomerDto } from '../../../common/utils/customer-display.util';
+import { computeRemainingSeconds } from '../constants/order-pending.constants';
 
 type AdminOrderDetailRow = NonNullable<
   Awaited<
@@ -73,7 +74,11 @@ export class OrderResponseMapper {
         order.deliveryRuleMinimumOrderAmount?.toNumber() ?? null,
       isFreeDelivery: order.isFreeDelivery,
       status: order.status,
-      paymentStatus: this.derivePaymentStatus(order.status),
+      paymentStatus: this.derivePaymentStatus(order),
+      displayStatus: this.resolveDisplayStatus(order),
+      orderNotes: order.orderNotes ?? null,
+      deliveryInstructions: order.deliveryInstructions ?? null,
+      ...this.buildPaymentTimer(order.paymentExpiresAt, order.status),
       items,
       createdAt: order.createdAt,
       updatedAt: order.updatedAt,
@@ -171,9 +176,17 @@ export class OrderResponseMapper {
   }
 
   private derivePaymentStatus(
-    status: OrderStatus,
-  ): 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' {
-    switch (status) {
+    order: Order,
+  ): 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED' | 'EXPIRED' {
+    if (
+      order.status === OrderStatus.CANCELLED &&
+      order.paymentExpiresAt &&
+      computeRemainingSeconds(order.paymentExpiresAt) <= 0
+    ) {
+      return 'EXPIRED';
+    }
+
+    switch (order.status) {
       case OrderStatus.PAYMENT_PENDING:
       case OrderStatus.CREATED:
         return 'PENDING';
@@ -184,6 +197,57 @@ export class OrderResponseMapper {
       default:
         return 'PAID';
     }
+  }
+
+  private resolveDisplayStatus(order: Order): string {
+    if (order.status === OrderStatus.PAYMENT_PENDING) {
+      return 'Payment Pending';
+    }
+
+    if (
+      order.status === OrderStatus.CANCELLED &&
+      order.paymentExpiresAt &&
+      computeRemainingSeconds(order.paymentExpiresAt) <= 0
+    ) {
+      return 'Payment Expired';
+    }
+
+    switch (order.status) {
+      case OrderStatus.PAID:
+        return 'Paid';
+      case OrderStatus.CONFIRMED:
+        return 'Confirmed';
+      case OrderStatus.PREPARING:
+        return 'Preparing';
+      case OrderStatus.OUT_FOR_DELIVERY:
+        return 'Out For Delivery';
+      case OrderStatus.DELIVERED:
+        return 'Delivered';
+      case OrderStatus.CANCELLED:
+        return 'Cancelled';
+      case OrderStatus.FAILED:
+        return 'Failed';
+      default:
+        return order.status.replace(/_/g, ' ');
+    }
+  }
+
+  private buildPaymentTimer(
+    paymentExpiresAt: Date | null | undefined,
+    status: OrderStatus,
+  ) {
+    if (status !== OrderStatus.PAYMENT_PENDING) {
+      return {
+        paymentExpiresAt: null,
+        remainingSeconds: null,
+      };
+    }
+
+    const remainingSeconds = computeRemainingSeconds(paymentExpiresAt);
+    return {
+      paymentExpiresAt: paymentExpiresAt?.toISOString() ?? null,
+      remainingSeconds,
+    };
   }
 
   private async resolveImageUrl(imageRef?: string | null): Promise<string> {

@@ -20,6 +20,7 @@ enum ActorType {
   DELIVERY
   OUTLET_USER
   SUPER_ADMIN
+  SYSTEM
 }
 
 enum OutletUserRole {
@@ -767,7 +768,7 @@ model Cart {
   expiresAt DateTime?
 
   items CartItem[]
-  order Order?
+  orders Order[]
 
   @@index([customerId])
   @@index([outletId])
@@ -877,7 +878,7 @@ model Order {
   outletId String
   outlet   Outlet @relation(fields: [outletId], references: [id])
 
-  cartId String? @unique
+  cartId String?
   cart   Cart?   @relation(fields: [cartId], references: [id])
 
   //////////////////////////////////////////////////
@@ -910,6 +911,10 @@ model Order {
   status  OrderStatus @default(CREATED)
   version Int         @default(0)
 
+  paymentExpiresAt     DateTime?
+  orderNotes           String?
+  deliveryInstructions String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -935,6 +940,8 @@ model Order {
   @@index([status])
   @@index([createdAt])
   @@index([customerId, outletId, status])
+  @@index([status, paymentExpiresAt])
+  @@index([cartId])
 }
 
 //////////////////////////////////////////////////////
@@ -979,6 +986,7 @@ enum PaymentStatus {
   INITIATED
   SUCCESS
   FAILED
+  EXPIRED
   REFUNDED
 }
 

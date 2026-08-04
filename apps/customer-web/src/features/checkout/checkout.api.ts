@@ -1,38 +1,48 @@
 import customerAxios from "@/http/axios/customerAxios";
-import { 
-  CheckoutSummary, 
-  CheckoutStartResponse, 
-  OrderDetails, 
+import {
+  CheckoutSummary,
+  CheckoutStartResponse,
+  OrderDetails,
   CheckoutStartRequest,
-  PaymentVerificationRequest 
+  PaymentVerificationRequest,
+  PendingOrderSummary,
 } from "./checkout.types";
 
 export const CheckoutApi = {
   getSummary: async (addressId: string, outletId?: string) => {
     const config = outletId ? { params: { outletId } } : {};
     const { data } = await customerAxios.get<{ data: CheckoutSummary }>(
-        `/checkout/summary/${addressId}`, 
-        config
+      `/checkout/summary/${addressId}`,
+      config,
     );
     return data.data;
   },
 
-  /**
-   * Initiates the checkout process.
-   * Returns orderId (UUID), orderNumber (CNT-...), and Razorpay details.
-   */
   startCheckout: async (payload: CheckoutStartRequest) => {
-    const { data } = await customerAxios.post<{ data: CheckoutStartResponse }>("/checkout/start", payload);
+    const { data } = await customerAxios.post<{ data: CheckoutStartResponse }>(
+      "/checkout/start",
+      payload,
+    );
+    return data.data;
+  },
+
+  retryPayment: async (orderId: string) => {
+    const { data } = await customerAxios.post<{ data: CheckoutStartResponse }>(
+      `/checkout/orders/${orderId}/retry-payment`,
+    );
+    return data.data;
+  },
+
+  listPendingOrders: async () => {
+    const { data } = await customerAxios.get<{ data: PendingOrderSummary[] }>(
+      "/checkout/pending",
+    );
     return data.data;
   },
 
   confirmPayment: async (payload: PaymentVerificationRequest) => {
     const { data } = await customerAxios.post<{
-      data: {
-        id: string;
-        orderId: string;
-        status: string;
-      };
+      data: { id: string; orderId: string; status: string };
     }>(`/payments/${payload.paymentId}/confirm`, {
       razorpayPaymentId: payload.razorpayPaymentId,
       razorpayOrderId: payload.razorpayOrderId,
@@ -41,39 +51,39 @@ export const CheckoutApi = {
     return data.data;
   },
 
-  // ✅ NEW: Cancel Order Function
   cancelOrder: async (orderId: string) => {
-    // Try standard REST pattern for cancellation
-    const { data } = await customerAxios.post<{ data: OrderDetails }>(`/orders/${orderId}/cancel`);
+    const { data } = await customerAxios.post<{ data: OrderDetails }>(
+      `/orders/${orderId}/cancel`,
+    );
     return data.data;
   },
 
-  /**
-   * Fetches specific order details. 
-   * Expects UUID as the orderId parameter.
-   */
   getOrder: async (orderId: string) => {
-    const { data } = await customerAxios.get<{ data: OrderDetails }>(`/orders/${orderId}`);
+    const { data } = await customerAxios.get<{ data: OrderDetails }>(
+      `/orders/${orderId}`,
+    );
     return data.data;
   },
 
-  /**
-   * Fetches the customer's order history.
-   * Returns an array of OrderDetails containing orderNumber for display.
-   */
   getMyOrders: async () => {
-    const { data } = await customerAxios.get<{ data: OrderDetails[] }>("/my-orders");
+    const { data } = await customerAxios.get<{ data: OrderDetails[] }>(
+      "/my-orders",
+    );
     return data.data;
   },
 
   getActiveCheckout: async (outletId: string) => {
-    const { data } = await customerAxios.get<{ data: {
-      orderId: string;
-      orderNumber: string;
-      status: string;
-      grandTotal: number;
-      currency: string;
-    } | null }>("/checkout/active", { params: { outletId } });
+    const { data } = await customerAxios.get<{
+      data: {
+        orderId: string;
+        orderNumber: string;
+        status: string;
+        grandTotal: number;
+        currency: string;
+        paymentExpiresAt?: string | null;
+        remainingSeconds?: number;
+      } | null;
+    }>("/checkout/active", { params: { outletId } });
     return data.data;
   },
 };

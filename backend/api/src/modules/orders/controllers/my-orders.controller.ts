@@ -2,6 +2,7 @@ import { Controller, Get, UseGuards } from '@nestjs/common';
 
 import { OrderOrchestratorService } from '../services/order-orchestrator.service';
 import { OrderResponseMapper } from '../mappers/order-response.mapper';
+import { OrderPendingService } from '../services/order-pending.service';
 
 import { JwtAuthGuard } from '../../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../common/guards/roles.guard';
@@ -17,10 +18,13 @@ export class MyOrdersController {
   constructor(
     private readonly orchestrator: OrderOrchestratorService,
     private readonly orderResponseMapper: OrderResponseMapper,
+    private readonly orderPendingService: OrderPendingService,
   ) {}
 
   @Get()
   async getMyOrders(@CurrentUser() user: { actorId: string }) {
+    await this.orderPendingService.expirePendingOrdersForCustomer(user.actorId);
+
     const orders = await this.orchestrator.getCustomerOrders(user.actorId);
 
     return {

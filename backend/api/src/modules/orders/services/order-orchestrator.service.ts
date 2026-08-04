@@ -39,6 +39,8 @@ export class OrderOrchestratorService {
     params: {
       cart: Cart;
       address: SavedAddress;
+      orderNotes?: string | null;
+      deliveryInstructions?: string | null;
     },
     tx?: PrismaTransaction,
   ): Promise<Order> {

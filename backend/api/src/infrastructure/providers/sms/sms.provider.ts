@@ -10,9 +10,11 @@ export class SmsProvider {
 
   async sendOtp(phone: string, otp: string): Promise<void> {
     if (process.env.SMS_ENABLED !== 'true') {
+      console.log('🚀 DEV MODE - OTP:', otp);
       this.logger.log(`[DEV SMS] ${phone} → OTP: ${otp}`);
       return;
     }
+    console.log('🚨 REAL SMS MODE');
 
     const formattedPhone = this.formatPhone(phone);
 
