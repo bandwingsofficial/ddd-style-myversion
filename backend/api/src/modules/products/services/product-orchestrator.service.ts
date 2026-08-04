@@ -4,6 +4,7 @@ import { ProductService } from './product.service';
 import { ProductRepository } from '../repositories/product.repository';
 import { Product } from '../domain/models/product.model';
 import { PublicProductQueryDto } from '../dtos/public-product-query.dto';
+import { PublicProductSearchQueryDto } from '../dtos/public-product-search-query.dto';
 import { ValidationError } from '../../../common/errors';
 import {
   ProductPublicResponse,
@@ -121,6 +122,32 @@ export class ProductOrchestratorService {
       items,
       galleryRecordsMap,
     );
+  }
+
+  async searchPublicProductResponses(query: PublicProductSearchQueryDto) {
+    const q = query.q?.trim() ?? '';
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    const result = await this.productService.searchPublicProducts(query);
+    const galleryRecordsMap =
+      await this.productRepository.findGalleryRecordsByProductIds(
+        result.items.map(({ product }) => product.id),
+      );
+
+    const items = await this.productResponseMapper.toPublicResponseList(
+      result.items,
+      galleryRecordsMap,
+    );
+
+    return {
+      items,
+      query: q,
+      page: result.page,
+      limit: result.limit,
+      total: result.total,
+      totalPages: result.totalPages,
+    };
   }
 
   async getPublicProductById(

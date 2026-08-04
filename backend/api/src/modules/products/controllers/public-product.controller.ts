@@ -4,6 +4,7 @@ import { Controller, Get, Param, Query } from '@nestjs/common';
 
 import { ProductOrchestratorService } from '../services/product-orchestrator.service';
 import { PublicProductQueryDto } from '../dtos/public-product-query.dto';
+import { PublicProductSearchQueryDto } from '../dtos/public-product-search-query.dto';
 
 @Controller('public/products')
 export class PublicProductController {
@@ -22,6 +23,18 @@ export class PublicProductController {
       code: 'PUBLIC_PRODUCTS_FETCHED',
       message: 'Public products fetched successfully',
       data: products,
+    };
+  }
+
+  @Get('search')
+  async searchPublicProducts(@Query() query: PublicProductSearchQueryDto) {
+    const data = await this.orchestrator.searchPublicProductResponses(query);
+
+    return {
+      success: true,
+      code: 'PUBLIC_PRODUCTS_SEARCHED',
+      message: 'Products searched successfully',
+      data,
     };
   }
 

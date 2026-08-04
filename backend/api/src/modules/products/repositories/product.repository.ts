@@ -745,6 +745,51 @@ export class ProductRepository {
     return this.toDomain(row);
   }
 
+  async searchPublicPaginated(params: {
+    q: string;
+    page: number;
+    limit: number;
+    categoryId?: string;
+    outletId?: string;
+    sort?: 'price_low' | 'price_high' | 'newest' | 'popularity';
+  }): Promise<{
+    items: {
+      product: Product;
+      category: { id: string; name: string };
+    }[];
+    total: number;
+  }> {
+    const where = this.buildPublicSearchWhere(params);
+    const orderBy = this.buildPublicSearchOrderBy(params.sort);
+
+    const [rows, total] = await this.prisma.$transaction([
+      this.prisma.product.findMany({
+        where,
+        include: {
+          galleryImages: true,
+          category: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy,
+        skip: (params.page - 1) * params.limit,
+        take: params.limit,
+      }),
+      this.prisma.product.count({ where }),
+    ]);
+
+    return {
+      items: rows.map((row) => ({
+        product: this.toDomain(row),
+        category: row.category,
+      })),
+      total,
+    };
+  }
+
   async findPaginatedAdmin(params: {
     page: number;
     limit: number;
@@ -840,6 +885,127 @@ export class ProductRepository {
       where: { productId },
     });
     return result.count;
+  }
+
+  private buildPublicSearchWhere(params: {
+    q: string;
+    categoryId?: string;
+    outletId?: string;
+  }): Prisma.ProductWhereInput {
+    const trimmed = params.q.trim();
+    const normalizedSearch = trimmed.toLowerCase();
+
+    const matchingTags = trimmed
+      ? (Object.values(ProductTag) as ProductTag[]).filter(
+          (tag) =>
+            tag.toLowerCase().includes(normalizedSearch) ||
+            tag.replace(/_/g, ' ').toLowerCase().includes(normalizedSearch),
+        )
+      : [];
+
+    return {
+      status: ProductStatusMapper.toPrisma(ProductStatus.ACTIVE),
+      isAvailable: true,
+      ...(params.categoryId && { categoryId: params.categoryId }),
+      ...(params.outletId && {
+        outlets: {
+          some: {
+            outletId: params.outletId,
+            isAvailable: true,
+          },
+        },
+      }),
+      ...(trimmed && {
+        OR: [
+          {
+            productName: {
+              contains: trimmed,
+              mode: 'insensitive',
+            },
+          },
+          {
+            slug: {
+              contains: trimmed,
+              mode: 'insensitive',
+            },
+          },
+          {
+            shortDescription: {
+              contains: trimmed,
+              mode: 'insensitive',
+            },
+          },
+          {
+            longDescription: {
+              contains: trimmed,
+              mode: 'insensitive',
+            },
+          },
+          {
+            ingredients: {
+              contains: trimmed,
+              mode: 'insensitive',
+            },
+          },
+          {
+            benefits: {
+              contains: trimmed,
+              mode: 'insensitive',
+            },
+          },
+          {
+            extraInfo1: {
+              contains: trimmed,
+              mode: 'insensitive',
+            },
+          },
+          {
+            extraInfo2: {
+              contains: trimmed,
+              mode: 'insensitive',
+            },
+          },
+          {
+            category: {
+              name: {
+                contains: trimmed,
+                mode: 'insensitive',
+              },
+            },
+          },
+          ...(matchingTags.length > 0
+            ? [
+                {
+                  tags: {
+                    hasSome: ProductTagMapper.toPrisma(matchingTags),
+                  },
+                },
+              ]
+            : []),
+        ],
+      }),
+    };
+  }
+
+  private buildPublicSearchOrderBy(
+    sort?: 'price_low' | 'price_high' | 'newest' | 'popularity',
+  ): Prisma.ProductOrderByWithRelationInput[] {
+    switch (sort) {
+      case 'price_low':
+        return [{ originalPrice: 'asc' }, { sortOrder: 'asc' }];
+      case 'price_high':
+        return [{ originalPrice: 'desc' }, { sortOrder: 'asc' }];
+      case 'newest':
+        return [{ createdAt: 'desc' }, { sortOrder: 'asc' }];
+      case 'popularity':
+        return [
+          { ratingCount: 'desc' },
+          { ratingAverage: 'desc' },
+          { sortOrder: 'asc' },
+        ];
+      default:
+        return [{ sortOrder: 'asc' }, { createdAt: 'desc' }];
+    }
   }
 
   private buildAdminSearchWhere(params: {

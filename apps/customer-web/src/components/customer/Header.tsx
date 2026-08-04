@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import ShinyText from '../styles/ShinyText'; 
 import {
   ShoppingCart,
@@ -19,17 +18,16 @@ import { useCustomerSession } from "@/features/customer-auth/hooks/useCustomerSe
 import { useLogout } from "@/features/customer-auth/hooks/useLogout";
 import { useCartStore } from "@/features/cart/cart.store";
 import { useFavorites } from "@/providers/CustomerAuthProvider";
+import GlobalSearch from "@/components/search/GlobalSearch";
 import LocationSelector from "./LocationSelector";
 import { useHeaderOffset } from "@/hooks/useHeaderOffset";
 
 export default function Header() {
-  const router = useRouter();
   const headerRef = useRef<HTMLElement>(null);
   const { isLoggedIn } = useCustomerSession();
   const logout = useLogout();
   const [announcementHidden, setAnnouncementHidden] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(""); 
 
   const { items } = useCartStore();
   const { favorites } = useFavorites();
@@ -74,16 +72,6 @@ export default function Header() {
   const navLinks = isLoggedIn 
     ? [...baseLinks, { name: "Orders", href: "/orders" }] 
     : baseLinks;
-
-  const submitSearch = useCallback((value: string) => {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      router.push("/search");
-      return;
-    }
-    router.push(`/menu?search=${encodeURIComponent(trimmed)}`);
-    setMobileMenuOpen(false);
-  }, [router]);
 
   return (
     <>
@@ -158,25 +146,7 @@ export default function Header() {
             </div>
 
             <div className="hidden md:flex flex-1 justify-center max-w-[360px] lg:max-w-[400px]">
-              <form
-                className="group/search flex w-full items-center rounded-2xl border border-transparent bg-slate-100 px-2 py-2 transition-all duration-300 hover:bg-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] focus-within:border-green-500 focus-within:bg-white focus-within:shadow-[0_0_0_3px_rgba(34,197,94,0.15)]"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  submitSearch(searchQuery);
-                }}
-              >
-                <Search 
-                  size={18} 
-                  className="ml-2 text-slate-400 transition-transform duration-300 group-focus-within/search:scale-110 group-focus-within/search:text-green-500"
-                />
-                <input 
-                  type="search"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search Products..." 
-                  className="w-full border-none bg-transparent pl-2.5 text-[0.92rem] font-medium text-slate-600 outline-none placeholder:text-slate-400" 
-                />
-              </form>
+              <GlobalSearch variant="header" />
             </div>
 
             <div className="flex shrink-0 items-center gap-1 sm:gap-2 lg:gap-3">
@@ -287,22 +257,12 @@ export default function Header() {
             </button>
           </div>
 
-          <form
-            className="mb-6 flex items-center rounded-xl border border-slate-200 bg-slate-100 px-3 py-2 transition-all focus-within:border-green-500 focus-within:bg-white lg:hidden"
-            onSubmit={(event) => {
-              event.preventDefault();
-              submitSearch(searchQuery);
-            }}
-          >
-            <Search size={16} className="mr-2 text-slate-400" />
-            <input 
-              type="search"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search products..." 
-              className="w-full border-none bg-transparent text-[0.9rem] font-medium text-slate-600 outline-none placeholder:text-slate-400" 
+          <div className="mb-6 lg:hidden">
+            <GlobalSearch
+              variant="page"
+              onNavigate={() => setMobileMenuOpen(false)}
             />
-          </form>
+          </div>
 
           <nav className="flex flex-1 flex-col gap-1">
             {navLinks.map((link) => (

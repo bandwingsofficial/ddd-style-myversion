@@ -12,6 +12,7 @@ import { ProductStatus } from '../domain/enums/product-status.enum';
 import { ProductEventsService } from '../events/product-events.service';
 import { ProductImages } from '../domain/value-objects/product-images.vo';
 import { PublicProductQueryDto } from '../dtos/public-product-query.dto';
+import { PublicProductSearchQueryDto } from '../dtos/public-product-search-query.dto';
 import { ListProductsQueryDto } from '../dtos/list-products-query.dto';
 import { UploadFolders } from '../../uploads/constants/upload-folders.constants';
 import { UploadService } from '../../uploads/services/upload.service';
@@ -95,6 +96,40 @@ export class ProductService {
 
   async getPublicProducts(query: PublicProductQueryDto) {
     return this.productRepo.findAll('public', query);
+  }
+
+  async searchPublicProducts(query: PublicProductSearchQueryDto) {
+    const q = query.q?.trim() ?? '';
+    if (!q) {
+      return {
+        items: [],
+        page: query.page ?? 1,
+        limit: query.limit ?? 20,
+        total: 0,
+        totalPages: 0,
+      };
+    }
+
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    const result = await this.productRepo.searchPublicPaginated({
+      q,
+      page,
+      limit,
+      categoryId: query.categoryId,
+      outletId: query.outletId,
+      sort: query.sort,
+    });
+
+    return {
+      items: result.items,
+      page,
+      limit,
+      total: result.total,
+      totalPages:
+        result.total === 0 ? 0 : Math.ceil(result.total / limit),
+    };
   }
 
   async getPublicProductsWithCategory(): Promise<
