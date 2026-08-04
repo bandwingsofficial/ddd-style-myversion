@@ -15,6 +15,8 @@ import { ValidationError } from '../../../common/errors';
 
 import { PaymentEventsService } from '../events/payment-events.service';
 import { OrderStatus } from '../../orders/domain/enums/order-status.enum';
+import { OrderStatusService } from '../../orders/services/order-status.service';
+import { Order } from '../../orders/domain/models/order.model';
 
 @Injectable()
 export class PaymentService {
@@ -26,7 +28,64 @@ export class PaymentService {
     private readonly orderRepo: OrderRepository,
     private readonly gateway: PaymentGatewayService,
     private readonly paymentEvents: PaymentEventsService,
+    private readonly orderStatusService: OrderStatusService,
   ) {}
+
+  /**
+   * Idempotent repair path when payment is already SUCCESS but order was not finalized.
+   * Does not re-emit payment.success (avoids duplicate side-effects).
+   */
+  private async ensureOrderFinalizedAfterSuccessfulPayment(
+    orderId: string,
+  ): Promise<void> {
+    let order = await this.orderRepo.findById(orderId);
+
+    if (!order) {
+      this.logger.warn(
+        `[Payment Finalize] Order not found orderId=${orderId}`,
+      );
+      return;
+    }
+
+    if (PaymentService.isOrderPaidOrBeyond(order)) {
+      return;
+    }
+
+    if (order.isCreated()) {
+      const pendingOrder = order.markPaymentPending();
+      await this.orderRepo.update(pendingOrder);
+      order = pendingOrder;
+    }
+
+    if (order.status !== OrderStatus.PAYMENT_PENDING) {
+      return;
+    }
+
+    try {
+      await this.orderStatusService.finalizeAfterSuccessfulPayment(orderId);
+    } catch (err) {
+      const refreshed = await this.orderRepo.findById(orderId);
+      if (refreshed && PaymentService.isOrderPaidOrBeyond(refreshed)) {
+        return;
+      }
+
+      this.logger.error(
+        `[Payment Finalize] Failed orderId=${orderId}`,
+        err instanceof Error ? err.stack : err,
+      );
+      throw err;
+    }
+  }
+
+  private static isOrderPaidOrBeyond(order: Order): boolean {
+    return (
+      order.status === OrderStatus.PAID ||
+      order.status === OrderStatus.CONFIRMED ||
+      order.status === OrderStatus.PREPARING ||
+      order.status === OrderStatus.OUT_FOR_DELIVERY ||
+      order.status === OrderStatus.DELIVERED
+    );
+  }
 
   /* ================================================= */
   /* CREATE PAYMENT SESSION (REAL RAZORPAY)             */
@@ -73,6 +132,11 @@ export class PaymentService {
         reusable?.providerRefId &&
         reusable.amount.toNumber() === amount
       ) {
+        if (order.isCreated()) {
+          const pendingOrder = order.markPaymentPending();
+          await this.orderRepo.update(pendingOrder, tx);
+        }
+
         this.logger.log(
           `[Payment Reused] orderId=${order.id} paymentId=${reusable.id} razorpayOrderId=${reusable.providerRefId}`,
         );
@@ -190,6 +254,7 @@ export class PaymentService {
       this.logger.log(
         `[Payment Callback] Already verified paymentId=${payment.id} orderId=${payment.orderId}`,
       );
+      await this.ensureOrderFinalizedAfterSuccessfulPayment(payment.orderId);
       return payment;
     }
 
@@ -294,6 +359,9 @@ export class PaymentService {
       this.logger.log(
         `[Payment Callback] Idempotent confirm paymentId=${updatedPayment.id} orderId=${updatedPayment.orderId}`,
       );
+      await this.ensureOrderFinalizedAfterSuccessfulPayment(
+        updatedPayment.orderId,
+      );
     }
 
     return updatedPayment;
@@ -361,6 +429,16 @@ export class PaymentService {
         this.logger.log(
           `[Webhook Ignored] Payment already SUCCESS paymentId=${payment.id} event=${event}`,
         );
+        try {
+          await this.ensureOrderFinalizedAfterSuccessfulPayment(
+            payment.orderId,
+          );
+        } catch (finalizeErr) {
+          this.logger.error(
+            `[Webhook Finalize] Failed paymentId=${payment.id} orderId=${payment.orderId}`,
+            finalizeErr,
+          );
+        }
         return;
       }
 
