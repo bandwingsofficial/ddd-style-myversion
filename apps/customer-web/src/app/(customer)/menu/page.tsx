@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, Suspense } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import Header from "@/components/customer/Header";
 import Footer from "@/components/customer/Footer";
@@ -14,6 +15,9 @@ import { useDeliveryAppState } from "@/features/location/hooks/useDeliveryAppSta
 import NoDeliveryState from "@/components/location/NoDeliveryState";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { typography, productGrid } from "@/lib/design-tokens";
+import CategoryFilterBar from "@/features/categories/components/CategoryFilterBar";
+import { useMenuCategoryFilter } from "@/features/categories/hooks/useMenuCategoryFilter";
+import { Category } from "@/features/categories/types";
 
 function MenuPageContent() {
   const searchParams = useSearchParams();
@@ -25,6 +29,15 @@ function MenuPageContent() {
     showShimmer,
     selectedOutlet,
   } = useDeliveryAppState();
+
+  const {
+    categories,
+    categoriesLoading,
+    activeCategory,
+    categoryId,
+    setCategory,
+    clearCategory,
+  } = useMenuCategoryFilter();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [maxPrice, setMaxPrice] = useState<number>(500);
@@ -53,9 +66,12 @@ function MenuPageContent() {
         selectedTags.length === 0 ||
         selectedTags.every((tag) => productTags.includes(tag.toLowerCase()));
 
-      return matchesSearch && matchesPrice && matchesTags;
+      const matchesCategory =
+        !categoryId || product.category?.id === categoryId;
+
+      return matchesSearch && matchesPrice && matchesTags && matchesCategory;
     });
-  }, [products, searchQuery, maxPrice, selectedTags]);
+  }, [products, searchQuery, maxPrice, selectedTags, categoryId]);
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>
@@ -67,12 +83,22 @@ function MenuPageContent() {
     setSearchQuery("");
     setMaxPrice(500);
     setSelectedTags([]);
+    clearCategory();
+  };
+
+  const handleCategorySelect = (category: Category | null) => {
+    if (category) {
+      setCategory(category);
+    } else {
+      clearCategory();
+    }
   };
 
   const activeFilterCount =
     (searchQuery ? 1 : 0) +
     (maxPrice < 500 ? 1 : 0) +
-    selectedTags.length;
+    selectedTags.length +
+    (categoryId ? 1 : 0);
 
   const filterPanel = (
     <div className="space-y-5">
@@ -128,18 +154,75 @@ function MenuPageContent() {
     </div>
   );
 
+  const showCategoryEmptyState =
+    !loading &&
+    !error &&
+    !!selectedOutlet &&
+    !!activeCategory &&
+    filteredProducts.length === 0;
+
+  const showGeneralEmptyState =
+    !loading &&
+    !error &&
+    !!selectedOutlet &&
+    !activeCategory &&
+    filteredProducts.length === 0 &&
+    activeFilterCount > 0;
+
   return (
     <div className="min-h-screen bg-white">
       <Header />
 
       <main className="customer-page-shell customer-page-shell--with-cart">
         <section className="mobile-container">
-          <Breadcrumbs items={[{ label: "Menu" }]} />
+          <Breadcrumbs
+            items={
+              activeCategory
+                ? [
+                    { label: "Menu", href: "/menu" },
+                    { label: activeCategory.name },
+                  ]
+                : [{ label: "Menu" }]
+            }
+          />
 
           <header className="mb-6 border-b border-slate-100 pb-4 sm:mb-8 sm:pb-6">
             <h1 className={`${typography.pageTitle} mb-4 sm:mb-6`}>
-              Our Products
+              {activeCategory ? activeCategory.name : "Our Products"}
             </h1>
+
+            {activeCategory && (
+              <div className="mb-5 flex flex-col gap-3 rounded-xl border border-emerald-100 bg-emerald-50/60 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                    Category
+                  </p>
+                  <h2 className="text-lg font-bold text-slate-900">
+                    {activeCategory.name}
+                  </h2>
+                  <p className="mt-0.5 text-sm text-slate-600">
+                    Showing {filteredProducts.length}{" "}
+                    {filteredProducts.length === 1 ? "product" : "products"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={clearCategory}
+                  className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 touch-target"
+                >
+                  Clear filter
+                </button>
+              </div>
+            )}
+
+            <div className="mb-4">
+              <CategoryFilterBar
+                categories={categories}
+                activeCategoryId={categoryId}
+                onSelect={handleCategorySelect}
+                loading={categoriesLoading}
+              />
+            </div>
 
             <div className="flex flex-col gap-3">
               <div className="relative w-full">
@@ -249,6 +332,25 @@ function MenuPageContent() {
                 Retry
               </button>
             </div>
+          ) : showCategoryEmptyState ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center sm:py-20">
+              <div className="mb-4 rounded-full bg-slate-50 p-6">
+                <Filter size={40} className="text-slate-300" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">
+                No products found in this category
+              </h3>
+              <p className="mt-2 max-w-xs text-sm text-slate-500">
+                We don&apos;t have any items in {activeCategory?.name} right now.
+                Browse our full menu instead.
+              </p>
+              <Link
+                href="/menu"
+                className="mt-6 inline-flex h-11 items-center justify-center rounded-xl bg-emerald-600 px-6 text-sm font-bold text-white transition hover:bg-emerald-700 touch-target"
+              >
+                Browse all products
+              </Link>
+            </div>
           ) : (
             <div className={productGrid.cols}>
               {loading
@@ -261,7 +363,7 @@ function MenuPageContent() {
             </div>
           )}
 
-          {!loading && !error && selectedOutlet && filteredProducts.length === 0 && (
+          {showGeneralEmptyState && (
             <div className="flex flex-col items-center justify-center py-16 text-center sm:py-20">
               <div className="mb-4 rounded-full bg-slate-50 p-6">
                 <Filter size={40} className="text-slate-300" />

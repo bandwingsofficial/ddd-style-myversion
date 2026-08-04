@@ -24,6 +24,7 @@ import { useDeliveryAppState } from "@/features/location/hooks/useDeliveryAppSta
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { badgeStyles, layout, typography } from "@/lib/design-tokens";
+import { categoryToSlug } from "@/lib/category-slug";
 
 export default function ProductDetailsPage() {
   const { slug: routeSlug } = useParams<{ slug: string }>();
@@ -134,8 +135,8 @@ export default function ProductDetailsPage() {
       crumbs.push({
         label: product.categoryName,
         href: product.categoryId
-          ? `/category/${product.categoryId}`
-          : "/category",
+          ? `/menu?category=${encodeURIComponent(categoryToSlug(product.categoryName))}`
+          : "/menu",
       });
     }
     if (product?.displayName) {

@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Header from "@/components/customer/Header";
 import Footer from "@/components/customer/Footer";
 import { useCategories } from "@/features/categories/hooks/useCategories";
+import { getMenuCategoryUrl } from "@/lib/category-slug";
 import { Search, Leaf, Droplets, Coffee, Utensils, ShoppingBag, ArrowRight } from "lucide-react";
 
 const getCategoryIcon = (name: string) => {
@@ -17,6 +19,7 @@ const getCategoryIcon = (name: string) => {
 };
 
 export default function CategoriesPage() {
+  const router = useRouter();
   const { categories, isLoading } = useCategories();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -92,7 +95,19 @@ export default function CategoriesPage() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-8">
               {filteredCategories.map((cat) => (
-                <div key={cat.id} className="category-card group cursor-pointer flex flex-col items-center">
+                <div
+                  key={cat.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => router.push(getMenuCategoryUrl(cat))}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      router.push(getMenuCategoryUrl(cat));
+                    }
+                  }}
+                  className="category-card group flex cursor-pointer flex-col items-center"
+                >
                   
                   {/* Perfectly Sized Elegant Circular Thumbnail */}
                   <div className="img-wrapper relative w-full max-w-[150px] sm:max-w-[160px] aspect-square rounded-full mb-4 bg-slate-50 overflow-hidden flex items-center justify-center border-4 border-white shadow-md shadow-slate-200/60 mx-auto">

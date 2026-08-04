@@ -8,7 +8,7 @@ export function useCategoryProducts(categoryId: string) {
 
   const categoryProducts = useMemo(() => {
     return products.filter(
-      (product) => product.category?.id === categoryId
+      (product) => product.category?.id === categoryId,
     );
   }, [products, categoryId]);
 

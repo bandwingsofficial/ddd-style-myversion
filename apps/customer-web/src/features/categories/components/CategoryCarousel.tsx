@@ -14,6 +14,7 @@ import { useCategories } from "../hooks/useCategories";
 import { useRouter } from "next/navigation";
 import { useDeliveryAppState } from "@/features/location/hooks/useDeliveryAppState";
 import { CategoryCarouselShimmer } from "@/components/ui/Shimmer";
+import { getMenuCategoryUrl } from "@/lib/category-slug";
 
 // Fallback Icon Logic
 const getCategoryIcon = (name: string, isMobile = false) => {
@@ -228,7 +229,7 @@ export const CategoryCarousel = () => {
   key={cat.id}
   style={styles.categoryCard}
   className="category-card"
-  onClick={() => router.push(`/category/${cat.id}`)}
+  onClick={() => router.push(getMenuCategoryUrl(cat))}
 > 
                 {/* Image Circle */}
                 <div style={styles.imageCircle} className="image-circle">
