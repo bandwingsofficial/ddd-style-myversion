@@ -4,6 +4,10 @@ export interface Address {
   type: "HOME" | "WORK" | "OTHER";
   label: string;
   addressText: string;
+  houseNumber?: string | null;
+  street?: string | null;
+  landmark?: string | null;
+  pincode?: string | null;
   latitude: number;
   longitude: number;
   resolvedOutletId?: string | null;
@@ -23,6 +27,10 @@ export interface AddressPayload {
   label?: string;
   type?: "HOME" | "WORK" | "OTHER";
   addressText: string;
+  houseNumber?: string;
+  street?: string;
+  landmark?: string;
+  pincode?: string;
   latitude: number;
   longitude: number;
 }

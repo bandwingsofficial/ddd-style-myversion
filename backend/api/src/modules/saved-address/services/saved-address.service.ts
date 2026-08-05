@@ -162,6 +162,10 @@ export class SavedAddressService {
       type: address.type,
       label: address.label,
       addressText: address.addressText,
+      houseNumber: address.houseNumber ?? undefined,
+      street: address.street ?? undefined,
+      landmark: address.landmark ?? undefined,
+      pincode: address.pincode ?? undefined,
       latitude: address.latitude ?? undefined,
       longitude: address.longitude ?? undefined,
       resolvedOutletId: resolution.resolvedOutletId,
@@ -206,6 +210,10 @@ export class SavedAddressService {
           const restored = deleted.restore().updateDetails({
             label: addressWithOutlet.label,
             addressText: addressWithOutlet.addressText,
+            houseNumber: addressWithOutlet.houseNumber,
+            street: addressWithOutlet.street,
+            landmark: addressWithOutlet.landmark,
+            pincode: addressWithOutlet.pincode,
             latitude: addressWithOutlet.latitude,
             longitude: addressWithOutlet.longitude,
             resolvedOutletId: resolution.resolvedOutletId,
@@ -238,6 +246,10 @@ export class SavedAddressService {
     savedAddressId: string;
     label?: string;
     addressText?: string;
+    houseNumber?: string | null;
+    street?: string | null;
+    landmark?: string | null;
+    pincode?: string | null;
     latitude?: number | null;
     longitude?: number | null;
   }): Promise<SavedAddress> {
@@ -268,6 +280,12 @@ export class SavedAddressService {
       ...(params.addressText !== undefined && {
         addressText: params.addressText,
       }),
+      ...(params.houseNumber !== undefined && {
+        houseNumber: params.houseNumber,
+      }),
+      ...(params.street !== undefined && { street: params.street }),
+      ...(params.landmark !== undefined && { landmark: params.landmark }),
+      ...(params.pincode !== undefined && { pincode: params.pincode }),
       ...(params.latitude !== undefined && {
         latitude: params.latitude,
       }),

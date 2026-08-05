@@ -2,6 +2,7 @@
 
 import { Order } from '../types';
 import { CustomerReceiptBlock } from './CustomerContactDisplay';
+import { DeliveryAddressCard } from './DeliveryAddressCard';
 import { formatDateIST, formatTimeIST } from '@/lib/format-datetime';
 
 interface OrderReceiptPreviewProps {
@@ -45,6 +46,12 @@ export function OrderReceiptPreview({ order, onClose }: OrderReceiptPreviewProps
           </header>
 
           <CustomerReceiptBlock order={order} />
+
+          {order.address ? (
+            <section>
+              <DeliveryAddressCard address={order.address} />
+            </section>
+          ) : null}
 
           <section className="space-y-2">
             <p className="text-xs font-black uppercase tracking-widest text-slate-500">Items</p>

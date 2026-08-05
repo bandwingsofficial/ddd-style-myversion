@@ -3,9 +3,10 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useOrders } from '../hooks/useOrders';
 import { fetchOrderById } from '../api/orders';
 import { Order } from '../types';
-import { Search, X, MapPin, ShoppingBag, RotateCw } from 'lucide-react';
+import { Search, X, ShoppingBag, RotateCw } from 'lucide-react';
 import { formatDateIST, formatTimeIST } from '@/lib/format-datetime';
 import { CustomerContactDisplay } from '@/features/orders/components/CustomerContactDisplay';
+import { DeliveryAddressCard } from '@/features/orders/components/DeliveryAddressCard';
 import { OrderReceiptPreview } from '@/features/orders/components/OrderReceiptPreview';
 import { customerMatchesSearch } from '@/lib/customer-display';
 import {
@@ -280,14 +281,9 @@ const HistoryRow = ({ initialOrder }: { initialOrder: Order }) => {
                 {order.items?.map(i => `${i.quantity}x ${i.productName}`).join(', ') || `${order.itemCount} Items`}
               </div>
             </div>
-            {order.address?.addressText && (
-              <div className="flex items-start gap-2">
-                <MapPin size={14} className="text-emerald-500 shrink-0 mt-0.5" />
-                <div className="text-[10px] text-gray-500 italic line-clamp-1">
-                  {order.address.addressText}
-                </div>
-              </div>
-            )}
+            {order.address ? (
+              <DeliveryAddressCard address={order.address} compact className="mt-1" />
+            ) : null}
           </>
         )}
       </td>

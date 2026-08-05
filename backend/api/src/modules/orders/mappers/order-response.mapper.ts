@@ -58,6 +58,10 @@ export class OrderResponseMapper {
       address: {
         label: order.address.getLabel(),
         addressText: order.address.getAddressText(),
+        houseNumber: order.address.getHouseNumber() ?? null,
+        street: order.address.getStreet() ?? null,
+        landmark: order.address.getLandmark() ?? null,
+        pincode: order.address.getPincode() ?? null,
         latitude: order.address.getLatitude(),
         longitude: order.address.getLongitude(),
       },
@@ -146,6 +150,10 @@ export class OrderResponseMapper {
       address: {
         label: row.addressLabel,
         addressText: row.addressText,
+        houseNumber: row.houseNumber,
+        street: row.street,
+        landmark: row.landmark,
+        pincode: row.pincode,
         latitude: row.latitude,
         longitude: row.longitude,
       },

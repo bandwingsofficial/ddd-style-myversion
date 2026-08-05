@@ -50,10 +50,14 @@ export class OutletOrderController {
       customerId: order.customerId,
 
       address: {
-        label: order.address.label,
-        addressText: order.address.addressText,
-        latitude: order.address.latitude,
-        longitude: order.address.longitude,
+        label: order.address.getLabel(),
+        addressText: order.address.getAddressText(),
+        houseNumber: order.address.getHouseNumber() ?? null,
+        street: order.address.getStreet() ?? null,
+        landmark: order.address.getLandmark() ?? null,
+        pincode: order.address.getPincode() ?? null,
+        latitude: order.address.getLatitude() ?? null,
+        longitude: order.address.getLongitude() ?? null,
       },
 
       subtotal: order.subtotal.toNumber(),

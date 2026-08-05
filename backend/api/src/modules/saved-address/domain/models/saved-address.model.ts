@@ -11,6 +11,10 @@ export interface SavedAddressProps {
   type: SavedAddressType;
   label: string;
   addressText: string;
+  houseNumber?: string | null;
+  street?: string | null;
+  landmark?: string | null;
+  pincode?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   resolvedOutletId?: string | null;
@@ -31,6 +35,10 @@ export class SavedAddress {
   readonly type: SavedAddressType;
   readonly label: string;
   readonly addressText: string;
+  readonly houseNumber?: string | null;
+  readonly street?: string | null;
+  readonly landmark?: string | null;
+  readonly pincode?: string | null;
   readonly latitude?: number | null;
   readonly longitude?: number | null;
   readonly resolvedOutletId?: string | null;
@@ -57,6 +65,10 @@ export class SavedAddress {
     type: SavedAddressType;
     label: string;
     addressText: string;
+    houseNumber?: string | null;
+    street?: string | null;
+    landmark?: string | null;
+    pincode?: string | null;
     latitude?: number;
     longitude?: number;
     resolvedOutletId?: string | null;
@@ -72,6 +84,10 @@ export class SavedAddress {
       type: params.type,
       label: params.label,
       addressText: params.addressText,
+      houseNumber: params.houseNumber ?? null,
+      street: params.street ?? null,
+      landmark: params.landmark ?? null,
+      pincode: params.pincode ?? null,
       latitude: params.latitude ?? null,
       longitude: params.longitude ?? null,
       resolvedOutletId: params.resolvedOutletId ?? null,
@@ -119,6 +135,10 @@ export class SavedAddress {
     params: {
       label?: string;
       addressText?: string;
+      houseNumber?: string | null;
+      street?: string | null;
+      landmark?: string | null;
+      pincode?: string | null;
       latitude?: number | null;
       longitude?: number | null;
       resolvedOutletId?: string | null;
@@ -142,6 +162,11 @@ export class SavedAddress {
       ...this,
       label: params.label ?? this.label,
       addressText: params.addressText ?? this.addressText,
+      houseNumber:
+        params.houseNumber !== undefined ? params.houseNumber : this.houseNumber,
+      street: params.street !== undefined ? params.street : this.street,
+      landmark: params.landmark !== undefined ? params.landmark : this.landmark,
+      pincode: params.pincode !== undefined ? params.pincode : this.pincode,
       latitude: params.latitude !== undefined ? params.latitude : this.latitude,
       longitude:
         params.longitude !== undefined ? params.longitude : this.longitude,

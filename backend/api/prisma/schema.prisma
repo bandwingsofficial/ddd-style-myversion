@@ -822,6 +822,10 @@ model CustomerSavedAddress {
   type        SavedAddressType
   label       String           @db.VarChar(50) // custom name (used mainly for OTHER)
   addressText String           @db.Text
+  houseNumber String?          @db.VarChar(100)
+  street      String?          @db.VarChar(255)
+  landmark    String?          @db.VarChar(255)
+  pincode     String?          @db.VarChar(10)
 
   latitude  Float?
   longitude Float?
@@ -887,6 +891,10 @@ model Order {
 
   addressLabel String
   addressText  String
+  houseNumber  String? @db.VarChar(100)
+  street       String? @db.VarChar(255)
+  landmark     String? @db.VarChar(255)
+  pincode      String? @db.VarChar(10)
   latitude     Float?
   longitude    Float?
 

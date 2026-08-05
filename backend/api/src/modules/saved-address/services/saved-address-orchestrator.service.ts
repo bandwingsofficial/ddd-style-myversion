@@ -51,6 +51,10 @@ export class SavedAddressOrchestratorService {
     savedAddressId: string;
     label?: string;
     addressText?: string;
+    houseNumber?: string | null;
+    street?: string | null;
+    landmark?: string | null;
+    pincode?: string | null;
     latitude?: number | null;
     longitude?: number | null;
   }): Promise<SavedAddress> {

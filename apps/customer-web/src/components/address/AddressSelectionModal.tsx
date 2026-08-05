@@ -1,10 +1,15 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { X, MapPin, Plus, Loader2, Home, Briefcase, Pencil, Trash2, AlertCircle, CheckCircle, Crosshair } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { X, MapPin, Plus, Loader2, Home, Briefcase, Pencil, Trash2, AlertCircle, CheckCircle } from "lucide-react";
 import { AddressService, Address } from "@/features/addresses/address.service";
-import { useLiveLocation } from "@/features/location/hooks/useLiveLocation";
-import { reverseGeocode, forwardGeocode } from "@/features/location/utils/reverseGeocode";
+import { forwardGeocode } from "@/features/location/utils/reverseGeocode";
+import { AddressFormMapHero } from "@/features/addresses/components/AddressFormMapHero";
+import {
+  pickCurrentLocation,
+  reverseGeocodeDetailedForPicker,
+  type ParsedGeocodedAddress,
+} from "@/features/addresses/utils/pick-current-location";
 import { useCartStore } from "@/features/cart/cart.store";
 import { getEffectiveCartOutletName } from "@/features/cart/cart-outlet.util";
 import { useLocationStore } from "@/features/location/location.store";
@@ -30,8 +35,10 @@ interface PopupState {
 
 interface DetailedAddress {
   houseNo: string;
-  area: string; 
+  area: string;
   landmark: string;
+  city: string;
+  state: string;
   pincode: string;
 }
 
@@ -58,15 +65,26 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
   
   const [formData, setFormData] = useState(INITIAL_FORM_STATE);
   const [details, setDetails] = useState<DetailedAddress>({
-    houseNo: "", area: "", landmark: "", pincode: ""
+    houseNo: "", area: "", landmark: "", city: "", state: "", pincode: ""
   });
 
   const [submitting, setSubmitting] = useState(false);
   const [popup, setPopup] = useState<PopupState | null>(null);
 
-  const { lat, lng } = useLiveLocation();
   const [detectingLoc, setDetectingLoc] = useState(false);
+  const [showMapPreview, setShowMapPreview] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [initializingLocation, setInitializingLocation] = useState(false);
   const [geocodingStatus, setGeocodingStatus] = useState<"IDLE" | "SEARCHING" | "FOUND" | "NOT_FOUND">("IDLE");
+  const suppressAreaForwardGeocodeRef = useRef(false);
+  const locationInitKeyRef = useRef<string | null>(null);
+
+  const resetLocationPreview = () => {
+    setShowMapPreview(false);
+    setLocationError(null);
+    setInitializingLocation(false);
+    locationInitKeyRef.current = null;
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -87,7 +105,8 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
   }, [isOpen, isAuthenticated, sessionChecked]);
 
   useEffect(() => {
-    if (view === "FORM" && details.area.length > 5 && !detectingLoc) {
+    if (suppressAreaForwardGeocodeRef.current) return;
+    if (view === "FORM" && details.area.length > 5 && !detectingLoc && !showMapPreview && !initializingLocation) {
       const timer = setTimeout(async () => {
         setGeocodingStatus("SEARCHING");
         const coords = await forwardGeocode(details.area);
@@ -103,7 +122,23 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
     } else {
         setGeocodingStatus("IDLE");
     }
-  }, [details.area, view, detectingLoc]);
+  }, [details.area, view, detectingLoc, showMapPreview, initializingLocation]);
+
+  useEffect(() => {
+    if (!isOpen || view !== "FORM") return;
+
+    const initKey = editingId ?? "new";
+    if (locationInitKeyRef.current === initKey) return;
+    locationInitKeyRef.current = initKey;
+
+    if (editingId && formData.latitude && formData.longitude) {
+      setShowMapPreview(true);
+      setLocationError(null);
+      return;
+    }
+
+    void applyGpsLocation(false);
+  }, [isOpen, view, editingId]);
 
   const fetchAddresses = async () => {
     try {
@@ -136,7 +171,8 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
 
     setEditingId(null);
     setFormData({ ...INITIAL_FORM_STATE, type: defaultType, label: defaultLabel });
-    setDetails({ houseNo: "", area: "", landmark: "", pincode: "" });
+    setDetails({ houseNo: "", area: "", landmark: "", city: "", state: "", pincode: "" });
+    resetLocationPreview();
     setView("FORM");
   };
 
@@ -155,50 +191,87 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
     const isPincode = /^\d{6}$/.test(lastPart);
     
     setDetails({
-        houseNo: "", 
-        area: isPincode ? parts.slice(0, -1).join("-").trim() : address.addressText,
-        landmark: "", 
-        pincode: isPincode ? lastPart : ""
+        houseNo: address.houseNumber ?? "",
+        area: address.street ?? (isPincode ? parts.slice(0, -1).join("-").trim() : address.addressText),
+        landmark: address.landmark ?? "",
+        city: "",
+        state: "",
+        pincode: address.pincode ?? (isPincode ? lastPart : "")
     });
 
     setGeocodingStatus("IDLE");
+    resetLocationPreview();
     setView("FORM");
   };
 
-  const handleUseCurrentLocation = async () => {
-    if (!lat || !lng) {
-      setPopup({ type: "error", message: "Location not available. Please allow browser permissions." });
-      return;
+  const applyParsedGeocode = (parsed: ParsedGeocodedAddress) => {
+    suppressAreaForwardGeocodeRef.current = true;
+    setDetails((prev) => ({
+      houseNo: parsed.houseNumber || prev.houseNo,
+      area: parsed.street || parsed.area || prev.area,
+      landmark: parsed.landmark || prev.landmark,
+      city: parsed.city || prev.city,
+      state: parsed.state || prev.state,
+      pincode: parsed.pincode || prev.pincode,
+    }));
+    window.setTimeout(() => {
+      suppressAreaForwardGeocodeRef.current = false;
+    }, 2000);
+  };
+
+  const applyGpsLocation = async (forceRecenter: boolean) => {
+    if (forceRecenter) {
+      locationInitKeyRef.current = null;
     }
 
     setDetectingLoc(true);
-    setGeocodingStatus("FOUND");
+    setInitializingLocation(true);
+    setLocationError(null);
+
     try {
-      const addressString = await reverseGeocode(lat, lng);
-      
-      if (addressString) {
-        let extractedPincode = "";
-        const pincodeMatch = addressString.match(/\b\d{6}\b/);
-        if (pincodeMatch) extractedPincode = pincodeMatch[0];
+      const result = await pickCurrentLocation();
 
-        const cleanArea = addressString
-            .replace(extractedPincode, "")
-            .replace(/,\s*$/, "")
-            .replace(/,\s*India$/, "")
-            .trim();
-
-        setDetails(prev => ({
-            ...prev,
-            area: cleanArea,
-            pincode: extractedPincode
-        }));
+      if (!result.ok) {
+        setShowMapPreview(false);
+        setLocationError(result.message);
+        setGeocodingStatus("IDLE");
+        return;
       }
 
-      setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }));
-    } catch (err) {
-      setPopup({ type: "error", message: "Could not fetch address details." });
+      applyParsedGeocode(result);
+      setFormData((prev) => ({
+        ...prev,
+        latitude: result.latitude,
+        longitude: result.longitude,
+      }));
+      setGeocodingStatus("FOUND");
+      setShowMapPreview(true);
+    } catch {
+      setLocationError(
+        "We couldn't detect your location. Please enter your address manually.",
+      );
+      setShowMapPreview(false);
     } finally {
       setDetectingLoc(false);
+      setInitializingLocation(false);
+      locationInitKeyRef.current = editingId ?? "new";
+    }
+  };
+
+  const handleUseCurrentLocation = () => {
+    void applyGpsLocation(true);
+  };
+
+  const handleMapLocationChange = async (latitude: number, longitude: number) => {
+    setFormData((prev) => ({ ...prev, latitude, longitude }));
+    setGeocodingStatus("SEARCHING");
+
+    try {
+      const parsed = await reverseGeocodeDetailedForPicker(latitude, longitude);
+      applyParsedGeocode(parsed);
+      setGeocodingStatus("FOUND");
+    } catch {
+      setGeocodingStatus("NOT_FOUND");
     }
   };
 
@@ -293,10 +366,29 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
     if (!details.houseNo.trim()) { setPopup({ type: "error", message: "Please enter House / Flat Number." }); return; }
     if (!details.area.trim()) { setPopup({ type: "error", message: "Please enter Street / Area details." }); return; }
     if (!details.pincode.trim() || details.pincode.length < 6) { setPopup({ type: "error", message: "Please enter a valid Pincode." }); return; }
+    if (formData.type === "OTHER" && !formData.label.trim()) {
+      setPopup({ type: "error", message: "Please enter a custom label for this address." });
+      return;
+    }
 
-    const finalAddress = `${details.houseNo.trim()}, ${details.landmark ? details.landmark.trim() + ", " : ""}${details.area.trim()} - ${details.pincode.trim()}`;
+    const locationTail = [
+      details.area.trim(),
+      details.city.trim(),
+      details.state.trim(),
+    ]
+      .filter(Boolean)
+      .join(", ");
 
-    const payload = { ...formData, addressText: finalAddress };
+    const finalAddress = `${details.houseNo.trim()}, ${details.landmark ? details.landmark.trim() + ", " : ""}${locationTail} - ${details.pincode.trim()}`;
+
+    const payload = {
+      ...formData,
+      addressText: finalAddress,
+      houseNumber: details.houseNo.trim(),
+      street: details.area.trim(),
+      landmark: details.landmark.trim() || undefined,
+      pincode: details.pincode.trim(),
+    };
 
     if (payload.latitude === 0 || payload.longitude === 0) {
        const coords = await forwardGeocode(details.area);
@@ -393,7 +485,7 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
       )}
 
       {/* MAIN MODAL */}
-      <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-slide-up relative">
+      <div className={`bg-white w-full ${view === "FORM" ? "max-w-lg" : "max-w-md"} rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-slide-up relative`}>
         
         {/* Loading Overlay */}
         {checkingOutlet && (
@@ -412,12 +504,11 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+        <div className={`flex-1 overflow-y-auto custom-scrollbar ${view === "FORM" ? "" : "p-4"}`}>
           {loading ? (
-            <div className="flex justify-center py-12"><Loader2 className="animate-spin text-emerald-600 w-8 h-8" /></div>
+            <div className="flex justify-center py-12 p-4"><Loader2 className="animate-spin text-emerald-600 w-8 h-8" /></div>
           ) : view === "LIST" ? (
-            /* --- LIST VIEW --- */
-            <div className="space-y-3">
+            <div className="space-y-3 p-4">
               {addresses.map((addr) => {
                 const isActive = false;
                 return (
@@ -446,66 +537,204 @@ export default function AddressSelectionModal({ isOpen, onClose, onSelect }: Add
               <button onClick={() => startAddMode()} className="w-full py-4 border-2 border-dashed border-slate-200 hover:border-emerald-500 rounded-xl text-slate-500 hover:text-emerald-600 font-semibold flex items-center justify-center gap-2 transition-all bg-slate-50/50 hover:bg-emerald-50/30"><Plus size={20} /> Add New Address</button>
             </div>
           ) : (
-            /* --- FORM VIEW --- */
-            <form onSubmit={handleSave} className="space-y-5">
-              {/* Form inputs same as before... */}
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-2 tracking-wide">Label Type</label>
-                <div className="flex gap-3">
-                  {["HOME", "WORK", "OTHER"].map((t) => {
-                    const isTaken = (t === "HOME" && hasHome) || (t === "WORK" && hasWork);
-                    const isSelected = formData.type === t;
-                    return (
-                      <button key={t} type="button" disabled={isTaken} onClick={() => setFormData({ ...formData, type: t as any, label: t === "OTHER" ? "" : t.charAt(0) + t.slice(1).toLowerCase() })} className={`flex-1 py-2.5 rounded-lg text-sm font-bold border transition-all relative ${isSelected ? 'bg-emerald-600 text-white border-emerald-600 shadow-md transform scale-[1.02]' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-400'} ${isTaken ? 'opacity-50 cursor-not-allowed bg-slate-100 text-slate-400 hover:border-slate-200' : ''}`}>
-                        {t} {isTaken && <span className="block text-[8px] font-normal leading-none mt-0.5 opacity-80">(Exists)</span>}
-                      </button>
-                    );
-                  })}
+            <form onSubmit={handleSave} className="flex flex-col">
+              <AddressFormMapHero
+                visible={showMapPreview}
+                latitude={formData.latitude}
+                longitude={formData.longitude}
+                loading={initializingLocation}
+                onLocationChange={handleMapLocationChange}
+                onRecenter={handleUseCurrentLocation}
+                recentering={detectingLoc}
+              />
+
+              <div className="space-y-5 p-4">
+                {locationError ? (
+                  <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-800">
+                    {locationError}
+                  </p>
+                ) : null}
+
+                {geocodingStatus === "SEARCHING" ? (
+                  <p className="flex items-center gap-2 text-[11px] text-slate-400">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Updating address from map...
+                  </p>
+                ) : null}
+
+                <div>
+                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Save as
+                  </label>
+                  <div className="flex gap-2">
+                    {(["HOME", "WORK", "OTHER"] as const).map((t) => {
+                      const isTaken = (t === "HOME" && hasHome) || (t === "WORK" && hasWork);
+                      const isSelected = formData.type === t;
+                      const label =
+                        t === "HOME" ? "Home" : t === "WORK" ? "Work" : "Other";
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          disabled={isTaken}
+                          onClick={() =>
+                            setFormData({
+                              ...formData,
+                              type: t,
+                              label: t === "OTHER" ? formData.label : label,
+                            })
+                          }
+                          className={`flex-1 rounded-full border py-2.5 text-sm font-semibold transition ${
+                            isSelected
+                              ? "border-emerald-600 bg-emerald-600 text-white"
+                              : "border-slate-200 bg-white text-slate-600 hover:border-emerald-300"
+                          } ${isTaken ? "cursor-not-allowed opacity-40" : ""}`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-2 tracking-wide">Label Name</label>
-                <input type="text" value={formData.label} onChange={e => setFormData({...formData, label: e.target.value})} className={`w-full p-3.5 rounded-xl border bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${formData.type !== "OTHER" ? "border-slate-100 text-slate-500" : "border-slate-200 text-slate-900"}`} placeholder="e.g. My Apartment" readOnly={formData.type !== "OTHER"} required />
-              </div>
+                {formData.type === "OTHER" ? (
+                  <div>
+                    <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Custom label
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.label}
+                      onChange={(e) =>
+                        setFormData({ ...formData, label: e.target.value })
+                      }
+                      className="w-full rounded-xl border border-slate-200 p-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="e.g. Grandma's House, Warehouse"
+                      required
+                    />
+                  </div>
+                ) : null}
 
-              <button type="button" onClick={handleUseCurrentLocation} disabled={detectingLoc} className="w-full py-3 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold rounded-xl border border-emerald-200 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                {detectingLoc ? <Loader2 className="animate-spin" size={18} /> : <Crosshair size={18} />} 
-                {detectingLoc ? "Fetching Location..." : "Use Current Location"}
-              </button>
+                <div className="space-y-4 border-t border-slate-100 pt-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Delivery details
+                  </p>
 
-              <div className="h-px bg-slate-100 my-2" />
-
-              <div className="space-y-4">
-                 <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2 tracking-wide">House / Flat No <span className="text-red-500">*</span></label>
-                        <input type="text" value={details.houseNo} onChange={e => setDetails({...details, houseNo: e.target.value})} className="w-full p-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all" placeholder="#102, 1st Floor" />
+                      <label className="mb-1.5 block text-[11px] font-medium text-slate-500">
+                        House / Flat <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={details.houseNo}
+                        onChange={(e) =>
+                          setDetails({ ...details, houseNo: e.target.value })
+                        }
+                        className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        placeholder="#102, 1st Floor"
+                      />
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2 tracking-wide">Pincode <span className="text-red-500">*</span></label>
-                        <input type="text" value={details.pincode} onChange={e => { const val = e.target.value.replace(/\D/g, '').slice(0, 6); setDetails({...details, pincode: val}); }} className="w-full p-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all" placeholder="5600xx" />
+                      <label className="mb-1.5 block text-[11px] font-medium text-slate-500">
+                        Pincode <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={details.pincode}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                          setDetails({ ...details, pincode: val });
+                        }}
+                        className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        placeholder="5600xx"
+                      />
                     </div>
-                 </div>
+                  </div>
 
-                 <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2 tracking-wide">Street / Area / Locality <span className="text-red-500">*</span></label>
-                    <div className="relative">
-                        <textarea value={details.area} onChange={e => setDetails({...details, area: e.target.value})} className="w-full p-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 h-20 resize-none bg-slate-50 focus:bg-white transition-all text-slate-800 leading-relaxed" placeholder="e.g. MG Road, Near Central Park..." />
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-medium text-slate-500">
+                      Street / Area <span className="text-red-500">*</span>
+                    </label>
+                    <textarea
+                      value={details.area}
+                      onChange={(e) =>
+                        setDetails({ ...details, area: e.target.value })
+                      }
+                      className="h-20 w-full resize-none rounded-xl border border-slate-200 p-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="Street, locality, area"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-medium text-slate-500">
+                      Landmark <span className="text-slate-400">(optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={details.landmark}
+                      onChange={(e) =>
+                        setDetails({ ...details, landmark: e.target.value })
+                      }
+                      className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      placeholder="Near Apollo Pharmacy"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="mb-1.5 block text-[11px] font-medium text-slate-500">
+                        City
+                      </label>
+                      <input
+                        type="text"
+                        value={details.city}
+                        onChange={(e) =>
+                          setDetails({ ...details, city: e.target.value })
+                        }
+                        className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        placeholder="Bengaluru"
+                      />
                     </div>
-                 </div>
+                    <div>
+                      <label className="mb-1.5 block text-[11px] font-medium text-slate-500">
+                        State
+                      </label>
+                      <input
+                        type="text"
+                        value={details.state}
+                        onChange={(e) =>
+                          setDetails({ ...details, state: e.target.value })
+                        }
+                        className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        placeholder="Karnataka"
+                      />
+                    </div>
+                  </div>
+                </div>
 
-                 <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2 tracking-wide">Nearby Landmark (Optional)</label>
-                    <input type="text" value={details.landmark} onChange={e => setDetails({...details, landmark: e.target.value})} className="w-full p-3.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all" placeholder="e.g. Opposite to Apollo Pharmacy" />
-                 </div>
-              </div>
-
-              <div className="pt-2 flex gap-3">
-                <button type="button" onClick={() => setView("LIST")} className="flex-1 py-3.5 text-slate-600 font-bold bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors">Cancel</button>
-                <button type="submit" disabled={submitting || geocodingStatus === "SEARCHING"} className="flex-[2] bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 transition-all hover:-translate-y-0.5">
-                  {submitting ? <Loader2 className="animate-spin w-5 h-5" /> : (editingId ? "Update Address" : "Save Address")}
-                </button>
+                <div className="flex gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setView("LIST")}
+                    className="flex-1 rounded-xl bg-slate-100 py-3.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting || geocodingStatus === "SEARCHING"}
+                    className="flex-[2] rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:bg-slate-300"
+                  >
+                    {submitting ? (
+                      <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                    ) : editingId ? (
+                      "Update Address"
+                    ) : (
+                      "Save Address"
+                    )}
+                  </button>
+                </div>
               </div>
             </form>
           )}

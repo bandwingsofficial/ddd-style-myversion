@@ -111,6 +111,10 @@ export class SavedAddressManagementController {
       type: dto.type,
       label: dto.label,
       addressText: dto.addressText,
+      houseNumber: dto.houseNumber,
+      street: dto.street,
+      landmark: dto.landmark,
+      pincode: dto.pincode,
       latitude: dto.latitude,
       longitude: dto.longitude,
     });
@@ -138,6 +142,10 @@ export class SavedAddressManagementController {
       savedAddressId,
       label: dto.label,
       addressText: dto.addressText,
+      houseNumber: dto.houseNumber,
+      street: dto.street,
+      landmark: dto.landmark,
+      pincode: dto.pincode,
       latitude: dto.latitude,
       longitude: dto.longitude,
     });

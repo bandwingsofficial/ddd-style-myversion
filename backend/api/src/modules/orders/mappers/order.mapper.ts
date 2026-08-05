@@ -54,6 +54,10 @@ export class OrderMapper {
       address: OrderAddress.create({
         label: order.addressLabel,
         addressText: order.addressText,
+        houseNumber: order.houseNumber,
+        street: order.street,
+        landmark: order.landmark,
+        pincode: order.pincode,
         latitude: order.latitude ?? undefined,
         longitude: order.longitude ?? undefined,
       }),
@@ -135,6 +139,10 @@ export class OrderMapper {
 
       addressLabel: order.address.getLabel(),
       addressText: order.address.getAddressText(),
+      houseNumber: order.address.getHouseNumber() ?? null,
+      street: order.address.getStreet() ?? null,
+      landmark: order.address.getLandmark() ?? null,
+      pincode: order.address.getPincode() ?? null,
       latitude: order.address.getLatitude(),
       longitude: order.address.getLongitude(),
 

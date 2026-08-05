@@ -3,9 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { useOrders } from '../hooks/useOrders';
 import { fetchOrderById } from '../api/orders';
 import { Order } from '../types';
-import { RotateCw, MapPin, ShoppingBag, Receipt } from 'lucide-react';
+import { RotateCw, ShoppingBag, Receipt } from 'lucide-react';
 import { formatDateIST, formatTimeIST } from '@/lib/format-datetime';
 import { CustomerContactDisplay } from '@/features/orders/components/CustomerContactDisplay';
+import { DeliveryAddressCard } from '@/features/orders/components/DeliveryAddressCard';
 import { OrderReceiptPreview } from '@/features/orders/components/OrderReceiptPreview';
 import {
   normalizeOrderStatus,
@@ -206,12 +207,7 @@ const TableRow = ({
             </div>
             
             {/* Address */}
-            <div className="flex items-start gap-1.5 border-t border-gray-50 pt-1.5">
-               <MapPin size={14} className="text-emerald-500 shrink-0 mt-0.5" />
-               <div className="text-[11px] text-gray-500 font-medium leading-relaxed italic">
-                  {order.address?.addressText || 'No address provided'}
-               </div>
-            </div>
+            <DeliveryAddressCard address={order.address} compact className="border-t border-gray-50 pt-1.5" />
           </div>
         )}
       </td>

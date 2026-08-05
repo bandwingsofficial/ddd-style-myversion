@@ -19,6 +19,26 @@ export class UpdateSavedAddressDto {
   addressText?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  houseNumber?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  street?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  landmark?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  pincode?: string | null;
+
+  @IsOptional()
   @IsNumber()
   latitude?: number | null;
 

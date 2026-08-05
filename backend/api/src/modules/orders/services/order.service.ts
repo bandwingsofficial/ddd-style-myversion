@@ -124,8 +124,12 @@ export class OrderService {
     const orderAddress = OrderAddress.create({
       label: address.label,
       addressText: address.addressText,
-      latitude: address.latitude,
-      longitude: address.longitude,
+      houseNumber: address.houseNumber,
+      street: address.street,
+      landmark: address.landmark,
+      pincode: address.pincode,
+      latitude: address.latitude ?? undefined,
+      longitude: address.longitude ?? undefined,
     });
 
     /* 🔥 SNAPSHOT ITEMS */

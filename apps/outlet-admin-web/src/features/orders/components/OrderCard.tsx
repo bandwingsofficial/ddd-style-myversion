@@ -1,8 +1,9 @@
 import React from 'react';
 import { Order } from '../types';
-import { Clock, MapPin } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { formatTimeIST } from '@/lib/format-datetime';
 import { CustomerContactDisplay } from '@/features/orders/components/CustomerContactDisplay';
+import { DeliveryAddressCard } from '@/features/orders/components/DeliveryAddressCard';
 import {
   normalizeOrderStatus,
   ORDER_STATUS,
@@ -59,10 +60,9 @@ export const OrderCard: React.FC<OrderCardProps> = ({ order, onAction }) => {
         ))}
       </div>
 
-      {/* Address Snippet */}
-      <div className="flex items-start gap-2 text-xs text-gray-500 mb-4 bg-gray-50 p-2 rounded">
-        <MapPin size={14} className="mt-0.5 shrink-0" />
-        <p className="line-clamp-2">{order.address?.addressText ?? 'No address provided'}</p>
+      {/* Address */}
+      <div className="mb-4 rounded bg-gray-50 p-2">
+        <DeliveryAddressCard address={order.address} compact />
       </div>
 
       {/* Actions */}

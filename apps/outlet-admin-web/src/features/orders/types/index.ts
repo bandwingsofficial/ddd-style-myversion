@@ -31,8 +31,12 @@ export interface OrderItem {
 export interface CustomerAddress {
   label: string;
   addressText: string;
-  latitude: number;
-  longitude: number;
+  houseNumber?: string | null;
+  street?: string | null;
+  landmark?: string | null;
+  pincode?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface OrderCustomer {

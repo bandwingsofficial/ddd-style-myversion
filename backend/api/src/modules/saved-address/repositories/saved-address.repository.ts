@@ -48,6 +48,10 @@ export class SavedAddressRepository {
         type: SavedAddressTypeMapper.toPrisma(address.type),
         label: address.label,
         addressText: address.addressText,
+        houseNumber: address.houseNumber,
+        street: address.street,
+        landmark: address.landmark,
+        pincode: address.pincode,
         latitude: address.latitude,
         longitude: address.longitude,
         resolvedOutletId: address.resolvedOutletId,
@@ -171,6 +175,10 @@ export class SavedAddressRepository {
       data: {
         label: address.label,
         addressText: address.addressText,
+        houseNumber: address.houseNumber,
+        street: address.street,
+        landmark: address.landmark,
+        pincode: address.pincode,
         latitude: address.latitude,
         longitude: address.longitude,
         resolvedOutletId: address.resolvedOutletId,
@@ -215,6 +223,10 @@ export class SavedAddressRepository {
     type: any;
     label: string;
     addressText: string;
+    houseNumber: string | null;
+    street: string | null;
+    landmark: string | null;
+    pincode: string | null;
     latitude: number | null;
     longitude: number | null;
     resolvedOutletId: string | null;
@@ -230,6 +242,10 @@ export class SavedAddressRepository {
       type: SavedAddressTypeMapper.toDomain(row.type),
       label: row.label,
       addressText: row.addressText,
+      houseNumber: row.houseNumber,
+      street: row.street,
+      landmark: row.landmark,
+      pincode: row.pincode,
       latitude: row.latitude,
       longitude: row.longitude,
       resolvedOutletId: row.resolvedOutletId,

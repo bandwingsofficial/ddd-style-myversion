@@ -25,6 +25,26 @@ export class CreateSavedAddressDto {
   addressText: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  houseNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  street?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  landmark?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  pincode?: string;
+
+  @IsOptional()
   @IsNumber()
   latitude?: number;
 

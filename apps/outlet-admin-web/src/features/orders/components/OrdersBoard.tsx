@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useOrders } from '../hooks/useOrders';
 import { Order } from '../types';
 import { CustomerContactDisplay } from '@/features/orders/components/CustomerContactDisplay';
+import { DeliveryAddressCard } from '@/features/orders/components/DeliveryAddressCard';
 import {
   normalizeOrderStatus,
   ORDER_STATUS,
@@ -144,9 +145,7 @@ const TableRow = ({
             </div>
           ))}
         </div>
-        <div className="mt-2 text-xs text-gray-500 flex items-center gap-1">
-            📍 {order.address.addressText}
-        </div>
+        <DeliveryAddressCard address={order.address} compact className="mt-2" />
       </td>
 
       {/* Amount & Status Badge */}
