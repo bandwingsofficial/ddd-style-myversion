@@ -16,6 +16,8 @@ import { ProductDeleteOutcome } from '../domain/utils/product-lifecycle.util';
 import { MulterUploadFile } from '../../uploads/interfaces/upload-file.interface';
 import { ListProductsQueryDto } from '../dtos/list-products-query.dto';
 import { ProductStatus } from '../domain/enums/product-status.enum';
+import { ProductTag } from '../domain/enums/product-tag.enum';
+import { UnitType } from '../domain/enums/unit-type.enum';
 
 export interface PaginatedProductResponse {
   items: ProductResponse[];
@@ -240,9 +242,14 @@ export class ProductOrchestratorService {
   async updateProductDetails(params: {
     productId: string;
     updates: {
+      categoryId?: string;
       productName?: string;
       shortDescription?: string;
       longDescription?: string;
+      unitValue?: number;
+      unitType?: UnitType;
+      tags?: ProductTag[];
+      isTrending?: boolean;
     };
   }): Promise<ProductResponse> {
     const updated = await this.productService.updateDetails(params);

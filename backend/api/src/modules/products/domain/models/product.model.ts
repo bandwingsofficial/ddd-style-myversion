@@ -304,9 +304,14 @@ export class Product {
   /* ---------------------------------------------- */
 
   updateDetails(params: {
+    categoryId?: string;
     productName?: string;
     shortDescription?: string;
     longDescription?: string;
+    unitValue?: number;
+    unitType?: UnitType;
+    tags?: ProductTag[];
+    isTrending?: boolean;
     now?: Date;
   }): Product {
     const name = params.productName
@@ -317,12 +322,27 @@ export class Product {
       ? ProductSlug.fromProductName(name.getValue())
       : this.slug;
 
+    if (params.unitValue !== undefined && params.unitValue < 1) {
+      throw new ValidationError(
+        'INVALID_UNIT_VALUE',
+        'Unit value must be at least 1',
+      );
+    }
+
     return new Product({
       ...this,
+      categoryId: params.categoryId ?? this.categoryId,
       name,
       slug,
       shortDescription: params.shortDescription ?? this.shortDescription,
       longDescription: params.longDescription ?? this.longDescription,
+      unitValue: params.unitValue ?? this.unitValue,
+      unitType: params.unitType ?? this.unitType,
+      tags: params.tags ?? this.tags,
+      trendState:
+        params.isTrending !== undefined
+          ? ProductTrendState.from(params.isTrending)
+          : this.trendState,
       updatedAt: params.now ?? new Date(),
     });
   }

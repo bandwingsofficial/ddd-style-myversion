@@ -88,6 +88,6 @@ export const PRODUCT_TAGS = [
   'VEGAN',
 ] as const;
 
-export const UNIT_TYPES = ['PCS', 'KG', 'LTR', 'GM', 'ML'] as const;
+export const UNIT_TYPES = ['PCS', 'KG', 'LTR', 'G', 'ML'] as const;
 
 export type ProductTag = (typeof PRODUCT_TAGS)[number];

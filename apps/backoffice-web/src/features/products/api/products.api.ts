@@ -120,11 +120,16 @@ export const ProductsApi = {
   updateDetails: async (
     productId: string,
     payload: {
+      categoryId: string;
       productName: string;
       originalPrice: number;
       discountPrice: number;
       shortDescription: string;
       longDescription: string;
+      unitValue: number;
+      unitType: string;
+      tags: string[];
+      isTrending: boolean;
     },
   ) => {
     await axiosInstance.post(`/products/${productId}/price`, {
@@ -133,9 +138,14 @@ export const ProductsApi = {
     });
 
     await axiosInstance.post(`/products/${productId}/update`, {
+      categoryId: payload.categoryId,
       productName: payload.productName,
       shortDescription: payload.shortDescription,
       longDescription: payload.longDescription,
+      unitValue: Number(payload.unitValue),
+      unitType: payload.unitType,
+      tags: payload.tags,
+      isTrending: payload.isTrending,
     });
   },
 

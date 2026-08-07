@@ -649,11 +649,16 @@ export default function ProductFormModal({
         toast.success('Product created successfully.');
       } else {
         await ProductsApi.updateDetails(product!.id, {
+          categoryId,
           productName: normalizeProductName(productName),
           originalPrice,
           discountPrice,
           shortDescription,
           longDescription,
+          unitValue,
+          unitType,
+          tags,
+          isTrending,
         });
 
         if (mainImage) {

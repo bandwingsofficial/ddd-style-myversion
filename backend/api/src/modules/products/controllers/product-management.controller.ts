@@ -160,9 +160,14 @@ export class ProductManagementController {
     const data = await this.orchestrator.updateProductDetails({
       productId,
       updates: {
+        categoryId: dto.categoryId,
         productName: dto.productName,
         shortDescription: dto.shortDescription,
         longDescription: dto.longDescription,
+        unitValue: dto.unitValue,
+        unitType: dto.unitType,
+        tags: dto.tags,
+        isTrending: dto.isTrending,
       },
     });
 

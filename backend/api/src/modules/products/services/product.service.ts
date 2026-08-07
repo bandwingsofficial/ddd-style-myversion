@@ -7,6 +7,8 @@ import { ProductRepository } from '../repositories/product.repository';
 
 import { ValidationError } from '../../../common/errors';
 import { ProductStatus } from '../domain/enums/product-status.enum';
+import { ProductTag } from '../domain/enums/product-tag.enum';
+import { UnitType } from '../domain/enums/unit-type.enum';
 
 /* 🔥 EVENTS */
 import { ProductEventsService } from '../events/product-events.service';
@@ -324,9 +326,14 @@ export class ProductService {
   async updateDetails(params: {
     productId: string;
     updates: {
+      categoryId?: string;
       productName?: string;
       shortDescription?: string;
       longDescription?: string;
+      unitValue?: number;
+      unitType?: UnitType;
+      tags?: ProductTag[];
+      isTrending?: boolean;
     };
   }): Promise<Product> {
     const product = await this.getById(params.productId);
@@ -343,6 +350,11 @@ export class ProductService {
       );
     }
 
+    if (params.updates.categoryId !== undefined) {
+      await this.assertAssignableCategory(params.updates.categoryId);
+    }
+
+    const wasTrending = product.isTrending();
     const updated = product.updateDetails(params.updates);
 
     await this.prisma.$transaction(async (tx) => {
@@ -354,6 +366,16 @@ export class ProductService {
       name: updated.name.getValue(),
       slug: updated.slug.getValue(),
     });
+
+    if (
+      params.updates.isTrending !== undefined &&
+      wasTrending !== updated.isTrending()
+    ) {
+      this.productEvents.emitProductTrendingChanged({
+        productId: updated.id,
+        isTrending: updated.isTrending(),
+      });
+    }
 
     return updated;
   }
@@ -1018,6 +1040,29 @@ export class ProductService {
     }
 
     return product;
+  }
+
+  private async assertAssignableCategory(categoryId: string): Promise<void> {
+    const category = await this.prisma.category.findUnique({
+      where: { id: categoryId },
+      select: { id: true, status: true },
+    });
+
+    if (!category) {
+      throw new ValidationError(
+        'CATEGORY_NOT_FOUND',
+        'Category does not exist',
+        { errors: { categoryId: 'Category does not exist.' } },
+      );
+    }
+
+    if (category.status !== 'ACTIVE') {
+      throw new ValidationError(
+        'CATEGORY_INACTIVE',
+        'Only active categories can be assigned to products.',
+        { errors: { categoryId: 'Only active categories can be assigned.' } },
+      );
+    }
   }
 
   private emitImagesChanged(product: Product): void {

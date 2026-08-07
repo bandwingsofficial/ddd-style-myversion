@@ -297,10 +297,15 @@ export class ProductRepository {
     const row = await client.product.update({
       where: { id: product.id },
       data: {
+        categoryId: product.categoryId,
         productName: product.name.getValue(),
         slug: product.slug.getValue(),
         shortDescription: product.shortDescription,
         longDescription: product.longDescription,
+        unitValue: product.unitValue,
+        unitType: UnitTypeMapper.toPrisma(product.unitType),
+        tags: ProductTagMapper.toPrisma(product.tags),
+        isTrending: product.trendState.getRaw(),
         updatedAt: product.updatedAt,
       },
       include: { galleryImages: true },
