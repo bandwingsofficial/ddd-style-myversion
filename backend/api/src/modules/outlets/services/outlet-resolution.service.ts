@@ -28,7 +28,7 @@ export class OutletResolutionService {
     latitude: number,
     longitude: number,
   ): Promise<DeliveryOutletResolution> {
-    const nearby = await this.outletOrchestrator.getNearbyOutlets(
+    const nearby = await this.outletOrchestrator.getNearbyPublicOutletBundles(
       latitude,
       longitude,
     );
@@ -45,12 +45,27 @@ export class OutletResolutionService {
       };
     }
 
+    const matched = visible.find((entry) => entry.outlet.id === picked.outletId);
     const outletDto =
       nearbyOutlets.find((outlet) => outlet.id === picked.outletId) ??
-      PublicOutletMapper.toDto(
-        visible.find((entry) => entry.outlet.id === picked.outletId).outlet,
-        picked.distanceKm,
-      );
+      (matched
+        ? PublicOutletMapper.toDto(
+            {
+              outlet: matched.outlet,
+              profile: matched.profile,
+              extras: matched.extras,
+            },
+            picked.distanceKm,
+          )
+        : null);
+
+    if (!outletDto) {
+      return {
+        status: 'NO_SERVICE',
+        resolvedOutlet: null,
+        nearbyOutlets: [],
+      };
+    }
 
     return {
       status: 'RESOLVED',

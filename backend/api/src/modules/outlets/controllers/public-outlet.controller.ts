@@ -61,7 +61,7 @@ export class PublicOutletController {
         }),
       );
 
-      const results = await this.orchestrator.getNearbyOutlets(
+      const results = await this.orchestrator.getNearbyPublicOutletBundles(
         latitude,
         longitude,
       );
@@ -85,11 +85,11 @@ export class PublicOutletController {
         }),
       );
     } else {
-      const outlets = await this.orchestrator.getAllOutlets();
+      const bundles = await this.orchestrator.getAllPublicOutletBundles();
 
-      data = outlets
-        .filter((o) => o.isPubliclyVisible())
-        .map((o) => PublicOutletMapper.toDto(o));
+      data = bundles
+        .filter((b) => b.outlet.isPubliclyVisible())
+        .map((b) => PublicOutletMapper.toDto(b));
     }
 
     return {
@@ -261,9 +261,9 @@ export class PublicOutletController {
 
   @Get(':outletId')
   async getOutletDetails(@Param('outletId') outletId: string) {
-    const outlet = await this.orchestrator.getOutletById(outletId);
+    const bundle = await this.orchestrator.getPublicOutletBundleById(outletId);
 
-    if (!outlet || !outlet.isPubliclyVisible()) {
+    if (!bundle || !bundle.outlet.isPubliclyVisible()) {
       return {
         success: false,
         code: 'OUTLET_NOT_AVAILABLE',
@@ -276,7 +276,7 @@ export class PublicOutletController {
       success: true,
       code: 'PUBLIC_OUTLET_FETCHED',
       message: 'Outlet details fetched successfully',
-      data: PublicOutletMapper.toDto(outlet),
+      data: PublicOutletMapper.toDto(bundle),
     };
   }
 }

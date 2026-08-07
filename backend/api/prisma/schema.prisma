@@ -271,6 +271,22 @@ model Outlet {
   location String?
   pincode  String?
 
+  // Public metadata (optional — backward-compatible additions)
+  displayName              String?
+  code                     String?
+  alternatePhone           String?
+  addressLine2             String?
+  landmark                 String?
+  area                     String?
+  city                     String?
+  state                    String?
+  country                  String?
+  formattedAddress         String?
+  openingTime              String?
+  closingTime              String?
+  estimatedDeliveryMinutes Int?
+  googleMapsUrl            String?
+
   // Geo
   latitude  Float?
   longitude Float?
@@ -341,6 +357,8 @@ model OutletProfile {
 
   contactPhone String?
   contactEmail String?
+
+  supportWhatsapp String?
 
   ownerName   String?
   description String?

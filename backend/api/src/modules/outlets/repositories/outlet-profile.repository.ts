@@ -61,6 +61,8 @@ export class OutletProfileRepository {
         contactPhone: profile.contactPhone,
         contactEmail: profile.contactEmail,
 
+        supportWhatsapp: null,
+
         ownerName: profile.ownerName,
         description: profile.description,
 
@@ -93,6 +95,8 @@ export class OutletProfileRepository {
 
         contactPhone: profile.contactPhone,
         contactEmail: profile.contactEmail,
+
+        supportWhatsapp: null,
 
         ownerName: profile.ownerName,
         description: profile.description,
@@ -129,6 +133,8 @@ export class OutletProfileRepository {
         contactPhone: profile.contactPhone,
         contactEmail: profile.contactEmail,
 
+        supportWhatsapp: null,
+
         ownerName: profile.ownerName,
         description: profile.description,
 
@@ -144,6 +150,8 @@ export class OutletProfileRepository {
 
         contactPhone: profile.contactPhone,
         contactEmail: profile.contactEmail,
+
+        supportWhatsapp: null,
 
         ownerName: profile.ownerName,
         description: profile.description,

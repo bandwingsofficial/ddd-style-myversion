@@ -10,6 +10,10 @@ import { OutletProfileService } from './outlet-profile.service';
 
 import { Outlet } from '../domain/models/outlet.model';
 import { OutletProfile } from '../domain/models/outlet-profile.model';
+import {
+  OutletPublicBundle,
+  OutletPublicBundleWithDistance,
+} from '../types/outlet-public-bundle.types';
 
 /**
  * Orchestrator = controller-facing layer
@@ -50,6 +54,23 @@ export class OutletOrchestratorService {
     lng: number,
   ): Promise<{ outlet: Outlet; distanceKm: number }[]> {
     return this.outletService.getNearbyOutlets(lat, lng);
+  }
+
+  async getAllPublicOutletBundles(): Promise<OutletPublicBundle[]> {
+    return this.outletService.getAllPublicOutletBundles();
+  }
+
+  async getPublicOutletBundleById(
+    outletId: string,
+  ): Promise<OutletPublicBundle | null> {
+    return this.outletService.getPublicOutletBundleById(outletId);
+  }
+
+  async getNearbyPublicOutletBundles(
+    lat: number,
+    lng: number,
+  ): Promise<OutletPublicBundleWithDistance[]> {
+    return this.outletService.getNearbyPublicOutletBundles(lat, lng);
   }
   /* ================================================= */
   /* OUTLET – CREATE / UPDATE / ENABLE / DISABLE        */

@@ -5,11 +5,16 @@ import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
 
 import { Outlet } from '../domain/models/outlet.model';
+import { OutletProfile } from '../domain/models/outlet-profile.model';
 
 import { OutletStatusMapper } from '../mappers/outlet-status.mapper';
 import { OutletWorkingStateMapper } from '../mappers/outlet-working-state.mapper';
 import { CameraStateMapper } from '../mappers/camera-state.mapper';
 import { GeoLocationMapper } from '../mappers/geo-location.mapper';
+import {
+  OutletPublicBundle,
+  OutletPublicExtras,
+} from '../types/outlet-public-bundle.types';
 
 @Injectable()
 export class OutletRepository {
@@ -96,6 +101,47 @@ export class OutletRepository {
     });
 
     return rows.map((row) => this.toDomain(row));
+  }
+
+  /* ================================================= */
+  /* READ – PUBLIC BUNDLES (outlet + profile + extras)  */
+  /* ================================================= */
+
+  async findAllPublicBundles(
+    tx?: PrismaTransaction,
+  ): Promise<OutletPublicBundle[]> {
+    const rows = await (tx ?? this.prisma).outlet.findMany({
+      include: { profile: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return rows.map((row) => this.toPublicBundle(row));
+  }
+
+  async findPublicBundleById(
+    id: string,
+    tx?: PrismaTransaction,
+  ): Promise<OutletPublicBundle | null> {
+    const row = await (tx ?? this.prisma).outlet.findUnique({
+      where: { id },
+      include: { profile: true },
+    });
+
+    return row ? this.toPublicBundle(row) : null;
+  }
+
+  async findPublicBundlesWithLocation(
+    tx?: PrismaTransaction,
+  ): Promise<OutletPublicBundle[]> {
+    const rows = await (tx ?? this.prisma).outlet.findMany({
+      where: {
+        latitude: { not: null },
+        longitude: { not: null },
+      },
+      include: { profile: true },
+    });
+
+    return rows.map((row) => this.toPublicBundle(row));
   }
   /* ================================================= */
   /* UPDATE DETAILS (PARTIAL STRUCTURAL UPDATE)        */
@@ -266,30 +312,66 @@ export class OutletRepository {
   /* PRIVATE MAPPER                                    */
   /* ================================================= */
 
-  private toDomain(row: {
+  private toPublicBundle(row: OutletRowWithProfile): OutletPublicBundle {
+    return {
+      outlet: this.toDomain(row),
+      profile: row.profile ? this.toProfileDomain(row.profile) : null,
+      extras: this.toPublicExtras(row),
+    };
+  }
+
+  private toPublicExtras(row: OutletRowWithProfile): OutletPublicExtras {
+    return {
+      displayName: row.displayName ?? undefined,
+      code: row.code ?? undefined,
+      alternatePhone: row.alternatePhone ?? undefined,
+      addressLine2: row.addressLine2 ?? undefined,
+      landmark: row.landmark ?? undefined,
+      area: row.area ?? undefined,
+      city: row.city ?? undefined,
+      state: row.state ?? undefined,
+      country: row.country ?? undefined,
+      formattedAddress: row.formattedAddress ?? undefined,
+      locationText: row.location ?? undefined,
+      openingTime: row.openingTime ?? undefined,
+      closingTime: row.closingTime ?? undefined,
+      estimatedDeliveryMinutes: row.estimatedDeliveryMinutes ?? undefined,
+      googleMapsUrl: row.googleMapsUrl ?? undefined,
+      supportWhatsapp: row.profile?.supportWhatsapp ?? undefined,
+    };
+  }
+
+  private toProfileDomain(row: {
     id: string;
-    name: string;
-    branch: string | null;
-    address: string | null;
-    pincode: string | null;
-
-    status: any;
-    workingStatus: any;
-
-    isCameraEnabled: boolean;
-    cameraStatus: any;
-    cameraStreamUrl: string | null;
-
-    latitude: number | null;
-    longitude: number | null;
-
-    deliveryRadiusKm: number | null;
-    isCentral: boolean;
-
+    outletId: string;
+    avatarUrl: string | null;
+    bannerUrl: string | null;
+    contactPhone: string | null;
+    contactEmail: string | null;
+    ownerName: string | null;
+    description: string | null;
+    gstNumber: string | null;
+    fssaiNumber: string | null;
     createdAt: Date;
     updatedAt: Date;
-    createdBy: string | null;
-  }): Outlet {
+  }): OutletProfile {
+    return OutletProfile.rehydrate({
+      id: row.id,
+      outletId: row.outletId,
+      avatarUrl: row.avatarUrl ?? undefined,
+      bannerUrl: row.bannerUrl ?? undefined,
+      contactPhone: row.contactPhone ?? undefined,
+      contactEmail: row.contactEmail ?? undefined,
+      ownerName: row.ownerName ?? undefined,
+      description: row.description ?? undefined,
+      gstNumber: row.gstNumber ?? undefined,
+      fssaiNumber: row.fssaiNumber ?? undefined,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    });
+  }
+
+  private toDomain(row: OutletRowBase): Outlet {
     return Outlet.rehydrate({
       id: row.id,
       name: row.name,
@@ -317,3 +399,56 @@ export class OutletRepository {
     });
   }
 }
+
+type OutletRowBase = {
+  id: string;
+  name: string;
+  branch: string | null;
+  address: string | null;
+  pincode: string | null;
+  location: string | null;
+  displayName: string | null;
+  code: string | null;
+  alternatePhone: string | null;
+  addressLine2: string | null;
+  landmark: string | null;
+  area: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  formattedAddress: string | null;
+  openingTime: string | null;
+  closingTime: string | null;
+  estimatedDeliveryMinutes: number | null;
+  googleMapsUrl: string | null;
+  status: any;
+  workingStatus: any;
+  isCameraEnabled: boolean;
+  cameraStatus: any;
+  cameraStreamUrl: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  deliveryRadiusKm: number | null;
+  isCentral: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  createdBy: string | null;
+};
+
+type OutletRowWithProfile = OutletRowBase & {
+  profile: {
+    id: string;
+    outletId: string;
+    avatarUrl: string | null;
+    bannerUrl: string | null;
+    contactPhone: string | null;
+    contactEmail: string | null;
+    supportWhatsapp: string | null;
+    ownerName: string | null;
+    description: string | null;
+    gstNumber: string | null;
+    fssaiNumber: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+  } | null;
+};

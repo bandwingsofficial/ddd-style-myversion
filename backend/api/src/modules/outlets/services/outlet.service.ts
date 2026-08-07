@@ -6,6 +6,10 @@ import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
 
 import { Outlet } from '../domain/models/outlet.model';
 import { OutletRepository } from '../repositories/outlet.repository';
+import {
+  OutletPublicBundle,
+  OutletPublicBundleWithDistance,
+} from '../types/outlet-public-bundle.types';
 
 import { OutletActivePolicy } from '../policies/outlet-active.policy';
 import { OutletWorkingPolicy } from '../policies/outlet-working.policy';
@@ -178,6 +182,55 @@ export class OutletService {
         };
       })
       .filter(Boolean)
+      .sort((a, b) => a.distanceKm - b.distanceKm);
+  }
+
+  /* ================================================= */
+  /* PUBLIC – ENRICHED OUTLET BUNDLES                   */
+  /* ================================================= */
+
+  async getAllPublicOutletBundles(): Promise<OutletPublicBundle[]> {
+    return this.outletRepo.findAllPublicBundles();
+  }
+
+  async getPublicOutletBundleById(
+    outletId: string,
+  ): Promise<OutletPublicBundle | null> {
+    return this.outletRepo.findPublicBundleById(outletId);
+  }
+
+  async getNearbyPublicOutletBundles(
+    lat: number,
+    lng: number,
+  ): Promise<OutletPublicBundleWithDistance[]> {
+    assertValidCustomerCoordinates(lat, lng);
+
+    const bundles = await this.outletRepo.findPublicBundlesWithLocation();
+
+    return bundles
+      .filter(
+        (bundle) =>
+          bundle.outlet.isActive() &&
+          bundle.outlet.workingState?.canAcceptOrders() &&
+          bundle.outlet.location,
+      )
+      .map((bundle) => {
+        const location = bundle.outlet.location!.getRaw();
+        const distanceKm = this.calculateDistanceKm(
+          lat,
+          lng,
+          location.latitude,
+          location.longitude,
+        );
+
+        if (distanceKm > (bundle.outlet.deliveryRadiusKm ?? 5)) return null;
+
+        return {
+          ...bundle,
+          distanceKm: Number(distanceKm.toFixed(2)),
+        };
+      })
+      .filter((item): item is OutletPublicBundleWithDistance => item != null)
       .sort((a, b) => a.distanceKm - b.distanceKm);
   }
 

@@ -48,6 +48,8 @@ export class OutletProfileMapper {
       contactPhone: profile.contactPhone ?? null,
       contactEmail: profile.contactEmail ?? null,
 
+      supportWhatsapp: null,
+
       ownerName: profile.ownerName ?? null,
       description: profile.description ?? null,
 
@@ -70,6 +72,8 @@ export class OutletProfileMapper {
 
       contactPhone: profile.contactPhone ?? null,
       contactEmail: profile.contactEmail ?? null,
+
+      supportWhatsapp: null,
 
       ownerName: profile.ownerName ?? null,
       description: profile.description ?? null,
