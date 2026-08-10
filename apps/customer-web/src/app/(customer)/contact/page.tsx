@@ -59,7 +59,7 @@ ${message}`;
     <div className="min-h-screen bg-white">
       <Header />
 
-      <main className="customer-page-shell animate-fade-in-up mobile-container max-w-[1100px]">
+      <main className="customer-page-shell animate-fade-in-up mt-4 mobile-container max-w-[1100px]">
         {/* Page Header */}
         <header className="mb-[60px] text-center">
           <h1 className="animate-shine mb-4 bg-gradient-to-r from-[#052e16] via-[#4ade80] to-[#052e16] bg-[length:200%_auto] bg-clip-text font-serif text-3xl font-extrabold text-transparent sm:text-4xl md:text-5xl">

@@ -53,7 +53,7 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-[#f8fafc]">
       <Header />
       
-      <main className="customer-page-shell mobile-container max-w-7xl">
+      <main className="customer-page-shell mobile-container mt-4 max-w-7xl">
         
         {/* MOBILE CONTROLLER BUTTON (Visible only on mobile/tablet viewport weights) */}
         <div className="block md:hidden mb-5">

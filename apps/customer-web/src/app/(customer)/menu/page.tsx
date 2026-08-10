@@ -173,7 +173,7 @@ function MenuPageContent() {
     <div className="min-h-screen bg-white">
       <Header />
 
-      <main className="customer-page-shell customer-page-shell--with-cart">
+      <main className="customer-page-shell mt-4 customer-page-shell--with-cart">
         <section className="mobile-container">
           <Breadcrumbs
             items={

@@ -149,7 +149,7 @@ export default function ProductDetailsPage() {
     return (
       <div className="flex min-h-screen flex-col bg-white">
         <Header />
-        <main className="customer-page-shell flex-grow">
+        <main className="customer-page-shell mt-4 flex-grow">
           <div className="mobile-container max-w-6xl">
             <ProductDetailSkeleton />
           </div>
