@@ -45,13 +45,13 @@ export default function Footer() {
               tender coconut water.
             </p>
             <div className="social-group">
-              <a href="#" className="social-link" aria-label="Facebook">
+              <a href="https://www.facebook.com/profile.php?id=61592095831937" className="social-link" aria-label="Facebook">
                 <Facebook size={18} />
               </a>
-              <a href="#" className="social-link" aria-label="Instagram">
+              <a href="https://www.instagram.com/Canten.online/" className="social-link" aria-label="Instagram">
                 <Instagram size={18} />
               </a>
-              <a href="#" className="social-link" aria-label="Twitter">
+              <a href="https://twitter.com/CantenOnline" className="social-link" aria-label="Twitter">
                 <Twitter size={18} />
               </a>
             </div>

@@ -24,6 +24,10 @@ export default () => ({
   otp: {
     ttlSeconds: Number(process.env.OTP_TTL_SECONDS),
     maxAttempts: Number(process.env.OTP_MAX_ATTEMPTS),
+
+    testEnabled: process.env.OTP_TEST_ENABLED === 'true',
+    testPhone: process.env.OTP_TEST_PHONE,
+    testCode: process.env.OTP_TEST_CODE,
   },
 
   aws: {

@@ -25,17 +25,31 @@ import { OTP_CONSTANTS } from '../constants/otp.constants';
 export class OtpService {
   private readonly ttlSeconds: number;
 
+private readonly testOtpEnabled: boolean;
+private readonly testOtpPhone?: string;
+private readonly testOtpCode?: string;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly otpRepo: OtpRequestRepository,
     private readonly auditRepo: AuditLogRepository,
     private readonly redis: RedisService,
     private readonly queueService: QueueService,
+    
     config: ConfigService,
   ) {
-    this.ttlSeconds =
-      config.get<number>('otp.ttlSeconds') ?? OTP_CONSTANTS.DEFAULT_TTL_SECONDS;
-  }
+  this.ttlSeconds =
+    config.get('otp.ttlSeconds') ?? OTP_CONSTANTS.DEFAULT_TTL_SECONDS;
+
+  this.testOtpEnabled = config.get('otp.testEnabled') ?? false;
+  this.testOtpPhone = config.get('otp.testPhone');
+  this.testOtpCode = config.get('otp.testCode');
+  console.log('OTP TEST CONFIG:', {
+  enabled: this.testOtpEnabled,
+  phone: this.testOtpPhone,
+  codeConfigured: !!this.testOtpCode,
+});
+}
 
   /* ================================================= */
   /* REQUEST OTP                                      */
@@ -97,7 +111,12 @@ export class OtpService {
     }
 
     /* ---------- GENERATE OTP ---------- */
-    const otp = this.generateOtp();
+    const otp =
+  this.testOtpEnabled &&
+  this.testOtpPhone === phone.getRaw() &&
+  this.testOtpCode
+    ? this.testOtpCode
+    : this.generateOtp();
     const otpHash = TokenHash.fromHash(this.hashOtp(otp));
     const expiresAt = new Date(Date.now() + this.ttlSeconds * 1000);
 
@@ -133,13 +152,20 @@ export class OtpService {
     );
 
     /* ---------- ASYNC OTP DELIVERY ---------- */
-    await this.queueService.addOtpJob(OTP_JOBS.SEND, {
-      phone: phone.getRaw(),
-      otp,
-      actorType: params.actorType,
-      purpose: params.purpose,
-    });
 
+const isTestOtp =
+  this.testOtpEnabled &&
+  this.testOtpPhone === phone.getRaw() &&
+  this.testOtpCode;
+
+if (!isTestOtp) {
+  await this.queueService.addOtpJob(OTP_JOBS.SEND, {
+    phone: phone.getRaw(),
+    otp,
+    actorType: params.actorType,
+    purpose: params.purpose,
+  });
+}
     return {
       cooldownSeconds: OTP_CONSTANTS.RESEND_COOLDOWN_SECONDS,
       remainingResends: Math.max(0, OTP_CONSTANTS.MAX_SEND_PER_HOUR - count),
