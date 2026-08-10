@@ -113,7 +113,7 @@ export default function OrderDetailsPage() {
       <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       <Header />
 
-      <main className="customer-page-shell mobile-container max-w-7xl pb-12">
+      <main className="customer-page-shell mobile-container mt-4 max-w-7xl pb-12">
         <Breadcrumbs
           items={[
             { label: "Orders", href: "/orders" },

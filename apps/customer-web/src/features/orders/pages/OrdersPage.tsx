@@ -59,7 +59,7 @@ export default function OrdersPage() {
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100/80 antialiased">
       <Header />
 
-      <main className="customer-page-shell mobile-container max-w-6xl">
+      <main className="customer-page-shell mobile-container mt-4 max-w-6xl">
         <Breadcrumbs items={[{ label: "Orders" }]} />
         
         {/* Modern Top Level Header Section - Only shows if user has orders */}
