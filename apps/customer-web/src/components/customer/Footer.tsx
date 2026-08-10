@@ -16,16 +16,27 @@ export default function Footer() {
 
   return (
     <footer className="footer">
-      {/* AMBIENT BACKGROUND */}
+      {/* ============================================================
+          AMBIENT BACKGROUND
+      ============================================================ */}
+
       <div className="footer-bg" aria-hidden="true">
         <div className="glow glow-1" />
         <div className="glow glow-2" />
         <div className="grid-lines" />
       </div>
 
+      {/* ============================================================
+          MAIN FOOTER
+      ============================================================ */}
+
       <div className="footer-main">
         <div className="footer-grid">
-          {/* Column 1: Brand */}
+
+          {/* ========================================================
+              BRAND
+          ======================================================== */}
+
           <div className="col brand-col">
             <Link href="/" className="logo-link">
               <div className="logo-wrapper">
@@ -39,55 +50,109 @@ export default function Footer() {
                 />
               </div>
             </Link>
+
             <p className="brand-story">
-              Your destination for fresh, natural, and hygienic cane juice and
-              tender coconut water.
+              Your destination for fresh, natural, and hygienic
+              cane juice and tender coconut water.
             </p>
+
             <div className="social-group">
-              <a href="https://www.facebook.com/profile.php?id=61592095831937" className="social-link" aria-label="Facebook">
+              <a
+                href="https://www.facebook.com/profile.php?id=61592095831937"
+                className="social-link"
+                aria-label="Facebook"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <Facebook size={18} />
               </a>
-              <a href="https://www.instagram.com/Canten.online/" className="social-link" aria-label="Instagram">
+
+              <a
+                href="https://www.instagram.com/Canten.online/"
+                className="social-link"
+                aria-label="Instagram"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <Instagram size={18} />
               </a>
             </div>
           </div>
 
-          {/* Column 2: Quick Links */}
+          {/* ========================================================
+              QUICK LINKS
+          ======================================================== */}
+
           <div className="col">
-            <h4 className="col-title">Quick Links</h4>
+            <h4 className="col-title">
+              Quick Links
+            </h4>
+
             <ul className="link-list">
               <li>
-                <Link href="/home" className="footer-link">
-                  <span className="link-text">Home</span>
+                <Link
+                  href="/home"
+                  className="footer-link"
+                >
+                  <span className="link-text">
+                    Home
+                  </span>
                 </Link>
               </li>
+
               <li>
-                <Link href="/menu" className="footer-link">
-                  <span className="link-text">Shop</span>
+                <Link
+                  href="/menu"
+                  className="footer-link"
+                >
+                  <span className="link-text">
+                    Shop
+                  </span>
                 </Link>
               </li>
+
               <li>
-                <Link href="/about" className="footer-link">
-                  <span className="link-text">About Us</span>
+                <Link
+                  href="/about"
+                  className="footer-link"
+                >
+                  <span className="link-text">
+                    About Us
+                  </span>
                 </Link>
               </li>
+
               <li>
-                <Link href="/contact" className="footer-link">
-                  <span className="link-text">Contact</span>
+                <Link
+                  href="/contact"
+                  className="footer-link"
+                >
+                  <span className="link-text">
+                    Contact
+                  </span>
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Column 3: Contact */}
+          {/* ========================================================
+              CONTACT
+          ======================================================== */}
+
           <div className="col">
-            <h4 className="col-title">Contact Info</h4>
+            <h4 className="col-title">
+              Contact Info
+            </h4>
+
             <ul className="link-list contact-list">
+
+              {/* Email */}
+
               <li className="contact-item">
                 <span className="icon-badge">
                   <Mail size={14} />
                 </span>
+
                 <a
                   href="mailto:cantenonline@gmail.com"
                   className="contact-text"
@@ -95,49 +160,93 @@ export default function Footer() {
                   cantenonline@gmail.com
                 </a>
               </li>
-              <li className="contact-item">
-  <span className="icon-badge">
-    <Phone size={14} />
-  </span>
 
-  <div className="contact-text flex items-center gap-2 whitespace-nowrap">
-    <a href="tel:+919902962777">+91 99029 62777</a>
-    <span>/</span>
-    <a href="tel:+919902930777">+91 99029 30777</a>
-  </div>
-</li>
+              {/* Phone */}
+
+              <li className="contact-item">
+                <span className="icon-badge">
+                  <Phone size={14} />
+                </span>
+
+                <div className="contact-text phone-numbers">
+                  <a href="tel:+919902962777">
+                    +91 99029 62777
+                  </a>
+
+                  <span className="phone-separator">
+                    /
+                  </span>
+
+                  <a href="tel:+919902930777">
+                    +91 99029 30777
+                  </a>
+                </div>
+              </li>
+
+              {/* Address */}
+
               <li className="contact-item address-item">
                 <span className="icon-badge">
                   <MapPin size={14} />
                 </span>
+
                 <span className="contact-text">
-                  Sai Dharshan, 1st A Main Road, 1st Phase, Yelahanka New Town,
+                  Sai Dharshan, 1st A Main Road,
+                  1st Phase, Yelahanka New Town,
                   Bengaluru - 560064
                 </span>
               </li>
+
+              {/* Hours */}
+
               <li className="contact-item hours-item">
-                <span className="hours">Monday – Sunday: 6 AM – 11 PM</span>
+                <span className="hours">
+                  Monday – Sunday: 6 AM – 11 PM
+                </span>
               </li>
             </ul>
           </div>
 
-          {/* Column 4: Legal */}
+          {/* ========================================================
+              LEGAL
+          ======================================================== */}
+
           <div className="col">
-            <h4 className="col-title">Legal</h4>
+            <h4 className="col-title">
+              Legal
+            </h4>
+
             <ul className="link-list">
               <li>
-                <Link href="/privacy-policy" className="footer-link">
-                  <span className="link-text">Privacy Policy</span>
+                <Link
+                  href="/privacy-policy"
+                  className="footer-link"
+                >
+                  <span className="link-text">
+                    Privacy Policy
+                  </span>
                 </Link>
               </li>
+
               <li>
-                <Link href="/terms-of-service" className="footer-link">
-                  <span className="link-text">Terms of Service</span>
+                <Link
+                  href="/terms-of-service"
+                  className="footer-link"
+                >
+                  <span className="link-text">
+                    Terms of Service
+                  </span>
                 </Link>
               </li>
+
               <li>
-                <Link href="/refund-policy" className="footer-link">
-                  <span className="link-text">Refund Policy</span>
+                <Link
+                  href="/refund-policy"
+                  className="footer-link"
+                >
+                  <span className="link-text">
+                    Refund Policy
+                  </span>
                 </Link>
               </li>
             </ul>
@@ -145,11 +254,17 @@ export default function Footer() {
         </div>
       </div>
 
+      {/* ============================================================
+          BOTTOM BAR
+      ============================================================ */}
+
       <div className="footer-bottom">
         <div className="bottom-container">
+
           <p className="copyright">
             © {currentYear} CanTen. All rights reserved.
           </p>
+
           <div className="bottom-tag">
             <span className="tag-dot" />
             Made fresh, every day
@@ -157,9 +272,18 @@ export default function Footer() {
         </div>
       </div>
 
+      {/* ============================================================
+          STYLES
+      ============================================================ */}
+
       <style jsx>{`
+        /* ==========================================================
+           FOOTER
+        ========================================================== */
+
         .footer {
           position: relative;
+          width: 100%;
           background: #052e16;
           color: #f0fdf4;
           border-top: 1px solid rgba(74, 222, 128, 0.12);
@@ -167,12 +291,16 @@ export default function Footer() {
           isolation: isolate;
         }
 
-        /* ---------- AMBIENT BACKGROUND ---------- */
+        /* ==========================================================
+           BACKGROUND
+        ========================================================== */
+
         .footer-bg {
           position: absolute;
           inset: 0;
           z-index: 0;
           pointer-events: none;
+          overflow: hidden;
         }
 
         .glow {
@@ -187,7 +315,11 @@ export default function Footer() {
           height: 480px;
           top: -220px;
           left: -120px;
-          background: radial-gradient(circle, #4ade80 0%, transparent 70%);
+          background: radial-gradient(
+            circle,
+            #4ade80 0%,
+            transparent 70%
+          );
         }
 
         .glow-2 {
@@ -195,24 +327,41 @@ export default function Footer() {
           height: 420px;
           bottom: -200px;
           right: -100px;
-          background: radial-gradient(circle, #22c55e 0%, transparent 70%);
+          background: radial-gradient(
+            circle,
+            #22c55e 0%,
+            transparent 70%
+          );
         }
 
         .grid-lines {
           position: absolute;
           inset: 0;
+
           background-image:
-            linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+            linear-gradient(
+              rgba(255, 255, 255, 0.025) 1px,
+              transparent 1px
+            ),
             linear-gradient(
               90deg,
               rgba(255, 255, 255, 0.025) 1px,
               transparent 1px
             );
+
           background-size: 48px 48px;
-          mask-image: radial-gradient(ellipse at top, black, transparent 75%);
+
+          mask-image: radial-gradient(
+            ellipse at top,
+            black,
+            transparent 75%
+          );
         }
 
-        /* ---------- MAIN GRID ---------- */
+        /* ==========================================================
+           MAIN
+        ========================================================== */
+
         .footer-main {
           position: relative;
           z-index: 1;
@@ -220,57 +369,117 @@ export default function Footer() {
         }
 
         .footer-grid {
+          width: 100%;
           max-width: 1240px;
           margin: 0 auto;
           padding: 0 2rem;
+
           display: grid;
-          grid-template-columns: 1.3fr 0.8fr 1fr 0.8fr;
+
+          grid-template-columns:
+            1.3fr
+            0.8fr
+            1fr
+            0.8fr;
+
           gap: 2.5rem;
-        }
-
-        @media (max-width: 968px) {
-          .footer-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 2.75rem 2rem;
-          }
-        }
-
-        @media (max-width: 580px) {
-          .footer-grid {
-            grid-template-columns: 1fr;
-            gap: 2.25rem;
-            padding: 0 1.5rem;
-          }
         }
 
         .col {
           display: flex;
           flex-direction: column;
+          min-width: 0;
         }
 
-        /* ---------- BRAND ---------- */
+        /* ==========================================================
+           TABLET
+        ========================================================== */
+
+        @media (max-width: 968px) {
+          .footer-main {
+            padding: 4rem 0 2.75rem;
+          }
+
+          .footer-grid {
+            grid-template-columns:
+              repeat(2, minmax(0, 1fr));
+
+            gap: 2.75rem 2rem;
+          }
+        }
+
+        /* ==========================================================
+           MOBILE
+        ========================================================== */
+
+        @media (max-width: 580px) {
+          .footer-main {
+            padding: 3rem 0 2rem;
+          }
+
+          .footer-grid {
+            grid-template-columns: 1fr;
+            gap: 2.5rem;
+
+            padding: 0 1.25rem;
+          }
+
+          .col {
+            width: 100%;
+          }
+        }
+
+        /* ==========================================================
+           SMALL MOBILE
+        ========================================================== */
+
+        @media (max-width: 380px) {
+          .footer-main {
+            padding: 2.5rem 0 1.75rem;
+          }
+
+          .footer-grid {
+            padding: 0 1rem;
+            gap: 2.25rem;
+          }
+        }
+
+        /* ==========================================================
+           BRAND
+        ========================================================== */
+
         .logo-link {
           display: inline-flex;
           align-items: center;
+
           text-decoration: none;
+
           margin-bottom: 1.1rem;
+
           width: fit-content;
+
+          max-width: 100%;
         }
 
         .logo-wrapper {
           width: 130px;
           height: auto;
+
           display: flex;
           align-items: center;
           justify-content: flex-start;
+
           overflow: hidden;
-          transition: transform 0.3s ease;
+
+          transition:
+            transform 0.3s ease;
         }
 
         :global(.logo-img) {
           object-fit: contain;
           width: 100%;
           height: auto;
+          max-width: 100%;
         }
 
         .logo-link:hover .logo-wrapper {
@@ -279,12 +488,28 @@ export default function Footer() {
 
         .brand-story {
           color: #86efac;
+
           font-size: 0.92rem;
           line-height: 1.65;
+
           margin: 0 0 1.6rem 0;
+
           max-width: 280px;
+
           opacity: 0.85;
         }
+
+        @media (max-width: 580px) {
+          .brand-story {
+            max-width: 100%;
+            font-size: 0.9rem;
+            line-height: 1.6;
+          }
+        }
+
+        /* ==========================================================
+           SOCIAL
+        ========================================================== */
 
         .social-group {
           display: flex;
@@ -293,16 +518,33 @@ export default function Footer() {
 
         .social-link {
           color: #f0fdf4;
-          width: 38px;
-          height: 38px;
+
+          width: 42px;
+          height: 42px;
+
           border-radius: 50%;
+
           display: flex;
           align-items: center;
           justify-content: center;
-          background: rgba(255, 255, 255, 0.06);
-          border: 1px solid rgba(255, 255, 255, 0.1);
+
+          background: rgba(
+            255,
+            255,
+            255,
+            0.06
+          );
+
+          border: 1px solid rgba(
+            255,
+            255,
+            255,
+            0.1
+          );
+
           backdrop-filter: blur(8px);
           -webkit-backdrop-filter: blur(8px);
+
           transition:
             transform 0.3s ease,
             background 0.3s ease,
@@ -312,54 +554,95 @@ export default function Footer() {
 
         .social-link:hover {
           transform: translateY(-3px);
-          background: linear-gradient(135deg, #6dc13a, #22c55e);
+
+          background: linear-gradient(
+            135deg,
+            #6dc13a,
+            #22c55e
+          );
+
           border-color: transparent;
+
           color: #052e16;
-          box-shadow: 0 10px 24px rgba(34, 197, 94, 0.35);
+
+          box-shadow:
+            0 10px 24px
+            rgba(34, 197, 94, 0.35);
         }
 
-        /* ---------- COLUMN TITLES ---------- */
+        /* ==========================================================
+           COLUMN TITLES
+        ========================================================== */
+
         .col-title {
           font-size: 0.95rem;
           font-weight: 700;
+
           letter-spacing: 0.04em;
           text-transform: uppercase;
+
           color: #d9f99d;
+
           margin: 0 0 1.4rem 0;
+
           position: relative;
+
           padding-bottom: 10px;
         }
 
         .col-title::after {
           content: "";
+
           position: absolute;
+
           left: 0;
           bottom: 0;
+
           width: 28px;
           height: 2px;
-          background: linear-gradient(90deg, #4ade80, transparent);
+
+          background: linear-gradient(
+            90deg,
+            #4ade80,
+            transparent
+          );
+
           border-radius: 2px;
         }
 
-        /* ---------- LINK LISTS ---------- */
+        /* ==========================================================
+           LINKS
+        ========================================================== */
+
         .link-list {
           list-style: none;
+
           padding: 0;
           margin: 0;
+
           display: flex;
           flex-direction: column;
+
           gap: 0.7rem;
         }
 
         .footer-link {
           position: relative;
+
           display: inline-flex;
           align-items: center;
+
           width: fit-content;
+          max-width: 100%;
+
           text-decoration: none;
+
           color: #86efac;
+
           font-size: 0.92rem;
-          transition: color 0.3s ease;
+
+          transition:
+            color 0.3s ease;
         }
 
         .link-text {
@@ -368,50 +651,140 @@ export default function Footer() {
 
         .link-text::after {
           content: "";
+
           position: absolute;
+
           left: 0;
           bottom: -3px;
+
           width: 0%;
           height: 1px;
+
           background: #4ade80;
-          transition: width 0.3s ease;
+
+          transition:
+            width 0.3s ease;
         }
 
         .footer-link:hover {
           color: #f0fdf4;
         }
 
-        .footer-link:hover .link-text::after {
+        .footer-link:hover
+          .link-text::after {
           width: 100%;
         }
 
-        /* ---------- CONTACT ---------- */
+        /* ==========================================================
+           CONTACT
+        ========================================================== */
+
+        .contact-list {
+          gap: 0.9rem;
+        }
+
         .contact-item {
           display: flex;
           align-items: flex-start;
+
           gap: 10px;
+
           font-size: 0.9rem;
+
+          min-width: 0;
         }
 
         .icon-badge {
           width: 28px;
           height: 28px;
+
           flex-shrink: 0;
+
           border-radius: 8px;
+
           display: flex;
           align-items: center;
           justify-content: center;
-          background: rgba(74, 222, 128, 0.12);
+
+          background: rgba(
+            74,
+            222,
+            128,
+            0.12
+          );
+
           color: #4ade80;
-          border: 1px solid rgba(74, 222, 128, 0.18);
+
+          border: 1px solid rgba(
+            74,
+            222,
+            128,
+            0.18
+          );
         }
 
         .contact-text {
           color: #f0fdf4;
+
           opacity: 0.92;
+
           word-break: break-word;
-          line-height: 1.4;
+          overflow-wrap: anywhere;
+
+          line-height: 1.5;
+
+          min-width: 0;
         }
+
+        .contact-text a {
+          color: inherit;
+          text-decoration: none;
+        }
+
+        .contact-text a:hover {
+          color: #86efac;
+        }
+
+        /* ==========================================================
+           PHONE NUMBERS
+        ========================================================== */
+
+        .phone-numbers {
+          display: flex;
+          align-items: center;
+
+          flex-wrap: wrap;
+
+          gap: 5px;
+        }
+
+        .phone-separator {
+          opacity: 0.55;
+        }
+
+        @media (max-width: 380px) {
+          .phone-numbers {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+          }
+
+          .phone-separator {
+            display: none;
+          }
+        }
+
+        /* ==========================================================
+           ADDRESS
+        ========================================================== */
+
+        .address-item {
+          align-items: flex-start;
+        }
+
+        /* ==========================================================
+           HOURS
+        ========================================================== */
 
         .hours-item {
           padding-left: 38px;
@@ -419,61 +792,132 @@ export default function Footer() {
 
         .hours {
           color: #86efac;
+
           font-size: 0.85rem;
+
           opacity: 0.8;
+
+          line-height: 1.5;
         }
 
-        /* ---------- BOTTOM BAR ---------- */
+        @media (max-width: 580px) {
+          .hours-item {
+            padding-left: 0;
+          }
+
+          .hours {
+            font-size: 0.82rem;
+          }
+        }
+
+        /* ==========================================================
+           BOTTOM BAR
+        ========================================================== */
+
         .footer-bottom {
           position: relative;
+
           z-index: 1;
+
           padding: 1.6rem 0;
-          border-top: 1px solid rgba(255, 255, 255, 0.07);
+
+          border-top: 1px solid
+            rgba(255, 255, 255, 0.07);
         }
 
         .bottom-container {
           max-width: 1240px;
-          margin: 0 auto;
-          padding: 0 2rem;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          flex-wrap: wrap;
-          gap: 0.75rem;
-        }
 
-        @media (max-width: 580px) {
-          .bottom-container {
-            justify-content: center;
-            text-align: center;
-            padding: 0 1.5rem;
-          }
+          margin: 0 auto;
+
+          padding: 0 2rem;
+
+          display: flex;
+
+          align-items: center;
+
+          justify-content: space-between;
+
+          flex-wrap: wrap;
+
+          gap: 0.75rem;
         }
 
         .copyright {
           font-size: 0.85rem;
+
           color: #86efac;
+
           opacity: 0.6;
+
           margin: 0;
         }
 
         .bottom-tag {
           display: inline-flex;
+
           align-items: center;
+
           gap: 7px;
+
           font-size: 0.8rem;
+
           color: #86efac;
+
           opacity: 0.75;
         }
 
         .tag-dot {
           width: 6px;
           height: 6px;
+
+          flex-shrink: 0;
+
           border-radius: 50%;
+
           background: #4ade80;
-          box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.18);
-          animation: pulseDot 2.4s ease-in-out infinite;
+
+          box-shadow:
+            0 0 0 3px
+            rgba(74, 222, 128, 0.18);
+
+          animation:
+            pulseDot 2.4s ease-in-out infinite;
         }
+
+        /* ==========================================================
+           MOBILE BOTTOM
+        ========================================================== */
+
+        @media (max-width: 580px) {
+          .footer-bottom {
+            padding: 1.25rem 0;
+          }
+
+          .bottom-container {
+            flex-direction: column;
+
+            justify-content: center;
+
+            text-align: center;
+
+            padding: 0 1rem;
+
+            gap: 0.6rem;
+          }
+
+          .copyright {
+            font-size: 0.78rem;
+          }
+
+          .bottom-tag {
+            font-size: 0.76rem;
+          }
+        }
+
+        /* ==========================================================
+           ANIMATION
+        ========================================================== */
 
         @keyframes pulseDot {
           0%,
@@ -481,20 +925,29 @@ export default function Footer() {
             opacity: 1;
             transform: scale(1);
           }
+
           50% {
             opacity: 0.5;
             transform: scale(0.85);
           }
         }
 
-        /* ---------- ACCESSIBILITY ---------- */
+        /* ==========================================================
+           ACCESSIBILITY
+        ========================================================== */
+
         .footer-link:focus-visible,
         .social-link:focus-visible,
         .logo-link:focus-visible {
           outline: 2px solid #4ade80;
           outline-offset: 3px;
+
           border-radius: 4px;
         }
+
+        /* ==========================================================
+           REDUCE MOTION
+        ========================================================== */
 
         @media (prefers-reduced-motion: reduce) {
           .logo-wrapper,

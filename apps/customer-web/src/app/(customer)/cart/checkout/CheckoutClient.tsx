@@ -259,7 +259,7 @@ export default function CheckoutPage() {
       <Script src="https://checkout.razorpay.com/v1/checkout.js" />
       <Header />
 
-      <main className="customer-page-shell mobile-container max-w-5xl pb-16">
+      <main className="customer-page-shell mobile-container max-w-5xl pb-16 mt-4">
         <Breadcrumbs
           items={[
             { label: "Cart", href: "/cart" },
@@ -324,7 +324,7 @@ export default function CheckoutPage() {
                     Order items ({summary.itemCount})
                   </h2>
                   <Link
-                    href="/menu"
+                    href="/home"
                     className="text-sm font-medium text-[#00a300] hover:text-[#166534]"
                   >
                     Add more

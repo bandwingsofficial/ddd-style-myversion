@@ -95,7 +95,7 @@ export default function CartPage() {
       <Header />
       
       <main className="customer-page-shell flex-grow">
-        <section className="mobile-container max-w-6xl">
+        <section className="mobile-container max-w-6xl mt-4 mb-8">
           <Breadcrumbs items={[{ label: "Cart" }]} />
 
           <div className="mb-8 flex flex-col items-start justify-between gap-4 border-b border-slate-200 pb-6 md:flex-row md:items-end">
