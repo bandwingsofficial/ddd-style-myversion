@@ -111,6 +111,23 @@ export class MfaChallengeRepository {
     return result.count;
   }
 
+  async deleteByActor(
+    actorType: ActorType,
+    actorId: string,
+    tx?: PrismaTransaction,
+  ): Promise<number> {
+    const client = tx ?? this.prisma;
+
+    const result = await client.mfaChallenge.deleteMany({
+      where: {
+        actorType: ActorTypeMapper.toPrisma(actorType),
+        actorId,
+      },
+    });
+
+    return result.count;
+  }
+
   /* ------------------------------------------------ */
   /* PRIVATE MAPPER                                   */
   /* ------------------------------------------------ */

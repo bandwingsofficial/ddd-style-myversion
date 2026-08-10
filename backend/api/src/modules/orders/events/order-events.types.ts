@@ -4,7 +4,7 @@
 
 export interface OrderBaseEvent {
   orderId: string;
-  customerId: string;
+  customerId: string | null;
   status: string;
   occurredAt: Date;
 }

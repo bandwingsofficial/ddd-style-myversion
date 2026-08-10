@@ -12,6 +12,7 @@ import { OutletAuthController } from '../controllers/outlet-auth.controller';
 import { SessionController } from '../controllers/session.controller';
 import { SuperAdminAuthController } from '../controllers/super-admin-auth.controller';
 import { SuperAdminProfileController } from '../controllers/super-admin-profile.controller';
+import { CustomerAccountDeletionController } from '../controllers/customer-account-deletion.controller';
 
 /* ================= SERVICES ================= */
 
@@ -23,6 +24,7 @@ import { RefreshTokenService } from '../services/refresh-token.service';
 import { SessionService } from '../services/session.service';
 import { TokenService } from '../services/token.service';
 import { SuperAdminProfileService } from '../services/super-admin-profile.service';
+import { CustomerAccountDeletionService } from '../services/customer-account-deletion.service';
 
 /* ================= STRATEGIES & GUARDS ================= */
 
@@ -87,6 +89,7 @@ import { OutletsModule } from '../../outlets/modules/outlets.module';
     SuperAdminAuthController,
     SessionController,
     SuperAdminProfileController,
+    CustomerAccountDeletionController,
   ],
 
   /* ================= PROVIDERS ================= */
@@ -108,6 +111,7 @@ import { OutletsModule } from '../../outlets/modules/outlets.module';
     TokenService,
     RefreshTokenService,
     SuperAdminProfileService,
+    CustomerAccountDeletionService,
 
     /* ---- REPOSITORIES ---- */
     CustomerRepository,

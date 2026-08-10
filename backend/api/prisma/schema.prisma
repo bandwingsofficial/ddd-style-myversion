@@ -87,6 +87,8 @@ enum AuditAction {
 
   SUPER_ADMIN_LOGIN
   SUPER_ADMIN_ACTION
+
+  CUSTOMER_ACCOUNT_DELETED
 }
 
 enum OutletStatus {
@@ -894,14 +896,15 @@ model Order {
   // RELATIONS
   //////////////////////////////////////////////////
 
-  customerId String
-  customer   Customer @relation(fields: [customerId], references: [id])
+  // Nullable so customer account deletion can detach history without deleting orders.
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
 
   outletId String
   outlet   Outlet @relation(fields: [outletId], references: [id])
 
   cartId String?
-  cart   Cart?   @relation(fields: [cartId], references: [id])
+  cart   Cart?   @relation(fields: [cartId], references: [id], onDelete: SetNull)
 
   //////////////////////////////////////////////////
   // ADDRESS SNAPSHOT

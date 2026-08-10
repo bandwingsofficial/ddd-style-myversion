@@ -11,10 +11,21 @@ interface CustomerAuthState {
   isAuthenticated: boolean;
   isHydrated: boolean;
   sessionChecked: boolean;
+  /**
+   * True after intentional logout/account-deletion begins.
+   * Blocks refresh interceptor for expected post-logout 401s
+   * without disabling normal expired-token refresh while logged in.
+   */
+  sessionTerminated: boolean;
   actorId?: string;
   sessionId?: string;
   setSession: (data: SessionData) => void;
   clearSession: () => void;
+  /** Block refresh immediately; keep actor ids until full logout clears them. */
+  blockSessionRefresh: () => void;
+  /** Full client logout/deletion cleanup. */
+  markSessionTerminated: () => void;
+  clearSessionTermination: () => void;
   setHydrated: () => void;
   markSessionChecked: () => void;
   resetPendingVerification: () => void;
@@ -26,6 +37,7 @@ export const useCustomerAuthStore = create<CustomerAuthState>()(
       isAuthenticated: false,
       isHydrated: false,
       sessionChecked: false,
+      sessionTerminated: false,
       actorId: undefined,
       sessionId: undefined,
 
@@ -35,6 +47,7 @@ export const useCustomerAuthStore = create<CustomerAuthState>()(
           actorId: data.actorId,
           sessionId: data.sessionId,
           sessionChecked: true,
+          sessionTerminated: false,
         }),
 
       clearSession: () =>
@@ -42,6 +55,24 @@ export const useCustomerAuthStore = create<CustomerAuthState>()(
           isAuthenticated: false,
           actorId: undefined,
           sessionId: undefined,
+        }),
+
+      blockSessionRefresh: () =>
+        set({
+          sessionTerminated: true,
+        }),
+
+      markSessionTerminated: () =>
+        set({
+          sessionTerminated: true,
+          isAuthenticated: false,
+          actorId: undefined,
+          sessionId: undefined,
+        }),
+
+      clearSessionTermination: () =>
+        set({
+          sessionTerminated: false,
         }),
 
       resetPendingVerification: () =>

@@ -12,6 +12,7 @@ import { OtpService } from './otp.service';
 import { SessionService } from './session.service';
 import { TokenService } from './token.service';
 import { SuperAdminProfileService } from './super-admin-profile.service';
+import { CustomerAccountDeletionService } from './customer-account-deletion.service';
 
 import { MfaChallengeRepository } from '../repositories/mfa-challenge.repository';
 
@@ -30,6 +31,7 @@ export class AuthOrchestratorService {
     private readonly tokenService: TokenService,
     private readonly mfaRepo: MfaChallengeRepository,
     private readonly superAdminProfileService: SuperAdminProfileService,
+    private readonly customerAccountDeletionService: CustomerAccountDeletionService,
   ) {}
 
   /* ================================================= */
@@ -349,6 +351,39 @@ export class AuthOrchestratorService {
     userAgent?: string;
   }): Promise<{ revokedCount: number }> {
     return this.sessionService.revokeAllSessions(params);
+  }
+
+  /* ================================================= */
+  /* CUSTOMER ACCOUNT DELETION                        */
+  /* ================================================= */
+
+  async deleteAuthenticatedCustomerAccount(params: {
+    customerId: string;
+    sessionId?: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }) {
+    return this.customerAccountDeletionService.deleteAuthenticatedAccount(
+      params,
+    );
+  }
+
+  async requestPublicCustomerAccountDeletionOtp(params: {
+    phone: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }) {
+    // Always run OTP flow (rate-limited) to avoid account enumeration.
+    return this.customerAccountDeletionService.requestDeletionOtp(params);
+  }
+
+  async deleteCustomerAccountByPhone(params: {
+    phone: string;
+    otp: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }) {
+    return this.customerAccountDeletionService.deleteAccountByPhone(params);
   }
 
   /* ================================================= */

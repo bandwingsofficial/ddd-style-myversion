@@ -57,6 +57,49 @@ export class CustomerProfileService {
     return this.profileRepo.findByCustomerId(customerId);
   }
 
+  /**
+   * Authenticated profile payload including Customer.phone
+   * (phone lives on Customer, not CustomerProfile).
+   */
+  async getProfileResponse(customerId: string): Promise<{
+    id: string | null;
+    customerId: string;
+    fullName: string | null;
+    email: string | null;
+    avatarUrl: string | null;
+    gender: string | null;
+    dob: Date | null;
+    phone: string;
+    referralCode: string | null;
+    createdAt: Date | null;
+    updatedAt: Date | null;
+  } | null> {
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: customerId },
+      select: { id: true, phone: true },
+    });
+
+    if (!customer) {
+      return null;
+    }
+
+    const profile = await this.profileRepo.findByCustomerId(customerId);
+
+    return {
+      id: profile?.id ?? null,
+      customerId: customer.id,
+      fullName: profile?.fullName ?? null,
+      email: profile?.email ?? null,
+      avatarUrl: profile?.avatarUrl ?? null,
+      gender: profile?.gender ?? null,
+      dob: profile?.dob ?? null,
+      phone: customer.phone,
+      referralCode: profile?.referralCode ?? null,
+      createdAt: profile?.createdAt ?? null,
+      updatedAt: profile?.updatedAt ?? null,
+    };
+  }
+
   async getProfileOrThrow(customerId: string): Promise<CustomerProfile> {
     const profile = await this.profileRepo.findByCustomerId(customerId);
 

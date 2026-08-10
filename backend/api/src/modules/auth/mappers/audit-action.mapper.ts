@@ -102,6 +102,9 @@ export class AuditActionMapper {
       case DomainAuditAction.SUPER_ADMIN_ACTION:
         return PrismaAuditAction.SUPER_ADMIN_ACTION;
 
+      case DomainAuditAction.CUSTOMER_ACCOUNT_DELETED:
+        return PrismaAuditAction.CUSTOMER_ACCOUNT_DELETED;
+
       default:
         throw new Error(`Unsupported Domain AuditAction: ${action}`);
     }
@@ -190,6 +193,9 @@ export class AuditActionMapper {
         return DomainAuditAction.SUPER_ADMIN_LOGIN;
       case PrismaAuditAction.SUPER_ADMIN_ACTION:
         return DomainAuditAction.SUPER_ADMIN_ACTION;
+
+      case PrismaAuditAction.CUSTOMER_ACCOUNT_DELETED:
+        return DomainAuditAction.CUSTOMER_ACCOUNT_DELETED;
 
       default:
         throw new Error(`Unsupported Prisma AuditAction: ${action}`);

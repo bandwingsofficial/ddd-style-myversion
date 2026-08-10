@@ -16,7 +16,8 @@ export interface OrderProps {
   orderSequence: number;
   orderNumber: string;
 
-  customerId: string;
+  /** Null after customer account deletion (order history retained). */
+  customerId: string | null;
   customerFullName?: string | null;
   customerPhone?: string | null;
   customerEmail?: string | null;
@@ -61,7 +62,8 @@ export class Order {
   readonly orderSequence: number;
   readonly orderNumber: string;
 
-  readonly customerId: string;
+  /** Null after customer account deletion (order history retained). */
+  readonly customerId: string | null;
   readonly customerFullName?: string | null;
   readonly customerPhone?: string | null;
   readonly customerEmail?: string | null;
@@ -142,6 +144,13 @@ export class Order {
     deliveryInstructions?: string | null;
   }): Order {
     const now = params.now ?? new Date();
+
+    if (!params.customerId) {
+      throw new ValidationError(
+        'ORDER_INVALID_CUSTOMER',
+        'Customer is required',
+      );
+    }
 
     return new Order({
       id: params.id,
@@ -351,12 +360,7 @@ export class Order {
   /* ---------------------------------------------- */
 
   private assertValidState(): void {
-    if (!this.customerId) {
-      throw new ValidationError(
-        'ORDER_INVALID_CUSTOMER',
-        'Customer is required',
-      );
-    }
+    // customerId may be null after account deletion; createNew enforces it for new orders.
 
     if (!this.outletId) {
       throw new ValidationError('ORDER_INVALID_OUTLET', 'Outlet is required');

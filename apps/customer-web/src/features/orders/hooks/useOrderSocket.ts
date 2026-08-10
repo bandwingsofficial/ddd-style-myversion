@@ -29,6 +29,7 @@ export function useOrderSocket(
     orderId?: string;
     outletId?: string;
     customerId?: string;
+    enabled?: boolean;
   },
 ) {
   const onUpdateRef = useRef(onUpdate);
@@ -42,7 +43,13 @@ export function useOrderSocket(
     filterRef.current = filter;
   }, [filter]);
 
+  const enabled = filter?.enabled !== false;
+
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, '');
 
     if (!baseUrl) {
@@ -91,5 +98,5 @@ export function useOrderSocket(
     return () => {
       socket.disconnect();
     };
-  }, []);
+  }, [enabled]);
 }

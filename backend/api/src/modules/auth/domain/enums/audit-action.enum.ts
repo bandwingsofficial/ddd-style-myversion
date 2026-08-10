@@ -67,4 +67,9 @@ export enum AuditAction {
   /* ================================================= */
   SUPER_ADMIN_LOGIN = 'SUPER_ADMIN_LOGIN',
   SUPER_ADMIN_ACTION = 'SUPER_ADMIN_ACTION',
+
+  /* ================================================= */
+  /* Customer account                                  */
+  /* ================================================= */
+  CUSTOMER_ACCOUNT_DELETED = 'CUSTOMER_ACCOUNT_DELETED',
 }

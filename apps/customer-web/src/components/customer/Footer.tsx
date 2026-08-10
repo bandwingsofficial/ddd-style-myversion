@@ -219,6 +219,17 @@ export default function Footer() {
             <ul className="link-list">
               <li>
                 <Link
+                  href="/delete-account"
+                  className="footer-link"
+                >
+                  <span className="link-text">
+                    Delete Account
+                  </span>
+                </Link>
+              </li>
+
+              <li>
+                <Link
                   href="/privacy-policy"
                   className="footer-link"
                 >

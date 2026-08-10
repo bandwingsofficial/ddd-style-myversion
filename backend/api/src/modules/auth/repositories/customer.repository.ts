@@ -131,6 +131,14 @@ export class CustomerRepository {
     return this.toDomain(row);
   }
 
+  async deleteById(customerId: string, tx?: PrismaTransaction): Promise<void> {
+    const client = tx ?? this.prisma;
+
+    await client.customer.delete({
+      where: { id: customerId },
+    });
+  }
+
   /* ---------------------------------------------- */
   /* PRIVATE MAPPER                                 */
   /* ---------------------------------------------- */

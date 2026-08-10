@@ -160,6 +160,16 @@ export class OtpRequestRepository {
     }
   }
 
+  async deleteByPhone(phone: string, tx?: PrismaTransaction): Promise<number> {
+    const client = tx ?? this.prisma;
+
+    const result = await client.otpRequest.deleteMany({
+      where: { phone },
+    });
+
+    return result.count;
+  }
+
   /* ---------------------------------------------- */
   /* PRIVATE MAPPER                                 */
   /* ---------------------------------------------- */

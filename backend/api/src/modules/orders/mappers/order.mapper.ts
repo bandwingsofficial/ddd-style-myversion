@@ -122,7 +122,7 @@ export class OrderMapper {
       updatedAt: order.updatedAt,
 
       customer: {
-        connect: { id: order.customerId },
+        connect: { id: order.customerId as string },
       },
 
       outlet: {

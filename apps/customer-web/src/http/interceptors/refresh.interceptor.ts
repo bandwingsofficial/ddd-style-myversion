@@ -9,6 +9,7 @@ import { useCustomerAuthStore } from "@/features/customer-auth/store/auth.store"
 
 import {
   handleAuthInvalidated,
+  isSessionTerminated,
 } from "@/features/customer-auth/services/auth-sync.service";
 
 let isRefreshing = false;
@@ -41,10 +42,7 @@ function getErrorCode(error: AxiosError): string | undefined {
   return data?.code;
 }
 
-function devLog(
-  event: string,
-  payload: Record<string, unknown>
-) {
+function devLog(event: string, payload: Record<string, unknown>) {
   if (process.env.NODE_ENV === "production") return;
 
   console.info("[auth-refresh]", {
@@ -53,9 +51,31 @@ function devLog(
   });
 }
 
-export const attachRefreshInterceptor = (
-  client: AxiosInstance
-) => {
+/**
+ * True when a 401/403 should NOT trigger refresh because the
+ * customer intentionally logged out or deleted their account.
+ *
+ * Do NOT treat "not yet authenticated on boot" as terminated —
+ * expired access cookies must still be refreshable during
+ * session restore.
+ */
+function shouldSkipRefreshForTerminatedSession(): boolean {
+  const { isAuthenticated, sessionChecked, sessionTerminated } =
+    useCustomerAuthStore.getState();
+
+  if (sessionTerminated) {
+    return true;
+  }
+
+  // Confirmed logged-out client: do not attempt refresh.
+  if (sessionChecked && !isAuthenticated) {
+    return true;
+  }
+
+  return false;
+}
+
+export const attachRefreshInterceptor = (client: AxiosInstance) => {
   client.interceptors.response.use(
     (response) => response,
 
@@ -94,10 +114,16 @@ export const attachRefreshInterceptor = (
        * Insufficient role is an authorization problem,
        * not an expired session.
        */
-      if (
-        status === 403 &&
-        errorCode === "INSUFFICIENT_ROLE"
-      ) {
+      if (status === 403 && errorCode === "INSUFFICIENT_ROLE") {
+        if (shouldSkipRefreshForTerminatedSession()) {
+          devLog("terminated_session_skip_refresh", {
+            url: requestUrl,
+            status,
+            reason: "insufficient_role_after_termination",
+          });
+          return Promise.reject(error);
+        }
+
         devLog("insufficient_role", {
           url: requestUrl,
         });
@@ -119,11 +145,24 @@ export const attachRefreshInterceptor = (
        */
       const shouldAttemptRefresh =
         (status === 401 ||
-          (status === 403 &&
-            errorCode === "ACCESS_DENIED")) &&
+          (status === 403 && errorCode === "ACCESS_DENIED")) &&
         !originalRequest._retry;
 
       if (!shouldAttemptRefresh) {
+        return Promise.reject(error);
+      }
+
+      /*
+       * Intentional logout / account deletion:
+       * do not refresh, do not retry, terminate harmlessly.
+       */
+      if (shouldSkipRefreshForTerminatedSession()) {
+        devLog("terminated_session_skip_refresh", {
+          url: requestUrl,
+          status,
+          sessionTerminated: isSessionTerminated(),
+          isAuthenticated: useCustomerAuthStore.getState().isAuthenticated,
+        });
         return Promise.reject(error);
       }
 
@@ -147,9 +186,7 @@ export const attachRefreshInterceptor = (
              *
              * Do NOT use plain axios(originalRequest).
              */
-            client(originalRequest)
-              .then(resolve)
-              .catch(reject);
+            client(originalRequest).then(resolve).catch(reject);
           });
         });
       }
@@ -169,6 +206,12 @@ export const attachRefreshInterceptor = (
          */
         await refreshSession();
 
+        // Session may have been terminated while refresh was in flight.
+        if (shouldSkipRefreshForTerminatedSession()) {
+          resolveQueue(false);
+          return Promise.reject(error);
+        }
+
         devLog("refresh_success", {});
 
         /*
@@ -180,13 +223,9 @@ export const attachRefreshInterceptor = (
          * - withCredentials: true
          * - x-client-type: web
          */
-        const sessionRes = await client.get(
-          "/auth/session/me"
-        );
+        const sessionRes = await client.get("/auth/session/me");
 
-        useCustomerAuthStore
-          .getState()
-          .setSession(sessionRes.data.data);
+        useCustomerAuthStore.getState().setSession(sessionRes.data.data);
 
         /*
          * Tell all queued requests that refresh succeeded.
@@ -199,6 +238,12 @@ export const attachRefreshInterceptor = (
          */
         return client(originalRequest);
       } catch (refreshError) {
+        // Expected if account was deleted mid-refresh.
+        if (shouldSkipRefreshForTerminatedSession()) {
+          resolveQueue(false);
+          return Promise.reject(error);
+        }
+
         devLog("refresh_failed", {
           error: String(refreshError),
         });
@@ -226,6 +271,6 @@ export const attachRefreshInterceptor = (
       } finally {
         isRefreshing = false;
       }
-    }
+    },
   );
 };

@@ -15,8 +15,8 @@ export class CustomerProfileOrchestratorService {
   /* READ                                              */
   /* ================================================= */
 
-  async getProfile(customerId: string): Promise<CustomerProfile | null> {
-    return this.profileService.getProfile(customerId);
+  async getProfile(customerId: string) {
+    return this.profileService.getProfileResponse(customerId);
   }
 
   async getProfileOrThrow(customerId: string): Promise<CustomerProfile> {
