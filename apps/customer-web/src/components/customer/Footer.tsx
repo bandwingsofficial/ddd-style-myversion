@@ -5,7 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   Instagram,
-  Twitter,
   Facebook,
   Phone,
   Mail,
@@ -50,9 +49,6 @@ export default function Footer() {
               </a>
               <a href="https://www.instagram.com/Canten.online/" className="social-link" aria-label="Instagram">
                 <Instagram size={18} />
-              </a>
-              <a href="https://twitter.com/CantenOnline" className="social-link" aria-label="Twitter">
-                <Twitter size={18} />
               </a>
             </div>
           </div>
