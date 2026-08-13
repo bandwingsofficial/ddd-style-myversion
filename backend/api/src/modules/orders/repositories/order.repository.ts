@@ -6,6 +6,7 @@ import { PrismaTransaction } from '../../../infrastructure/prisma/prisma.types';
 import { Order } from '../domain/models/order.model';
 import { OrderMapper } from '../mappers/order.mapper';
 import { mapOrderCustomerDto } from '../../../common/utils/customer-display.util';
+import { buildCreatedAtFilter } from '../utils/order-created-at-filter.util';
 
 @Injectable()
 export class OrderRepository {
@@ -199,13 +200,25 @@ export class OrderRepository {
   /* ADMIN READS                                       */
   /* ================================================= */
 
-  async findAllForAdmin(params: {
-    page: number;
-    limit: number;
+  private buildAdminListWhere(params: {
     status?: string;
     search?: string;
+    fromDate?: string;
+    toDate?: string;
+    outletId?: string;
+    excludePendingPayment?: boolean;
   }) {
     const where: Record<string, unknown> = {};
+
+    if (params.outletId) {
+      where.outletId = params.outletId;
+    }
+
+    if (params.excludePendingPayment) {
+      where.status = {
+        notIn: ['CREATED', 'PAYMENT_PENDING'],
+      };
+    }
 
     if (params.status) {
       where.status = params.status;
@@ -228,6 +241,24 @@ export class OrderRepository {
         { customer: { phone: { contains: term } } },
       ];
     }
+
+    const createdAt = buildCreatedAtFilter(params.fromDate, params.toDate);
+    if (createdAt) {
+      where.createdAt = createdAt;
+    }
+
+    return where;
+  }
+
+  async findAllForAdmin(params: {
+    page: number;
+    limit: number;
+    status?: string;
+    search?: string;
+    fromDate?: string;
+    toDate?: string;
+  }) {
+    const where = this.buildAdminListWhere(params);
 
     const skip = (params.page - 1) * params.limit;
 
@@ -260,10 +291,10 @@ export class OrderRepository {
     return {
       items: rows.map((row) => {
         const customer = mapOrderCustomerDto({
-          id: row.customer.id,
-          fullName: row.customer.profile?.fullName,
-          phone: row.customer.phone,
-          email: row.customer.profile?.email,
+          id: row.customer?.id,
+          fullName: row.customer?.profile?.fullName,
+          phone: row.customer?.phone,
+          email: row.customer?.profile?.email,
         });
 
         return {
@@ -285,6 +316,55 @@ export class OrderRepository {
           createdAt: row.createdAt,
         };
       }),
+      total,
+      page: params.page,
+      limit: params.limit,
+      totalPages: Math.ceil(total / params.limit) || 1,
+    };
+  }
+
+  async findAllForOutlet(params: {
+    outletId: string;
+    page: number;
+    limit: number;
+    status?: string;
+    search?: string;
+    fromDate?: string;
+    toDate?: string;
+  }): Promise<{
+    items: Order[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const where = this.buildAdminListWhere({
+      ...params,
+      excludePendingPayment: true,
+    });
+
+    const skip = (params.page - 1) * params.limit;
+
+    const [rows, total] = await Promise.all([
+      this.prisma.order.findMany({
+        where,
+        skip,
+        take: params.limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          items: true,
+          customer: {
+            include: {
+              profile: true,
+            },
+          },
+        },
+      }),
+      this.prisma.order.count({ where }),
+    ]);
+
+    return {
+      items: rows.map((row) => OrderMapper.toDomain(row)),
       total,
       page: params.page,
       limit: params.limit,

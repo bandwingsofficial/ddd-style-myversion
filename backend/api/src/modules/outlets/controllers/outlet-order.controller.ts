@@ -3,6 +3,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   UseGuards,
   ForbiddenException,
 } from '@nestjs/common';
@@ -91,16 +92,77 @@ export class OutletOrderController {
     };
   }
 
+  private hasHistoryQuery(params: {
+    page?: string;
+    status?: string;
+    search?: string;
+    fromDate?: string;
+    toDate?: string;
+  }) {
+    return (
+      params.page !== undefined ||
+      Boolean(params.status?.trim()) ||
+      Boolean(params.search?.trim()) ||
+      Boolean(params.fromDate?.trim()) ||
+      Boolean(params.toDate?.trim())
+    );
+  }
+
   /* ================================================= */
   /* LIST ORDERS                                      */
   /* ================================================= */
 
   @Get()
-  async getOrders(@CurrentUser() user: any) {
+  async getOrders(
+    @CurrentUser() user: any,
+    @Query('page') page?: string,
+    @Query('limit') limit = '20',
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
+  ) {
     if (!user?.outletId) {
       throw new ForbiddenException('Outlet not found');
     }
 
+    // History / filtered list: server-side pagination
+    if (this.hasHistoryQuery({ page, status, search, fromDate, toDate })) {
+      const result = await this.orderOrchestrator.listOrdersForOutlet({
+        outletId: user.outletId,
+        page: Math.max(1, Number(page) || 1),
+        limit: Math.min(100, Math.max(1, Number(limit) || 20)),
+        status: status?.trim() || undefined,
+        search: search?.trim() || undefined,
+        fromDate: fromDate?.trim() || undefined,
+        toDate: toDate?.trim() || undefined,
+      });
+
+      const paymentMap = await this.paymentRepo.findLatestByOrderIds(
+        result.items.map((order) => order.id),
+      );
+
+      return {
+        success: true,
+        code: 'OUTLET_ORDERS_FETCHED',
+        message: 'Outlet orders fetched successfully',
+        data: {
+          items: result.items.map(
+            (order) =>
+              new OutletOrderResponseDto(
+                order,
+                paymentMap.get(order.id) ?? null,
+              ),
+          ),
+          total: result.total,
+          page: result.page,
+          limit: result.limit,
+          totalPages: result.totalPages,
+        },
+      };
+    }
+
+    // Live board: full list (existing behavior)
     const orders = await this.orderOrchestrator.getOutletOrders(user.outletId);
 
     const paymentMap = await this.paymentRepo.findLatestByOrderIds(

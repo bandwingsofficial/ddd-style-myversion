@@ -76,6 +76,21 @@ export interface OrderResponse {
   data: Order[];
 }
 
+export interface PaginatedOrders {
+  items: Order[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface PaginatedOrderResponse {
+  success: boolean;
+  code: string;
+  message: string;
+  data: PaginatedOrders;
+}
+
 export interface SingleOrderResponse {
   success: boolean;
   code: string;

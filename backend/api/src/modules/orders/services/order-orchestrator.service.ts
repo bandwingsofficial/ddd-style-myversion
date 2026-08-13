@@ -110,11 +110,25 @@ export class OrderOrchestratorService {
     return this.orderService.getOutletOrders(outletId);
   }
 
+  async listOrdersForOutlet(params: {
+    outletId: string;
+    page: number;
+    limit: number;
+    status?: string;
+    search?: string;
+    fromDate?: string;
+    toDate?: string;
+  }) {
+    return this.orderService.listForOutlet(params);
+  }
+
   async listOrdersForAdmin(params: {
     page: number;
     limit: number;
     status?: string;
     search?: string;
+    fromDate?: string;
+    toDate?: string;
   }) {
     return this.orderService.listForAdmin(params);
   }

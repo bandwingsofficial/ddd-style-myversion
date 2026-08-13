@@ -19,12 +19,16 @@ export class OrderAdminController {
     @Query('limit') limit = '20',
     @Query('status') status?: string,
     @Query('search') search?: string,
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
   ) {
     const data = await this.orchestrator.listOrdersForAdmin({
       page: Math.max(1, Number(page) || 1),
       limit: Math.min(100, Math.max(1, Number(limit) || 20)),
       status,
       search,
+      fromDate,
+      toDate,
     });
 
     return {

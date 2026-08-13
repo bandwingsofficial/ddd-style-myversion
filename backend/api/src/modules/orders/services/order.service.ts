@@ -62,8 +62,22 @@ export class OrderService {
     limit: number;
     status?: string;
     search?: string;
+    fromDate?: string;
+    toDate?: string;
   }) {
     return this.orderRepo.findAllForAdmin(params);
+  }
+
+  async listForOutlet(params: {
+    outletId: string;
+    page: number;
+    limit: number;
+    status?: string;
+    search?: string;
+    fromDate?: string;
+    toDate?: string;
+  }) {
+    return this.orderRepo.findAllForOutlet(params);
   }
 
   async getAdminDetail(orderId: string) {

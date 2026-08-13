@@ -11,6 +11,32 @@ import { OrdersAdminApi } from '../api/orders-admin.api';
 import { AdminOrderListItem } from '../types/order.types';
 import { OrderStatusBadge } from '../components/order-status-badge';
 
+const ORDER_STATUS_OPTIONS = [
+  'CREATED',
+  'PAYMENT_PENDING',
+  'PAID',
+  'CONFIRMED',
+  'PREPARING',
+  'OUT_FOR_DELIVERY',
+  'DELIVERED',
+  'CANCELLED',
+  'FAILED',
+] as const;
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedValue(value);
+    }, delayMs);
+
+    return () => window.clearTimeout(timer);
+  }, [value, delayMs]);
+
+  return debouncedValue;
+}
+
 function formatDate(value: string) {
   return new Date(value).toLocaleString('en-IN', {
     day: '2-digit',
@@ -25,26 +51,53 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const debouncedSearch = useDebouncedValue(search, 400);
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await OrdersAdminApi.list({ page, limit: 20 });
+      const data = await OrdersAdminApi.list({
+        page,
+        limit: 20,
+        search: debouncedSearch.trim() || undefined,
+        status: status || undefined,
+        fromDate: fromDate || undefined,
+        toDate: toDate || undefined,
+      });
       setOrders(data.items);
       setTotalPages(data.totalPages);
+      setTotal(data.total);
     } catch (err) {
       setError(getApiErrorMessage(err, 'Failed to load orders'));
       setOrders([]);
+      setTotal(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
     }
-  }, [page]);
+  }, [page, debouncedSearch, status, fromDate, toDate]);
 
   useEffect(() => {
     void loadOrders();
   }, [loadOrders]);
+
+  const resetFilters = () => {
+    setSearch('');
+    setStatus('');
+    setFromDate('');
+    setToDate('');
+    setPage(1);
+  };
+
+  const filtersActive =
+    Boolean(search.trim()) || Boolean(status) || Boolean(fromDate) || Boolean(toDate);
 
   return (
     <div className="min-h-screen bg-background p-3 font-sans md:p-4">
@@ -53,6 +106,79 @@ export default function OrdersPage() {
         <p className="mt-1 text-sm text-muted-foreground">
           Review customer orders, payment status, and fulfillment progress.
         </p>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-end gap-3 rounded-2xl border border-border bg-muted/20 p-4">
+        <div className="min-w-[220px] flex-1">
+          <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+            Search
+          </label>
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            placeholder="Search order, customer, phone..."
+            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+            From Date
+          </label>
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(e) => {
+              setFromDate(e.target.value);
+              setPage(1);
+            }}
+            className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+            To Date
+          </label>
+          <input
+            type="date"
+            value={toDate}
+            onChange={(e) => {
+              setToDate(e.target.value);
+              setPage(1);
+            }}
+            className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-muted-foreground">
+            Status
+          </label>
+          <select
+            value={status}
+            onChange={(e) => {
+              setStatus(e.target.value);
+              setPage(1);
+            }}
+            className="rounded-xl border border-border bg-background px-3 py-2 text-sm"
+          >
+            <option value="">All Statuses</option>
+            {ORDER_STATUS_OPTIONS.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button
+          type="button"
+          onClick={resetFilters}
+          className="rounded-xl px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+        >
+          Reset All
+        </button>
       </div>
 
       {error && (
@@ -87,7 +213,9 @@ export default function OrdersPage() {
               ) : orders.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">
-                    No orders found.
+                    {filtersActive
+                      ? 'No orders found matching the selected filters.'
+                      : 'No orders found.'}
                   </td>
                 </tr>
               ) : (
@@ -140,11 +268,12 @@ export default function OrdersPage() {
           Previous
         </button>
         <span className="text-sm text-muted-foreground">
-          Page {page} of {totalPages}
+          Page {page} of {Math.max(totalPages, 1)}
+          {total > 0 ? ` · ${total} orders` : ''}
         </span>
         <button
           type="button"
-          disabled={page >= totalPages || loading}
+          disabled={page >= totalPages || loading || totalPages === 0}
           onClick={() => setPage((value) => value + 1)}
           className="rounded-xl border border-border bg-background px-4 py-2 text-sm font-semibold disabled:opacity-50"
         >
