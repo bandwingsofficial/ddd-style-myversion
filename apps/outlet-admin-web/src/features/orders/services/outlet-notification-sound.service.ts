@@ -1,4 +1,4 @@
-const SOUND_URL = '/sounds/new-order.mp3';
+const SOUND_URL = '/sounds/alert-sound.mp3';
 const REPEAT_DELAY_MS = 10_000;
 
 class OutletNotificationSoundService {
