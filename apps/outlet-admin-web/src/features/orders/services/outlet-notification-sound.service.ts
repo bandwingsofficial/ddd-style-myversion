@@ -169,7 +169,7 @@ class OutletNotificationSoundService {
       this.endedHandler = null;
 
       if (this.running && this.pendingCount > 0) {
-        this.scheduleNextPlay(REPEAT_DELAY_MS);
+        this.scheduleNextPlay(100);
       }
     };
 
