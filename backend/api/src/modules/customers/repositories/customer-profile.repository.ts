@@ -41,6 +41,21 @@ export class CustomerProfileRepository {
   }
 
   /* ================================================= */
+  /* READ – BY EMAIL                                   */
+  /* ================================================= */
+
+  async findByEmail(
+    email: string,
+    tx?: PrismaTransaction,
+  ): Promise<CustomerProfile | null> {
+    const row = await (tx ?? this.prisma).customerProfile.findUnique({
+      where: { email },
+    });
+
+    return row ? this.toDomain(row) : null;
+  }
+
+  /* ================================================= */
   /* CREATE                                            */
   /* ================================================= */
 
@@ -104,9 +119,11 @@ export class CustomerProfileRepository {
 
     const row = await client.customerProfile.upsert({
       where: { customerId: profile.customerId },
+
       create: this.toPersistence(
         profile,
       ) satisfies Prisma.CustomerProfileUncheckedCreateInput,
+
       update: this.toUpdatePersistence(
         profile,
       ) satisfies Prisma.CustomerProfileUncheckedUpdateInput,
@@ -122,6 +139,7 @@ export class CustomerProfileRepository {
   private toDomain(row: {
     id: string;
     customerId: string;
+    phone: string;
 
     fullName: string | null;
     email: string | null;
@@ -138,6 +156,7 @@ export class CustomerProfileRepository {
     return CustomerProfile.rehydrate({
       id: row.id,
       customerId: row.customerId,
+      phone: row.phone,
 
       fullName: row.fullName ?? undefined,
       email: row.email ?? undefined,
@@ -153,12 +172,17 @@ export class CustomerProfileRepository {
     });
   }
 
+  /* ================================================= */
+  /* DOMAIN -> PRISMA CREATE                           */
+  /* ================================================= */
+
   private toPersistence(
     profile: CustomerProfile,
   ): Prisma.CustomerProfileUncheckedCreateInput {
     return {
       id: profile.id,
       customerId: profile.customerId,
+      phone: profile.phone,
 
       fullName: profile.fullName ?? null,
       email: profile.email ?? null,
@@ -174,10 +198,21 @@ export class CustomerProfileRepository {
     };
   }
 
+  /* ================================================= */
+  /* DOMAIN -> PRISMA UPDATE                           */
+  /* ================================================= */
+
   private toUpdatePersistence(
     profile: CustomerProfile,
   ): Prisma.CustomerProfileUncheckedUpdateInput {
     return {
+      /*
+       * Phone is intentionally NOT included here.
+       *
+       * Customer.phone is the login identity.
+       * Profile editing must never change it.
+       */
+
       fullName: profile.fullName ?? null,
       email: profile.email ?? null,
       avatarUrl: profile.avatarUrl ?? null,

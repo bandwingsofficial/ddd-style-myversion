@@ -10,6 +10,7 @@ export class CustomerProfileMapper {
     return CustomerProfile.rehydrate({
       id: row.id,
       customerId: row.customerId,
+      phone: row.phone,
 
       fullName: row.fullName ?? undefined,
       email: row.email ?? undefined,
@@ -33,6 +34,7 @@ export class CustomerProfileMapper {
     return {
       id: entity.id,
       customerId: entity.customerId,
+      phone: entity.phone,
 
       fullName: entity.fullName ?? null,
       email: entity.email ?? null,
@@ -48,3 +50,4 @@ export class CustomerProfileMapper {
     };
   }
 }
+

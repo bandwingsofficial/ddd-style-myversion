@@ -4,9 +4,15 @@ import {
   IsEmail,
   MaxLength,
   IsDateString,
+  IsNotEmpty,
 } from 'class-validator';
 
 export class CreateCustomerProfileDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(20)
+  phone!:string;
+  
   @IsOptional()
   @IsString()
   @MaxLength(120)

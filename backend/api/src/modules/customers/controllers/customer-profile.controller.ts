@@ -59,7 +59,9 @@ export class CustomerProfileController {
   /* ================================================= */
 
   @Post()
-  @UseInterceptors(FileInterceptor('avatar', customerProfileImageUploadOptions))
+  @UseInterceptors(
+    FileInterceptor('avatar', customerProfileImageUploadOptions),
+  )
   async createProfile(
     @CurrentUser() user,
     @Body() dto: CreateCustomerProfileDto,
@@ -69,8 +71,27 @@ export class CustomerProfileController {
       ? `images/customerprofile/avatar/${file.filename}`
       : undefined;
 
+    /*
+     * Phone is NOT accepted from the frontend.
+     *
+     * The phone comes from the authenticated Customer
+     * through the application/service layer.
+     *
+     * This endpoint is mainly for explicit profile creation.
+     */
     const data = await this.orchestrator.createProfile({
       customerId: user.actorId,
+
+      /*
+       * Temporary value comes from the authenticated identity.
+       * The orchestrator/service will receive the real Customer phone
+       * when called from the login flow.
+       *
+       * Since this controller does not own Customer data,
+       * explicit creation should normally happen through ensureProfile.
+       */
+      phone: user.phone,
+
       fullName: dto.fullName,
       email: dto.email,
       avatarUrl: avatarPath,
@@ -91,7 +112,9 @@ export class CustomerProfileController {
   /* ================================================= */
 
   @Patch()
-  @UseInterceptors(FileInterceptor('avatar', customerProfileImageUploadOptions))
+  @UseInterceptors(
+    FileInterceptor('avatar', customerProfileImageUploadOptions),
+  )
   async updateProfile(
     @CurrentUser() user,
     @Body() dto: UpdateCustomerProfileDto,
@@ -125,7 +148,9 @@ export class CustomerProfileController {
   /* ================================================= */
 
   @Post('upsert')
-  @UseInterceptors(FileInterceptor('avatar', customerProfileImageUploadOptions))
+  @UseInterceptors(
+    FileInterceptor('avatar', customerProfileImageUploadOptions),
+  )
   async upsertProfile(
     @CurrentUser() user,
     @Body() dto: UpdateCustomerProfileDto,
@@ -135,8 +160,20 @@ export class CustomerProfileController {
       ? `images/customerprofile/avatar/${file.filename}`
       : undefined;
 
+    /*
+     * Existing profile phone is never sent from the frontend.
+     *
+     * The application/service layer owns phone synchronization.
+     */
     const data = await this.orchestrator.upsertProfile({
       customerId: user.actorId,
+
+      /*
+       * Phone should come from the authenticated Customer,
+       * not the request body.
+       */
+      phone: user.phone,
+
       fullName: dto.fullName,
       email: dto.email,
       avatarUrl: avatarPath,
@@ -153,7 +190,7 @@ export class CustomerProfileController {
   }
 
   /* ================================================= */
-  /* DELETE PROFILE                                    */
+  /* DELETE PROFILE                                   */
   /* ================================================= */
 
   @Delete()

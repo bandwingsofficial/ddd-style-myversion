@@ -16,6 +16,16 @@ import { ForbiddenError, UnauthorizedError } from '../../../common/errors';
 import { AuthErrors } from '../constants/auth-errors';
 import { OutletUser } from '../domain/models/outlet-user.model';
 
+/* ================================================= */
+/* CUSTOMER PROFILE                                 */
+/* ================================================= */
+
+import { CustomerProfileOrchestratorService } from '../../customers/services/customer-profile-orchestrator.service';
+
+/* ================================================= */
+/* SERVICE                                           */
+/* ================================================= */
+
 @Injectable()
 export class IdentityService {
   constructor(
@@ -24,6 +34,12 @@ export class IdentityService {
     private readonly outletUserRepo: OutletUserRepository,
     private readonly superAdminRepo: SuperAdminRepository,
     private readonly outletRepo: OutletRepository,
+
+    /* ---------------------------------------------- */
+    /* CUSTOMER PROFILE                               */
+    /* ---------------------------------------------- */
+
+    private readonly customerProfileOrchestrator: CustomerProfileOrchestratorService,
   ) {}
 
   /* ================================================= */
@@ -32,12 +48,25 @@ export class IdentityService {
 
   /**
    * OTP-based login (Customer / Delivery)
+   *
+   * isNew:
+   * - true  -> a new customer was created
+   * - false -> existing customer/delivery partner
+   *
+   * Customer profile:
+   * - New customer -> profile is created automatically
+   * - Existing customer without profile -> profile is created silently
+   * - Existing customer with profile -> NOTHING is changed
    */
   async resolveByPhone(params: {
     actorType: ActorType;
     phone: string;
     autoCreate?: boolean;
-  }): Promise<{ actorId: string; tokenVersion: number }> {
+  }): Promise<{
+    actorId: string;
+    tokenVersion: number;
+    isNew: boolean;
+  }> {
     const phone = Phone.fromRaw(params.phone);
     const autoCreate = params.autoCreate !== false;
 
@@ -91,8 +120,12 @@ export class IdentityService {
     switch (params.actorType) {
       case ActorType.CUSTOMER: {
         const customer = await this.customerRepo.findById(params.actorId);
+
         if (!customer) {
-          throw new UnauthorizedError(AuthErrors.UNAUTHORIZED, 'Unauthorized');
+          throw new UnauthorizedError(
+            AuthErrors.UNAUTHORIZED,
+            'Unauthorized',
+          );
         }
 
         IdentityActivePolicy.check(customer);
@@ -105,8 +138,12 @@ export class IdentityService {
 
       case ActorType.DELIVERY: {
         const partner = await this.deliveryRepo.findById(params.actorId);
+
         if (!partner) {
-          throw new UnauthorizedError(AuthErrors.UNAUTHORIZED, 'Unauthorized');
+          throw new UnauthorizedError(
+            AuthErrors.UNAUTHORIZED,
+            'Unauthorized',
+          );
         }
 
         IdentityActivePolicy.check(partner);
@@ -120,8 +157,12 @@ export class IdentityService {
 
       case ActorType.OUTLET_USER: {
         const user = await this.outletUserRepo.findById(params.actorId);
+
         if (!user) {
-          throw new UnauthorizedError(AuthErrors.UNAUTHORIZED, 'Unauthorized');
+          throw new UnauthorizedError(
+            AuthErrors.UNAUTHORIZED,
+            'Unauthorized',
+          );
         }
 
         await this.assertOutletUserCanAuthenticate(user);
@@ -134,8 +175,12 @@ export class IdentityService {
 
       case ActorType.SUPER_ADMIN: {
         const admin = await this.superAdminRepo.findById(params.actorId);
+
         if (!admin) {
-          throw new UnauthorizedError(AuthErrors.UNAUTHORIZED, 'Unauthorized');
+          throw new UnauthorizedError(
+            AuthErrors.UNAUTHORIZED,
+            'Unauthorized',
+          );
         }
 
         IdentityActivePolicy.check(admin);
@@ -147,7 +192,10 @@ export class IdentityService {
       }
 
       default:
-        throw new UnauthorizedError(AuthErrors.UNAUTHORIZED, 'Unauthorized');
+        throw new UnauthorizedError(
+          AuthErrors.UNAUTHORIZED,
+          'Unauthorized',
+        );
     }
   }
 
@@ -158,8 +206,18 @@ export class IdentityService {
   private async resolveCustomer(
     phone: Phone,
     autoCreate: boolean,
-  ): Promise<{ actorId: string; tokenVersion: number }> {
+  ): Promise<{
+    actorId: string;
+    tokenVersion: number;
+    isNew: boolean;
+  }> {
     let customer = await this.customerRepo.findByPhone(phone);
+
+    let isNew = false;
+
+    /* ---------------------------------------------- */
+    /* CREATE CUSTOMER IF REQUIRED                    */
+    /* ---------------------------------------------- */
 
     if (!customer) {
       if (!autoCreate) {
@@ -169,20 +227,57 @@ export class IdentityService {
         );
       }
 
-      customer = await this.customerRepo.create({ phone });
+      customer = await this.customerRepo.create({
+        phone,
+      });
+
+      isNew = true;
     }
 
+    /* ---------------------------------------------- */
+    /* CUSTOMER MUST BE ACTIVE                        */
+    /* ---------------------------------------------- */
+
     IdentityActivePolicy.check(customer);
+
+    /* ---------------------------------------------- */
+    /* ENSURE CUSTOMER PROFILE                       */
+    /* ---------------------------------------------- */
+
+    /**
+     * IMPORTANT:
+     *
+     * This is intentionally safe for existing customers.
+     *
+     * If profile exists:
+     *   -> nothing is changed
+     *
+     * If profile does not exist:
+     *   -> a new profile is created
+     *   -> phone comes from the authenticated Customer
+     *
+     * Existing profile data is NEVER overwritten here.
+     */
+    await this.customerProfileOrchestrator.ensureProfile(customer.id);
+
+    /* ---------------------------------------------- */
+    /* RETURN AUTH IDENTITY                           */
+    /* ---------------------------------------------- */
 
     return {
       actorId: customer.id,
       tokenVersion: customer.tokenVersion,
+      isNew,
     };
   }
 
   private async resolveDeliveryPartner(
     phone: Phone,
-  ): Promise<{ actorId: string; tokenVersion: number }> {
+  ): Promise<{
+    actorId: string;
+    tokenVersion: number;
+    isNew: boolean;
+  }> {
     const partner = await this.deliveryRepo.findByPhone(phone);
 
     if (!partner) {
@@ -198,12 +293,16 @@ export class IdentityService {
     return {
       actorId: partner.id,
       tokenVersion: partner.tokenVersion,
+      isNew: false,
     };
   }
 
   private async resolveOutletUser(
     email: string,
-  ): Promise<{ actorId: string; tokenVersion: number }> {
+  ): Promise<{
+    actorId: string;
+    tokenVersion: number;
+  }> {
     const user = await this.outletUserRepo.findByEmail(email);
 
     if (!user) {
@@ -222,7 +321,8 @@ export class IdentityService {
   }
 
   /**
-   * Outlet status is master: both outlet and user must be active to authenticate.
+   * Outlet status is master:
+   * both outlet and user must be active to authenticate.
    */
   private async assertOutletUserCanAuthenticate(
     user: OutletUser,
@@ -233,7 +333,9 @@ export class IdentityService {
       throw new ForbiddenError(
         AuthErrors.OUTLET_INACTIVE,
         'This outlet has been disabled by the administrator.',
-        { outletId: user.outletId },
+        {
+          outletId: user.outletId,
+        },
       );
     }
 
@@ -257,7 +359,10 @@ export class IdentityService {
 
   private async resolveSuperAdmin(
     email: string,
-  ): Promise<{ actorId: string; tokenVersion: number }> {
+  ): Promise<{
+    actorId: string;
+    tokenVersion: number;
+  }> {
     const admin = await this.superAdminRepo.findByEmail(email);
 
     if (!admin) {

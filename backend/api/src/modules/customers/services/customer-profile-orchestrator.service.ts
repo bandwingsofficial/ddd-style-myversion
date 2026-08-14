@@ -29,6 +29,7 @@ export class CustomerProfileOrchestratorService {
 
   async createProfile(params: {
     customerId: string;
+    phone: string;
     fullName?: string;
     email?: string;
     avatarUrl?: string;
@@ -37,12 +38,31 @@ export class CustomerProfileOrchestratorService {
   }): Promise<CustomerProfile> {
     return this.profileService.createProfile({
       customerId: params.customerId,
+      phone: params.phone,
       fullName: params.fullName,
       email: params.email,
       avatarUrl: params.avatarUrl,
       gender: params.gender,
       dob: params.dob,
     });
+  }
+
+  /* ================================================= */
+  /* ENSURE PROFILE                                    */
+  /* ================================================= */
+
+  /**
+   * Ensures that the customer has a profile.
+   *
+   * Existing profile:
+   * - Returned as-is
+   * - No data is changed
+   *
+   * Missing profile:
+   * - Created using the Customer.phone
+   */
+  async ensureProfile(customerId: string): Promise<CustomerProfile> {
+    return this.profileService.ensureProfile(customerId);
   }
 
   /* ================================================= */
@@ -77,6 +97,7 @@ export class CustomerProfileOrchestratorService {
 
   async upsertProfile(params: {
     customerId: string;
+    phone: string;
     fullName?: string;
     email?: string;
     avatarUrl?: string;
@@ -85,6 +106,7 @@ export class CustomerProfileOrchestratorService {
   }): Promise<CustomerProfile> {
     return this.profileService.upsertProfile({
       customerId: params.customerId,
+      phone: params.phone,
       fullName: params.fullName,
       email: params.email,
       avatarUrl: params.avatarUrl,

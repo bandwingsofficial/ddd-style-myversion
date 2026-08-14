@@ -1,11 +1,19 @@
 "use client";
 
 import React, { useState } from "react";
-import { Mail, Calendar, ShieldCheck, Edit3, Trash2 } from "lucide-react";
+import {
+  Mail,
+  Calendar,
+  ShieldCheck,
+  Edit3,
+  Trash2,
+  Phone,
+} from "lucide-react";
 import EditProfileModal from "./edit/page";
 import DeleteAccountModal from "@/features/customer-auth/components/DeleteAccountModal";
 import {
   getProfileDisplayName,
+  formatProfilePhone,
   ProfileData,
 } from "@/features/customer-profile/types/profile.types";
 
@@ -13,8 +21,6 @@ interface PersonalDetailsViewProps {
   profile: ProfileData | null;
   onProfileUpdate: () => void;
 }
-
-const BACKEND_URL = "https://admin.dev.local:4000";
 
 export default function PersonalDetailsView({
   profile,
@@ -26,16 +32,17 @@ export default function PersonalDetailsView({
   const displayName = getProfileDisplayName(profile);
   const avatarInitial = displayName.charAt(0).toUpperCase() || "?";
 
-  const getImageUrl = (path: string) => {
-    if (!path) return "";
-    if (path.startsWith("http") || path.startsWith("blob:")) return path;
-    const cleanPath = path.startsWith("/") ? path.substring(1) : path;
-    return `${BACKEND_URL}/${cleanPath}`;
-  };
+  /*
+   * Avatar URL comes directly from the API.
+   *
+   * The backend should return the complete URL/path that
+   * the frontend can use.
+   */
+  const avatarFullUrl = profile?.avatarUrl || null;
 
-  const avatarFullUrl = profile?.avatarUrl
-    ? getImageUrl(profile.avatarUrl)
-    : null;
+  const formattedPhone = profile?.phone
+    ? formatProfilePhone(profile.phone)
+    : "Not set";
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 mt-6 mx-auto w-full max-w-4xl px-4">
@@ -45,19 +52,23 @@ export default function PersonalDetailsView({
             <h2 className="text-3xl font-black text-slate-800 tracking-tight">
               Personal Details
             </h2>
+
             <p className="text-slate-500 text-sm mt-1">
               Manage your profile identity
             </p>
           </div>
+
           <button
             onClick={() => setIsModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-2xl transition-all font-bold text-sm border border-emerald-100/50"
           >
-            <Edit3 size={16} /> Edit Profile
+            <Edit3 size={16} />
+            Edit Profile
           </button>
         </div>
 
         <div className="space-y-6">
+          {/* PROFILE HEADER */}
           <div className="flex items-center gap-6 p-4 bg-slate-50/50 rounded-[2rem] border border-slate-100">
             <div className="w-24 h-24 bg-white rounded-2xl shadow-sm overflow-hidden flex items-center justify-center border border-slate-100 relative bg-emerald-50/30">
               <span className="absolute inset-0 flex items-center justify-center text-4xl font-black text-emerald-600">
@@ -71,7 +82,9 @@ export default function PersonalDetailsView({
                   className="relative w-full h-full object-cover z-10"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
+
                     target.style.display = "none";
+
                     console.error(
                       "PersonalDetailsView: Image load failed",
                       avatarFullUrl,
@@ -80,11 +93,13 @@ export default function PersonalDetailsView({
                 />
               )}
             </div>
+
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <p className="text-2xl font-bold text-slate-800">
                   {displayName}
                 </p>
+
                 <ShieldCheck
                   size={20}
                   className="text-emerald-500"
@@ -92,36 +107,61 @@ export default function PersonalDetailsView({
                   fillOpacity={0.1}
                 />
               </div>
+
               <p className="text-sm text-slate-500 font-medium bg-white/50 w-fit px-3 py-1 rounded-full border border-slate-100 uppercase text-[10px] tracking-widest">
                 {profile?.gender || "Customer"}
               </p>
             </div>
           </div>
 
+          {/* PROFILE DETAILS */}
           <div className="grid md:grid-cols-2 gap-4">
+            {/* PHONE */}
+            <div className="p-4 px-10 bg-slate-50/30 border border-slate-100 rounded-[2rem] hover:border-emerald-100 transition-colors">
+              <div className="flex items-center gap-3 text-emerald-600 mb-3">
+                <div className="p-2 bg-white rounded-lg shadow-sm border border-slate-100">
+                  <Phone size={20} />
+                </div>
+
+                <span className="text-xs font-black uppercase tracking-widest text-slate-400">
+                  Phone Number
+                </span>
+              </div>
+
+              <p className="font-bold text-slate-700 text-lg ml-1">
+                {formattedPhone}
+              </p>
+            </div>
+
+            {/* EMAIL */}
             <div className="p-4 px-10 bg-slate-50/30 border border-slate-100 rounded-[2rem] hover:border-emerald-100 transition-colors">
               <div className="flex items-center gap-3 text-emerald-600 mb-3">
                 <div className="p-2 bg-white rounded-lg shadow-sm border border-slate-100">
                   <Mail size={20} />
                 </div>
+
                 <span className="text-xs font-black uppercase tracking-widest text-slate-400">
                   Email Address
                 </span>
               </div>
+
               <p className="font-bold text-slate-700 text-lg ml-1">
                 {profile?.email || "No email set"}
               </p>
             </div>
 
+            {/* DATE OF BIRTH */}
             <div className="p-4 px-10 bg-slate-50/30 border border-slate-100 rounded-[2rem] hover:border-emerald-100 transition-colors">
               <div className="flex items-center gap-3 text-emerald-600 mb-3">
                 <div className="p-2 bg-white rounded-lg shadow-sm border border-slate-100">
                   <Calendar size={20} />
                 </div>
+
                 <span className="text-xs font-black uppercase tracking-widest text-slate-400">
                   Date of Birth
                 </span>
               </div>
+
               <p className="font-bold text-slate-700 text-lg ml-1">
                 {profile?.dob
                   ? new Date(profile.dob).toLocaleDateString()
@@ -132,15 +172,20 @@ export default function PersonalDetailsView({
         </div>
       </div>
 
+      {/* DELETE ACCOUNT */}
       <div className="mt-6 bg-white rounded-3xl p-6 shadow-sm border border-red-100">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h3 className="text-xl font-black text-slate-800">Delete Account</h3>
+            <h3 className="text-xl font-black text-slate-800">
+              Delete Account
+            </h3>
+
             <p className="text-sm text-slate-500 mt-1 max-w-xl">
               Permanently delete your Canten account and personal data.
               Historical orders and payments may be retained where required.
             </p>
           </div>
+
           <button
             type="button"
             onClick={() => setIsDeleteOpen(true)}
@@ -152,6 +197,7 @@ export default function PersonalDetailsView({
         </div>
       </div>
 
+      {/* EDIT PROFILE */}
       <EditProfileModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -159,6 +205,7 @@ export default function PersonalDetailsView({
         onSuccess={onProfileUpdate}
       />
 
+      {/* DELETE ACCOUNT */}
       <DeleteAccountModal
         isOpen={isDeleteOpen}
         onClose={() => setIsDeleteOpen(false)}

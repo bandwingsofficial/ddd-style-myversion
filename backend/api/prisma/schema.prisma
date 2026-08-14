@@ -231,6 +231,8 @@ model CustomerProfile {
   customerId String   @unique
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
+  phone String? @unique
+
   fullName  String?
   email     String? @unique
   avatarUrl String?

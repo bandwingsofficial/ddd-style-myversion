@@ -49,7 +49,7 @@ export class AuthOrchestratorService {
   }
 
   /* ================================================= */
-  /* OTP LOGIN (CUSTOMER / DELIVERY)                   */
+  /* OTP LOGIN (CUSTOMER / DELIVERY)                  */
   /* ================================================= */
 
   async loginWithOtp(params: {
@@ -70,6 +70,10 @@ export class AuthOrchestratorService {
       );
     }
 
+    /* ---------------------------------------------- */
+    /* VERIFY OTP                                     */
+    /* ---------------------------------------------- */
+
     await this.otpService.verifyOtp({
       actorType: params.actorType,
       phone: params.phone,
@@ -79,11 +83,39 @@ export class AuthOrchestratorService {
       userAgent: params.userAgent,
     });
 
+    /* ---------------------------------------------- */
+    /* RESOLVE IDENTITY                               */
+    /* ---------------------------------------------- */
+    /*
+     * Customer profile creation is handled inside
+     * IdentityService.resolveCustomer().
+     *
+     * This means:
+     *
+     * NEW CUSTOMER
+     *   -> Customer created
+     *   -> Profile created
+     *
+     * EXISTING CUSTOMER WITHOUT PROFILE
+     *   -> Customer preserved
+     *   -> Missing Profile created
+     *
+     * EXISTING CUSTOMER WITH PROFILE
+     *   -> Customer preserved
+     *   -> Profile preserved
+     *
+     * No existing profile data is overwritten.
+     */
+
     const identity = await this.identityService.resolveByPhone({
       actorType: params.actorType,
       phone: params.phone,
       autoCreate: params.actorType === ActorType.CUSTOMER,
     });
+
+    /* ---------------------------------------------- */
+    /* VALIDATE IDENTITY                              */
+    /* ---------------------------------------------- */
 
     if (!identity?.actorId) {
       throw new UnauthorizedError(
@@ -91,6 +123,10 @@ export class AuthOrchestratorService {
         'Invalid credentials',
       );
     }
+
+    /* ---------------------------------------------- */
+    /* CREATE SESSION                                 */
+    /* ---------------------------------------------- */
 
     const session = await this.sessionService.createSession({
       actorType: params.actorType,
@@ -100,12 +136,20 @@ export class AuthOrchestratorService {
       userAgent: params.userAgent,
     });
 
+    /* ---------------------------------------------- */
+    /* ISSUE TOKENS                                   */
+    /* ---------------------------------------------- */
+
     const tokens = await this.tokenService.issueTokens({
       actorType: params.actorType,
       actorId: identity.actorId,
       sessionId: session.id,
       tokenVersion: identity.tokenVersion,
     });
+
+    /* ---------------------------------------------- */
+    /* AUTH CONTEXT                                   */
+    /* ---------------------------------------------- */
 
     return {
       actorType: params.actorType,
@@ -123,7 +167,7 @@ export class AuthOrchestratorService {
   }
 
   /* ================================================= */
-  /* PASSWORD LOGIN (OUTLET USER)                      */
+  /* PASSWORD LOGIN (OUTLET USER)                     */
   /* ================================================= */
 
   async loginWithPassword(params: {
@@ -185,7 +229,7 @@ export class AuthOrchestratorService {
   }
 
   /* ================================================= */
-  /* SUPER ADMIN – STEP 1 (PASSWORD → MFA)             */
+  /* SUPER ADMIN – STEP 1 (PASSWORD → MFA)            */
   /* ================================================= */
 
   async startSuperAdminLogin(params: {
@@ -225,7 +269,7 @@ export class AuthOrchestratorService {
   }
 
   /* ================================================= */
-  /* SUPER ADMIN – STEP 2 (MFA → LOGIN)                */
+  /* SUPER ADMIN – STEP 2 (MFA → LOGIN)               */
   /* ================================================= */
 
   async verifySuperAdminMfa(params: {
@@ -238,7 +282,10 @@ export class AuthOrchestratorService {
     const challenge = await this.mfaRepo.findById(params.challengeId);
 
     if (!challenge) {
-      throw new UnauthorizedError(AuthErrors.MFA_INVALID, 'Invalid MFA code');
+      throw new UnauthorizedError(
+        AuthErrors.MFA_INVALID,
+        'Invalid MFA code',
+      );
     }
 
     challenge.assertCanVerify();
@@ -295,7 +342,7 @@ export class AuthOrchestratorService {
   async refreshSession(params: {
     actorType: ActorType;
     actorId: string;
-    sessionId: string; // NOT trusted – kept only for interface compatibility
+    sessionId: string;
     refreshToken: string;
     ipAddress?: string;
     userAgent?: string;
@@ -312,6 +359,7 @@ export class AuthOrchestratorService {
      * - RefreshTokenService
      * - TokenService.rotateRefreshToken
      */
+
     const tokens = await this.tokenService.rotateRefreshToken({
       refreshToken: params.refreshToken,
       tokenVersion: identity.tokenVersion,

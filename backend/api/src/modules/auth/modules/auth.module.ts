@@ -53,6 +53,10 @@ import { RedisModule } from '../../../infrastructure/redis/redis.module';
 import { QueueModule } from '../../../infrastructure/queue/queue.module';
 import { OutletsModule } from '../../outlets/modules/outlets.module';
 
+/* ================= CUSTOMERS ================= */
+
+import { CustomersModule } from '../../customers/modules/customers.module';
+
 @Module({
   /* ================= IMPORTS ================= */
 
@@ -62,6 +66,9 @@ import { OutletsModule } from '../../outlets/modules/outlets.module';
     QueueModule, // ⭐ REQUIRED FOR QueueService (OTP async delivery)
     ConfigModule,
     OutletsModule,
+
+    /* ---------- CUSTOMERS ---------- */
+    CustomersModule,
 
     /* ---------- PASSPORT ---------- */
     PassportModule.register({

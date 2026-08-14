@@ -7,6 +7,7 @@ import { ValidationError } from '../../../common/errors';
 export interface CustomerProfileProps {
   id: string;
   customerId: string;
+  phone: string;
 
   fullName?: string;
   email?: string;
@@ -28,6 +29,7 @@ export interface CustomerProfileProps {
 export class CustomerProfile {
   readonly id: string;
   readonly customerId: string;
+  readonly phone: string;
 
   readonly fullName?: string;
   readonly email?: string;
@@ -58,6 +60,7 @@ export class CustomerProfile {
   static createNew(params: {
     id: string;
     customerId: string;
+    phone: string;
 
     fullName?: string;
     email?: string;
@@ -74,6 +77,7 @@ export class CustomerProfile {
     return new CustomerProfile({
       id: params.id,
       customerId: params.customerId,
+      phone: params.phone,
 
       fullName: params.fullName,
       email: params.email,
@@ -91,6 +95,7 @@ export class CustomerProfile {
   static rehydrate(props: CustomerProfileProps): CustomerProfile {
     return new CustomerProfile({
       ...props,
+      phone: props.phone,
       avatarUrl: props.avatarUrl ?? undefined,
       fullName: props.fullName ?? undefined,
       email: props.email ?? undefined,
@@ -125,10 +130,19 @@ export class CustomerProfile {
   }): CustomerProfile {
     return new CustomerProfile({
       ...this,
+
+      /*
+       * Phone is intentionally not part of updateDetails.
+       * The phone comes from the authenticated Customer identity
+       * and must not be changed through profile editing.
+       */
+      phone: this.phone,
+
       fullName: params.fullName ?? this.fullName,
       email: params.email ?? this.email,
       gender: params.gender ?? this.gender,
       dob: params.dob ?? this.dob,
+
       updatedAt: params.now ?? new Date(),
     });
   }
@@ -136,6 +150,7 @@ export class CustomerProfile {
   changeAvatar(avatarUrl: string, now = new Date()): CustomerProfile {
     return new CustomerProfile({
       ...this,
+      phone: this.phone,
       avatarUrl,
       updatedAt: now,
     });
@@ -144,6 +159,7 @@ export class CustomerProfile {
   clearAvatar(now = new Date()): CustomerProfile {
     return new CustomerProfile({
       ...this,
+      phone: this.phone,
       avatarUrl: undefined,
       updatedAt: now,
     });
@@ -161,6 +177,13 @@ export class CustomerProfile {
       );
     }
 
+    if (!this.phone) {
+      throw new ValidationError(
+        'PROFILE_INVALID_PHONE',
+        'Phone number is required',
+      );
+    }
+
     if (this.fullName && this.fullName.length > 120) {
       throw new ValidationError(
         'PROFILE_NAME_TOO_LONG',
@@ -169,7 +192,10 @@ export class CustomerProfile {
     }
 
     if (this.email && this.email.length > 150) {
-      throw new ValidationError('PROFILE_EMAIL_TOO_LONG', 'Email too long');
+      throw new ValidationError(
+        'PROFILE_EMAIL_TOO_LONG',
+        'Email too long',
+      );
     }
   }
 }
