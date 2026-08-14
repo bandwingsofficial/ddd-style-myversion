@@ -6,7 +6,7 @@ import { SonnerToaster } from '@/components/SonnerToaster';
 
 export const metadata: Metadata = {
   title: 'Outlet Admin',
-  description: 'Outlet Admin Dashboard'
+  description: 'Secure and powerful administration dashboard for Incredible.'
 };
 
 export default function RootLayout({
