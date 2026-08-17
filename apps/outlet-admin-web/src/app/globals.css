@@ -12,3 +12,29 @@ body {
 body {
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .receipt-print-only,
+  .receipt-print-only * {
+    visibility: visible;
+  }
+
+  .receipt-print-only {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: block !important;
+    overflow: visible;
+    background: #fff;
+    padding: 24px;
+  }
+
+  .receipt-print-content {
+    max-width: 480px;
+    margin: 0 auto;
+  }
+}

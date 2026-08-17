@@ -617,12 +617,21 @@ const TableRow = ({
           {activeTab === ORDER_STATUS.READY_TO_DISPATCH &&
             normalizeOrderStatus(order.status) ===
               ORDER_STATUS.READY_TO_DISPATCH && (
-              <button
-                onClick={() => onAction(order.id, 'dispatch')}
-                className="w-full px-3 py-2.5 bg-purple-600 text-white text-[10px] font-black rounded hover:bg-purple-700 shadow-sm flex items-center justify-center gap-2 transition-all"
-              >
-                DISPATCH 🛵
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => onShowReceipt(order)}
+                  className="flex flex-1 items-center justify-center gap-1 rounded bg-slate-100 px-2 py-2.5 text-[10px] font-black uppercase text-slate-600 hover:bg-slate-200"
+                >
+                  <Receipt size={12} /> Receipt
+                </button>
+                <button
+                  onClick={() => onAction(order.id, 'dispatch')}
+                  className="flex-1 px-3 py-2.5 bg-purple-600 text-white text-[10px] font-black rounded hover:bg-purple-700 shadow-sm flex items-center justify-center gap-2 transition-all"
+                >
+                  DISPATCH 🛵
+                </button>
+              </div>
             )}
 
           {activeTab === ORDER_STATUS.OUT_FOR_DELIVERY &&
