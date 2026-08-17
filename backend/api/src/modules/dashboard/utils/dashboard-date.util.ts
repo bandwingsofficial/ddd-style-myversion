@@ -1,39 +1,15 @@
+import { ValidationError } from '../../../common/errors/domain-errors';
+import {
+  istCalendarDayStart,
+  istDayEnd,
+  istDayStart,
+  getIstParts,
+} from '../../../common/utils/ist-calendar-date.util';
 import { DashboardPeriod } from '../domain/enums/dashboard-period.enum';
 import {
   DashboardDateRange,
   DashboardFilter,
 } from '../domain/types/dashboard-filter.types';
-
-const IST_TIME_ZONE = 'Asia/Kolkata';
-
-function getISTParts(date: Date) {
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: IST_TIME_ZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-
-  const [year, month, day] = formatter.format(date).split('-').map(Number);
-  return { year, month, day };
-}
-
-function istDayStart(year: number, month: number, day: number): Date {
-  const utc = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
-  const offsetMs = getIstOffsetMs(utc);
-  return new Date(utc.getTime() - offsetMs);
-}
-
-function istDayEnd(year: number, month: number, day: number): Date {
-  const start = istDayStart(year, month, day);
-  return new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
-}
-
-function getIstOffsetMs(date: Date): number {
-  const utcString = date.toLocaleString('en-US', { timeZone: 'UTC' });
-  const istString = date.toLocaleString('en-US', { timeZone: IST_TIME_ZONE });
-  return new Date(istString).getTime() - new Date(utcString).getTime();
-}
 
 function addDays(
   parts: { year: number; month: number; day: number },
@@ -59,31 +35,46 @@ function monthBounds(year: number, month: number) {
   return { start, end };
 }
 
+function resolveCustomRange(filter: DashboardFilter): DashboardDateRange {
+  if (!filter.startDate || !filter.endDate) {
+    throw new ValidationError(
+      'INVALID_DATE_RANGE',
+      'Custom range requires both startDate and endDate as YYYY-MM-DD.',
+    );
+  }
+
+  const startParts = getIstParts(filter.startDate);
+  const endParts = getIstParts(filter.endDate);
+  const start = istDayStart(startParts.year, startParts.month, startParts.day);
+  const end = istDayEnd(endParts.year, endParts.month, endParts.day);
+
+  if (start.getTime() > end.getTime()) {
+    throw new ValidationError(
+      'INVALID_DATE_RANGE',
+      'startDate must be on or before endDate.',
+    );
+  }
+
+  const duration = end.getTime() - start.getTime();
+
+  return {
+    start,
+    end,
+    previousStart: new Date(start.getTime() - duration - 1),
+    previousEnd: new Date(start.getTime() - 1),
+    label: 'Custom Range',
+  };
+}
+
 export function resolveDashboardDateRange(
   filter: DashboardFilter,
 ): DashboardDateRange {
   const now = new Date();
-  const today = getISTParts(now);
+  const today = getIstParts(now);
   const period = filter.period ?? DashboardPeriod.LAST_7_DAYS;
 
   if (period === DashboardPeriod.CUSTOM && filter.startDate && filter.endDate) {
-    const startParts = getISTParts(filter.startDate);
-    const endParts = getISTParts(filter.endDate);
-    const start = istDayStart(
-      startParts.year,
-      startParts.month,
-      startParts.day,
-    );
-    const end = istDayEnd(endParts.year, endParts.month, endParts.day);
-    const duration = end.getTime() - start.getTime();
-
-    return {
-      start,
-      end,
-      previousStart: new Date(start.getTime() - duration - 1),
-      previousEnd: new Date(start.getTime() - 1),
-      label: 'Custom Range',
-    };
+    return resolveCustomRange(filter);
   }
 
   switch (period) {
@@ -242,3 +233,5 @@ export function getTodayRange(): DashboardDateRange {
 export function getYesterdayRange(): DashboardDateRange {
   return resolveDashboardDateRange({ period: DashboardPeriod.YESTERDAY });
 }
+
+export { istCalendarDayStart };

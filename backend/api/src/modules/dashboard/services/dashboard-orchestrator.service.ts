@@ -30,11 +30,16 @@ export class DashboardOrchestratorService {
   }
 
   private async auditAccess(
+    actorType: ActorType,
     actorId: string,
     sessionId: string | undefined,
     endpoint: string,
     filter: DashboardFilter,
   ) {
+    if (actorType !== ActorType.SUPER_ADMIN) {
+      return;
+    }
+
     await this.auditLogRepo.create({
       actorType: ActorType.SUPER_ADMIN,
       actorId,
@@ -52,8 +57,9 @@ export class DashboardOrchestratorService {
     filter: DashboardFilter,
     actorId: string,
     sessionId?: string,
+    actorType: ActorType = ActorType.SUPER_ADMIN,
   ) {
-    await this.auditAccess(actorId, sessionId, 'summary', filter);
+    await this.auditAccess(actorType, actorId, sessionId, 'summary', filter);
     return this.withCache('summary', filter, () =>
       this.dashboardService.getSummary(filter),
     );

@@ -7,6 +7,7 @@ export type AccessAuthContext = {
   actorType: ActorType;
   sessionId: string;
   tokenVersion: number;
+  outletId?: string;
 };
 
 export type RefreshAuthContext = {

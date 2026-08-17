@@ -7,6 +7,7 @@ import {
 } from '@prisma/client';
 
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+import { getCustomerDisplayInfo } from '../../../common/utils/customer-display.util';
 import { DashboardPeriod } from '../domain/enums/dashboard-period.enum';
 import { DashboardFilter } from '../domain/types/dashboard-filter.types';
 import {
@@ -96,6 +97,23 @@ export class DashboardRepository {
     return typeof value === 'number' ? value : Number(value);
   }
 
+  private mapCustomerLabel(
+    customer?: {
+      phone?: string | null;
+      profile?: { fullName?: string | null } | null;
+    } | null,
+  ) {
+    const info = getCustomerDisplayInfo({
+      fullName: customer?.profile?.fullName,
+      phone: customer?.phone,
+    });
+
+    return {
+      customerName: info.displayName,
+      customerPhone: info.phone ?? '',
+    };
+  }
+
   async getOrderStatusCounts(
     filter: DashboardFilter,
     range: { start: Date; end: Date },
@@ -176,25 +194,25 @@ export class DashboardRepository {
 
     const [success, failed, pending, expired, refunded, total] =
       await Promise.all([
-      this.prisma.payment.aggregate({
-        where: { ...baseWhere, status: PaymentStatus.SUCCESS },
-        _sum: { amount: true, paidAmount: true },
-        _count: { _all: true },
-      }),
-      this.prisma.payment.count({
-        where: { ...baseWhere, status: PaymentStatus.FAILED },
-      }),
-      this.prisma.payment.count({
-        where: { ...baseWhere, status: PaymentStatus.INITIATED },
-      }),
-      this.prisma.payment.count({
-        where: { ...baseWhere, status: PaymentStatus.EXPIRED },
-      }),
-      this.prisma.payment.count({
-        where: { ...baseWhere, status: PaymentStatus.REFUNDED },
-      }),
-      this.prisma.payment.count({ where: baseWhere }),
-    ]);
+        this.prisma.payment.aggregate({
+          where: { ...baseWhere, status: PaymentStatus.SUCCESS },
+          _sum: { amount: true, paidAmount: true },
+          _count: { _all: true },
+        }),
+        this.prisma.payment.count({
+          where: { ...baseWhere, status: PaymentStatus.FAILED },
+        }),
+        this.prisma.payment.count({
+          where: { ...baseWhere, status: PaymentStatus.INITIATED },
+        }),
+        this.prisma.payment.count({
+          where: { ...baseWhere, status: PaymentStatus.EXPIRED },
+        }),
+        this.prisma.payment.count({
+          where: { ...baseWhere, status: PaymentStatus.REFUNDED },
+        }),
+        this.prisma.payment.count({ where: baseWhere }),
+      ]);
 
     const successful = success._count._all;
     const successRate =
@@ -440,6 +458,10 @@ export class DashboardRepository {
     });
 
     const productIds = items.map((item) => item.productId);
+    if (productIds.length === 0) {
+      return [];
+    }
+
     const products = await this.prisma.product.findMany({
       where: { id: { in: productIds } },
       select: {
@@ -467,7 +489,7 @@ export class DashboardRepository {
         galleryImageKeys:
           product?.galleryImages.map((image) => image.imageUrl) ?? [],
         sku: product?.slug ?? item.productId.slice(0, 8).toUpperCase(),
-        category: product?.category.name ?? 'Uncategorized',
+        category: product?.category?.name ?? 'Uncategorized',
         unitsSold: item._sum.quantity ?? 0,
         revenue: this.toNumber(item._sum.totalPrice),
         currentStock: product?.isAvailable ? 'Available' : 'Unavailable',
@@ -492,6 +514,10 @@ export class DashboardRepository {
       },
       _sum: { quantity: true, totalPrice: true },
     });
+
+    if (rows.length === 0) {
+      return [];
+    }
 
     const products = await this.prisma.product.findMany({
       where: { id: { in: rows.map((r) => r.productId) } },
@@ -519,7 +545,7 @@ export class DashboardRepository {
 
       const current = categoryMap.get(product.categoryId) ?? {
         categoryId: product.categoryId,
-        categoryName: product.category.name,
+        categoryName: product.category?.name ?? 'Uncategorized',
         revenue: 0,
         orders: 0,
         units: 0,
@@ -558,6 +584,10 @@ export class DashboardRepository {
       take: limit,
     });
 
+    if (rows.length === 0) {
+      return [];
+    }
+
     const outlets = await this.prisma.outlet.findMany({
       where: { id: { in: rows.map((r) => r.outletId) } },
       select: { id: true, name: true },
@@ -592,6 +622,10 @@ export class DashboardRepository {
       orderBy: { _sum: { grandTotal: 'desc' } },
       take: limit,
     });
+
+    if (rows.length === 0) {
+      return [];
+    }
 
     const customers = await this.prisma.customer.findMany({
       where: { id: { in: rows.map((r) => r.customerId) } },
@@ -635,18 +669,22 @@ export class DashboardRepository {
       },
     });
 
-    return orders.map((order) => ({
-      id: order.id,
-      orderNumber: order.orderNumber,
-      customerName: order.customer.profile?.fullName ?? 'Customer',
-      customerPhone: order.customer.phone,
-      outletName: order.outlet.name,
-      itemCount: order.items.length,
-      paymentStatus: order.payments[0]?.status ?? 'INITIATED',
-      orderStatus: order.status,
-      amount: this.toNumber(order.grandTotal),
-      createdAt: order.createdAt,
-    }));
+    return orders.map((order) => {
+      const customer = this.mapCustomerLabel(order.customer);
+
+      return {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        customerName: customer.customerName,
+        customerPhone: customer.customerPhone,
+        outletName: order.outlet?.name ?? 'Unknown Outlet',
+        itemCount: order.items.length,
+        paymentStatus: order.payments[0]?.status ?? 'INITIATED',
+        orderStatus: order.status,
+        amount: this.toNumber(order.grandTotal),
+        createdAt: order.createdAt,
+      };
+    });
   }
 
   async getRecentPayments(filter: DashboardFilter, limit = 10) {
@@ -667,19 +705,23 @@ export class DashboardRepository {
       },
     });
 
-    return payments.map((payment) => ({
-      id: payment.id,
-      transactionId: payment.transactionId,
-      gateway: payment.provider ?? 'ONLINE',
-      amount: this.toNumber(payment.amount),
-      status: payment.status,
-      attemptNo: payment.attemptNo,
-      paidAt: payment.paidAt,
-      createdAt: payment.createdAt,
-      customerName: payment.order.customer.profile?.fullName ?? 'Customer',
-      customerPhone: payment.order.customer.phone,
-      orderNumber: payment.order.orderNumber,
-    }));
+    return payments.map((payment) => {
+      const customer = this.mapCustomerLabel(payment.order?.customer);
+
+      return {
+        id: payment.id,
+        transactionId: payment.transactionId,
+        gateway: payment.provider ?? 'ONLINE',
+        amount: this.toNumber(payment.amount),
+        status: payment.status,
+        attemptNo: payment.attemptNo,
+        paidAt: payment.paidAt,
+        createdAt: payment.createdAt,
+        customerName: customer.customerName,
+        customerPhone: customer.customerPhone,
+        orderNumber: payment.order?.orderNumber ?? null,
+      };
+    });
   }
 
   async getLowStockItems(limit = 20) {
@@ -702,12 +744,12 @@ export class DashboardRepository {
 
       return {
         stockItemId: row.stockItemId,
-        name: row.stockItem.name,
-        unit: row.stockItem.unit,
+        name: row.stockItem?.name ?? 'Unknown item',
+        unit: row.stockItem?.unit ?? '',
         availableQty: qty,
         totalQty: this.toNumber(row.totalQty),
         level,
-        status: row.stockItem.status,
+        status: row.stockItem?.status ?? 'UNKNOWN',
       };
     });
   }
