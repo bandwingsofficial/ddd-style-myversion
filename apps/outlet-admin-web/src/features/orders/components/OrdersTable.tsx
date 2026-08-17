@@ -28,6 +28,9 @@ export const OrdersTable = () => {
   const [activeTab, setActiveTab] =
     useState<OrderBoardTab>(ORDER_STATUS.PAID);
 
+  const [selectedReceiptOrder, setSelectedReceiptOrder] =
+    useState<Order | null>(null);
+
   if (loading) {
     return (
       <div className="p-20 text-center flex flex-col items-center gap-4">
@@ -180,6 +183,7 @@ export const OrdersTable = () => {
                       initialOrder={order}
                       activeTab={activeTab}
                       onAction={handleStatusChange}
+                      onShowReceipt={setSelectedReceiptOrder}
                     />
                   ))
                 ) : (
@@ -197,6 +201,13 @@ export const OrdersTable = () => {
           </div>
         </div>
       </div>
+
+      {selectedReceiptOrder ? (
+        <OrderReceiptPreview
+          order={selectedReceiptOrder}
+          onClose={() => setSelectedReceiptOrder(null)}
+        />
+      ) : null}
 
       {/* =========================================================
           MOBILE RESPONSIVE ONLY
@@ -386,6 +397,7 @@ const TableRow = ({
   initialOrder,
   activeTab,
   onAction,
+  onShowReceipt,
 }: {
   initialOrder: Order;
   activeTab: OrderBoardTab;
@@ -399,14 +411,12 @@ const TableRow = ({
       | 'dispatch'
       | 'complete'
   ) => void;
+  onShowReceipt: (order: Order) => void;
 }) => {
   const [order, setOrder] =
     useState<Order>(initialOrder);
 
   const [isFetching, setIsFetching] =
-    useState(false);
-
-  const [showReceipt, setShowReceipt] =
     useState(false);
 
   useEffect(() => {
@@ -444,8 +454,7 @@ const TableRow = ({
   }, [initialOrder]);
 
   return (
-    <>
-      <tr className="hover:bg-blue-50/30 transition-colors group">
+    <tr className="hover:bg-blue-50/30 transition-colors group">
         {/* Order Info */}
         <td className="p-4 align-top">
           <div className="font-bold text-sm text-gray-900">
@@ -642,9 +651,7 @@ const TableRow = ({
 
               <button
                 type="button"
-                onClick={() =>
-                  setShowReceipt(true)
-                }
+                onClick={() => onShowReceipt(order)}
                 className="flex w-full items-center justify-center gap-1 rounded bg-slate-100 px-2 py-1.5 text-[10px] font-black uppercase text-slate-600 hover:bg-slate-200"
               >
                 <Receipt size={12} /> Receipt
@@ -653,15 +660,5 @@ const TableRow = ({
           )}
         </td>
       </tr>
-
-      {showReceipt ? (
-        <OrderReceiptPreview
-          order={order}
-          onClose={() =>
-            setShowReceipt(false)
-          }
-        />
-      ) : null}
-    </>
   );
 };
