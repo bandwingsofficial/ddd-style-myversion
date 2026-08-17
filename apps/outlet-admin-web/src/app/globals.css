@@ -14,27 +14,52 @@ body {
 }
 
 @media print {
-  body * {
-    visibility: hidden;
+  @page {
+    margin: 8mm;
+    size: auto;
   }
 
-  .receipt-print-only,
-  .receipt-print-only * {
-    visibility: visible;
+  html,
+  body {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
   }
 
-  .receipt-print-only {
-    position: fixed;
-    inset: 0;
-    z-index: 99999;
+  body.receipt-print-active > *:not(.receipt-print-only) {
+    display: none !important;
+  }
+
+  body.receipt-print-active .receipt-print-only {
     display: block !important;
-    overflow: visible;
-    background: #fff;
-    padding: 24px;
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #fff !important;
   }
 
-  .receipt-print-content {
-    max-width: 480px;
+  body.receipt-print-active .receipt-print-content {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 520px;
     margin: 0 auto;
+    padding: 0;
+    font-size: 12pt;
+    line-height: 1.4;
+    color: #000 !important;
+  }
+
+  body.receipt-print-active .receipt-print-content * {
+    color: #000 !important;
+  }
+
+  body.receipt-print-active .receipt-print-content a {
+    text-decoration: none !important;
   }
 }
