@@ -8,15 +8,29 @@ import {
 import { Prisma } from '@prisma/client';
 import { Request, Response } from 'express';
 
-@Catch(Prisma.PrismaClientKnownRequestError, Prisma.PrismaClientValidationError)
+type PrismaCaughtError =
+  | Prisma.PrismaClientKnownRequestError
+  | Prisma.PrismaClientValidationError
+  | Prisma.PrismaClientUnknownRequestError;
+
+function isEnumOrSchemaMismatch(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('invalid input value for enum') ||
+    normalized.includes('operator does not exist') ||
+    normalized.includes('column') && normalized.includes('does not exist')
+  );
+}
+
+@Catch(
+  Prisma.PrismaClientKnownRequestError,
+  Prisma.PrismaClientValidationError,
+  Prisma.PrismaClientUnknownRequestError,
+)
 export class PrismaExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger(PrismaExceptionFilter.name);
 
-  catch(
-    exception:
-      Prisma.PrismaClientKnownRequestError | Prisma.PrismaClientValidationError,
-    host: ArgumentsHost,
-  ) {
+  catch(exception: PrismaCaughtError, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const request = ctx.getRequest<Request>();
     const response = ctx.getResponse<Response>();
@@ -27,7 +41,11 @@ export class PrismaExceptionFilter implements ExceptionFilter {
     );
 
     if (exception instanceof Prisma.PrismaClientKnownRequestError) {
-      if (exception.code === 'P2022') {
+      if (
+        exception.code === 'P2022' ||
+        exception.code === 'P2007' ||
+        isEnumOrSchemaMismatch(exception.message)
+      ) {
         return response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
           success: false,
           code: 'DATABASE_SCHEMA_MISMATCH',
@@ -51,6 +69,18 @@ export class PrismaExceptionFilter implements ExceptionFilter {
           message: 'The requested record was not found.',
         });
       }
+    }
+
+    if (
+      exception instanceof Prisma.PrismaClientUnknownRequestError &&
+      isEnumOrSchemaMismatch(exception.message)
+    ) {
+      return response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        code: 'DATABASE_SCHEMA_MISMATCH',
+        message:
+          'Database schema is out of date. Run pending migrations and restart the API.',
+      });
     }
 
     return response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({

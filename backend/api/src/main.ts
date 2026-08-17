@@ -11,6 +11,7 @@ import * as express from 'express';
 import { AppModule } from './app.module';
 import { DomainExceptionFilter } from './common/filters/domain-exception.filter';
 import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
+import { UnhandledExceptionFilter } from './common/filters/unhandled-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { RequestLoggerMiddleware } from './common/middleware/request-logger.middleware';
 
@@ -48,6 +49,7 @@ async function bootstrap() {
   /* -------------------------------------------------- */
 
   app.useGlobalFilters(
+    new UnhandledExceptionFilter(),
     new DomainExceptionFilter(),
     new PrismaExceptionFilter(),
   );

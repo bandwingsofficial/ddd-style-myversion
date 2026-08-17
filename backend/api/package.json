@@ -22,6 +22,7 @@
     "seed": "ts-node prisma/seed.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
     "create-superadmin": "ts-node src/cli/create-superadmin.ts",
     "create-superadmin:prod": "cross-env NODE_ENV=production node dist/src/cli/create-superadmin.js"
   },

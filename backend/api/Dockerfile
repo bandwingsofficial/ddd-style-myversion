@@ -57,7 +57,11 @@ COPY --from=builder /app/backend/api/package.json ./
 COPY --from=builder /app/backend/api/node_modules ./node_modules
 COPY --from=builder /app/backend/api/dist ./dist
 COPY --from=builder /app/backend/api/prisma ./prisma
+COPY docker/api/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-EXPOSE 3000
+ENV API_DIR=/app
 
-CMD ["node","dist/main.js"]
+EXPOSE 4000
+
+ENTRYPOINT ["/entrypoint.sh"]

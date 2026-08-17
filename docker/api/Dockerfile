@@ -70,6 +70,9 @@ COPY --from=installer /app .
 
 WORKDIR /app/backend/api
 
+COPY docker/api/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 EXPOSE 4000
 
-CMD ["node", "dist/main.js"]
+ENTRYPOINT ["/entrypoint.sh"]
