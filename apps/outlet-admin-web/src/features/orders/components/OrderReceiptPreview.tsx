@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Order, CustomerAddress } from '../types';
 import { resolveOrderCustomer } from '@/lib/customer-display';
+import { formatCurrency } from '@/lib/format-currency';
 import { formatDateIST, formatTimeIST } from '@/lib/format-datetime';
 
 interface OrderReceiptPreviewProps {
@@ -28,7 +29,7 @@ const CANTEEN_OUTLET = {
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+    <p className="receipt-section-heading text-[10px] font-black uppercase tracking-widest text-slate-500">
       {children}
     </p>
   );
@@ -42,9 +43,9 @@ function ReceiptAddress({ address }: { address: CustomerAddress }) {
     address.pincode;
 
   return (
-    <section className="border-b border-dashed border-slate-200 pb-2">
+    <section className="receipt-section receipt-address border-b border-dashed border-slate-200 pb-2">
       <SectionHeading>Delivery Address</SectionHeading>
-      <div className="mt-1 space-y-0.5 break-words text-xs leading-snug text-slate-700">
+      <div className="receipt-address-body mt-1 space-y-0.5 break-words text-xs leading-snug text-slate-700">
         {address.label ? (
           <p className="font-semibold text-slate-900">{address.label}</p>
         ) : null}
@@ -66,21 +67,36 @@ function ReceiptAddress({ address }: { address: CustomerAddress }) {
 function ReceiptContent({ order }: { order: Order }) {
   const customer = resolveOrderCustomer(order);
   const paymentLabel = formatPaymentStatus(order);
+  const dateTime = `${formatDateIST(order.createdAt)} · ${formatTimeIST(order.createdAt)}`;
 
   return (
-    <article className="receipt-print-content space-y-2 text-xs text-slate-800">
-      <header className="border-b border-dashed border-slate-200 pb-2">
-        <SectionHeading>Order Receipt</SectionHeading>
-        <p className="text-sm font-black text-slate-900">{order.orderNumber}</p>
-        <p className="text-[11px] text-slate-500">
-          {formatDateIST(order.createdAt)} · {formatTimeIST(order.createdAt)}
+    <article className="receipt-print-content text-xs text-slate-800">
+      <header className="receipt-header receipt-section border-b border-dashed border-slate-200 pb-2">
+        <p className="receipt-title text-sm font-black uppercase text-slate-900">
+          Order Receipt
         </p>
+        <div className="receipt-meta mt-2 space-y-1">
+          <div className="receipt-meta-row">
+            <span className="receipt-field-label font-semibold text-slate-600">
+              Order No:
+            </span>
+            <p className="receipt-order-number font-black text-slate-900">
+              {order.orderNumber}
+            </p>
+          </div>
+          <div className="receipt-meta-row">
+            <span className="receipt-field-label font-semibold text-slate-600">
+              Date:
+            </span>
+            <p className="receipt-date text-slate-700">{dateTime}</p>
+          </div>
+        </div>
       </header>
 
-      <section className="grid grid-cols-1 gap-3 border-b border-dashed border-slate-200 pb-2 min-[380px]:grid-cols-2 min-[380px]:gap-4 print:grid-cols-2">
-        <div className="min-w-0">
-          <SectionHeading>Customer</SectionHeading>
-          <p className="mt-1 break-words font-semibold text-slate-900">
+      <section className="receipt-section receipt-customer border-b border-dashed border-slate-200 py-2">
+        <SectionHeading>Customer</SectionHeading>
+        <div className="receipt-party-body mt-1 space-y-0.5">
+          <p className="break-words font-semibold text-slate-900">
             {customer.fullName || customer.displayName}
           </p>
           {customer.phone ? (
@@ -90,19 +106,21 @@ function ReceiptContent({ order }: { order: Order }) {
             <p className="break-all text-slate-600">{customer.email}</p>
           ) : null}
         </div>
+      </section>
 
-        <div className="min-w-0">
-          <SectionHeading>Canteen Outlet</SectionHeading>
-          <p className="mt-1 font-semibold text-slate-900">{CANTEEN_OUTLET.name}</p>
+      <section className="receipt-section receipt-canteen border-b border-dashed border-slate-200 py-2">
+        <SectionHeading>Canteen Outlet</SectionHeading>
+        <div className="receipt-party-body mt-1 space-y-0.5">
+          <p className="font-semibold text-slate-900">{CANTEEN_OUTLET.name}</p>
           <a
             href={CANTEEN_OUTLET.phoneHref}
-            className="block break-all text-slate-600 hover:text-emerald-700 print:text-slate-800 print:no-underline"
+            className="receipt-canteen-phone block break-all text-slate-600 hover:text-emerald-700"
           >
             {CANTEEN_OUTLET.phone}
           </a>
           <a
             href={CANTEEN_OUTLET.emailHref}
-            className="block break-all text-slate-600 hover:text-emerald-700 print:text-slate-800 print:no-underline"
+            className="receipt-canteen-email block break-all text-slate-600 hover:text-emerald-700"
           >
             {CANTEEN_OUTLET.email}
           </a>
@@ -111,41 +129,49 @@ function ReceiptContent({ order }: { order: Order }) {
 
       {order.address ? <ReceiptAddress address={order.address} /> : null}
 
-      <section className="space-y-1">
+      <section className="receipt-section receipt-items py-2">
         <SectionHeading>Items</SectionHeading>
-        <div className="grid grid-cols-[auto_1fr_auto] gap-x-2 gap-y-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+        <div className="receipt-items-header mt-1 grid grid-cols-[2.25rem_1fr_auto] gap-x-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
           <span>Qty</span>
           <span>Item</span>
           <span className="text-right">Price</span>
         </div>
-        {(order.items ?? []).map((item) => (
-          <div
-            key={item.id}
-            className="grid grid-cols-[auto_1fr_auto] gap-x-2 gap-y-0.5 text-xs"
-          >
-            <span className="shrink-0 font-medium text-slate-800">
-              {item.quantity}x
-            </span>
-            <span className="min-w-0 break-words text-slate-700">
-              {item.productName}
-            </span>
-            <span className="shrink-0 text-right font-medium text-slate-800">
-              ₹{item.totalPrice}
-            </span>
-          </div>
-        ))}
+        <div className="receipt-items-body space-y-1">
+          {(order.items ?? []).map((item) => (
+            <div
+              key={item.id}
+              className="receipt-item-row grid grid-cols-[2.25rem_1fr_auto] gap-x-2 text-xs"
+            >
+              <span className="shrink-0 font-medium text-slate-800">
+                {item.quantity}x
+              </span>
+              <span className="min-w-0 break-words text-slate-700">
+                {item.productName}
+              </span>
+              <span className="receipt-item-price shrink-0 text-right font-medium text-slate-800">
+                {formatCurrency(item.totalPrice)}
+              </span>
+            </div>
+          ))}
+        </div>
       </section>
 
-      <footer className="space-y-1 border-t border-slate-200 pt-2">
-        <div className="flex items-baseline justify-between gap-3 text-sm font-black text-slate-900">
-          <span>Grand Total</span>
-          <span>₹{order.grandTotal}</span>
+      <footer className="receipt-footer receipt-section border-t border-dashed border-slate-200 pt-2">
+        <div className="receipt-total-row flex items-baseline justify-between gap-2">
+          <span className="receipt-total-label text-sm font-black text-slate-900">
+            Grand Total
+          </span>
+          <span className="receipt-total-value text-sm font-black text-slate-900">
+            {formatCurrency(order.grandTotal)}
+          </span>
         </div>
-        <div className="flex items-baseline justify-between gap-3">
-          <SectionHeading>Payment Status</SectionHeading>
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-800">
+        <div className="receipt-payment-row mt-1 flex items-baseline justify-between gap-2">
+          <span className="receipt-section-heading text-[10px] font-black uppercase tracking-widest text-slate-500">
+            Payment Status
+          </span>
+          <span className="receipt-payment-value text-[11px] font-semibold uppercase tracking-wide text-slate-800">
             {paymentLabel}
-          </p>
+          </span>
         </div>
       </footer>
     </article>
