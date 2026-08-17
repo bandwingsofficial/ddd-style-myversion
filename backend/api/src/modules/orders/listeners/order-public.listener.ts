@@ -46,9 +46,15 @@ export class OrderPublicListener {
     await this.gateway.emitOrderEvent(ORDER_SOCKET_EVENTS.PREPARING, payload);
   }
 
+  @OnEvent(OrderEvents.ORDER_READY_TO_DISPATCH)
+  async handleReadyToDispatch(
+    payload: Record<string, unknown>,
+  ): Promise<void> {
+    await this.gateway.emitOrderEvent(ORDER_SOCKET_EVENTS.READY, payload);
+  }
+
   @OnEvent(OrderEvents.ORDER_OUT_FOR_DELIVERY)
   async handleOutForDelivery(payload: Record<string, unknown>): Promise<void> {
-    await this.gateway.emitOrderEvent(ORDER_SOCKET_EVENTS.READY, payload);
     await this.gateway.emitOrderEvent(
       ORDER_SOCKET_EVENTS.OUT_FOR_DELIVERY,
       payload,

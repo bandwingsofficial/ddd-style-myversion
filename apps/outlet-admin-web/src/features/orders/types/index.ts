@@ -5,6 +5,7 @@ export type OrderStatus =
   | 'PAID'
   | 'CONFIRMED'
   | 'PREPARING'
+  | 'READY_TO_DISPATCH'
   | 'OUT_FOR_DELIVERY'
   | 'DELIVERED'
   | 'CANCELLED'

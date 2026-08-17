@@ -248,6 +248,17 @@ export class OutletOrderController {
   }
 
   /* ================================================= */
+  /* READY TO DISPATCH                                 */
+  /* ================================================= */
+
+  @Post(':id/ready-to-dispatch')
+  async readyToDispatch(@Param('id') id: string, @CurrentUser() user: any) {
+    await this.assertOwnership(id, user.outletId);
+
+    return this.orderOrchestrator.readyToDispatchOrder(id);
+  }
+
+  /* ================================================= */
   /* OUT FOR DELIVERY                                  */
   /* ================================================= */
 

@@ -62,7 +62,7 @@ export class DashboardStatisticsService {
           (orderStatusCounts.PAID ?? 0),
         confirmedOrders: orderStatusCounts.CONFIRMED ?? 0,
         preparingOrders: orderStatusCounts.PREPARING ?? 0,
-        readyOrders: orderStatusCounts.PREPARING ?? 0,
+        readyOrders: orderStatusCounts.READY_TO_DISPATCH ?? 0,
         outForDelivery: orderStatusCounts.OUT_FOR_DELIVERY ?? 0,
         deliveredOrders: orderStatusCounts.DELIVERED ?? 0,
         cancelledOrders: orderStatusCounts.CANCELLED ?? 0,

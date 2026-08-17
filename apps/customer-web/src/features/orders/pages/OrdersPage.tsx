@@ -38,7 +38,7 @@ export default function OrdersPage() {
       }
       if (activeFilter === "ACTIVE") {
         return (
-          ["PAID", "CONFIRMED", "PREPARING", "OUT_FOR_DELIVERY"].includes(
+          ["PAID", "CONFIRMED", "PREPARING", "READY_TO_DISPATCH", "OUT_FOR_DELIVERY"].includes(
             order.status?.toUpperCase() ?? "",
           ) && matchesSearch
         );

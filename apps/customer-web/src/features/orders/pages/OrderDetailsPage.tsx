@@ -92,6 +92,7 @@ export default function OrderDetailsPage() {
     "PAID",
     "CONFIRMED",
     "PREPARING",
+    "READY_TO_DISPATCH",
     "OUT_FOR_DELIVERY",
   ].includes(order.status.toUpperCase());
 

@@ -7,6 +7,7 @@ export const ORDER_STATUS = {
   PAID: 'PAID',
   CONFIRMED: 'CONFIRMED',
   PREPARING: 'PREPARING',
+  READY_TO_DISPATCH: 'READY_TO_DISPATCH',
   OUT_FOR_DELIVERY: 'OUT_FOR_DELIVERY',
   DELIVERED: 'DELIVERED',
   CANCELLED: 'CANCELLED',
@@ -20,19 +21,12 @@ export type BackendOrderStatus =
 export type OrderBoardTab =
   | typeof ORDER_STATUS.PAID
   | typeof ORDER_STATUS.PREPARING
+  | typeof ORDER_STATUS.READY_TO_DISPATCH
   | typeof ORDER_STATUS.OUT_FOR_DELIVERY
   | 'COMPLETED';
 
 export function normalizeOrderStatus(status?: string): string {
   return status?.toUpperCase() ?? '';
-}
-
-export function isPreparingStatus(status?: string): boolean {
-  const normalized = normalizeOrderStatus(status);
-  return (
-    normalized === ORDER_STATUS.CONFIRMED ||
-    normalized === ORDER_STATUS.PREPARING
-  );
 }
 
 export function isCompletedStatus(status?: string): boolean {
@@ -44,13 +38,19 @@ export function isCompletedStatus(status?: string): boolean {
   );
 }
 
-export function bucketOrdersIntoColumns(orders: Order[]): Record<OrderBoardTab, Order[]> {
+export function bucketOrdersIntoColumns(
+  orders: Order[],
+): Record<OrderBoardTab, Order[]> {
   return {
     [ORDER_STATUS.PAID]: orders.filter(
       (order) => normalizeOrderStatus(order.status) === ORDER_STATUS.PAID,
     ),
-    [ORDER_STATUS.PREPARING]: orders.filter((order) =>
-      isPreparingStatus(order.status),
+    [ORDER_STATUS.PREPARING]: orders.filter(
+      (order) => normalizeOrderStatus(order.status) === ORDER_STATUS.PREPARING,
+    ),
+    [ORDER_STATUS.READY_TO_DISPATCH]: orders.filter(
+      (order) =>
+        normalizeOrderStatus(order.status) === ORDER_STATUS.READY_TO_DISPATCH,
     ),
     [ORDER_STATUS.OUT_FOR_DELIVERY]: orders.filter(
       (order) =>
@@ -69,6 +69,10 @@ export const OUTLET_ORDER_STATUS_FILTER_OPTIONS: Array<{
   { value: ORDER_STATUS.PAID, label: 'Paid (New)' },
   { value: ORDER_STATUS.CONFIRMED, label: 'Confirmed' },
   { value: ORDER_STATUS.PREPARING, label: 'Preparing' },
+  {
+    value: ORDER_STATUS.READY_TO_DISPATCH,
+    label: 'Ready to Dispatch',
+  },
   { value: ORDER_STATUS.OUT_FOR_DELIVERY, label: 'Out for Delivery' },
   { value: ORDER_STATUS.DELIVERED, label: 'Delivered' },
   { value: ORDER_STATUS.CANCELLED, label: 'Cancelled' },
@@ -79,6 +83,7 @@ export const ACTIVE_PIPELINE_STATUSES: BackendOrderStatus[] = [
   ORDER_STATUS.PAID,
   ORDER_STATUS.CONFIRMED,
   ORDER_STATUS.PREPARING,
+  ORDER_STATUS.READY_TO_DISPATCH,
   ORDER_STATUS.OUT_FOR_DELIVERY,
 ];
 
@@ -86,6 +91,7 @@ export const STATUS_BADGE_COLORS: Record<string, string> = {
   PAID: 'bg-emerald-100 text-emerald-700 border-emerald-200',
   CONFIRMED: 'bg-blue-100 text-blue-700 border-blue-200',
   PREPARING: 'bg-amber-100 text-amber-700 border-amber-200',
+  READY_TO_DISPATCH: 'bg-orange-100 text-orange-700 border-orange-200',
   OUT_FOR_DELIVERY: 'bg-purple-100 text-purple-700 border-purple-200',
   DELIVERED: 'bg-emerald-100 text-emerald-700 border-emerald-200',
   CANCELLED: 'bg-red-50 text-red-600 border-red-100',

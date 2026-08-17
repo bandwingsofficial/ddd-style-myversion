@@ -301,8 +301,24 @@ export class Order {
     });
   }
 
-  outForDelivery(now = new Date()): Order {
+  readyToDispatch(now = new Date()): Order {
     if (this.status !== OrderStatus.PREPARING) {
+      throw new ValidationError(
+        'INVALID_TRANSITION',
+        'Cannot mark ready to dispatch',
+      );
+    }
+
+    return new Order({
+      ...this,
+      status: OrderStatus.READY_TO_DISPATCH,
+      version: this.version + 1,
+      updatedAt: now,
+    });
+  }
+
+  outForDelivery(now = new Date()): Order {
+    if (this.status !== OrderStatus.READY_TO_DISPATCH) {
       throw new ValidationError(
         'INVALID_TRANSITION',
         'Cannot go out for delivery',

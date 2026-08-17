@@ -78,6 +78,10 @@ export class OrderOrchestratorService {
     return this.orderStatusService.startPreparing(orderId, tx);
   }
 
+  async readyToDispatchOrder(orderId: string, tx?: PrismaTransaction) {
+    return this.orderStatusService.readyToDispatch(orderId, tx);
+  }
+
   async outForDeliveryOrder(orderId: string, tx?: PrismaTransaction) {
     return this.orderStatusService.outForDelivery(orderId, tx);
   }

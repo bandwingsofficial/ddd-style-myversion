@@ -92,6 +92,12 @@ export const setPreparing = async (id: string) =>
   api.post(`/outlet-orders/${id}/preparing`);
 
 /**
+ * Transitions order status to READY_TO_DISPATCH.
+ */
+export const setReadyToDispatch = async (id: string) =>
+  api.post(`/outlet-orders/${id}/ready-to-dispatch`);
+
+/**
  * Transitions order status to OUT_FOR_DELIVERY.
  */
 export const setOutForDelivery = async (id: string) =>

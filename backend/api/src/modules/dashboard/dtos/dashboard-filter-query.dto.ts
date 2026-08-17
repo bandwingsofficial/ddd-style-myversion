@@ -55,7 +55,7 @@ export class DashboardFilterQueryDto {
   @Transform(({ value }) => emptyToUndefined(value))
   @IsEnum(OrderStatus, {
     message:
-      'orderStatus must be one of CREATED, PAYMENT_PENDING, PAID, CONFIRMED, PREPARING, OUT_FOR_DELIVERY, DELIVERED, CANCELLED, FAILED',
+      'orderStatus must be one of CREATED, PAYMENT_PENDING, PAID, CONFIRMED, PREPARING, READY_TO_DISPATCH, OUT_FOR_DELIVERY, DELIVERED, CANCELLED, FAILED',
   })
   orderStatus?: OrderStatus;
 

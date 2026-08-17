@@ -38,6 +38,11 @@ export function getOrderStatusBadge(order: OrderDetails): OrderStatusBadge {
         label: "Preparing",
         className: "bg-violet-50 text-violet-800 ring-violet-100",
       };
+    case "READY_TO_DISPATCH":
+      return {
+        label: "Ready to Dispatch",
+        className: "bg-orange-50 text-orange-800 ring-orange-100",
+      };
     case "PAID":
       return {
         label: "Paid",

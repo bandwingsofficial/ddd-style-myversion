@@ -876,6 +876,7 @@ enum OrderStatus {
   PAID // payment success
   CONFIRMED // outlet accepted
   PREPARING
+  READY_TO_DISPATCH
   OUT_FOR_DELIVERY
   DELIVERED
   CANCELLED
@@ -1109,6 +1110,7 @@ enum OrderEventType {
   PAID
   CONFIRMED
   PREPARING
+  READY_TO_DISPATCH
   OUT_FOR_DELIVERY
   DELIVERED
   CANCELLED

@@ -37,6 +37,11 @@ export class OrderEventsService {
     this.emitter.emit(OrderEvents.ORDER_PREPARING, payload);
   }
 
+  emitReadyToDispatch(payload: OrderBaseEvent) {
+    console.log('📦 [EVENT EMIT] order.ready_to_dispatch', payload);
+    this.emitter.emit(OrderEvents.ORDER_READY_TO_DISPATCH, payload);
+  }
+
   emitOutForDelivery(payload: OrderBaseEvent) {
     console.log('🛵 [EVENT EMIT] order.out_for_delivery', payload);
     this.emitter.emit(OrderEvents.ORDER_OUT_FOR_DELIVERY, payload);

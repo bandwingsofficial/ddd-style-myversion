@@ -162,6 +162,7 @@ export class OrderStatusService {
       existing.status === OrderStatus.PAID ||
       existing.status === OrderStatus.CONFIRMED ||
       existing.status === OrderStatus.PREPARING ||
+      existing.status === OrderStatus.READY_TO_DISPATCH ||
       existing.status === OrderStatus.OUT_FOR_DELIVERY ||
       existing.status === OrderStatus.DELIVERED
     ) {
@@ -204,6 +205,18 @@ export class OrderStatusService {
     );
 
     this.events.emitPreparing(this.basePayload(order));
+    return order;
+  }
+
+  async readyToDispatch(orderId: string, tx?: PrismaTransaction) {
+    const order = await this.transition(
+      orderId,
+      (o) => o.readyToDispatch(),
+      undefined,
+      tx,
+    );
+
+    this.events.emitReadyToDispatch(this.basePayload(order));
     return order;
   }
 

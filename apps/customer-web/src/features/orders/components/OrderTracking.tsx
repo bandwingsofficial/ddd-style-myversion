@@ -46,6 +46,8 @@ function buildSteps(statusRaw: string): TimelineStep[] {
         return 2;
       case "PREPARING":
         return 3;
+      case "READY_TO_DISPATCH":
+        return 4;
       case "OUT_FOR_DELIVERY":
         return 5;
       case "DELIVERED":
@@ -76,9 +78,6 @@ function buildSteps(statusRaw: string): TimelineStep[] {
     return "upcoming";
   };
 
-  const readyRank =
-    status === "PREPARING" ? 4 : currentRank >= 5 ? 4 : currentRank;
-
   const steps: TimelineStep[] = [
     {
       title: "Order Confirmed",
@@ -103,12 +102,7 @@ function buildSteps(statusRaw: string): TimelineStep[] {
     {
       title: "Ready",
       icon: Package,
-      state:
-        readyRank >= 4
-          ? readyRank === 4
-            ? "current"
-            : "completed"
-          : "upcoming",
+      state: resolveState(4),
     },
     {
       title: "Out for Delivery",
@@ -138,7 +132,8 @@ function stepStyles(state: StepState, isDeliveredStep: boolean) {
 
   if (state === "current") {
     return {
-      circle: "h-10 w-10 bg-emerald-500 text-white ring-4 ring-emerald-100 animate-pulse",
+      circle:
+        "h-10 w-10 bg-emerald-500 text-white ring-4 ring-emerald-100 animate-pulse",
       label: "font-bold text-emerald-700",
       connector: "bg-emerald-300",
     };
@@ -164,9 +159,7 @@ export default function OrderTracking({
   return (
     <div className="rounded-2xl border bg-white p-6">
       <div className="mb-6 flex items-center justify-between gap-4">
-        <h2 className="text-lg font-bold text-slate-900">
-          Order Progress
-        </h2>
+        <h2 className="text-lg font-bold text-slate-900">Order Progress</h2>
 
         {isDelivered && (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-green-100 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-green-700 animate-in fade-in zoom-in duration-500">
@@ -234,7 +227,13 @@ export default function OrderTracking({
                         className={`flex shrink-0 items-center justify-center rounded-full transition-all ${styles.circle}`}
                       >
                         {step.state === "completed" ? (
-                          <Check size={step.title === "Delivered" && isDelivered ? 24 : 18} />
+                          <Check
+                            size={
+                              step.title === "Delivered" && isDelivered
+                                ? 24
+                                : 18
+                            }
+                          />
                         ) : (
                           <Icon size={18} />
                         )}
@@ -286,9 +285,7 @@ export default function OrderTracking({
                   </div>
 
                   <div className="pb-6 pt-2">
-                    <p className={`text-sm ${styles.label}`}>
-                      {step.title}
-                    </p>
+                    <p className={`text-sm ${styles.label}`}>{step.title}</p>
                   </div>
                 </div>
               );

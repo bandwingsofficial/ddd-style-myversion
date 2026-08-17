@@ -23,6 +23,7 @@ const REVENUE_ORDER_STATUSES: OrderStatus[] = [
   OrderStatus.PAID,
   OrderStatus.CONFIRMED,
   OrderStatus.PREPARING,
+  OrderStatus.READY_TO_DISPATCH,
   OrderStatus.OUT_FOR_DELIVERY,
   OrderStatus.DELIVERED,
 ];

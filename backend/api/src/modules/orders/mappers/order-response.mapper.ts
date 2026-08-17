@@ -227,6 +227,8 @@ export class OrderResponseMapper {
         return 'Confirmed';
       case OrderStatus.PREPARING:
         return 'Preparing';
+      case OrderStatus.READY_TO_DISPATCH:
+        return 'Ready to Dispatch';
       case OrderStatus.OUT_FOR_DELIVERY:
         return 'Out For Delivery';
       case OrderStatus.DELIVERED:

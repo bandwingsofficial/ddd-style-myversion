@@ -81,16 +81,36 @@ export const useOrders = () => {
   }, [loadOrders]);
 
   const handleStatusChange = async (
-    orderId: string, 
-    action: 'accept' | 'reject' | 'prepare' | 'deliver' | 'complete'
+    orderId: string,
+    action:
+      | 'accept'
+      | 'reject'
+      | 'prepare'
+      | 'ready'
+      | 'dispatch'
+      | 'complete',
   ) => {
     try {
       switch (action) {
-        case 'accept': await orderApi.acceptOrder(orderId); break;
-        case 'reject': await orderApi.rejectOrder(orderId); break;
-        case 'prepare': await orderApi.setPreparing(orderId); break;
-        case 'deliver': await orderApi.setOutForDelivery(orderId); break;
-        case 'complete': await orderApi.setDelivered(orderId); break;
+        case 'accept':
+          await orderApi.acceptOrder(orderId);
+          await orderApi.setPreparing(orderId);
+          break;
+        case 'reject':
+          await orderApi.rejectOrder(orderId);
+          break;
+        case 'prepare':
+          await orderApi.setPreparing(orderId);
+          break;
+        case 'ready':
+          await orderApi.setReadyToDispatch(orderId);
+          break;
+        case 'dispatch':
+          await orderApi.setOutForDelivery(orderId);
+          break;
+        case 'complete':
+          await orderApi.setDelivered(orderId);
+          break;
       }
       await loadOrders(true);
     } catch (error) {

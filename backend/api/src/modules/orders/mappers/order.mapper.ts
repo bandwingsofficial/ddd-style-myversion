@@ -202,6 +202,8 @@ export class OrderMapper {
         return OrderStatus.CONFIRMED;
       case PrismaOrderStatus.PREPARING:
         return OrderStatus.PREPARING;
+      case PrismaOrderStatus.READY_TO_DISPATCH:
+        return OrderStatus.READY_TO_DISPATCH;
       case PrismaOrderStatus.OUT_FOR_DELIVERY:
         return OrderStatus.OUT_FOR_DELIVERY;
       case PrismaOrderStatus.DELIVERED:

@@ -96,6 +96,7 @@ export class PaymentService {
       order.status === OrderStatus.PAID ||
       order.status === OrderStatus.CONFIRMED ||
       order.status === OrderStatus.PREPARING ||
+      order.status === OrderStatus.READY_TO_DISPATCH ||
       order.status === OrderStatus.OUT_FOR_DELIVERY ||
       order.status === OrderStatus.DELIVERED
     );

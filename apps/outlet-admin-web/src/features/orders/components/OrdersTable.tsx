@@ -58,8 +58,13 @@ export const OrdersTable = () => {
     },
     {
       id: ORDER_STATUS.PREPARING,
-      label: 'In Progress',
+      label: 'Preparing',
       count: columns[ORDER_STATUS.PREPARING].length,
+    },
+    {
+      id: ORDER_STATUS.READY_TO_DISPATCH,
+      label: 'Ready to Dispatch',
+      count: columns[ORDER_STATUS.READY_TO_DISPATCH].length,
     },
     {
       id: ORDER_STATUS.OUT_FOR_DELIVERY,
@@ -390,7 +395,8 @@ const TableRow = ({
       | 'accept'
       | 'reject'
       | 'prepare'
-      | 'deliver'
+      | 'ready'
+      | 'dispatch'
       | 'complete'
   ) => void;
 }) => {
@@ -589,40 +595,30 @@ const TableRow = ({
               </div>
             )}
 
-          {activeTab === ORDER_STATUS.PREPARING && (
-            <div className="space-y-2">
-              {normalizeOrderStatus(
-                order.status
-              ) === ORDER_STATUS.CONFIRMED ? (
-                <button
-                  onClick={() =>
-                    onAction(
-                      order.id,
-                      'prepare'
-                    )
-                  }
-                  className="w-full px-3 py-2.5 bg-blue-600 text-white text-[10px] font-black rounded hover:bg-blue-700 shadow-sm flex items-center justify-center gap-2 transition-all"
-                >
-                  START COOKING 👨‍🍳
-                </button>
-              ) : (
-                <button
-                  onClick={() =>
-                    onAction(
-                      order.id,
-                      'deliver'
-                    )
-                  }
-                  className="w-full px-3 py-2.5 bg-amber-500 text-white text-[10px] font-black rounded hover:bg-amber-600 shadow-sm flex items-center justify-center gap-2 transition-all"
-                >
-                  READY & DISPATCH 🚀
-                </button>
-              )}
-            </div>
-          )}
+          {activeTab === ORDER_STATUS.PREPARING &&
+            normalizeOrderStatus(order.status) === ORDER_STATUS.PREPARING && (
+              <button
+                onClick={() => onAction(order.id, 'ready')}
+                className="w-full px-3 py-2.5 bg-amber-500 text-white text-[10px] font-black rounded hover:bg-amber-600 shadow-sm flex items-center justify-center gap-2 transition-all"
+              >
+                PREPARED
+              </button>
+            )}
 
-          {activeTab ===
-            ORDER_STATUS.OUT_FOR_DELIVERY && (
+          {activeTab === ORDER_STATUS.READY_TO_DISPATCH &&
+            normalizeOrderStatus(order.status) ===
+              ORDER_STATUS.READY_TO_DISPATCH && (
+              <button
+                onClick={() => onAction(order.id, 'dispatch')}
+                className="w-full px-3 py-2.5 bg-purple-600 text-white text-[10px] font-black rounded hover:bg-purple-700 shadow-sm flex items-center justify-center gap-2 transition-all"
+              >
+                DISPATCH 🛵
+              </button>
+            )}
+
+          {activeTab === ORDER_STATUS.OUT_FOR_DELIVERY &&
+            normalizeOrderStatus(order.status) ===
+              ORDER_STATUS.OUT_FOR_DELIVERY && (
             <button
               onClick={() =>
                 onAction(
@@ -632,7 +628,7 @@ const TableRow = ({
               }
               className="w-full px-4 py-2.5 bg-emerald-600 text-white text-[10px] font-black rounded hover:bg-emerald-700 shadow-md transition-all"
             >
-              MARK DELIVERED
+              DELIVERED
             </button>
           )}
 

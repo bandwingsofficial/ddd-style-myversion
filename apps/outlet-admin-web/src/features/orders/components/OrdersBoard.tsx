@@ -12,7 +12,13 @@ import {
 } from '../utils/order-status.util';
 
 export const OrdersTable = () => {
-  const { columns, loading, pendingNewOrderCount, handleStatusChange, refresh } = useOrders();
+  const {
+    columns,
+    loading,
+    pendingNewOrderCount,
+    handleStatusChange,
+    refresh,
+  } = useOrders();
   const [activeTab, setActiveTab] = useState<OrderBoardTab>(ORDER_STATUS.PAID);
 
   if (loading) return <div className="p-8 text-center text-gray-500">Loading live orders...</div>;
@@ -22,7 +28,8 @@ export const OrdersTable = () => {
 
   const tabs: Array<{ id: OrderBoardTab; label: string; count: number; color: string }> = [
     { id: ORDER_STATUS.PAID, label: 'New Orders', count: columns[ORDER_STATUS.PAID].length, color: 'text-blue-600 bg-blue-50' },
-    { id: ORDER_STATUS.PREPARING, label: 'In Kitchen', count: columns[ORDER_STATUS.PREPARING].length, color: 'text-amber-600 bg-amber-50' },
+    { id: ORDER_STATUS.PREPARING, label: 'Preparing', count: columns[ORDER_STATUS.PREPARING].length, color: 'text-amber-600 bg-amber-50' },
+    { id: ORDER_STATUS.READY_TO_DISPATCH, label: 'Ready to Dispatch', count: columns[ORDER_STATUS.READY_TO_DISPATCH].length, color: 'text-orange-600 bg-orange-50' },
     { id: ORDER_STATUS.OUT_FOR_DELIVERY, label: 'Out for Delivery', count: columns[ORDER_STATUS.OUT_FOR_DELIVERY].length, color: 'text-purple-600 bg-purple-50' },
     { id: 'COMPLETED', label: 'Completed', count: columns.COMPLETED.length, color: 'text-gray-600 bg-gray-50' },
   ];
@@ -115,7 +122,7 @@ const TableRow = ({
 }: {
   order: Order;
   activeTab: OrderBoardTab;
-  onAction: (orderId: string, action: 'accept' | 'reject' | 'prepare' | 'deliver' | 'complete') => void;
+  onAction: (orderId: string, action: 'accept' | 'reject' | 'prepare' | 'ready' | 'dispatch' | 'complete') => void;
 }) => {
   return (
     <tr className="hover:bg-blue-50/30 transition-colors group">
@@ -176,30 +183,32 @@ const TableRow = ({
           </div>
         )}
 
-        {/* FIXED LOGIC: Handles the 2-step Kitchen Process */}
-        {activeTab === ORDER_STATUS.PREPARING && (
-          <div>
-            {normalizeOrderStatus(order.status) === ORDER_STATUS.CONFIRMED ? (
-                <button 
-                    onClick={() => onAction(order.id, 'prepare')}
-                    className="w-full px-3 py-2 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700 shadow-sm flex items-center justify-center gap-2">
-                    Start Cooking 👨‍🍳
-                </button>
-            ) : (
-                <button 
-                    onClick={() => onAction(order.id, 'deliver')}
-                    className="w-full px-3 py-2 bg-amber-500 text-white text-xs font-bold rounded hover:bg-amber-600 shadow-sm flex items-center justify-center gap-2">
-                    Ready & Dispatch 🚀
-                </button>
-            )}
-          </div>
-        )}
+        {activeTab === ORDER_STATUS.PREPARING &&
+          normalizeOrderStatus(order.status) === ORDER_STATUS.PREPARING && (
+            <button
+              onClick={() => onAction(order.id, 'ready')}
+              className="w-full px-3 py-2 bg-amber-500 text-white text-xs font-bold rounded hover:bg-amber-600 shadow-sm flex items-center justify-center gap-2"
+            >
+              PREPARED
+            </button>
+          )}
 
-        {activeTab === ORDER_STATUS.OUT_FOR_DELIVERY && (
+        {activeTab === ORDER_STATUS.READY_TO_DISPATCH &&
+          normalizeOrderStatus(order.status) === ORDER_STATUS.READY_TO_DISPATCH && (
+            <button
+              onClick={() => onAction(order.id, 'dispatch')}
+              className="w-full px-3 py-2 bg-purple-600 text-white text-xs font-bold rounded hover:bg-purple-700 shadow-sm flex items-center justify-center gap-2"
+            >
+              Dispatch 🛵
+            </button>
+          )}
+
+        {activeTab === ORDER_STATUS.OUT_FOR_DELIVERY &&
+          normalizeOrderStatus(order.status) === ORDER_STATUS.OUT_FOR_DELIVERY && (
           <button 
             onClick={() => onAction(order.id, 'complete')}
             className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700">
-            Mark Delivered
+            DELIVERED
           </button>
         )}
 

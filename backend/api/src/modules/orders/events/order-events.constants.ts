@@ -6,6 +6,7 @@ export const OrderEvents = {
 
   ORDER_CONFIRMED: 'order.confirmed',
   ORDER_PREPARING: 'order.preparing',
+  ORDER_READY_TO_DISPATCH: 'order.ready_to_dispatch',
   ORDER_OUT_FOR_DELIVERY: 'order.out_for_delivery',
 
   ORDER_DELIVERED: 'order.delivered',
