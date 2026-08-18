@@ -6,6 +6,7 @@ import { Order, CustomerAddress } from '../types';
 import { resolveOrderCustomer } from '@/lib/customer-display';
 import { formatCurrency } from '@/lib/format-currency';
 import { formatDateIST, formatTimeIST } from '@/lib/format-datetime';
+import { outletService } from '@/features/outlet/services/outletService';
 
 interface OrderReceiptPreviewProps {
   order: Order;
@@ -19,12 +20,12 @@ function formatPaymentStatus(order: Order): string {
   return order.status.replaceAll('_', ' ');
 }
 
-const CANTEEN_OUTLET = {
-  name: 'Malleshwaram',
+/** Fixed canteen contact details. Outlet name comes from authenticated /my-outlet. */
+const CANTEN_CONTACT = {
   phone: '+91 99029 62777',
   phoneHref: 'tel:+919902962777',
-  email: 'canteenonline@gmail.com',
-  emailHref: 'mailto:canteenonline@gmail.com',
+  email: 'cantenonline@gmail.com',
+  emailHref: 'mailto:cantenonline@gmail.com',
 } as const;
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
@@ -64,14 +65,41 @@ function ReceiptAddress({ address }: { address: CustomerAddress }) {
   );
 }
 
-function ReceiptContent({ order }: { order: Order }) {
+function ReceiptContent({
+  order,
+  outletName,
+}: {
+  order: Order;
+  outletName: string;
+}) {
   const customer = resolveOrderCustomer(order);
   const paymentLabel = formatPaymentStatus(order);
   const dateTime = `${formatDateIST(order.createdAt)} · ${formatTimeIST(order.createdAt)}`;
 
   return (
     <article className="receipt-print-content text-xs text-slate-800">
-      <header className="receipt-header receipt-section border-b border-dashed border-slate-200 pb-2">
+      <section className="receipt-section receipt-canten border-b border-dashed border-slate-200 pb-2 text-center sm:text-left">
+        <SectionHeading>Canten Outlet</SectionHeading>
+        <div className="receipt-party-body mt-1 space-y-0.5">
+          <p className="receipt-outlet-name font-semibold text-slate-900">
+            {outletName || '—'}
+          </p>
+          <a
+            href={CANTEN_CONTACT.phoneHref}
+            className="receipt-canten-phone block break-all text-slate-600 hover:text-emerald-700"
+          >
+            {CANTEN_CONTACT.phone}
+          </a>
+          <a
+            href={CANTEN_CONTACT.emailHref}
+            className="receipt-canten-email block break-all text-slate-600 hover:text-emerald-700"
+          >
+            {CANTEN_CONTACT.email}
+          </a>
+        </div>
+      </section>
+
+      <header className="receipt-header receipt-section border-b border-dashed border-slate-200 py-2">
         <p className="receipt-title text-sm font-black uppercase text-slate-900">
           Order Receipt
         </p>
@@ -105,25 +133,6 @@ function ReceiptContent({ order }: { order: Order }) {
           {customer.email ? (
             <p className="break-all text-slate-600">{customer.email}</p>
           ) : null}
-        </div>
-      </section>
-
-      <section className="receipt-section receipt-canteen border-b border-dashed border-slate-200 py-2">
-        <SectionHeading>Canteen Outlet</SectionHeading>
-        <div className="receipt-party-body mt-1 space-y-0.5">
-          <p className="font-semibold text-slate-900">{CANTEEN_OUTLET.name}</p>
-          <a
-            href={CANTEEN_OUTLET.phoneHref}
-            className="receipt-canteen-phone block break-all text-slate-600 hover:text-emerald-700"
-          >
-            {CANTEEN_OUTLET.phone}
-          </a>
-          <a
-            href={CANTEEN_OUTLET.emailHref}
-            className="receipt-canteen-email block break-all text-slate-600 hover:text-emerald-700"
-          >
-            {CANTEEN_OUTLET.email}
-          </a>
         </div>
       </section>
 
@@ -180,6 +189,8 @@ function ReceiptContent({ order }: { order: Order }) {
 
 export function OrderReceiptPreview({ order, onClose }: OrderReceiptPreviewProps) {
   const [mounted, setMounted] = useState(false);
+  const [outletName, setOutletName] = useState('');
+  const [outletLoading, setOutletLoading] = useState(true);
 
   useEffect(() => {
     setMounted(true);
@@ -188,7 +199,37 @@ export function OrderReceiptPreview({ order, onClose }: OrderReceiptPreviewProps
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    outletService
+      .getOutlet()
+      .then((outlet) => {
+        if (!cancelled) {
+          setOutletName(outlet.name);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setOutletName('');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setOutletLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handlePrint = () => {
+    if (!outletName) {
+      return;
+    }
+
     const previousTitle = document.title;
     document.title = ' ';
     document.body.classList.add('receipt-print-active');
@@ -202,11 +243,14 @@ export function OrderReceiptPreview({ order, onClose }: OrderReceiptPreviewProps
     window.print();
   };
 
+  const receiptProps = { order, outletName };
+
   const printLayer =
     mounted &&
+    outletName &&
     createPortal(
       <div className="receipt-print-only hidden" aria-hidden="true">
-        <ReceiptContent order={order} />
+        <ReceiptContent {...receiptProps} />
       </div>,
       document.body,
     );
@@ -232,16 +276,17 @@ export function OrderReceiptPreview({ order, onClose }: OrderReceiptPreviewProps
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-            <ReceiptContent order={order} />
+            <ReceiptContent {...receiptProps} />
           </div>
 
           <div className="shrink-0 border-t border-slate-100 px-4 py-3">
             <button
               type="button"
               onClick={handlePrint}
-              className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700"
+              disabled={outletLoading || !outletName}
+              className="w-full rounded-lg bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Print Receipt
+              {outletLoading ? 'Loading outlet…' : 'Print Receipt'}
             </button>
           </div>
         </div>

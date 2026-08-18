@@ -84,6 +84,34 @@ body {
     text-transform: uppercase;
   }
 
+  body.receipt-print-active .receipt-canten {
+    text-align: center;
+    border-bottom: 1px dashed #000 !important;
+    padding-bottom: 6px !important;
+    margin-bottom: 4px;
+  }
+
+  body.receipt-print-active .receipt-canten .receipt-section-heading {
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+
+  body.receipt-print-active .receipt-outlet-name {
+    font-size: 13px;
+    font-weight: 700;
+    margin: 0 0 4px;
+  }
+
+  body.receipt-print-active .receipt-canten .receipt-party-body {
+    text-align: center;
+  }
+
+  body.receipt-print-active .receipt-canten .receipt-party-body p,
+  body.receipt-print-active .receipt-canten a {
+    font-size: 12px;
+    margin: 0 0 2px;
+  }
+
   body.receipt-print-active .receipt-section {
     border-color: #000 !important;
     padding-top: 4px;
