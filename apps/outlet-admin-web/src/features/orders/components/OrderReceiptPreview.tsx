@@ -166,6 +166,23 @@ function ReceiptContent({
       </section>
 
       <footer className="receipt-footer receipt-section border-t border-dashed border-slate-200 pt-2">
+        <div className="receipt-summary-row flex items-baseline justify-between gap-2 text-xs text-slate-800">
+          <span>Subtotal</span>
+          <span>{formatCurrency(order.subtotal)}</span>
+        </div>
+        <div className="receipt-summary-row mt-1 flex items-baseline justify-between gap-2 text-xs text-slate-800">
+          <span>Delivery Fee</span>
+          <span>{formatCurrency(order.deliveryFee ?? 0)}</span>
+        </div>
+        <div className="receipt-summary-row mt-1 flex items-baseline justify-between gap-2 text-xs text-slate-800">
+          <span>Savings</span>
+          <span>
+            {(order.discount ?? 0) > 0
+              ? `-${formatCurrency(order.discount)}`
+              : formatCurrency(order.discount ?? 0)}
+          </span>
+        </div>
+        <div className="receipt-summary-divider my-1 border-t border-dashed border-slate-200" />
         <div className="receipt-total-row flex items-baseline justify-between gap-2">
           <span className="receipt-total-label text-sm font-black text-slate-900">
             Grand Total
