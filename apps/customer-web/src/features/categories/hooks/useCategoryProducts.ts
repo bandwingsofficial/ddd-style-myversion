@@ -1,15 +1,14 @@
 "use client";
 
 import { useMemo } from "react";
+import { filterProducts } from "@/lib/product-filters";
 import { useProducts } from "@/features/products/hooks/useProducts";
 
 export function useCategoryProducts(categoryId: string) {
   const { products, loading, isOutletSelected } = useProducts();
 
   const categoryProducts = useMemo(() => {
-    return products.filter(
-      (product) => product.category?.id === categoryId,
-    );
+    return filterProducts(products, { categoryId });
   }, [products, categoryId]);
 
   const categoryName =

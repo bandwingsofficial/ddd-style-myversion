@@ -9,7 +9,12 @@ import { useProducts } from "@/features/products/hooks/useProducts";
 import ProductCard from "@/components/product/ProductCard";
 import ProductSkeleton from "@/components/product/ProductSkeleton";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-import { resolveProductPricing } from "@/lib/product-pricing";
+import {
+  computeProductPriceBounds,
+  extractUniqueProductTags,
+  filterProducts,
+  formatProductTagLabel,
+} from "@/lib/product-filters";
 import { Search, Filter, X, SlidersHorizontal } from "lucide-react";
 import { useDeliveryAppState } from "@/features/location/hooks/useDeliveryAppState";
 import NoDeliveryState from "@/components/location/NoDeliveryState";
@@ -40,11 +45,26 @@ function MenuPageContent() {
   } = useMenuCategoryFilter();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [maxPrice, setMaxPrice] = useState<number>(500);
+  const [maxPrice, setMaxPrice] = useState<number | undefined>(undefined);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
-  const filterOptions = ["Organic", "Fresh", "Natural"];
+  const priceBounds = useMemo(
+    () => computeProductPriceBounds(products),
+    [products],
+  );
+  const availableTags = useMemo(
+    () => extractUniqueProductTags(products),
+    [products],
+  );
+  const effectiveMaxPrice = maxPrice ?? priceBounds.sliderMax;
+
+  useEffect(() => {
+    setMaxPrice((current) => {
+      if (current === undefined) return current;
+      return current > priceBounds.sliderMax ? priceBounds.sliderMax : current;
+    });
+  }, [priceBounds.sliderMax]);
 
   useEffect(() => {
     const q = searchParams.get("search");
@@ -52,26 +72,13 @@ function MenuPageContent() {
   }, [searchParams]);
 
   const filteredProducts = useMemo(() => {
-    return products.filter((product: any) => {
-      const name = (product.name?.value || product.name || "").toLowerCase();
-      const matchesSearch = name.includes(searchQuery.toLowerCase());
-
-      const { sellingPrice } = resolveProductPricing(product);
-      const matchesPrice = sellingPrice <= maxPrice;
-
-      const productTags = (product.tags || []).map((t: string) =>
-        t.toLowerCase(),
-      );
-      const matchesTags =
-        selectedTags.length === 0 ||
-        selectedTags.every((tag) => productTags.includes(tag.toLowerCase()));
-
-      const matchesCategory =
-        !categoryId || product.category?.id === categoryId;
-
-      return matchesSearch && matchesPrice && matchesTags && matchesCategory;
+    return filterProducts(products, {
+      searchQuery,
+      maxPrice: effectiveMaxPrice,
+      selectedTags,
+      categoryId,
     });
-  }, [products, searchQuery, maxPrice, selectedTags, categoryId]);
+  }, [products, searchQuery, effectiveMaxPrice, selectedTags, categoryId]);
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>
@@ -81,7 +88,7 @@ function MenuPageContent() {
 
   const clearFilters = () => {
     setSearchQuery("");
-    setMaxPrice(500);
+    setMaxPrice(undefined);
     setSelectedTags([]);
     clearCategory();
   };
@@ -96,23 +103,26 @@ function MenuPageContent() {
 
   const activeFilterCount =
     (searchQuery ? 1 : 0) +
-    (maxPrice < 500 ? 1 : 0) +
+    (maxPrice !== undefined && maxPrice < priceBounds.sliderMax ? 1 : 0) +
     selectedTags.length +
     (categoryId ? 1 : 0);
+
+  const priceSliderStep =
+    priceBounds.sliderMax >= 1000 ? 50 : priceBounds.sliderMax >= 500 ? 25 : 10;
 
   const filterPanel = (
     <div className="space-y-5">
       <div>
         <label className="mb-2 block text-xs font-bold uppercase tracking-wide text-slate-500">
-          Max Price: ₹{maxPrice}
+          Max Price: ₹{effectiveMaxPrice}
         </label>
         <input
           type="range"
-          min="0"
-          max="500"
-          step="10"
-          value={maxPrice}
-          onChange={(e) => setMaxPrice(parseInt(e.target.value))}
+          min={priceBounds.minPrice}
+          max={priceBounds.sliderMax}
+          step={priceSliderStep}
+          value={effectiveMaxPrice}
+          onChange={(e) => setMaxPrice(parseInt(e.target.value, 10))}
           className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-slate-200 accent-emerald-600"
         />
       </div>
@@ -122,7 +132,7 @@ function MenuPageContent() {
           Tags
         </p>
         <div className="flex flex-wrap gap-2">
-          {filterOptions.map((tag) => (
+          {availableTags.map((tag) => (
             <button
               key={tag}
               type="button"
@@ -133,7 +143,7 @@ function MenuPageContent() {
                   : "border-slate-200 bg-white text-slate-600 hover:border-emerald-500"
               }`}
             >
-              {tag}
+              {formatProductTagLabel(tag)}
             </button>
           ))}
         </div>
@@ -259,21 +269,21 @@ function MenuPageContent() {
               <div className="flex flex-wrap items-center gap-4">
                 <div className="flex min-w-[200px] items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2">
                   <span className="whitespace-nowrap text-xs font-bold text-slate-500">
-                    Max Price: ₹{maxPrice}
+                    Max Price: ₹{effectiveMaxPrice}
                   </span>
                   <input
                     type="range"
-                    min="0"
-                    max="500"
-                    step="10"
-                    value={maxPrice}
-                    onChange={(e) => setMaxPrice(parseInt(e.target.value))}
+                    min={priceBounds.minPrice}
+                    max={priceBounds.sliderMax}
+                    step={priceSliderStep}
+                    value={effectiveMaxPrice}
+                    onChange={(e) => setMaxPrice(parseInt(e.target.value, 10))}
                     className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-slate-200 accent-emerald-600"
                   />
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {filterOptions.map((tag) => (
+                  {availableTags.map((tag) => (
                     <button
                       key={tag}
                       type="button"
@@ -284,7 +294,7 @@ function MenuPageContent() {
                           : "border-slate-200 bg-white text-slate-600 hover:border-emerald-500"
                       }`}
                     >
-                      {tag}
+                      {formatProductTagLabel(tag)}
                     </button>
                   ))}
                 </div>

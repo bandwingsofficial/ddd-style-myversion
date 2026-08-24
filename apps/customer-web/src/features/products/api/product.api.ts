@@ -26,19 +26,29 @@ async function getPublicCatalog(): Promise<ProductListItem[]> {
     return catalogCache.data;
   }
 
-  const res = await customerAxios.get("/public/products");
-  const data = Array.isArray(res.data.data) ? res.data.data : [];
-  catalogCache = { data, at: Date.now() };
-  return data;
+  const limit = 100;
+  const allProducts: ProductListItem[] = [];
+  let page = 1;
+
+  while (true) {
+    const res = await customerAxios.get("/public/products", {
+      params: { page, limit },
+    });
+    const data = Array.isArray(res.data.data) ? res.data.data : [];
+    allProducts.push(...data);
+    if (data.length < limit) break;
+    page += 1;
+  }
+
+  catalogCache = { data: allProducts, at: Date.now() };
+  return allProducts;
 }
 
 /**
  * Fetch all public products
  */
 export const getPublicProducts = async (): Promise<ProductListItem[]> => {
-  const res = await customerAxios.get("/public/products");
-  // Assuming backend returns { success: true, data: [...] }
-  return res.data.data;
+  return getPublicCatalog();
 };
 
 /**
