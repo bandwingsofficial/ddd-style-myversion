@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProductGalleryMediaItem } from "@/features/products/types/product.types";
@@ -46,9 +46,31 @@ function ProductGalleryComponent({
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [loadedImages, setLoadedImages] = useState<Record<number, boolean>>({});
+  const [controlsVisible, setControlsVisible] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const activeItem = mediaItems[activeIndex] ?? mediaItems[0];
   const activeIsVideo = activeItem?.type === "video";
+
+  useEffect(() => {
+    setControlsVisible(false);
+    videoRef.current?.pause();
+  }, [activeIndex, activeItem?.url]);
+
+  const startVideo = async () => {
+    const video = videoRef.current;
+    if (!video) {
+      return;
+    }
+
+    setControlsVisible(true);
+
+    try {
+      await video.play();
+    } catch {
+      // Playback may be blocked; controls remain available for retry.
+    }
+  };
 
   return (
     <div className="w-full min-w-0">
@@ -61,14 +83,31 @@ function ProductGalleryComponent({
         ) : null}
 
         {activeIsVideo ? (
-          <video
-            key={activeItem.url}
-            src={activeItem.url}
-            controls
-            playsInline
-            preload="metadata"
-            className="h-full w-full object-contain p-4"
-          />
+          <div className="relative h-full w-full">
+            <video
+              ref={videoRef}
+              key={activeItem.url}
+              src={activeItem.url}
+              controls={controlsVisible}
+              playsInline
+              preload="metadata"
+              className="h-full w-full object-contain p-4"
+            />
+            {!controlsVisible ? (
+              <button
+                type="button"
+                aria-label={`Play ${name} video`}
+                className="absolute inset-0 flex items-center justify-center border-0 bg-transparent p-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                onClick={() => {
+                  void startVideo();
+                }}
+              >
+                <span className="flex h-16 w-16 items-center justify-center rounded-full bg-black/55 text-white shadow-lg transition-transform hover:scale-105">
+                  <Play size={32} fill="currentColor" aria-hidden />
+                </span>
+              </button>
+            ) : null}
+          </div>
         ) : (
           <img
             src={activeItem?.url ?? mainImage}
