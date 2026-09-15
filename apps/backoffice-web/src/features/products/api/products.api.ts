@@ -149,7 +149,10 @@ export const ProductsApi = {
     });
   },
 
-  replaceMainImage: async (productId: string, file: File) => {
+  replaceMainImage: async (
+    productId: string,
+    file: File,
+  ): Promise<Product> => {
     const formData = new FormData();
     formData.append('mainImage', file);
 
@@ -165,7 +168,7 @@ export const ProductsApi = {
     productId: string,
     galleryImageId: string,
     file: File,
-  ) => {
+  ): Promise<Product> => {
     const formData = new FormData();
     formData.append('galleryImageId', galleryImageId);
     formData.append('galleryImages', file);
@@ -178,7 +181,10 @@ export const ProductsApi = {
     return res.data.data;
   },
 
-  addGalleryImage: async (productId: string, file: File) => {
+  addGalleryImage: async (
+    productId: string,
+    file: File,
+  ): Promise<Product> => {
     const formData = new FormData();
     formData.append('galleryImages', file);
 
@@ -193,7 +199,7 @@ export const ProductsApi = {
   deleteGalleryImage: async (
     productId: string,
     galleryImageId: string,
-  ) => {
+  ): Promise<Product> => {
     const res = await axiosInstance.post(
       `/products/${productId}/images/delete`,
       { galleryImageId },
@@ -205,7 +211,7 @@ export const ProductsApi = {
   reorderGalleryImages: async (
     productId: string,
     galleryImageIds: string[],
-  ) => {
+  ): Promise<Product> => {
     const res = await axiosInstance.post(
       `/products/${productId}/images/reorder`,
       { galleryImageIds },
