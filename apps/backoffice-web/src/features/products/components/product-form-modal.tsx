@@ -56,7 +56,6 @@ import {
   formatVideoDuration,
   GALLERY_MEDIA_ACCEPT,
   GALLERY_VIDEO_TOO_MANY_ERROR,
-  getVideoDurationSeconds,
   isGalleryVideoFile,
   validateCategoryId,
   validateDiscountPrice,
@@ -611,33 +610,22 @@ export default function ProductFormModal({
     }).length;
   }, []);
 
-  const buildGalleryItemFromFile = async (file: File): Promise<GalleryFormItem> => {
-    const validationError = await validateGalleryMediaFile(file);
+  const buildGalleryItemFromFile = (file: File): GalleryFormItem => {
+    const validationError = validateGalleryMediaFile(file);
     if (validationError) {
       throw new Error(validationError);
     }
 
-    const previewUrl = URL.createObjectURL(file);
-    const mediaType: ProductGalleryMediaType = isGalleryVideoFile(file)
-      ? 'VIDEO'
-      : 'IMAGE';
-    const durationSeconds =
-      mediaType === 'VIDEO'
-        ? Math.ceil(await getVideoDurationSeconds(file))
-        : null;
-
     return {
       key: createGalleryKey(),
       file,
-      mediaType,
-      durationSeconds,
-      previewUrl,
+      mediaType: isGalleryVideoFile(file) ? 'VIDEO' : 'IMAGE',
+      durationSeconds: null,
+      previewUrl: URL.createObjectURL(file),
     };
   };
 
-  const handleGalleryUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleGalleryUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files?.length) {
       return;
     }
@@ -654,9 +642,7 @@ export default function ProductFormModal({
     }
 
     try {
-      const newItems = await Promise.all(
-        files.map((file) => buildGalleryItemFromFile(file)),
-      );
+      const newItems = files.map((file) => buildGalleryItemFromFile(file));
       setGalleryItems((current) => [...current, ...newItems]);
     } catch (error) {
       toast.error(
@@ -813,7 +799,6 @@ export default function ProductFormModal({
               item.id,
               item.file,
             );
-            idByKey.set(item.key, item.id);
           } else if (item.file && !item.id) {
             const updatedProduct = await ProductsApi.addGalleryImage(
               product!.id,
@@ -825,23 +810,29 @@ export default function ProductFormModal({
                 .filter((galleryItem) => galleryItem.id)
                 .map((galleryItem) => galleryItem.id!),
             ]);
-            const newRecord = updatedProduct.images.galleryImages.find(
+            const sortedGallery = [...updatedProduct.images.galleryImages].sort(
+              (a, b) => a.sortOrder - b.sortOrder,
+            );
+            const newRecord = sortedGallery.find(
               (galleryImage) => !knownIds.has(galleryImage.id),
             );
 
             if (newRecord) {
               idByKey.set(item.key, newRecord.id);
             }
-          } else if (item.id) {
-            idByKey.set(item.key, item.id);
           }
         }
 
         const orderedIds = galleryItems
-          .map((item) => idByKey.get(item.key))
+          .map((item) => item.id ?? idByKey.get(item.key))
           .filter((id): id is string => Boolean(id));
 
-        if (orderedIds.length > 0) {
+        if (galleryItems.length > 0) {
+          if (orderedIds.length !== galleryItems.length) {
+            toast.error('Could not save gallery order. Please try again.');
+            return;
+          }
+
           await ProductsApi.reorderGalleryImages(product!.id, orderedIds);
         }
 

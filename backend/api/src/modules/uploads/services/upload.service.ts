@@ -75,7 +75,7 @@ export class UploadService {
 
   async uploadSingleVideo(
     options: UploadSingleVideoOptions,
-  ): Promise<UploadResult & { durationSeconds: number }> {
+  ): Promise<UploadResult & { durationSeconds: number | null }> {
     const file = this.toUploadFileInput(options.file);
 
     const validated = this.uploadValidationService.validateSingleVideo(file, {

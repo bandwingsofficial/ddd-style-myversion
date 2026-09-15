@@ -229,47 +229,17 @@ export function formatVideoDuration(seconds: number): string {
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
-export async function getVideoDurationSeconds(file: File): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const video = document.createElement('video');
-    video.preload = 'metadata';
+export function validateGalleryMediaFile(file: File): string | undefined {
+  if (!isGalleryVideoFile(file)) {
+    return undefined;
+  }
 
-    const objectUrl = URL.createObjectURL(file);
-
-    video.onloadedmetadata = () => {
-      URL.revokeObjectURL(objectUrl);
-      resolve(video.duration);
-    };
-
-    video.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error('Unable to read video metadata'));
-    };
-
-    video.src = objectUrl;
-  });
-}
-
-export async function validateGalleryMediaFile(
-  file: File,
-): Promise<string | undefined> {
-  if (isGalleryVideoFile(file)) {
-    if (
-      file.type &&
-      file.type !== 'video/mp4' &&
-      file.type !== 'video/webm'
-    ) {
-      return GALLERY_VIDEO_INVALID_TYPE_ERROR;
-    }
-
-    try {
-      const duration = await getVideoDurationSeconds(file);
-      if (duration > MAX_VIDEO_DURATION_SECONDS) {
-        return GALLERY_VIDEO_DURATION_ERROR;
-      }
-    } catch {
-      return GALLERY_VIDEO_INVALID_TYPE_ERROR;
-    }
+  if (
+    file.type &&
+    file.type !== 'video/mp4' &&
+    file.type !== 'video/webm'
+  ) {
+    return GALLERY_VIDEO_INVALID_TYPE_ERROR;
   }
 
   return undefined;

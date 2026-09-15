@@ -93,7 +93,7 @@ export class UploadValidationService {
       maxSizeBytes?: number;
       maxDurationSeconds?: number;
     },
-  ): { file: UploadFileInput; durationSeconds: number } {
+  ): { file: UploadFileInput; durationSeconds: number | null } {
     VideoUploadValidator.assertValidFile(file);
 
     const allowedMimeTypes =
@@ -127,14 +127,7 @@ export class UploadValidationService {
     const durationSeconds =
       parsedDuration != null ? Math.ceil(parsedDuration) : null;
 
-    if (durationSeconds == null || durationSeconds <= 0) {
-      throw new UploadInvalidContentTypeError(
-        'Unable to determine video duration',
-        { originalname: file.originalname },
-      );
-    }
-
-    if (durationSeconds > maxDurationSeconds) {
+    if (durationSeconds != null && durationSeconds > maxDurationSeconds) {
       throw new ValidationError(
         'VIDEO_DURATION_EXCEEDED',
         'Video duration must be 1 minute or less.',

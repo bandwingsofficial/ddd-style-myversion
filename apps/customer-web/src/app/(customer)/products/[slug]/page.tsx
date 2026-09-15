@@ -67,7 +67,9 @@ export default function ProductDetailsPage() {
     const mainImgPath = images?.mainImageUrl || "";
     const gallery =
       images?.galleryItems && images.galleryItems.length > 0
-        ? images.galleryItems
+        ? [...images.galleryItems].sort(
+            (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
+          )
         : (images?.galleryImageUrls || []).map((url) => ({
             url,
             type: "image" as const,

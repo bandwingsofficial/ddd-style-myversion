@@ -53,13 +53,17 @@ function normalizeProductImages(raw: unknown): ProductImages | undefined {
     })
     .filter(Boolean) as ProductImages["galleryItems"];
 
+  const normalizedGalleryItems =
+    galleryItems && galleryItems.length > 0
+      ? [...galleryItems].sort(
+          (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0),
+        )
+      : galleryImageUrls.map((url) => ({ url, type: "image" as const }));
+
   return {
     mainImageUrl,
     galleryImageUrls,
-    galleryItems:
-      galleryItems && galleryItems.length > 0
-        ? galleryItems
-        : galleryImageUrls.map((url) => ({ url, type: "image" as const })),
+    galleryItems: normalizedGalleryItems,
   };
 }
 
