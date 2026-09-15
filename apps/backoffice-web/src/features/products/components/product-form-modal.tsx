@@ -183,7 +183,8 @@ function SortableGalleryItem({
         <>
           <button
             type="button"
-            className="absolute left-1 top-1 rounded bg-background/90 p-1 text-muted-foreground shadow-sm"
+            className="absolute left-1 top-1 z-20 cursor-grab rounded bg-background/90 p-1 text-muted-foreground shadow-sm active:cursor-grabbing"
+            aria-label="Drag to reorder gallery item"
             {...attributes}
             {...listeners}
           >
@@ -202,18 +203,20 @@ function SortableGalleryItem({
               event.target.value = '';
             }}
           />
-          <div className="absolute inset-0 flex items-center justify-center gap-1 bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="absolute right-1 top-1 z-10 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
             <button
               type="button"
               onClick={() => replaceRef.current?.click()}
-              className="rounded bg-white/90 p-1 text-slate-800"
+              className="rounded bg-white/90 p-1 text-slate-800 shadow-sm"
+              aria-label="Replace gallery item"
             >
               <Upload size={14} />
             </button>
             <button
               type="button"
               onClick={onRemove}
-              className="rounded bg-white/90 p-1 text-red-600"
+              className="rounded bg-white/90 p-1 text-red-600 shadow-sm"
+              aria-label="Remove gallery item"
             >
               <Trash2 size={14} />
             </button>
