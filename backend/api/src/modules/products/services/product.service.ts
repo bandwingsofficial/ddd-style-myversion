@@ -16,9 +16,11 @@ import { ProductImages } from '../domain/value-objects/product-images.vo';
 import { PublicProductQueryDto } from '../dtos/public-product-query.dto';
 import { PublicProductSearchQueryDto } from '../dtos/public-product-search-query.dto';
 import { ListProductsQueryDto } from '../dtos/list-products-query.dto';
+import { UPLOAD_DEFAULTS } from '../../uploads/constants/upload.constants';
 import { UploadFolders } from '../../uploads/constants/upload-folders.constants';
 import { UploadService } from '../../uploads/services/upload.service';
 import { MulterUploadFile } from '../../uploads/interfaces/upload-file.interface';
+import { ProductMediaType } from '../domain/enums/product-media-type.enum';
 import {
   DeleteAnalysis,
   DELETE_ERROR_CODES,
@@ -63,6 +65,61 @@ export class ProductService {
     }
 
     return normalized;
+  }
+
+  private normalizeMediaPath(
+    mediaPath?: string | null,
+  ): string | null | undefined {
+    const normalized = this.normalizeImagePath(mediaPath);
+
+    if (!normalized) {
+      return normalized;
+    }
+
+    const allowedPrefixes = [
+      `${UploadFolders.PRODUCTS}/${UPLOAD_DEFAULTS.OBJECT_KEY_SEGMENT}/`,
+      `${UploadFolders.PRODUCTS}/${UPLOAD_DEFAULTS.VIDEO_KEY_SEGMENT}/`,
+    ];
+
+    if (!allowedPrefixes.some((prefix) => normalized.startsWith(prefix))) {
+      throw new ValidationError(
+        'PRODUCT_INVALID_MEDIA_PATH',
+        `Media path must be under ${UploadFolders.PRODUCTS}/image/ or ${UploadFolders.PRODUCTS}/video/`,
+      );
+    }
+
+    return normalized;
+  }
+
+  private countVideoFiles(files: MulterUploadFile[]): number {
+    return files.filter((file) => this.uploadService.isVideoFile(file)).length;
+  }
+
+  private async assertGalleryVideoLimit(
+    productId: string | null,
+    additionalVideos: number,
+  ): Promise<void> {
+    if (additionalVideos <= 0) {
+      return;
+    }
+
+    const existingVideos = productId
+      ? await this.productRepo.countGalleryVideos(productId)
+      : 0;
+
+    if (existingVideos + additionalVideos > UPLOAD_DEFAULTS.MAX_GALLERY_VIDEOS) {
+      throw new ValidationError(
+        'TOO_MANY_GALLERY_VIDEOS',
+        'Maximum 5 videos are allowed per product.',
+      );
+    }
+  }
+
+  private async uploadGalleryMediaFile(file: MulterUploadFile) {
+    return this.uploadService.uploadGalleryMedia({
+      folder: UploadFolders.PRODUCTS,
+      file,
+    });
   }
 
   /* ================================================= */
@@ -248,12 +305,22 @@ export class ProductService {
       file: params.mainImageFile,
     });
 
-    const galleryUploads = params.galleryImageFiles?.length
-      ? await this.uploadService.uploadMultipleImages({
-          folder: UploadFolders.PRODUCTS,
-          files: params.galleryImageFiles,
-        })
+    const galleryFiles = params.galleryImageFiles ?? [];
+
+    await this.assertGalleryVideoLimit(null, this.countVideoFiles(galleryFiles));
+
+    const galleryUploads = galleryFiles.length
+      ? await Promise.all(
+          galleryFiles.map((file) => this.uploadGalleryMediaFile(file)),
+        )
       : [];
+
+    const galleryItems = galleryUploads.map((upload, index) => ({
+      imageUrl: upload.objectKey,
+      mediaType: upload.mediaType,
+      durationSeconds: upload.durationSeconds,
+      sortOrder: index,
+    }));
 
     const normalizedProduct = Product.rehydrate({
       id: params.product.id,
@@ -291,7 +358,7 @@ export class ProductService {
     try {
       await this.prisma.$transaction(async (tx) => {
         created = await this.productRepo.create(
-          { product: normalizedProduct },
+          { product: normalizedProduct, galleryItems },
           tx,
         );
       });
@@ -513,12 +580,16 @@ export class ProductService {
       );
     }
 
-    const uploadResult = await this.uploadService.uploadSingleImage({
-      folder: UploadFolders.PRODUCTS,
-      file: params.imageFile,
-    });
+    const isReplacingWithVideo = this.uploadService.isVideoFile(params.imageFile);
+    const targetIsVideo = targetRecord.mediaType === ProductMediaType.VIDEO;
 
-    const oldObjectKey = this.normalizeImagePath(targetRecord.imageUrl);
+    if (isReplacingWithVideo && !targetIsVideo) {
+      await this.assertGalleryVideoLimit(params.productId, 1);
+    }
+
+    const uploadResult = await this.uploadGalleryMediaFile(params.imageFile);
+
+    const oldObjectKey = this.normalizeMediaPath(targetRecord.imageUrl);
 
     let updated!: Product;
 
@@ -527,6 +598,8 @@ export class ProductService {
         params.productId,
         params.galleryImageId,
         uploadResult.objectKey,
+        uploadResult.mediaType,
+        uploadResult.durationSeconds ?? null,
         tx,
       );
     });
@@ -558,10 +631,11 @@ export class ProductService {
       );
     }
 
-    const uploadResult = await this.uploadService.uploadSingleImage({
-      folder: UploadFolders.PRODUCTS,
-      file: params.imageFile,
-    });
+    if (this.uploadService.isVideoFile(params.imageFile)) {
+      await this.assertGalleryVideoLimit(params.productId, 1);
+    }
+
+    const uploadResult = await this.uploadGalleryMediaFile(params.imageFile);
 
     let updated!: Product;
 
@@ -570,6 +644,8 @@ export class ProductService {
         params.productId,
         uploadResult.objectKey,
         currentGallery.length,
+        uploadResult.mediaType,
+        uploadResult.durationSeconds ?? null,
         tx,
       );
     });
@@ -601,7 +677,7 @@ export class ProductService {
       );
     }
 
-    const objectKey = this.normalizeImagePath(targetRecord.imageUrl);
+    const objectKey = this.normalizeMediaPath(targetRecord.imageUrl);
 
     let updated!: Product;
 

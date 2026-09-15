@@ -7,11 +7,15 @@ export type ProductStatus =
 
 export type ProductDeleteOutcome = 'PERMANENT' | 'ARCHIVED';
 
+export type ProductGalleryMediaType = 'IMAGE' | 'VIDEO';
+
 /** Matches backend ProductGalleryImageResponse */
 export interface ProductGalleryImage {
   id: string;
   imageUrl: string;
   sortOrder: number;
+  mediaType?: ProductGalleryMediaType;
+  durationSeconds?: number | null;
 }
 
 /** Matches backend ProductImagesResponse */

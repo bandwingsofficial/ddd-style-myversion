@@ -3,9 +3,17 @@ export interface ProductPrice {
   discountPrice?: number | null;
 }
 
+export interface ProductGalleryMediaItem {
+  url: string;
+  type: 'image' | 'video';
+  sortOrder?: number;
+  durationSeconds?: number | null;
+}
+
 export interface ProductImages {
   mainImageUrl: string;
   galleryImageUrls: string[];
+  galleryItems?: ProductGalleryMediaItem[];
 }
 
 export interface ProductUnit {

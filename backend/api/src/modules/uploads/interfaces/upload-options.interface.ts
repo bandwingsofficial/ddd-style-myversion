@@ -33,10 +33,20 @@ export interface UpdateImageOptions {
 
 export interface ReplaceImageOptions extends UpdateImageOptions {}
 
+export interface UploadSingleVideoOptions {
+  folder: string;
+  file: UploadFileInput;
+  allowedMimeTypes?: readonly string[];
+  allowedExtensions?: readonly string[];
+  maxSizeBytes?: number;
+  useUuidFilename?: boolean;
+}
+
 export interface GenerateObjectKeyOptions {
   folder: string;
   originalFilename: string;
   useUuidFilename?: boolean;
+  mediaSegment?: 'image' | 'video';
 }
 
 export interface GeneratePresignedGetUrlOptions {

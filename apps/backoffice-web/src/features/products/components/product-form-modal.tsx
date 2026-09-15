@@ -24,6 +24,7 @@ import {
   ImagePlus,
   Layers,
   Loader2,
+  Play,
   Plus,
   Trash2,
   Upload,
@@ -41,6 +42,7 @@ import {
   Product,
   PRODUCT_TAGS,
   ProductFormErrors,
+  ProductGalleryMediaType,
   ProductTag,
   UNIT_TYPES,
 } from '../types/product.types';
@@ -51,8 +53,14 @@ import {
   mapServerFieldErrors,
   normalizeProductName,
   UNEXPECTED_ERROR_TOAST,
+  formatVideoDuration,
+  GALLERY_MEDIA_ACCEPT,
+  GALLERY_VIDEO_TOO_MANY_ERROR,
+  getVideoDurationSeconds,
+  isGalleryVideoFile,
   validateCategoryId,
   validateDiscountPrice,
+  validateGalleryMediaFile,
   validateOriginalPrice,
   validateProductName,
   validateUnitValue,
@@ -65,6 +73,9 @@ type GalleryFormItem = {
   id?: string;
   imageUrl?: string;
   file?: File;
+  mediaType?: ProductGalleryMediaType;
+  durationSeconds?: number | null;
+  previewUrl?: string;
 };
 
 interface ProductFormModalProps {
@@ -123,7 +134,7 @@ function SortableGalleryItem({
   preview: string;
   disabled: boolean;
   onRemove: () => void;
-  onReplace: (file: File) => void;
+  onReplace: (file: File) => Promise<void>;
 }) {
   const {
     attributes,
@@ -148,7 +159,27 @@ function SortableGalleryItem({
       style={style}
       className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-background"
     >
-      <img src={preview} className="h-full w-full object-cover" alt="Gallery" />
+      {item.mediaType === 'VIDEO' ? (
+        <>
+          <video
+            src={preview}
+            className="h-full w-full object-cover"
+            muted
+            playsInline
+            preload="metadata"
+          />
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center bg-black/35 text-white">
+            <Play size={18} fill="currentColor" />
+            {item.durationSeconds ? (
+              <span className="mt-1 text-[10px] font-semibold">
+                {formatVideoDuration(item.durationSeconds)}
+              </span>
+            ) : null}
+          </div>
+        </>
+      ) : (
+        <img src={preview} className="h-full w-full object-cover" alt="Gallery" />
+      )}
       {!disabled && (
         <>
           <button
@@ -163,12 +194,13 @@ function SortableGalleryItem({
             ref={replaceRef}
             type="file"
             hidden
-            accept="image/*"
-            onChange={(event) => {
+            accept={GALLERY_MEDIA_ACCEPT}
+            onChange={async (event) => {
               const file = event.target.files?.[0];
               if (file) {
-                onReplace(file);
+                await onReplace(file);
               }
+              event.target.value = '';
             }}
           />
           <div className="absolute inset-0 flex items-center justify-center gap-1 bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
@@ -287,6 +319,8 @@ export default function ProductFormModal({
           key: item.id,
           id: item.id,
           imageUrl: item.imageUrl,
+          mediaType: item.mediaType ?? 'IMAGE',
+          durationSeconds: item.durationSeconds ?? null,
         }));
 
       setCategoryId(product.categoryId);
@@ -545,6 +579,10 @@ export default function ProductFormModal({
     : mainImageUrl;
 
   const getGalleryPreview = (item: GalleryFormItem) => {
+    if (item.previewUrl) {
+      return item.previewUrl;
+    }
+
     if (item.file) {
       return URL.createObjectURL(item.file);
     }
@@ -563,17 +601,103 @@ export default function ProductFormModal({
     setErrors((current) => ({ ...current, mainImage: undefined }));
   };
 
-  const handleGalleryUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files) {
+  const countGalleryVideos = useCallback((items: GalleryFormItem[]) => {
+    return items.filter((item) => {
+      if (item.file) {
+        return isGalleryVideoFile(item.file);
+      }
+
+      return item.mediaType === 'VIDEO';
+    }).length;
+  }, []);
+
+  const buildGalleryItemFromFile = async (file: File): Promise<GalleryFormItem> => {
+    const validationError = await validateGalleryMediaFile(file);
+    if (validationError) {
+      throw new Error(validationError);
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    const mediaType: ProductGalleryMediaType = isGalleryVideoFile(file)
+      ? 'VIDEO'
+      : 'IMAGE';
+    const durationSeconds =
+      mediaType === 'VIDEO'
+        ? Math.ceil(await getVideoDurationSeconds(file))
+        : null;
+
+    return {
+      key: createGalleryKey(),
+      file,
+      mediaType,
+      durationSeconds,
+      previewUrl,
+    };
+  };
+
+  const handleGalleryUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    if (!event.target.files?.length) {
       return;
     }
 
-    const newItems = Array.from(event.target.files).map((file) => ({
-      key: createGalleryKey(),
-      file,
-    }));
+    const files = Array.from(event.target.files);
+    event.target.value = '';
 
-    setGalleryItems((current) => [...current, ...newItems]);
+    const currentVideoCount = countGalleryVideos(galleryItems);
+    const incomingVideoCount = files.filter(isGalleryVideoFile).length;
+
+    if (currentVideoCount + incomingVideoCount > 5) {
+      toast.error(GALLERY_VIDEO_TOO_MANY_ERROR);
+      return;
+    }
+
+    try {
+      const newItems = await Promise.all(
+        files.map((file) => buildGalleryItemFromFile(file)),
+      );
+      setGalleryItems((current) => [...current, ...newItems]);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : UNEXPECTED_ERROR_TOAST,
+      );
+    }
+  };
+
+  const replaceGalleryItemFile = async (index: number, file: File) => {
+    const currentItem = galleryItems[index];
+    const wasVideo =
+      currentItem.mediaType === 'VIDEO' ||
+      (currentItem.file ? isGalleryVideoFile(currentItem.file) : false);
+    const willBeVideo = isGalleryVideoFile(file);
+    const nextVideoCount =
+      countGalleryVideos(galleryItems) - (wasVideo ? 1 : 0) + (willBeVideo ? 1 : 0);
+
+    if (nextVideoCount > 5) {
+      toast.error(GALLERY_VIDEO_TOO_MANY_ERROR);
+      return;
+    }
+
+    try {
+      const built = await buildGalleryItemFromFile(file);
+
+      setGalleryItems((current) => {
+        const next = [...current];
+        next[index] = {
+          ...next[index],
+          file: built.file,
+          mediaType: built.mediaType,
+          durationSeconds: built.durationSeconds,
+          previewUrl: built.previewUrl,
+        };
+        return next;
+      });
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : UNEXPECTED_ERROR_TOAST,
+      );
+    }
   };
 
   const handleGalleryDragEnd = (event: DragEndEvent) => {
@@ -629,6 +753,11 @@ export default function ProductFormModal({
           return;
         }
 
+        if (countGalleryVideos(galleryItems) > 5) {
+          toast.error(GALLERY_VIDEO_TOO_MANY_ERROR);
+          return;
+        }
+
         await ProductsApi.create({
           categoryId,
           productName: normalizeProductName(productName),
@@ -642,8 +771,8 @@ export default function ProductFormModal({
           tags,
           mainImage,
           galleryImages: galleryItems
-            .map((item) => item.file)
-            .filter(Boolean) as File[],
+            .filter((item) => item.file)
+            .map((item) => item.file!),
         });
 
         toast.success('Product created successfully.');
@@ -665,19 +794,17 @@ export default function ProductFormModal({
           await ProductsApi.replaceMainImage(product!.id, mainImage);
         }
 
-        const currentExistingIds = galleryItems
+        const remainingExistingIds = galleryItems
           .filter((item) => item.id)
           .map((item) => item.id!);
 
         for (const id of initialGalleryIds) {
-          if (!currentExistingIds.includes(id)) {
+          if (!remainingExistingIds.includes(id)) {
             await ProductsApi.deleteGalleryImage(product!.id, id);
           }
         }
 
-        let hasAddsOrDeletes =
-          currentExistingIds.length !== initialGalleryIds.length ||
-          initialGalleryIds.some((id) => !currentExistingIds.includes(id));
+        const idByKey = new Map<string, string>();
 
         for (const item of galleryItems) {
           if (item.file && item.id) {
@@ -686,23 +813,36 @@ export default function ProductFormModal({
               item.id,
               item.file,
             );
+            idByKey.set(item.key, item.id);
           } else if (item.file && !item.id) {
-            await ProductsApi.addGalleryImage(product!.id, item.file);
-            hasAddsOrDeletes = true;
+            const updatedProduct = await ProductsApi.addGalleryImage(
+              product!.id,
+              item.file,
+            );
+            const knownIds = new Set([
+              ...idByKey.values(),
+              ...galleryItems
+                .filter((galleryItem) => galleryItem.id)
+                .map((galleryItem) => galleryItem.id!),
+            ]);
+            const newRecord = updatedProduct.images.galleryImages.find(
+              (galleryImage) => !knownIds.has(galleryImage.id),
+            );
+
+            if (newRecord) {
+              idByKey.set(item.key, newRecord.id);
+            }
+          } else if (item.id) {
+            idByKey.set(item.key, item.id);
           }
         }
 
-        const orderChanged =
-          !hasAddsOrDeletes &&
-          currentExistingIds.length === initialGalleryIds.length &&
-          currentExistingIds.some((id, index) => id !== initialGalleryIds[index]);
+        const orderedIds = galleryItems
+          .map((item) => idByKey.get(item.key))
+          .filter((id): id is string => Boolean(id));
 
-        if (orderChanged) {
-          await ProductsApi.reorderGalleryImages(
-            product!.id,
-            currentExistingIds,
-          );
-          toast.success('Gallery updated successfully.');
+        if (orderedIds.length > 0) {
+          await ProductsApi.reorderGalleryImages(product!.id, orderedIds);
         }
 
         toast.success('Product updated successfully.');
@@ -730,6 +870,10 @@ export default function ProductFormModal({
       }
 
       if (axiosError.response?.status === 400) {
+        const message = axiosError.response?.data?.message;
+        if (typeof message === 'string' && message.trim()) {
+          toast.error(message);
+        }
         return;
       }
 
@@ -1123,7 +1267,7 @@ export default function ProductFormModal({
                           type="file"
                           multiple
                           hidden
-                          accept="image/*"
+                          accept={GALLERY_MEDIA_ACCEPT}
                           onChange={handleGalleryUpload}
                         />
                         <DndContext
@@ -1148,11 +1292,7 @@ export default function ProductFormModal({
                                     )
                                   }
                                   onReplace={(file) =>
-                                    setGalleryItems((current) => {
-                                      const next = [...current];
-                                      next[index] = { ...next[index], file };
-                                      return next;
-                                    })
+                                    replaceGalleryItemFile(index, file)
                                   }
                                 />
                               ))}

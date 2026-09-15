@@ -24,7 +24,16 @@ import { ProductPrice } from '../domain/value-objects/product-price.vo';
 import { ProductImages } from '../domain/value-objects/product-images.vo';
 import { ProductTrendState } from '../domain/value-objects/product-trend-state.vo';
 import { ProductFeaturedState } from '../domain/value-objects/product-featured-state.vo';
+import { ProductMediaType } from '../domain/enums/product-media-type.enum';
+import { ProductMediaTypeMapper } from '../mappers/product-media-type.mapper';
 import { ProductGalleryRecord } from '../mappers/product-response.mapper';
+
+export type ProductGalleryCreateItem = {
+  imageUrl: string;
+  mediaType: ProductMediaType;
+  durationSeconds?: number;
+  sortOrder: number;
+};
 
 @Injectable()
 export class ProductRepository {
@@ -224,11 +233,11 @@ export class ProductRepository {
   /* ================================================= */
 
   async create(
-    params: { product: Product },
+    params: { product: Product; galleryItems?: ProductGalleryCreateItem[] },
     tx?: PrismaTransaction,
   ): Promise<Product> {
     const client = tx ?? this.prisma;
-    const { product } = params;
+    const { product, galleryItems } = params;
 
     const row = await client.product.create({
       data: {
@@ -272,9 +281,16 @@ export class ProductRepository {
         updatedAt: product.updatedAt,
 
         galleryImages: {
-          create: product.images.getGallery().map((imageUrl, index) => ({
-            imageUrl,
-            sortOrder: index,
+          create: (galleryItems ??
+            product.images.getGallery().map((imageUrl, index) => ({
+              imageUrl,
+              mediaType: ProductMediaType.IMAGE,
+              sortOrder: index,
+            }))).map((item) => ({
+            imageUrl: item.imageUrl,
+            mediaType: ProductMediaTypeMapper.toPrisma(item.mediaType),
+            durationSeconds: item.durationSeconds ?? null,
+            sortOrder: item.sortOrder,
           })),
         },
       } satisfies Prisma.ProductUncheckedCreateInput,
@@ -374,10 +390,18 @@ export class ProductRepository {
         id: true,
         imageUrl: true,
         sortOrder: true,
+        mediaType: true,
+        durationSeconds: true,
       },
     });
 
-    return rows;
+    return rows.map((row) => ({
+      id: row.id,
+      imageUrl: row.imageUrl,
+      sortOrder: row.sortOrder,
+      mediaType: ProductMediaTypeMapper.toDomain(row.mediaType),
+      durationSeconds: row.durationSeconds,
+    }));
   }
 
   async findGalleryRecordsByProductIds(
@@ -399,6 +423,8 @@ export class ProductRepository {
         productId: true,
         imageUrl: true,
         sortOrder: true,
+        mediaType: true,
+        durationSeconds: true,
       },
     });
 
@@ -408,6 +434,8 @@ export class ProductRepository {
         id: row.id,
         imageUrl: row.imageUrl,
         sortOrder: row.sortOrder,
+        mediaType: ProductMediaTypeMapper.toDomain(row.mediaType),
+        durationSeconds: row.durationSeconds,
       });
       map.set(row.productId, existing);
     }
@@ -431,10 +459,36 @@ export class ProductRepository {
         id: true,
         imageUrl: true,
         sortOrder: true,
+        mediaType: true,
+        durationSeconds: true,
       },
     });
 
-    return row;
+    if (!row) {
+      return null;
+    }
+
+    return {
+      id: row.id,
+      imageUrl: row.imageUrl,
+      sortOrder: row.sortOrder,
+      mediaType: ProductMediaTypeMapper.toDomain(row.mediaType),
+      durationSeconds: row.durationSeconds,
+    };
+  }
+
+  async countGalleryVideos(
+    productId: string,
+    tx?: PrismaTransaction,
+  ): Promise<number> {
+    const client = tx ?? this.prisma;
+
+    return client.productImage.count({
+      where: {
+        productId,
+        mediaType: ProductMediaTypeMapper.toPrisma(ProductMediaType.VIDEO),
+      },
+    });
   }
 
   /* ================================================= */
@@ -462,11 +516,17 @@ export class ProductRepository {
     productId: string,
     galleryImageId: string,
     objectKey: string,
+    mediaType: ProductMediaType,
+    durationSeconds: number | null,
     tx: PrismaTransaction,
   ): Promise<Product> {
     await tx.productImage.update({
       where: { id: galleryImageId },
-      data: { imageUrl: objectKey },
+      data: {
+        imageUrl: objectKey,
+        mediaType: ProductMediaTypeMapper.toPrisma(mediaType),
+        durationSeconds,
+      },
     });
 
     const row = await tx.product.update({
@@ -500,6 +560,8 @@ export class ProductRepository {
     productId: string,
     objectKey: string,
     sortOrder: number,
+    mediaType: ProductMediaType,
+    durationSeconds: number | null,
     tx: PrismaTransaction,
   ): Promise<Product> {
     await tx.productImage.create({
@@ -507,6 +569,8 @@ export class ProductRepository {
         productId,
         imageUrl: objectKey,
         sortOrder,
+        mediaType: ProductMediaTypeMapper.toPrisma(mediaType),
+        durationSeconds,
       },
     });
 
@@ -559,6 +623,7 @@ export class ProductRepository {
           create: product.images.getGallery().map((imageUrl, index) => ({
             imageUrl,
             sortOrder: index,
+            mediaType: ProductMediaTypeMapper.toPrisma(ProductMediaType.IMAGE),
           })),
         },
       },

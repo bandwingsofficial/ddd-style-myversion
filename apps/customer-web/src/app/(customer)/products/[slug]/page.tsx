@@ -53,10 +53,25 @@ export default function ProductDetailsPage() {
     const pricing = resolveProductPricing(p);
 
     const images = p.images as
-      | { mainImageUrl?: string; galleryImageUrls?: string[] }
+      | {
+          mainImageUrl?: string;
+          galleryImageUrls?: string[];
+          galleryItems?: Array<{
+            url: string;
+            type: "image" | "video";
+            sortOrder?: number;
+            durationSeconds?: number | null;
+          }>;
+        }
       | undefined;
     const mainImgPath = images?.mainImageUrl || "";
-    const gallery: string[] = images?.galleryImageUrls || [];
+    const gallery =
+      images?.galleryItems && images.galleryItems.length > 0
+        ? images.galleryItems
+        : (images?.galleryImageUrls || []).map((url) => ({
+            url,
+            type: "image" as const,
+          }));
 
     const category = p.category as { id?: string; name?: string } | undefined;
 
@@ -68,7 +83,7 @@ export default function ProductDetailsPage() {
       percent: pricing.discountPercent,
       hasDiscount: pricing.hasDiscount,
       mainImage: mainImgPath || "/placeholder.jpg",
-      gallery: gallery.length > 0 ? gallery : mainImgPath ? [mainImgPath] : [],
+      gallery,
       shortDescription: String(p.shortDescription || ""),
       longDescription: String(p.longDescription || ""),
       benefits: (p.benefits as string | null) ?? null,

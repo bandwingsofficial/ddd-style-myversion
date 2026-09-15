@@ -8,6 +8,8 @@ import { STORAGE_PROVIDER } from '../constants/injection-tokens.constants';
 import {
   UPLOAD_ALLOWED_IMAGE_EXTENSIONS,
   UPLOAD_ALLOWED_IMAGE_MIME_TYPES,
+  UPLOAD_ALLOWED_VIDEO_EXTENSIONS,
+  UPLOAD_ALLOWED_VIDEO_MIME_TYPES,
   UPLOAD_DEFAULTS,
   UPLOAD_MIME_TO_EXTENSION,
 } from '../constants/upload.constants';
@@ -26,9 +28,12 @@ import {
   UpdateImageOptions,
   UploadMultipleImagesOptions,
   UploadSingleImageOptions,
+  UploadSingleVideoOptions,
 } from '../interfaces/upload-options.interface';
+import { ProductMediaType } from '../../products/domain/enums/product-media-type.enum';
 import { UploadResult } from '../interfaces/upload-result.interface';
 import { UploadValidationService } from './upload-validation.service';
+import { VideoUploadValidator } from '../validators/video-upload.validator';
 
 @Injectable()
 export class UploadService {
@@ -66,6 +71,81 @@ export class UploadService {
     });
 
     return this.toUploadResultModel(result);
+  }
+
+  async uploadSingleVideo(
+    options: UploadSingleVideoOptions,
+  ): Promise<UploadResult & { durationSeconds: number }> {
+    const file = this.toUploadFileInput(options.file);
+
+    const validated = this.uploadValidationService.validateSingleVideo(file, {
+      allowedMimeTypes: options.allowedMimeTypes,
+      allowedExtensions: options.allowedExtensions,
+      maxSizeBytes: options.maxSizeBytes,
+    });
+
+    const contentType = VideoUploadValidator.detectContentType(
+      validated.file,
+      options.allowedMimeTypes ?? UPLOAD_ALLOWED_VIDEO_MIME_TYPES,
+    );
+
+    const objectKey = this.generateObjectKey({
+      folder: options.folder,
+      originalFilename: validated.file.originalname,
+      useUuidFilename: options.useUuidFilename,
+      mediaSegment: 'video',
+    });
+
+    const result = await this.storageProvider.putObject({
+      objectKey,
+      buffer: validated.file.buffer,
+      contentType,
+    });
+
+    return {
+      ...this.toUploadResultModel(result),
+      durationSeconds: validated.durationSeconds,
+    };
+  }
+
+  isVideoFile(file: UploadFileInput | MulterUploadFile): boolean {
+    return this.uploadValidationService.isVideoFile(this.toUploadFileInput(file));
+  }
+
+  async uploadGalleryMedia(
+    options: UploadSingleImageOptions,
+  ): Promise<
+    UploadResult & {
+      mediaType: ProductMediaType;
+      durationSeconds?: number;
+    }
+  > {
+    const file = this.toUploadFileInput(options.file);
+
+    if (this.uploadValidationService.isVideoFile(file)) {
+      const video = await this.uploadSingleVideo({
+        folder: options.folder,
+        file,
+        allowedMimeTypes: options.allowedMimeTypes,
+        allowedExtensions: options.allowedExtensions,
+        maxSizeBytes:
+          options.maxSizeBytes ?? UPLOAD_DEFAULTS.MAX_SINGLE_VIDEO_SIZE_BYTES,
+        useUuidFilename: options.useUuidFilename,
+      });
+
+      return {
+        ...video,
+        mediaType: ProductMediaType.VIDEO,
+        durationSeconds: video.durationSeconds,
+      };
+    }
+
+    const image = await this.uploadSingleImage(options);
+
+    return {
+      ...image,
+      mediaType: ProductMediaType.IMAGE,
+    };
   }
 
   async uploadMultipleImages(
@@ -146,7 +226,12 @@ export class UploadService {
       ? `${randomUUID()}${extension}`
       : this.sanitizeFilename(options.originalFilename);
 
-    return `${normalizedFolder}/${UPLOAD_DEFAULTS.OBJECT_KEY_SEGMENT}/${filename}`;
+    const segment =
+      options.mediaSegment === 'video'
+        ? UPLOAD_DEFAULTS.VIDEO_KEY_SEGMENT
+        : UPLOAD_DEFAULTS.OBJECT_KEY_SEGMENT;
+
+    return `${normalizedFolder}/${segment}/${filename}`;
   }
 
   private resolveContentType(
@@ -179,6 +264,15 @@ export class UploadService {
       extension &&
       UPLOAD_ALLOWED_IMAGE_EXTENSIONS.includes(
         extension as (typeof UPLOAD_ALLOWED_IMAGE_EXTENSIONS)[number],
+      )
+    ) {
+      return extension;
+    }
+
+    if (
+      extension &&
+      UPLOAD_ALLOWED_VIDEO_EXTENSIONS.includes(
+        extension as (typeof UPLOAD_ALLOWED_VIDEO_EXTENSIONS)[number],
       )
     ) {
       return extension;

@@ -3,12 +3,15 @@
 import { Injectable } from '@nestjs/common';
 
 import { UploadService } from '../../uploads/services/upload.service';
+import { ProductMediaType } from '../domain/enums/product-media-type.enum';
 import { Product } from '../domain/models/product.model';
 
 export interface ProductGalleryImageResponse {
   id: string;
   imageUrl: string;
   sortOrder: number;
+  mediaType: 'IMAGE' | 'VIDEO';
+  durationSeconds?: number | null;
 }
 
 export interface ProductImagesResponse {
@@ -16,9 +19,17 @@ export interface ProductImagesResponse {
   galleryImages: ProductGalleryImageResponse[];
 }
 
+export interface ProductPublicGalleryItemResponse {
+  url: string;
+  type: 'image' | 'video';
+  sortOrder: number;
+  durationSeconds?: number | null;
+}
+
 export interface ProductPublicImagesResponse {
   mainImageUrl: string;
   galleryImageUrls: string[];
+  galleryItems: ProductPublicGalleryItemResponse[];
 }
 
 export interface ProductResponse {
@@ -94,6 +105,8 @@ export type ProductGalleryRecord = {
   id: string;
   imageUrl: string;
   sortOrder: number;
+  mediaType: ProductMediaType;
+  durationSeconds?: number | null;
 };
 
 @Injectable()
@@ -118,12 +131,15 @@ export class ProductResponseMapper {
         discountPrice: product.price.getDiscount() ?? null,
       },
       images: {
-        mainImageUrl: await this.resolveImageUrl(product.images.getMain()),
+        mainImageUrl: await this.resolveMediaUrl(product.images.getMain()),
         galleryImages: await Promise.all(
           sortedRecords.map(async (record) => ({
             id: record.id,
-            imageUrl: await this.resolveImageUrl(record.imageUrl),
+            imageUrl: await this.resolveMediaUrl(record.imageUrl),
             sortOrder: record.sortOrder,
+            mediaType:
+              record.mediaType === ProductMediaType.VIDEO ? 'VIDEO' : 'IMAGE',
+            durationSeconds: record.durationSeconds ?? null,
           })),
         ),
       },
@@ -177,9 +193,18 @@ export class ProductResponseMapper {
         discountPrice: product.price.getDiscount() ?? null,
       },
       images: {
-        mainImageUrl: await this.resolveImageUrl(product.images.getMain()),
+        mainImageUrl: await this.resolveMediaUrl(product.images.getMain()),
         galleryImageUrls: await Promise.all(
-          sortedRecords.map((record) => this.resolveImageUrl(record.imageUrl)),
+          sortedRecords.map((record) => this.resolveMediaUrl(record.imageUrl)),
+        ),
+        galleryItems: await Promise.all(
+          sortedRecords.map(async (record) => ({
+            url: await this.resolveMediaUrl(record.imageUrl),
+            type:
+              record.mediaType === ProductMediaType.VIDEO ? 'video' : 'image',
+            sortOrder: record.sortOrder,
+            durationSeconds: record.durationSeconds ?? null,
+          })),
         ),
       },
       unit: {
@@ -220,7 +245,7 @@ export class ProductResponseMapper {
     );
   }
 
-  private async resolveImageUrl(objectKey: string): Promise<string> {
+  private async resolveMediaUrl(objectKey: string): Promise<string> {
     return this.uploadService.generatePresignedGetUrl({
       objectKey,
     });

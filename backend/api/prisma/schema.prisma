@@ -705,14 +705,21 @@ model Product {
 // PRODUCT IMAGES
 //////////////////////////////////////////////////////
 
+enum ProductMediaType {
+  IMAGE
+  VIDEO
+}
+
 model ProductImage {
   id String @id @default(uuid())
 
   productId String
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  imageUrl  String
-  sortOrder Int    @default(0)
+  imageUrl        String
+  mediaType       ProductMediaType @default(IMAGE)
+  durationSeconds Int?
+  sortOrder       Int              @default(0)
 
   createdAt DateTime @default(now())
 

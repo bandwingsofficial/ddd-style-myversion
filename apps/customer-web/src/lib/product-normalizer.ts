@@ -12,17 +12,54 @@ function normalizeProductImages(raw: unknown): ProductImages | undefined {
 
   if (!mainImageUrl) return undefined;
 
+  const galleryItemsSource = Array.isArray(img.galleryItems)
+    ? img.galleryItems
+    : [];
+
   const gallerySource = Array.isArray(img.galleryImageUrls)
     ? img.galleryImageUrls
     : Array.isArray(img.galleryImages)
       ? img.galleryImages
       : [];
 
+  const galleryImageUrls = gallerySource.filter(
+    (entry): entry is string => typeof entry === "string" && entry.trim() !== "",
+  );
+
+  const galleryItems = galleryItemsSource
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return null;
+      }
+
+      const item = entry as Record<string, unknown>;
+      const url = typeof item.url === "string" ? item.url.trim() : "";
+      const type = item.type === "video" ? "video" : "image";
+
+      if (!url) {
+        return null;
+      }
+
+      return {
+        url,
+        type,
+        sortOrder:
+          typeof item.sortOrder === "number" ? item.sortOrder : undefined,
+        durationSeconds:
+          typeof item.durationSeconds === "number"
+            ? item.durationSeconds
+            : null,
+      };
+    })
+    .filter(Boolean) as ProductImages["galleryItems"];
+
   return {
     mainImageUrl,
-    galleryImageUrls: gallerySource.filter(
-      (entry): entry is string => typeof entry === "string" && entry.trim() !== "",
-    ),
+    galleryImageUrls,
+    galleryItems:
+      galleryItems && galleryItems.length > 0
+        ? galleryItems
+        : galleryImageUrls.map((url) => ({ url, type: "image" as const })),
   };
 }
 

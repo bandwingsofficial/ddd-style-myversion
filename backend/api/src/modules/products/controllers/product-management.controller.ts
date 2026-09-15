@@ -41,7 +41,10 @@ import { ReorderProductGalleryDto } from '../dtos/reorder-product-gallery.dto';
 import { Product } from '../domain/models/product.model';
 
 /* Upload */
-import { productImageUploadOptions } from '../../uploads/validators/multer-memory.options';
+import {
+  productGalleryUploadOptions,
+  productImageUploadOptions,
+} from '../../uploads/validators/multer-memory.options';
 import { PublicProductQueryDto } from '../dtos/public-product-query.dto';
 import { ListProductsQueryDto } from '../dtos/list-products-query.dto';
 import { UpdateProductStatusDto } from '../dtos/update-product-status.dto';
@@ -95,7 +98,7 @@ export class ProductManagementController {
         { name: 'mainImage', maxCount: 1 },
         { name: 'galleryImages', maxCount: 5 },
       ],
-      productImageUploadOptions,
+      productGalleryUploadOptions,
     ),
   )
   async createProduct(
@@ -269,7 +272,7 @@ export class ProductManagementController {
   @UseInterceptors(
     FileFieldsInterceptor(
       [{ name: 'galleryImages', maxCount: 1 }],
-      productImageUploadOptions,
+      productGalleryUploadOptions,
     ),
   )
   async replaceGalleryImage(
@@ -308,7 +311,7 @@ export class ProductManagementController {
   @UseInterceptors(
     FileFieldsInterceptor(
       [{ name: 'galleryImages', maxCount: 1 }],
-      productImageUploadOptions,
+      productGalleryUploadOptions,
     ),
   )
   async addGalleryImage(

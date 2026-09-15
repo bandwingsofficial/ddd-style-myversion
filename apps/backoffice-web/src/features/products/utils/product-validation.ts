@@ -19,6 +19,15 @@ export const DISCOUNT_PRICE_EXCEEDS_ERROR =
   'Discount price cannot exceed original price.';
 export const MAIN_IMAGE_REQUIRED_ERROR = 'Main product image is required.';
 export const UNIT_VALUE_MIN_ERROR = 'Unit value must be at least 1.';
+export const MAX_GALLERY_VIDEOS = 5;
+export const MAX_VIDEO_DURATION_SECONDS = 60;
+export const GALLERY_MEDIA_ACCEPT = 'image/*,video/mp4,video/webm';
+export const GALLERY_VIDEO_TOO_MANY_ERROR =
+  'Maximum 5 videos are allowed per product.';
+export const GALLERY_VIDEO_DURATION_ERROR =
+  'Video duration must be 1 minute or less.';
+export const GALLERY_VIDEO_INVALID_TYPE_ERROR =
+  'Only MP4 and WebM videos are supported.';
 
 export const UNEXPECTED_ERROR_TOAST =
   'Something went wrong. Please try again.';
@@ -201,6 +210,69 @@ export function formInputClassName(hasError: boolean): string {
 
 export function formSelectClassName(hasError: boolean): string {
   return formInputClassName(hasError);
+}
+
+export function isGalleryVideoFile(file: File): boolean {
+  const mimeType = file.type.toLowerCase();
+  if (mimeType === 'video/mp4' || mimeType === 'video/webm') {
+    return true;
+  }
+
+  const extension = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+  return extension === '.mp4' || extension === '.webm';
+}
+
+export function formatVideoDuration(seconds: number): string {
+  const totalSeconds = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(totalSeconds / 60);
+  const remainingSeconds = totalSeconds % 60;
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
+export async function getVideoDurationSeconds(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+
+    const objectUrl = URL.createObjectURL(file);
+
+    video.onloadedmetadata = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(video.duration);
+    };
+
+    video.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Unable to read video metadata'));
+    };
+
+    video.src = objectUrl;
+  });
+}
+
+export async function validateGalleryMediaFile(
+  file: File,
+): Promise<string | undefined> {
+  if (isGalleryVideoFile(file)) {
+    if (
+      file.type &&
+      file.type !== 'video/mp4' &&
+      file.type !== 'video/webm'
+    ) {
+      return GALLERY_VIDEO_INVALID_TYPE_ERROR;
+    }
+
+    try {
+      const duration = await getVideoDurationSeconds(file);
+      if (duration > MAX_VIDEO_DURATION_SECONDS) {
+        return GALLERY_VIDEO_DURATION_ERROR;
+      }
+    } catch {
+      return GALLERY_VIDEO_INVALID_TYPE_ERROR;
+    }
+  }
+
+  return undefined;
 }
 
 export function formTextareaClassName(hasError: boolean): string {
