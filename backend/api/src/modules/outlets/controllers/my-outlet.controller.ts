@@ -36,7 +36,7 @@ export class MyOutletController {
   async getMyProducts(@CurrentUser() user) {
     const outletId = await this.getMyOutletId(user);
 
-    const data = await this.orchestrator.getOutletProducts(outletId);
+    const data = await this.orchestrator.getOutletProductsWithDetails(outletId);
 
     return {
       success: true,

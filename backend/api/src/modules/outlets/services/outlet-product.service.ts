@@ -33,6 +33,44 @@ export class OutletProductService {
     return this.repo.findByOutlet(outletId);
   }
 
+  async getProductsWithDetails(outletId: string) {
+    const rows = await this.repo.findByOutletWithProduct(outletId);
+
+    return Promise.all(
+      rows.map(async (row) => {
+        const images = await this.productService.resolvePublicImages({
+          mainImage: row.product.mainImage,
+          galleryImageKeys: [],
+        });
+
+        return {
+          id: row.id,
+          outletId: row.outletId,
+          productId: row.productId,
+          isAvailable: row.isAvailable,
+          product: {
+            id: row.product.id,
+            name: { value: row.product.productName },
+            slug: { value: row.product.slug },
+            price: {
+              originalPrice: row.product.originalPrice.toNumber(),
+              discountPrice: row.product.discountPrice?.toNumber() ?? null,
+            },
+            images,
+            unit: {
+              value: row.product.unitValue,
+              type: row.product.unitType,
+            },
+            category: {
+              id: row.product.category.id,
+              name: row.product.category.name,
+            },
+          },
+        };
+      }),
+    );
+  }
+
   async getAvailableProducts(outletId: string): Promise<OutletProduct[]> {
     return this.repo.findAvailableByOutlet(outletId);
   }

@@ -5,8 +5,6 @@ import { OutletProduct } from "../types";
 import { outletService } from "../services/outletService";
 import { ImageOff, RefreshCw } from "lucide-react";
 
-const BACKEND_URL = "https://api.dev.local:4000";
-
 interface Props {
   initialProducts: OutletProduct[];
 }
@@ -50,6 +48,8 @@ export default function ProductList({ initialProducts }: Props) {
             <tr style={styles.theadRow}>
               <th style={{...styles.th, width: '80px'}}>Image</th>
               <th style={styles.th}>Product Details</th>
+              <th style={styles.th}>Unit</th>
+              <th style={styles.th}>Category</th>
               <th style={styles.th}>Price</th>
               <th style={styles.th}>Status</th>
               <th style={{...styles.th, textAlign: 'right', paddingRight: '32px'}}>Availability</th>
@@ -66,7 +66,7 @@ export default function ProductList({ initialProducts }: Props) {
             ))}
             {products.length === 0 && (
               <tr>
-                <td colSpan={5} style={styles.emptyState}>No products found.</td>
+                <td colSpan={7} style={styles.emptyState}>No products found.</td>
               </tr>
             )}
           </tbody>
@@ -78,34 +78,31 @@ export default function ProductList({ initialProducts }: Props) {
 
 function ProductRow({ item, loadingId, onToggle }: { item: OutletProduct, loadingId: string | null, onToggle: (i: OutletProduct) => void }) {
   const [isHovered, setIsHovered] = useState(false);
-  const p = item.product as any; 
+  const p = item.product;
 
-  const name = useMemo(() => p?.name?.value || p?.name || "Unknown", [p]);
+  const name = useMemo(() => {
+    if (!p) return "Unknown Product";
+    if (typeof p.name === "string") return p.name;
+    return p.name?.value || "Unknown Product";
+  }, [p]);
+
+  const unitLabel = useMemo(() => {
+    if (!p?.unit) return "—";
+    return `${p.unit.value} ${p.unit.type}`;
+  }, [p]);
+
+  const categoryLabel = useMemo(() => p?.category?.name || "—", [p]);
 
   const imageUrl = useMemo(() => {
-    if (!p) return null;
-    const rawImage = p.images || p.image || p.mainImage || p.thumbnail;
-    let path = "";
-    if (Array.isArray(rawImage)) path = rawImage[0] || "";
-    else if (typeof rawImage === "object" && rawImage !== null) path = rawImage.url || rawImage.mainImage || rawImage.value || "";
-    else if (typeof rawImage === "string") path = rawImage;
-    
-    if (!path || path.trim() === "") return null;
-    if (path.startsWith("http")) return path;
-    const cleanPath = path.startsWith("/") ? path : `/${path}`;
-    return `${BACKEND_URL}${cleanPath}`;
+    const url = p?.images?.mainImageUrl?.trim();
+    return url || null;
   }, [p]);
 
   const priceDisplay = useMemo(() => {
-    const parse = (val: any) => {
-      if (val === undefined || val === null) return 0;
-      const num = parseFloat(val);
-      return isNaN(num) ? 0 : num;
-    };
-    const original = parse(p?.originalPrice ?? p?.price?.originalPrice ?? p?.price?.value ?? p?.price);
-    const discountVal = parse(p?.discountPrice ?? p?.salePrice ?? p?.price?.discountPrice ?? p?.price?.salePrice);
-    
-    if (discountVal > 0 && discountVal < original) {
+    const original = p?.price?.originalPrice ?? 0;
+    const discountVal = p?.price?.discountPrice ?? null;
+
+    if (discountVal != null && discountVal > 0 && discountVal < original) {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
            <span style={styles.priceDiscount}>₹{discountVal}</span>
@@ -132,6 +129,8 @@ function ProductRow({ item, loadingId, onToggle }: { item: OutletProduct, loadin
         </div>
       </td>
       <td style={styles.td}><div style={styles.name}>{name}</div></td>
+      <td style={styles.td}><div style={styles.metaText}>{unitLabel}</div></td>
+      <td style={styles.td}><div style={styles.metaText}>{categoryLabel}</div></td>
       <td style={styles.td}>{priceDisplay}</td>
       <td style={styles.td}>
         <div style={{
@@ -183,6 +182,7 @@ const styles: { [key: string]: React.CSSProperties } = {
   imgBox: { width: '40px', height: '40px', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   img: { width: '100%', height: '100%', objectFit: 'cover' },
   name: { fontSize: '14px', fontWeight: '600' },
+  metaText: { fontSize: '13px', color: '#475569' },
   priceDiscount: { fontWeight: 700, fontSize: '14px' },
   priceOriginal: { fontSize: '11px', textDecoration: 'line-through', color: '#94a3b8' },
   priceRegular: { fontWeight: 600 },

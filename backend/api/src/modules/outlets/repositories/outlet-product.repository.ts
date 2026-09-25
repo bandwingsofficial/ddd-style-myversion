@@ -94,6 +94,30 @@ export class OutletProductRepository {
    * - PublicOutletController
    * - return product details with outlet assignment
    */
+  async findByOutletWithProduct(outletId: string, tx?: PrismaTransaction) {
+    const client = tx ?? this.prisma;
+
+    return client.outletProduct.findMany({
+      where: {
+        outletId,
+        product: { status: 'ACTIVE' },
+      },
+      include: {
+        product: {
+          include: {
+            category: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
   async findAvailableWithProduct(outletId: string, tx?: PrismaTransaction) {
     const client = tx ?? this.prisma;
 

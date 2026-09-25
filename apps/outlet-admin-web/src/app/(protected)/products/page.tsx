@@ -36,15 +36,14 @@ export default function ProductsPage() {
 
   // Helper to extract price for sorting
   const getProductPrice = (item: OutletProduct) => {
-    const p = item.product as any;
-    const val =
-      p?.discountPrice ??
-      p?.price?.discountPrice ??
-      p?.price?.value ??
-      p?.price ??
-      0;
+    const original = item.product?.price?.originalPrice ?? 0;
+    const discount = item.product?.price?.discountPrice;
 
-    return parseFloat(val) || 0;
+    if (discount != null && discount > 0 && discount < original) {
+      return discount;
+    }
+
+    return original;
   };
 
   // Logic to filter products before passing them to the list
@@ -55,9 +54,9 @@ export default function ProductsPage() {
     if (searchQuery) {
       result = result.filter((item) => {
         const name =
-          (item.product as any)?.name?.value ||
-          (item.product as any)?.name ||
-          "";
+          (typeof item.product?.name === "string"
+            ? item.product.name
+            : item.product?.name?.value) || "";
 
         return name
           .toLowerCase()

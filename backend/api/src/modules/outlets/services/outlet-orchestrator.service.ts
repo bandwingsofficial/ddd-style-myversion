@@ -209,6 +209,10 @@ export class OutletOrchestratorService {
     return this.outletProductService.getProducts(outletId);
   }
 
+  async getOutletProductsWithDetails(outletId: string) {
+    return this.outletProductService.getProductsWithDetails(outletId);
+  }
+
   async getAvailableOutletProducts(outletId: string) {
     return this.outletProductService.getAvailableProducts(outletId);
   }

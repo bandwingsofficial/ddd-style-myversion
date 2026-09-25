@@ -23,21 +23,24 @@ export interface Outlet {
 // ✅ 1. Flexible Product Shape (Matches Customer App)
 export interface ProductDetails {
   id: string;
-  // Name can be string OR object
   name: string | { value: string };
-  // Slug can be string OR object
-  slug: string | { value: string };
-  // Price can be number OR object with originalPrice/salePrice
-  price: number | { originalPrice: number; salePrice?: number; value?: number };
-  originalPrice?: number; // sometimes at root
-  salePrice?: number;     // sometimes at root
-  
-  // Images can be string, array, or object
-  images?: string[] | string | { url?: string; mainImage?: string; value?: string };
-  image?: string | any; // fallback
-  thumbnail?: string | any; // fallback
-
-  unit?: string | { value: number; type: string };
+  slug?: string | { value: string };
+  price?: {
+    originalPrice: number;
+    discountPrice?: number | null;
+  };
+  images?: {
+    mainImageUrl?: string;
+    galleryImageUrls?: string[];
+  };
+  unit?: {
+    value: number;
+    type: string;
+  };
+  category?: {
+    id: string;
+    name: string;
+  };
 }
 
 // ✅ 2. The Main Outlet Product Type

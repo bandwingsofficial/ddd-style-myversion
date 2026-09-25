@@ -5,9 +5,8 @@ import { createPortal } from 'react-dom';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  ArrowLeft, Plus, Search, Trash2, Edit2, CheckCircle2, 
-  XCircle, IndianRupee, Tag, ShoppingBag, Loader2, Store,
-  AlertTriangle, ChevronLeft, ChevronRight, X
+  ArrowLeft, Plus, Search, Trash2, Loader2, Store,
+  AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, X, XCircle, ImageOff
 } from 'lucide-react';
 import { UsersService } from '@/features/users/users.service';
 import { OutletProduct } from '@/features/users/users.types';
@@ -57,7 +56,6 @@ export default function OutletProductsPage() {
   
   // Modal States
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showPriceModal, setShowPriceModal] = useState<OutletProduct | null>(null);
   
   // Delete Confirmation State
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
@@ -71,11 +69,8 @@ export default function OutletProductsPage() {
 
   // Form Data
   const [selectedProductId, setSelectedProductId] = useState('');
-  const [priceOverride, setPriceOverride] = useState('');
-  const [discountOverride, setDiscountOverride] = useState('');
 
-  // Map Helper
-  const [productMap, setProductMap] = useState<Record<string, string>>({});
+  const [masterById, setMasterById] = useState<Record<string, Product>>({});
 
   useEffect(() => {
     if (outletId) loadData();
@@ -114,16 +109,16 @@ export default function OutletProductsPage() {
       setMasterProducts(safeMasterProducts);
       setOutletName(outletDetails?.name || 'Unknown Outlet');
 
-      const map: Record<string, string> = {};
+      const map: Record<string, Product> = {};
       safeMasterProducts.forEach((product) => {
-        map[product.id] = getSafeName(product);
+        map[product.id] = product;
       });
-      setProductMap(map);
+      setMasterById(map);
     } catch (error) {
       console.error('Failed to fetch data', error);
       setProducts([]);
       setMasterProducts([]);
-      setProductMap({});
+      setMasterById({});
       setFlashMessage({
         type: 'error',
         title: 'Load Failed',
@@ -157,24 +152,6 @@ export default function OutletProductsPage() {
     }
   };
 
-  const handleToggleStatus = async (item: OutletProduct) => {
-    try {
-      if (item.isAvailable) {
-        await UsersService.disableOutletProduct(outletId, item.productId);
-      } else {
-        await UsersService.enableOutletProduct(outletId, item.productId);
-      }
-      loadData();
-    } catch (error) {
-      console.error(error);
-      setFlashMessage({
-        type: 'error',
-        title: 'Update Failed',
-        text: 'Could not change product status.'
-      });
-    }
-  };
-
   // Trigger Delete Confirmation
   const handleDeleteClick = (productId: string) => {
     setItemToDelete(productId);
@@ -189,8 +166,8 @@ export default function OutletProductsPage() {
       loadData();
       setFlashMessage({
         type: 'success',
-        title: 'Product Removed',
-        text: 'The product has been removed from this outlet.'
+        title: 'Product Unassigned',
+        text: 'The product has been unassigned from this outlet.'
       });
     } catch (error) {
       console.error(error);
@@ -202,29 +179,21 @@ export default function OutletProductsPage() {
     }
   };
 
-  const handlePriceUpdate = async () => {
-    if (!showPriceModal) return;
-    try {
-      await UsersService.overrideProductPrice(
-        outletId, 
-        showPriceModal.productId, 
-        Number(priceOverride), 
-        Number(discountOverride)
-      );
-      setShowPriceModal(null);
-      loadData();
-      setFlashMessage({
-        type: 'success',
-        title: 'Pricing Updated',
-        text: 'Price and discount overrides saved successfully.'
-      });
-    } catch (error) {
-      setFlashMessage({
-        type: 'error',
-        title: 'Update Failed',
-        text: 'Failed to update pricing details.'
-      });
+  const formatUnit = (product?: Product) => {
+    if (!product) return '—';
+    return `${product.unitValue} ${product.unitType}`;
+  };
+
+  const formatPrice = (product?: Product) => {
+    if (!product) return '—';
+    const original = product.price.originalPrice;
+    const discount = product.price.discountPrice;
+
+    if (discount != null && discount > 0 && discount < original) {
+      return `₹${discount}`;
     }
+
+    return `₹${original}`;
   };
 
   const filteredProducts = useMemo(() => {
@@ -235,13 +204,14 @@ export default function OutletProductsPage() {
     }
 
     return products.filter((item) => {
-      const name = productMap[item.productId] ?? '';
+      const product = masterById[item.productId];
+      const name = product ? getSafeName(product) : '';
       return (
         name.toLowerCase().includes(query) ||
         item.productId.toLowerCase().includes(query)
       );
     });
-  }, [products, productMap, search]);
+  }, [products, masterById, search]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
   const paginatedProducts = useMemo(() => {
@@ -312,7 +282,7 @@ export default function OutletProductsPage() {
                     onClick={() => setShowCreateModal(true)}
                     className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-95"
                 >
-                    <Plus size={18} strokeWidth={2.5} /> Create Product
+                    <Plus size={18} strokeWidth={2.5} /> Assign Product
                 </button>
             </div>
         </div>
@@ -360,14 +330,20 @@ export default function OutletProductsPage() {
               <table className="w-full text-left">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
+                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Image</th>
                     <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Product Name</th>
-                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Status</th>
-                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Price Override</th>
-                    <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Actions</th>
+                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Unit</th>
+                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Category</th>
+                    <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-slate-500">Price</th>
+                    <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-slate-500">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {paginatedProducts.map((item) => (
+                  {paginatedProducts.map((item) => {
+                    const product = masterById[item.productId];
+                    const imageUrl = product?.images?.mainImageUrl;
+
+                    return (
                     <motion.tr 
                       key={item.id}
                       initial={{ opacity: 0 }}
@@ -375,79 +351,55 @@ export default function OutletProductsPage() {
                       className="hover:bg-slate-50/50"
                     >
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-400">
-                            <ShoppingBag size={20} />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-slate-700">
-                              {productMap[item.productId] || 'Unknown Product'}
-                            </p>
-                          </div>
+                        <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+                          {imageUrl ? (
+                            <img
+                              src={imageUrl}
+                              alt={product ? getSafeName(product) : 'Product'}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <ImageOff size={16} className="text-slate-400" />
+                          )}
                         </div>
                       </td>
 
                       <td className="px-6 py-4">
-                          <button 
-                           onClick={() => handleToggleStatus(item)}
-                           className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide transition-all ${
-                             item.isAvailable 
-                               ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' 
-                               : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                           }`}
-                          >
-                           {item.isAvailable ? <CheckCircle2 size={14}/> : <XCircle size={14}/>}
-                           {item.isAvailable ? 'Active' : 'Inactive'}
-                          </button>
+                        <p className="font-semibold text-slate-700">
+                          {product ? getSafeName(product) : 'Unknown Product'}
+                        </p>
                       </td>
 
-                      <td className="px-6 py-4">
-                        {(item.priceOverride || item.discountOverride) ? (
-                          <div className="flex flex-col text-sm">
-                            {item.priceOverride && (
-                               <span className="font-medium text-emerald-600 flex items-center gap-1">
-                                 <IndianRupee size={12}/> {item.priceOverride}
-                               </span>
-                            )}
-                            {item.discountOverride && (
-                               <span className="font-medium text-orange-600 flex items-center gap-1">
-                                 <Tag size={12}/> {item.discountOverride}% Off
-                               </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-xs text-slate-400 italic">Default</span>
-                        )}
+                      <td className="px-6 py-4 text-sm text-slate-600">
+                        {formatUnit(product)}
+                      </td>
+
+                      <td className="px-6 py-4 text-sm text-slate-600">
+                        {product?.categoryName || '—'}
+                      </td>
+
+                      <td className="px-6 py-4 text-sm font-semibold text-slate-700">
+                        {formatPrice(product)}
                       </td>
 
                       <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button 
-                            onClick={() => {
-                              setPriceOverride(item.priceOverride?.toString() || '');
-                              setDiscountOverride(item.discountOverride?.toString() || '');
-                              setShowPriceModal(item);
-                            }}
-                            className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-blue-50 hover:text-blue-600"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteClick(item.productId)}
-                            className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-red-50 hover:text-red-600"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => handleDeleteClick(item.productId)}
+                          className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-red-50 hover:text-red-600"
+                        >
+                          Unassign
+                        </button>
                       </td>
                     </motion.tr>
-                  ))}
+                    );
+                  })}
                   {!loading && filteredProducts.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="py-12 text-center text-slate-500">
+                      <td colSpan={6} className="py-12 text-center text-slate-500">
                         {search
                           ? 'No products match your search.'
-                          : 'No products assigned. Click "Create Product" to add one.'}
+                          : 'No products assigned. Click "Assign Product" to add one.'}
                       </td>
                     </tr>
                   )}
@@ -491,7 +443,7 @@ export default function OutletProductsPage() {
       {/* --- CREATE PRODUCT MODAL --- */}
       <AnimatePresence>
         {showCreateModal && (
-          <Modal title="Create Outlet Product" onClose={() => setShowCreateModal(false)}>
+          <Modal title="Assign Product" onClose={() => setShowCreateModal(false)}>
             <div className="space-y-6">
               <div className="rounded-xl bg-slate-50 p-4 border border-slate-100">
                 <p className="text-sm text-slate-600">
@@ -517,50 +469,9 @@ export default function OutletProductsPage() {
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-200 transition-all hover:bg-emerald-700 disabled:opacity-50"
               >
                 <Plus size={18} strokeWidth={2.5} />
-                Create Product
+                Assign Product
               </button>
             </div>
-          </Modal>
-        )}
-      </AnimatePresence>
-
-      {/* --- PRICE MODAL --- */}
-      <AnimatePresence>
-        {showPriceModal && (
-          <Modal title="Edit Pricing" onClose={() => setShowPriceModal(null)}>
-             <div className="space-y-5">
-               <div className="rounded-lg bg-blue-50 p-3 text-xs text-blue-700 mb-4">
-                 Editing: <strong>{productMap[showPriceModal.productId]}</strong>
-               </div>
-               
-               <div className="grid grid-cols-2 gap-4">
-                 <div>
-                   <label className="mb-1.5 block text-xs font-bold text-slate-500">New Price</label>
-                   <input 
-                     type="number" 
-                     value={priceOverride}
-                     onChange={e => setPriceOverride(e.target.value)}
-                     className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-emerald-500"
-                   />
-                 </div>
-                 <div>
-                   <label className="mb-1.5 block text-xs font-bold text-slate-500">Discount %</label>
-                   <input 
-                     type="number" 
-                     value={discountOverride}
-                     onChange={e => setDiscountOverride(e.target.value)}
-                     className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none focus:border-emerald-500"
-                   />
-                 </div>
-               </div>
-
-               <button 
-                onClick={handlePriceUpdate}
-                className="w-full rounded-xl bg-emerald-600 py-3.5 text-sm font-bold text-white hover:bg-emerald-700"
-              >
-                Save Changes
-              </button>
-             </div>
           </Modal>
         )}
       </AnimatePresence>
@@ -568,7 +479,7 @@ export default function OutletProductsPage() {
       {/* --- DELETE CONFIRMATION MODAL --- */}
       <AnimatePresence>
         {itemToDelete && (
-          <Modal title="Confirm Removal" onClose={() => setItemToDelete(null)}>
+          <Modal title="Confirm Unassign" onClose={() => setItemToDelete(null)}>
             <div className="text-center">
               <div className="mb-4 flex justify-center">
                 <div className="rounded-full bg-red-100 p-3 text-red-500">
@@ -576,7 +487,7 @@ export default function OutletProductsPage() {
                 </div>
               </div>
               <p className="mb-6 text-sm text-slate-600">
-                Are you sure you want to remove this product from the outlet? This action cannot be undone.
+                Are you sure you want to unassign this product from this outlet?
               </p>
               <div className="flex gap-3">
                 <button
@@ -589,7 +500,7 @@ export default function OutletProductsPage() {
                   onClick={confirmDelete}
                   className="flex-1 rounded-xl bg-red-500 py-3 text-sm font-bold text-white shadow-md shadow-red-200 transition-colors hover:bg-red-600"
                 >
-                  Remove
+                  Unassign
                 </button>
               </div>
             </div>
